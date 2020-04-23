@@ -565,6 +565,8 @@ github.com/openshift/opencontainers-runc v1.0.0-rc4.0.20190926164333-b942ff4cc6f
 github.com/openshift/opencontainers-runc v1.0.0-rc4.0.20190926164333-b942ff4cc6f8/go.mod h1:HPgCLT2yw6clkrh3z6KnZbLeBIfmP+y73vSnU4SuzZ8=
 github.com/openshift/openshift-tests v0.0.0-20200415025103-ee1cab1f937e h1:V1D724P9r5w/iUYI6p7rq84Hm+C/XmYE4HFSWEw2zUk=
 github.com/openshift/openshift-tests v0.0.0-20200415025103-ee1cab1f937e/go.mod h1:SmM8O8DllJfgzXTZyZFolqcNy+1PuPG6RfLvSnHFIGI=
+github.com/openshift/openshift-tests v0.0.0-20200421015519-1c41209964a6 h1:9COFozZJPrZ5Yb9TKnEfA3w/y7R8nqYDiZ0Pf52U7zQ=
+github.com/openshift/openshift-tests v0.0.0-20200421015519-1c41209964a6/go.mod h1:SmM8O8DllJfgzXTZyZFolqcNy+1PuPG6RfLvSnHFIGI=
 github.com/pborman/uuid v1.2.0 h1:J7Q5mO4ysT1dv8hyrUGHb9+ooztCXu1D8MY8DZYsu3g=
 github.com/pborman/uuid v1.2.0/go.mod h1:X/NO0urCmaxf9VXbdlT7C2Yzkj2IKimNn4k+gtPdI/k=
 github.com/pelletier/go-toml v1.1.0/go.mod h1:5z9KED0ma1S8pY6P1sdut58dfprrGBbd/94hg7ilaic=
