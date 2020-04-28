@@ -6,8 +6,8 @@ import (
 
 	"k8s.io/kubectl/pkg/util/templates"
 
+	_ "github.com/openshift/openshift-tests-private/test/extended"
 	"github.com/openshift/openshift-tests/pkg/test/ginkgo"
-
 	_ "github.com/openshift/openshift-tests/test/extended"
 )
 

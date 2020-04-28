@@ -65,6 +65,8 @@ func InitTest(dryRun bool) error {
 		Asset:      generated.Asset,
 		AssetNames: generated.AssetNames,
 	})
+	e2e.Logf("_Asset %v", generated.Asset)
+	e2e.Logf("_Asset Name %v", generated.AssetNames)
 	TestContext.KubectlPath = "kubectl"
 	TestContext.KubeConfig = KubeConfigPath()
 	os.Setenv("KUBECONFIG", TestContext.KubeConfig)

@@ -56,7 +56,7 @@ import (
 	"github.com/openshift/library-go/pkg/build/naming"
 	"github.com/openshift/library-go/pkg/git"
 	"github.com/openshift/library-go/pkg/image/imageutil"
-	"github.com/openshift/openshift-tests/test/extended/testdata"
+	"github.com/openshift/openshift-tests-private/test/extended/testdata"
 
 	. "github.com/onsi/gomega"
 )
@@ -1409,6 +1409,7 @@ func FixturePath(elem ...string) string {
 	relativePath := path.Join(elem...)
 	fullPath := path.Join(fixtureDir, relativePath)
 	if err := testdata.RestoreAsset(fixtureDir, relativePath); err != nil {
+		e2e.Logf("FixtureDir: %s", fixtureDir)
 		if err := testdata.RestoreAssets(fixtureDir, relativePath); err != nil {
 			panic(err)
 		}
