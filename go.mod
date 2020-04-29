@@ -7,16 +7,18 @@ require (
 	github.com/coreos/rkt v1.30.0 // indirect
 	github.com/davecgh/go-spew v1.1.1
 	github.com/fsouza/go-dockerclient v0.0.0-20171004212419-da3951ba2e9e
+	github.com/google/go-github v17.0.0+incompatible
 	github.com/onsi/ginkgo v1.10.1
 	github.com/onsi/gomega v1.7.0
 	github.com/openshift/api v3.9.1-0.20191201231411-9f834e337466+incompatible
 	github.com/openshift/client-go v0.0.0-20200116152001-92a2713fa240
 	github.com/openshift/library-go v0.0.0-20200120153246-906409ae5e38
-	github.com/openshift/openshift-tests v0.0.0-20200421015519-1c41209964a6
+	github.com/openshift/openshift-tests v0.0.0-20200427055515-4d9993fad4ac
 	github.com/pborman/uuid v1.2.0
+	github.com/prometheus/client_golang v1.1.0
 	github.com/prometheus/client_model v0.0.0-20190129233127-fd36f4220a90
 	github.com/prometheus/common v0.6.0
-	github.com/spf13/cobra v0.0.5
+	github.com/spf13/cobra v1.0.0
 	github.com/spf13/pflag v1.0.5
 	k8s.io/api v0.17.1
 	k8s.io/apimachinery v0.17.1
