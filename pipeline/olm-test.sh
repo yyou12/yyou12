@@ -3,13 +3,16 @@ if [ "${KUBECONFIG_FILE}" == "" ] || [ "${REPO}" == "" ] || [ "${BRANCH}" == "" 
   exit 1
 fi
 
-if echo ${REPO} | grep -E '^git@github.com:(.{0,39})/(origin|openshift-tests).git$'; then
+if echo ${REPO} | grep -E '^git@github.com:(.{0,39})/(origin|openshift-tests|openshift-tests-private).git$'; then
     echo "the REPO URL ${REPO} is valid"
 else
-    echo "the REPO URL ${REPO} is not valid, it looks like git@github.com:<account>/origin.git or git@github.com:<account>/openshift-tests.git"
+    echo "the REPO URL ${REPO} is not valid, it looks like  git@github.com:<account>/origin.git, 
+                                                            git@github.com:<account>/openshift-tests.git,
+                                                            git@github.com:<account>/openshift-tests-private.git"
     exit 1
 fi
 
+#check go-build link
 source ~/.bash_profile
 output_du=`du -s -k /data/go-build`
 size=`echo ${output_du} | awk -F " " '{print $1}'`
@@ -18,6 +21,37 @@ if [ ${size} -gt ${size_threshold} ]; then
   go clean -cache
 fi
 
+eval "$(ssh-agent -s)"
+#addsshkey
+export http_proxy=
+export https_proxy=
+if [ "${CONFIG}" != "" ] ; then
+  echo "check if the configuration for env is valid"
+  valid=`echo "${CONFIG}" | python3 -c "import sys,yaml;yaml.safe_load(sys.stdin.read());print('OK')"  || true`
+  if [ "${valid}" != "OK" ] ; then
+    echo "CONFIG is not valid"
+    exit 1
+  fi
+  rm -fr handleconfig.py
+  cp -fr /root/bin/handleconfig.py .
+  setflag="false"
+  declare -a envvar=("http_proxy" "https_proxy")
+  for envname in "${envvar[@]}"
+  do
+    value=` python3 handleconfig.py -a get -y "${CONFIG}" -p env:${envname} || true `
+    if [ "${value}" != "None" ] && [ "${value}" != "failtogetvalue" ] && [ "${value}" != "" ]; then
+      echo "try to set ${envname}"
+      export ${envname}=${value}
+      setflag="true"
+    fi
+  done
+  if [ "${setflag}" == "false" ] ; then
+    echo "fail to configure env"
+    exit 1
+  fi
+fi
+
+# configure kubeconfig script
 ck "${KUBECONFIG_FILE}"
 platformtype=`oc get infrastructures.config.openshift.io cluster -o=jsonpath={.status.platformStatus.type}`
 if [ "${platformtype}" == "Azure" ] ; then
@@ -25,14 +59,10 @@ if [ "${platformtype}" == "Azure" ] ; then
     echo "please input AZURE_AUTH_LOCATION"
     exit 1
   fi
+  # configure azure authentication script
   cz "${AZURE_AUTH_LOCATION_FILE}"
 fi
 
-eval "$(ssh-agent -s)"
-#addsshkey
-
-
-#git_url_part1=`echo ${REPO} | awk -F ":" '{print $1}'`
 git_url_part2=`echo ${REPO} | awk -F ":" '{print $2}'`
 github_account=`echo ${git_url_part2} | awk -F "/" '{print $1}'`
 github_repo=`echo ${git_url_part2} | awk -F "/" '{print $2}'`
@@ -128,7 +158,6 @@ rm -fr handleresult.py
 cp -fr /root/bin/handleresult.py .
 python3 handleresult.py -a replace -i ${resultfile} -o ${newresultfile}
 rm -fr ${resultfile}
-# resultsummary=`python3 handleresult.py -a get -i ${newresultfile} 2>&1 `
 resultsummary=`python3 handleresult.py -a get -i ${newresultfile} 2>&1 || true`
 finalresult=""
 if (echo $resultsummary | grep -q -E "FAIL") ; then
