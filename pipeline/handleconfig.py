@@ -2,7 +2,7 @@
 import yaml
 import argparse
 
-class CONFIG:
+class ConfigParse:
 
     def __init__(self, content):
         self.content = content
@@ -31,5 +31,5 @@ if __name__ == "__main__":
         print("failtogetvalue")
         exit(1)
 
-    config = CONFIG(yamlcontent)
+    config = ConfigParse(yamlcontent)
     print(config.get(args.para))

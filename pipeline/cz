@@ -5,7 +5,11 @@ AZUREAUTHDIR="/root/azureauth"
 AZUREAUTHFILE="azure_auth.json"
 AZUREAUTHURL=$1
 
-WGET="/usr/bin/wget"
+WGET=`which wget`
+if (echo ${WGET} | grep -E "not found") || (echo ${WGET} | grep -E "no ") ; then
+    echo "There is no wget installed or added into PATH"
+    exit 1
+fi
 
 echo "try to get azure auth file ${AZUREAUTHURL}"
 
