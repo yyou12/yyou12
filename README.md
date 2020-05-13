@@ -21,7 +21,11 @@ $ cd ${GOPATH}/src/github.com/openshift/
 $ git clone git@github.com:openshift/openshift-tests.git
 $ make clean
 $ make build
+
 ```
+### Update the public repo
+We treat the pulic repo: [openshift-tests](https://github.com/openshift/openshift-tests) as a dependency lib. That means you can also run the test case of that public repo in this private repo. Run the `$ make update-public` comamnd to update this dep lib. Or you can build the binary with `$ make all` command.
+
 
 Run `./bin/extended-platform-tests --help` to get started.
 
