@@ -1,5 +1,5 @@
-if [ "${KUBECONFIG_FILE}" == "" ] || [ "${REPO}" == "" ] || [ "${BRANCH}" == "" ] || [ "${SCENARIO}" == "" ] ; then
-  echo "please input value for all parameters"
+if [ "${REPO}" == "" ] || [ "${BRANCH}" == "" ] || [ "${SCENARIO}" == "" ] ; then
+  echo "please input value for REPO, BRANCH and SCENARIO"
   exit 1
 fi
 
@@ -23,44 +23,34 @@ fi
 
 eval "$(ssh-agent -s)"
 #addsshkey
-export http_proxy=
-export https_proxy=
-if [ "${CONFIG}" != "" ] ; then
-  echo "check if the configuration for env is valid"
-  valid=`echo "${CONFIG}" | python3 -c "import sys,yaml;yaml.safe_load(sys.stdin.read());print('OK')"  || true`
-  if [ "${valid}" != "OK" ] ; then
-    echo "CONFIG is not valid"
+FLEXYURLBASE="https://mastern-jenkins-csb-openshift-qe.cloud.paas.psi.redhat.com/job/Launch%20Environment%20Flexy/"
+if [ "${KUBECONFIG_FILE}" != "" ]; then # configure kubeconfig  directly, and does not support azure authentication and client proxy automatcially
+  ck "${KUBECONFIG_FILE}"
+else #configure kubeconfig from flexy, and support azure authentication and client proxy automatcially if necessary
+  if [ "${FLEXY_BUILD}" == "" ]; then
+    echo "please input KUBECONFIG_FILE or FLEXY_BUILD"
     exit 1
   fi
-  rm -fr handleconfig.py
-  cp -fr /root/bin/handleconfig.py .
-  setflag="false"
-  declare -a envvar=("http_proxy" "https_proxy")
-  for envname in "${envvar[@]}"
-  do
-    value=` python3 handleconfig.py -a get -y "${CONFIG}" -p env:${envname} || true `
-    if [ "${value}" != "None" ] && [ "${value}" != "failtogetvalue" ] && [ "${value}" != "" ]; then
-      echo "try to set ${envname}"
-      export ${envname}=${value}
-      setflag="true"
-    fi
-  done
-  if [ "${setflag}" == "false" ] ; then
-    echo "fail to configure env"
-    exit 1
-  fi
-fi
-
-# configure kubeconfig script
-ck "${KUBECONFIG_FILE}"
-platformtype=`oc get infrastructures.config.openshift.io cluster -o=jsonpath={.status.platformStatus.type}`
-if [ "${platformtype}" == "Azure" ] ; then
-  if [ "${AZURE_AUTH_LOCATION_FILE}" == "" ] ; then
-    echo "please input AZURE_AUTH_LOCATION"
-    exit 1
-  fi
+  # configure kubeconfig
+  KUBECONFIG_FILE=${FLEXYURLBASE}${FLEXY_BUILD}"/artifact/workdir/install-dir/auth/kubeconfig"
+  ck "${KUBECONFIG_FILE}"
   # configure azure authentication script
-  cz "${AZURE_AUTH_LOCATION_FILE}"
+  AZURE_AUTH_LOCATION_FILE=${FLEXYURLBASE}${FLEXY_BUILD}"/artifact/workdir/install-dir/terraform.azure.auto.tfvars.json"
+  ret_code=`curl -s -k ${AZURE_AUTH_LOCATION_FILE} -o /dev/null  -w "%{http_code}"`
+  if [ "${ret_code}" == "200" ]; then
+    cz "${AZURE_AUTH_LOCATION_FILE}" 
+  fi
+  #config client proxy if necessary
+  export http_proxy=
+  export https_proxy=
+  CLIENT_PROXY_SETTING_SH=${FLEXYURLBASE}${FLEXY_BUILD}"/artifact/workdir/install-dir/client_proxy_setting.json"
+  ret_code=`curl -s -k ${CLIENT_PROXY_SETTING_SH} -o ./client_proxy_setting.json  -w "%{http_code}"`
+  if [ "${ret_code}" == "200" ]; then
+    http_proxy_url=`cat ./client_proxy_setting.json | jq .http_proxy`
+    export http_proxy=${http_proxy_url}
+    https_proxy_url=`cat ./client_proxy_setting.json | jq .https_proxy`
+    export https_proxy=${https_proxy_url}
+  fi
 fi
 
 git_url_part2=`echo ${REPO} | awk -F ":" '{print $2}'`
@@ -122,8 +112,8 @@ fi
 
 echo ${SCENARIO}
 echo ${IMPORTANCE}
+rm -fr junit_e2e_*.xml
 if [ ${github_reponame} == "origin" ]; then
-  rm -fr junit_e2e_*.xml
   echo "it is origin"
   if [ ${IMPORTANCE} == "all" ] || [ ${IMPORTANCE} == "" ] ; then
     ocrorigin "${SCENARIO}" "" || true
@@ -131,12 +121,18 @@ if [ ${github_reponame} == "origin" ]; then
     ocrorigin "${SCENARIO}" ${IMPORTANCE} || true
   fi
 elif [ ${github_reponame} == "openshift-tests" ]; then
-  rm -fr junit_e2e_*.xml
   echo "it is openshift-tests"
   if [ ${IMPORTANCE} == "all" ] || [ ${IMPORTANCE} == "" ] ; then
     ocropenshift "${SCENARIO}" "" || true
   else
     ocropenshift "${SCENARIO}" ${IMPORTANCE} || true
+  fi
+elif [ ${github_reponame} == "openshift-tests-private" ]; then
+  echo "it is oropenshift-tests-private"
+  if [ ${IMPORTANCE} == "all" ] || [ ${IMPORTANCE} == "" ] ; then
+    ocropenshiftprivate "${SCENARIO}" "" || true
+  else
+    ocropenshiftprivate "${SCENARIO}" ${IMPORTANCE} || true
   fi
 fi
 
