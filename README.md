@@ -12,7 +12,7 @@ Prerequisites
 * Have the environment variable `KUBECONFIG` set pointing to your cluster.
 
 ## Compile the executable binary
-The generated `extended-platform-tests` binary in the `cmd/extended-platform-tests/` folder.
+The generated `extended-platform-tests` binary in the `./bin/extended-platform-tests/` folder.
 If you want to compile the `openshift-tests` binary, please see the [origin](https://github.com/openshift/origin).
 
 ```console
@@ -23,7 +23,7 @@ $ make clean
 $ make build
 ```
 
-Run `./extended-platform-tests --help` to get started.
+Run `./bin/extended-platform-tests --help` to get started.
 
 ```console
 This command verifies behavior of an OpenShift cluster by running remote tests against the cluster API that exercise functionality. In general these tests may be disruptive or require elevated privileges - see the descriptions of each test suite.
