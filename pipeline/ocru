@@ -1,0 +1,5 @@
+make clean
+make WHAT=cmd/extended-platform-tests GOFLAGS=-v
+./extended-platform-tests run all --dry-run | \
+  grep -E "$1" | grep -i -E "$2" | \
+  ./extended-platform-tests run --junit-dir=./ -f -

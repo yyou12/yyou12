@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-AZUREAUTHDIR="/root/azureauth"
+AZUREAUTHDIR="${HOME}/azureauth"
 AZUREAUTHFILE="azure_auth.json"
 AZUREAUTHURL=$1
 
