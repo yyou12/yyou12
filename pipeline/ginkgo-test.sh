@@ -64,10 +64,12 @@ function execute {
   case "$REPO_OWNER" in
     openshift)
       echo "run case with oropenshift-tests-private under openshift or your account"
-      ocrd "${SCENARIO}" ${IMPORTANCE} ${TIERN_REPO_OWNER} || true
+      echo "${TIERN_REPO_OWNER} ${SCENARIO} ${IMPORTANCE}"
+      ocrd ${TIERN_REPO_OWNER} "${SCENARIO}" ${IMPORTANCE}  || true
       ;;
     *)
       echo "run case with oropenshift-tests under your account"
+      echo "${SCENARIO} ${IMPORTANCE}"
       ocru "${SCENARIO}" ${IMPORTANCE} || true
       ;;
   esac

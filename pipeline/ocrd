@@ -1,11 +1,13 @@
 #!/bin/bash
 
 make clean
-if [ "$3" == "openshift" ]; then
+if [ "$1" == "openshift" ]; then
+  echo "make all"
   make all
 else
+  echo "make build"
   make build
 fi
 ./bin/extended-platform-tests run all --dry-run | \
-  grep -E "$1" | grep -i -E "$2" | \
+  grep -E "$2" | grep -i -E "$3" | \
   ./bin/extended-platform-tests run --junit-dir=./ -f -
