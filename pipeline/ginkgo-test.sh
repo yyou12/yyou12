@@ -24,12 +24,23 @@ function run {
 #configure kubeconfig, azure authentication or client proxy for the cluster
 function config_env_for_cluster {
   FLEXYURLBASE="https://mastern-jenkins-csb-openshift-qe.cloud.paas.psi.redhat.com/job/Launch%20Environment%20Flexy/"
-  KUBECONFIG_FILE="" #it is reserved for further usage
+  KUBECONFIG_FILE=""
+  if [ "${CONFIG}" != "" ] ; then
+    rm -fr handleconfig.py && eval cp -fr ${WORKSPACE}"/private/pipeline/handleconfig.py" .
+    value=` python3 handleconfig.py -a get -y "${CONFIG}" -p environments:ocp4:admin_creds_spec || true `
+    if [ "${value}" != "None" ] && [ "${value}" != "failtogetvalue" ] && [ "${value}" != "" ]; then
+      KUBECONFIG_FILE=${value}
+    else
+      echo "there is no kubeconfig or wrong in CONF, please check it !!! and try to config it from flexy"
+    fi
+  fi
   if [ "${KUBECONFIG_FILE}" != "" ]; then
+    echo "the kubeconfig is set directly with CONFIG"
     ck "${KUBECONFIG_FILE}"
   else
+    echo "the configuration is set from flexy build"
     if [ "${FLEXY_BUILD}" == "" ]; then
-      echo "please input KUBECONFIG_FILE or FLEXY_BUILD"
+      echo "please input FLEXY_BUILD or set kubeconfig in CONF"
       exit 1
     fi
     # configure kubeconfig
