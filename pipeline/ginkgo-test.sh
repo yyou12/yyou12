@@ -58,13 +58,13 @@ function execute {
   if [ ${IMPORTANCE} == "all" ]; then
     IMPORTANCE=""
   fi
+  eval rm -fr ${WORKSPACE}"/private/junit_e2e_*.xml" ${WORKSPACE}"/public/junit_e2e_*.xml"
   cd ${WORKBUILDDIR}
-  rm -fr junit_e2e_*.xml
 
   case "$REPO_OWNER" in
     openshift)
       echo "run case with oropenshift-tests-private under openshift or your account"
-      ocrd "${SCENARIO}" ${IMPORTANCE} || true
+      ocrd "${SCENARIO}" ${IMPORTANCE} ${TIERN_REPO_OWNER} || true
       ;;
     *)
       echo "run case with oropenshift-tests under your account"
