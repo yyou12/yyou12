@@ -11,6 +11,12 @@ Prerequisites
 * Golang installed.
 * Have the environment variable `KUBECONFIG` set pointing to your cluster.
 
+### Update The Public Repo Lib
+We treat the pulic repo: [openshift-tests](https://github.com/openshift/openshift-tests) as a dependency lib. That means you can also run the test case of that public repo in this private repo. Run the `$ make update-public` comamnd to update this dep lib. Or you can build the binary with `$ make all` command.
+
+### New Test Folder
+If you create a new folder for your test case, please **add the path** to the [include.go file](https://github.com/openshift/openshift-tests-private/blob/master/test/extended/include.go).
+
 ## Compile the executable binary
 The generated `extended-platform-tests` binary in the `./bin/extended-platform-tests/` folder.
 If you want to compile the `openshift-tests` binary, please see the [origin](https://github.com/openshift/origin).
@@ -23,10 +29,6 @@ $ make clean
 $ make build
 
 ```
-### Update the public repo
-We treat the pulic repo: [openshift-tests](https://github.com/openshift/openshift-tests) as a dependency lib. That means you can also run the test case of that public repo in this private repo. Run the `$ make update-public` comamnd to update this dep lib. Or you can build the binary with `$ make all` command.
-
-
 Run `./bin/extended-platform-tests --help` to get started.
 
 ```console
