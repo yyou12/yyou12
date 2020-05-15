@@ -1,0 +1,51 @@
+#!/bin/bash
+#config env for cluster
+
+WORKDIRBASE=$1
+BUILD_NUM_FOR_CONF=$2
+CONTENT_FOR_CONF=$3
+if [ "${BUILD_NUM_FOR_CONF}" == "null" ]; then
+  BUILD_NUM_FOR_CONF=""
+else
+  BUILD_NUM_FOR_CONF=${BUILD_NUM_FOR_CONF:4}
+fi
+
+FLEXYURLBASE="https://mastern-jenkins-csb-openshift-qe.cloud.paas.psi.redhat.com/job/Launch%20Environment%20Flexy/"
+KUBECONFIG_FILE=""
+if [ "${CONTENT_FOR_CONF}" != "" ] ; then
+  rm -fr handleconfig.py && eval cp -fr ${WORKDIRBASE}"/private/pipeline/handleconfig.py" .
+  value=` python3 handleconfig.py -a get -y "${CONTENT_FOR_CONF}" -p environments:ocp4:admin_creds_spec || true `
+  if [ "${value}" != "None" ] && [ "${value}" != "failtogetvalue" ] && [ "${value}" != "" ]; then
+    KUBECONFIG_FILE=${value}
+  else
+    echo "there is no kubeconfig or wrong in CONF, please check it !!! and try to config it from flexy"
+  fi
+fi
+if [ "${KUBECONFIG_FILE}" != "" ]; then
+  echo "the kubeconfig is set directly with CONFIG"
+  ck "${KUBECONFIG_FILE}"
+else
+  echo "the configuration is set from flexy build"
+  if [ "${BUILD_NUM_FOR_CONF}" == "" ]; then
+    echo "please input FLEXY_BUILD or set kubeconfig in CONF"
+    exit 1
+  fi
+  # configure kubeconfig
+  KUBECONFIG_FILE=${FLEXYURLBASE}${BUILD_NUM_FOR_CONF}"/artifact/workdir/install-dir/auth/kubeconfig"
+  ck "${KUBECONFIG_FILE}"
+  # configure azure authentication script
+  AZURE_AUTH_LOCATION_FILE=${FLEXYURLBASE}${BUILD_NUM_FOR_CONF}"/artifact/workdir/install-dir/terraform.azure.auto.tfvars.json"
+  ret_code=`curl -s -k ${AZURE_AUTH_LOCATION_FILE} -o /dev/null  -w "%{http_code}"`
+  if [ "${ret_code}" == "200" ]; then
+    cz "${AZURE_AUTH_LOCATION_FILE}" 
+  fi
+  #config client proxy if necessary
+  #export http_proxy= && export https_proxy=
+  CLIENT_PROXY_SETTING_SH=${FLEXYURLBASE}${BUILD_NUM_FOR_CONF}"/artifact/workdir/install-dir/client_proxy_setting.sh"
+  ret_code=`curl -s -k ${CLIENT_PROXY_SETTING_SH} -o ./client_proxy_setting.sh  -w "%{http_code}"`
+  if [ "${ret_code}" == "200" ]; then
+    source ./client_proxy_setting.sh
+  fi
+fi
+env | grep proxy || true
+

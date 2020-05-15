@@ -1,0 +1,11 @@
+#!/bin/bash
+set +e
+
+#cleanup go-build
+output_du=`du -s -k /data/go-build`
+size=`echo ${output_du} | awk -F " " '{print $1}'`
+size_threshold=30000000
+if [ ${size} -gt ${size_threshold} ]; then
+  go clean -cache
+fi
+set -e
