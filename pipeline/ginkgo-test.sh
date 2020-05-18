@@ -7,7 +7,7 @@ function run {
     exit 1
   fi
   source ~/.bash_profile
-  PIPELINESCRIPT_DIR=${WORKSPACE}"/private/pipeline" && export PATH=$PATH:${PIPELINESCRIPT_DIR}
+  PIPELINESCRIPT_DIR=${WORKSPACE}"/private/pipeline" && export PATH=${PIPELINESCRIPT_DIR}:$PATH
   if [ ${REPO_OWNER} == "openshift" ]; then
     WORKBUILDDIR=${WORKSPACE}"/private"
   else
@@ -22,6 +22,8 @@ function run {
 }
 
 function config_env_for_cluster {
+  echo "get oc client"
+  getoc ${JENKINS_SLAVE} ${PIPELINESCRIPT_DIR}
   echo "configure kubeconfig, azure authentication or client proxy for the cluster"
   source ${PIPELINESCRIPT_DIR}"/occe4c" ${WORKSPACE} "null"${FLEXY_BUILD} "${CONFIG}"
 }
