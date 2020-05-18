@@ -1,0 +1,49 @@
+#!/bin/bash
+#get oc client
+set -e
+
+if echo $1 | grep -E '^ginkgo-slave-oc([0-9]{2})$'; then
+  NIGHTLYFLAG=$(echo $1 | tr -dc '0-9')
+  NIGHTLYFLAG=${NIGHTLYFLAG: 0:1}"."${NIGHTLYFLAG: 1:1}".0-0.nightly"
+  echo $NIGHTLYFLAG
+else
+  echo "the slave node label is not correct. For example, ginkgo-slave-oc45 or ginkgo-slave-oc44"
+  exit 1
+fi
+
+SEARCHROUND=10
+NIGHTLYURL="https://openshift-release.svc.ci.openshift.org"
+RELEASEARTURL='https://openshift-release-artifacts.svc.ci.openshift.org'
+echo "try to get the latest build of ${NIGHTLYFLAG}"
+NIGHTLYVERSION=`curl -s -S ${NIGHTLYURL} |grep ${NIGHTLYFLAG}|grep "text-monospace"|grep "text-success"|head -1|awk -F "releasestream" '{print $2}'|awk -F ">" '{print $2}'|awk -F "<" '{print $1}'`
+echo ${NIGHTLYVERSION}
+
+result=`curl -s ${RELEASEARTURL}/${NIGHTLYVERSION}/ |grep "take up to a minute" || true`
+echo "X${result}X"
+round=1
+while [ -n "${result}" ] && [ ${round} -le ${SEARCHROUND} ]
+do
+  echo "wait 30s to get oc client..."
+  sleep 30
+  result=`curl -s ${RELEASEARTURL}/${NIGHTLYVERSION}/ |grep "take up to a minute" || true`
+  echo "X${result}X"
+  let round++
+done
+if [ -n "${result}" ]; then
+  echo "can not search the oc client"
+  exit 1
+fi
+
+echo $2
+cd $2
+OCTARFILE=`curl -s -k ${RELEASEARTURL}/${NIGHTLYVERSION}/ |grep openshift-client-linux-${NIGHTLYVERSION}|cut -d ">" -f 2|cut -d "\"" -f 2`
+echo "the tar file is ${OCTARFILE}"
+if echo ${OCTARFILE} | grep -E '.tar.gz$'; then
+  wget -nv ${RELEASEARTURL}/${NIGHTLYVERSION}/${OCTARFILE}
+  tar -xzvf ${OCTARFILE}
+  echo "get ${OCTARFILE} successfully"
+  rm -f ${OCTARFILE}
+else
+  echo "can not find the tar file and try it again"
+  exit 1
+fi
