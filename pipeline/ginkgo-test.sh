@@ -15,7 +15,6 @@ function run {
   fi
   cd ${WORKBUILDDIR}
 
-  cleanup_gobuild_diskspace
   config_env_for_cluster
   execute
   result_report
@@ -23,17 +22,15 @@ function run {
 
 function config_env_for_cluster {
   echo "get oc client"
-  getoc ${JENKINS_SLAVE} ${PIPELINESCRIPT_DIR}
+  if echo ${JENKINS_SLAVE} | grep -E '^ginkgo-slave-oc([0-9]{2})$'; then
+    getoc ${JENKINS_SLAVE} ${PIPELINESCRIPT_DIR}
+  fi
   echo "configure kubeconfig, azure authentication or client proxy for the cluster"
   source ${PIPELINESCRIPT_DIR}"/occe4c" ${WORKSPACE} "null"${FLEXY_BUILD} "${CONFIG}"
 }
 function result_report {
   echo "get result and parse it"
   ocgr ${WORKBUILDDIR} ${WORKSPACE}
-}
-function cleanup_gobuild_diskspace {
-  echo "check go-build disk usage and cleanup it if necessary"
-  occgb
 }
 
 #execute cases
