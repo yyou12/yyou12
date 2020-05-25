@@ -47,5 +47,6 @@ else
     source ./client_proxy_setting.sh
   fi
 fi
+eval export GOOGLE_APPLICATION_CREDENTIALS=${WORKDIRBASE}"/private/secrets/gce/aos-qe-sa.json"
 env | grep proxy || true
 
