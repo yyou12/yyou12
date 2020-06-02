@@ -8,6 +8,7 @@ update-public:
 
 build:
 	mkdir -p "${OUT_DIR}"
+	go get ./...
 	go build -o "${OUT_DIR}" "./cmd/extended-platform-tests"
 
 # Include the library makefile
