@@ -8,6 +8,8 @@ update-public:
 
 build:
 	mkdir -p "${OUT_DIR}"
+	export GOFLAGS=""
+	go env
 	go get ./...
 	go build -o "${OUT_DIR}" "./cmd/extended-platform-tests"
 
