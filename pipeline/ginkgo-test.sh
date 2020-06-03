@@ -6,6 +6,9 @@ function run {
     echo "please input value for SCENARIO"
     exit 1
   fi
+  if echo ${JENKINS_SLAVE} | grep -E '^ginkgo-slave-oc([0-9]{2})$'; then
+    source ~/.bash_profile
+  fi
   PIPELINESCRIPT_DIR=${WORKSPACE}"/private/pipeline" && export PATH=${PIPELINESCRIPT_DIR}:$PATH
   if [ ${REPO_OWNER} == "openshift" ]; then
     WORKBUILDDIR=${WORKSPACE}"/private"
@@ -20,14 +23,19 @@ function run {
 }
 
 function config_env_for_cluster {
-  mkdir -p /home/jenkins/kubeconf && mkdir -p /home/jenkins/azureauth && \
-  echo "export KUBECONFIG=/home/jenkins/kubeconf/kubeconfig" >> ~/.bash_profile && \
-  echo "export AZURE_AUTH_LOCATION=/home/jenkins/azureauth/azure_auth.json" >> ~/.bash_profile && \
-  echo 'export GOROOT=/usr/local/go' >> ~/.bash_profile && \
-  echo 'export GOPATH=/goproject' >> ~/.bash_profile && \
-  echo 'export GOCACHE=/gocache' >> ~/.bash_profile && \
-  echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.bash_profile && \
-  source ~/.bash_profile
+  if echo ${JENKINS_SLAVE} | grep -E '^ginkgo-slave-oc([0-9]{2})$'; then
+    echo "get oc client"
+    getoc ${JENKINS_SLAVE} ${PIPELINESCRIPT_DIR}
+  else
+    mkdir -p /home/jenkins/kubeconf && mkdir -p /home/jenkins/azureauth && \
+    echo "export KUBECONFIG=/home/jenkins/kubeconf/kubeconfig" >> ~/.bash_profile && \
+    echo "export AZURE_AUTH_LOCATION=/home/jenkins/azureauth/azure_auth.json" >> ~/.bash_profile && \
+    echo 'export GOROOT=/usr/local/go' >> ~/.bash_profile && \
+    echo 'export GOPATH=/goproject' >> ~/.bash_profile && \
+    echo 'export GOCACHE=/gocache' >> ~/.bash_profile && \
+    echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.bash_profile && \
+    source ~/.bash_profile
+  fi
   echo "configure kubeconfig, azure authentication or client proxy for the cluster"
   source ${PIPELINESCRIPT_DIR}"/occe4c" ${WORKSPACE} "null"${FLEXY_BUILD} "${CONFIG}"
 }
