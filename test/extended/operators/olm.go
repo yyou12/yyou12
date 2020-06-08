@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os/exec"
 	"regexp"
 
 	"github.com/google/go-github/github"
@@ -28,6 +27,19 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	defer g.GinkgoRecover()
 
 	var oc = exutil.NewCLIWithoutNamespace("default")
+
+	// author: tbuskey@redhat.com
+	g.It("OLM-Low-OCP-23670-Checking description info for csc CRD", func() {
+		olmExplain := "csc"
+		msg, err := oc.AsAdmin().WithoutNamespace().Run("explain").Args(olmExplain).Output()
+		if err != nil {
+			e2e.Failf("Could not run oc explain %v:\n%v", olmExplain, msg)
+		}
+		o.Expect(err).NotTo(o.HaveOccurred())
+		if strings.Contains(msg, "<empty>") {
+			e2e.Failf("oc explain %v is empty:\n%v", olmExplain, msg)
+		}
+	})
 
 	// author: bandrade@redhat.com
 	g.It("Medium-21130-Fetching non-existent `PackageManifest` should return 404", func() {
@@ -96,44 +108,93 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 			}
 		}
 	})
-
-	g.It("Medium-OCP-23395-Recreate catalog registry pods and if they are deleted", func() {
-		msg, err := oc.SetNamespace("openshift-marketplace").AsAdmin().Run("get").Args("operatorsource", "-o=jsonpath={range .items[*].metadata}{.name}{'\\n'}").Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		catalogSources := strings.Split(msg, "\n")
-		e2e.Logf("Catalog sources: %s", catalogSources)
-		if len(catalogSources) > 0 {
-			catalogSourceLabel := "marketplace.operatorSource=" + catalogSources[0]
-			msg, err := oc.SetNamespace("openshift-marketplace").AsAdmin().Run("delete").Args("pods", "-l "+catalogSourceLabel).Output()
-			o.Expect(err).NotTo(o.HaveOccurred())
-			o.Expect(msg).To(o.ContainSubstring("deleted"))
-
-			poolErr := wait.Poll(5*time.Second, 60*time.Second, func() (bool, error) {
-				msg, err := oc.SetNamespace("openshift-marketplace").AsAdmin().Run("get").Args("pods", "-l "+catalogSourceLabel, "-o=jsonpath={range .items[*].status}{.phase}").Output()
-				if err != nil {
-					e2e.Logf("Fail to get catalogsource pod, error: %v", err)
-					return false, err
-				}
-				if strings.Contains(msg, "Running") {
-					return true, nil
-				}
-				return false, nil
-			})
-			o.Expect(poolErr).NotTo(o.HaveOccurred())
-		} else {
-			e2e.Failf("Fail to get catalogsource pod %s", msg)
-		}
-	})
 })
 
 var _ = g.Describe("[sig-operators] an end user use OLM", func() {
 	defer g.GinkgoRecover()
 
 	var (
-		oc = exutil.NewCLI("olm-23440", exutil.KubeConfigPath())
-		// operatorWait = 120 * time.Second
-		// buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
+		oc           = exutil.NewCLI("olm-23440", exutil.KubeConfigPath())
+		operatorWait = 120 * time.Second
+
+		buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
 	)
+
+	// author: tbuskey@redhat.com
+	g.It("Medium-21611-package manifest object has the description from CSV", func() {
+		olmName := "csc"
+		olmResource := "etcd-custom-" + olmName
+		olmFilename := olmResource + ".yaml"
+		olmFile := filepath.Join(buildPruningBaseDir, olmFilename)
+		currentNS := oc.Namespace()
+		msg := ""
+		count := 0
+		pass := false
+		passPkg := false
+
+		err := oc.AsAdmin().SetNamespace("openshift-marketplace").Run("create").Args("-f", olmFile).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		// Check for csc every 10 seconds until operatorWait
+		err = wait.Poll(10*time.Second, operatorWait, func() (bool, error) {
+			count++
+			msg, err = oc.AsAdmin().SetNamespace(currentNS).Run("get").Args("csc", "-n", "openshift-marketplace").Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			if err != nil {
+				e2e.Failf("Failed to get CatalogSourceConfig, error:%v, %v", err, msg)
+				return false, err
+			}
+			if strings.Contains(msg, "Succeeded") {
+				pass = true
+				return true, nil
+			}
+			//	e2e.Logf("Count %v, %v", count, msg)
+			return false, nil
+		})
+
+		if !pass { // Fail on timeout
+			e2e.Failf("Was not able to create CatalogSourceConfig %v after checking %v times:%v", olmResource, count, msg)
+		}
+		//  e2e.Logf("Created CatalogSourceConfig %v after %v tries", olmResource, count)
+
+		// Make sure status is Succeeded
+		msg, err = oc.SetNamespace(currentNS).AsAdmin().Run("get").Args("catalogsourceconfig", "-n", "openshift-marketplace", olmResource, "-o=jsonpath={.status.currentPhase.phase.name}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		if !strings.Contains(msg, "Succeeded") {
+			e2e.Failf("Did not find %v in:\n,%v", olmResource, msg)
+		}
+
+		// Loop over the PackageManifests to check for the custom etcd created above
+		// This has been looping through 3-4 times
+		count = 0
+		err = wait.Poll(10*time.Second, operatorWait, func() (bool, error) {
+			count++
+			msg, err = oc.SetNamespace(currentNS).AsAdmin().Run("get").Args("PackageManifest", "-n", "openshift-operators", "-o=jsonpath={.items[*].status.catalogSource}").Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			if err != nil {
+				e2e.Failf("Failed to get PackageManifest, error:%v, %v", err, msg)
+				return false, err
+			}
+			if strings.Contains(msg, olmResource) {
+				passPkg = true
+				return true, nil
+			}
+			// e2e.Logf("Count %v, %v", count, msg)
+			return false, nil
+		})
+
+		if pass { // cleanup the csc
+			err = oc.AsAdmin().SetNamespace(currentNS).Run("delete").Args("csc", "-n", "openshift-marketplace", olmResource).Execute()
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}
+
+		// Fail on timeout
+		if !strings.Contains(msg, olmResource) || !passPkg {
+			e2e.Failf("%v was not created after %v tries in %v seconds: %v.", olmResource, count, operatorWait, msg)
+		}
+
+	})
 
 	// author: tbuskey@redhat.com
 	g.It("Low-24058-components should have resource limits defined", func() {
@@ -239,54 +300,6 @@ var _ = g.Describe("[sig-operators] an end user handle OLM common object", func(
 
 		g.By("Check if it is appropriate in ClusterOperator")
 		newCheck("expect", asAdmin, withoutNamespace, compare, olmVersion, ok, []string{"clusteroperator", fmt.Sprintf("-o=jsonpath={.items[?(@.metadata.name==\"%s\")].status.versions[?(@.name==\"operator\")].version}", olmClusterOperatorName)}).check(oc)
-	})
-
-	// It will cover test case: OCP-29775 and OCP-29786, author: kuiwang@redhat.com
-	g.It("Medium-29775-Medium-29786-as oc user on linux to mirror catalog image", func() {
-		var (
-			bundleIndex1         = "quay.io/kuiwang/operators-all:v1"
-			bundleIndex2         = "quay.io/kuiwang/operators-dockerio:v1"
-			operatorAllPath      = "operators-all-manifests-" + getRandomString()
-			operatorDockerioPath = "operators-dockerio-manifests-" + getRandomString()
-		)
-		defer exec.Command("bash", "-c", "rm -fr ./"+operatorAllPath).Output()
-		defer exec.Command("bash", "-c", "rm -fr ./"+operatorDockerioPath).Output()
-
-		g.By("mirror to quay.io/kuiwang")
-		output, err := oc.AsAdmin().WithoutNamespace().Run("adm", "catalog", "mirror").Args("--manifests-only", "--to-manifests="+operatorAllPath, bundleIndex1, "quay.io/kuiwang").Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(output).To(o.ContainSubstring("operators-all-manifests"))
-
-		g.By("check mapping.txt")
-		result, err := exec.Command("bash", "-c", "cat ./"+operatorAllPath+"/mapping.txt|grep -E \"atlasmap-atlasmap-operator:0.1.0|quay.io/kuiwang/jmckind-argocd-operator:[a-z0-9][a-z0-9]|redhat-cop-cert-utils-operator:latest\"").Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(result).To(o.ContainSubstring("atlasmap-atlasmap-operator:0.1.0"))
-		o.Expect(result).To(o.ContainSubstring("redhat-cop-cert-utils-operator:latest"))
-		o.Expect(result).To(o.ContainSubstring("quay.io/kuiwang/jmckind-argocd-operator"))
-
-		g.By("check icsp yaml")
-		result, err = exec.Command("bash", "-c", "cat ./"+operatorAllPath+"/imageContentSourcePolicy.yaml | grep -E \"quay.io/kuiwang/strimzi-operator|docker.io/strimzi/operator$\"").Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(result).To(o.ContainSubstring("- quay.io/kuiwang/strimzi-operator"))
-		o.Expect(result).To(o.ContainSubstring("source: docker.io/strimzi/operator"))
-
-		g.By("mirror to localhost:5000")
-		output, err = oc.AsAdmin().WithoutNamespace().Run("adm", "catalog", "mirror").Args("--manifests-only", "--to-manifests="+operatorDockerioPath, bundleIndex2, "localhost:5000").Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(output).To(o.ContainSubstring("operators-dockerio-manifests"))
-
-		g.By("check mapping.txt to localhost:5000")
-		result, err = exec.Command("bash", "-c", "cat ./"+operatorDockerioPath+"/mapping.txt|grep -E \"localhost:5000/atlasmap/atlasmap-operator:0.1.0|localhost:5000/strimzi/operator:[a-z0-9][a-z0-9]\"").Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(result).To(o.ContainSubstring("localhost:5000/atlasmap/atlasmap-operator:0.1.0"))
-		o.Expect(result).To(o.ContainSubstring("localhost:5000/strimzi/operator"))
-
-		g.By("check icsp yaml to localhost:5000")
-		result, err = exec.Command("bash", "-c", "cat ./"+operatorDockerioPath+"/imageContentSourcePolicy.yaml | grep -E \"localhost:5000/strimzi/operator|docker.io/strimzi/operator$\"").Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(result).To(o.ContainSubstring("- localhost:5000/strimzi/operator"))
-		o.Expect(result).To(o.ContainSubstring("source: docker.io/strimzi/operator"))
-		o.Expect(result).NotTo(o.ContainSubstring("docker.io/atlasmap/atlasmap-operator"))
 	})
 
 	// It will cover test case: OCP-21825, author: kuiwang@redhat.com
@@ -461,55 +474,6 @@ var _ = g.Describe("[sig-operators] an end user handle OLM within a namespace", 
 	})
 
 	g.AfterEach(func() {})
-
-	// It will cover test case: OCP-29231 and OCP-29277, author: kuiwang@redhat.com
-	g.It("Medium-29231-Medium-29277-label to target namespace of group", func() {
-		var (
-			itName = g.CurrentGinkgoTestDescription().TestText
-			og1    = operatorGroupDescription{
-				name:      "og1-singlenamespace",
-				namespace: "",
-				template:  ogSingleTemplate,
-			}
-			og2 = operatorGroupDescription{
-				name:      "og2-singlenamespace",
-				namespace: "",
-				template:  ogSingleTemplate,
-			}
-		)
-		oc.SetupProject() //project and its resource are deleted automatically when out of It, so no need derfer or AfterEach
-		og1.namespace = oc.Namespace()
-		og2.namespace = oc.Namespace()
-
-		g.By("Create og1 and check the label of target namespace of og1 is created")
-		og1.create(oc, itName, dr)
-		og1Uid := getResource(oc, asAdmin, withNamespace, "og", og1.name, "-o=jsonpath={.metadata.uid}")
-		newCheck("expect", asAdmin, withoutNamespace, contain, "olm.operatorgroup.uid/"+og1Uid, ok,
-			[]string{"ns", og1.namespace, "-o=jsonpath={.metadata.labels}"}).check(oc)
-		newCheck("expect", asAdmin, withoutNamespace, contain, "olm.operatorgroup.uid/"+og1Uid, nok,
-			[]string{"ns", "openshift-operators", "-o=jsonpath={.metadata.labels}"}).check(oc)
-
-		g.By("Delete og1 and check the label of target namespace of og1 is removed")
-		og1.delete(itName, dr)
-		newCheck("expect", asAdmin, withoutNamespace, contain, "olm.operatorgroup.uid/"+og1Uid, nok,
-			[]string{"ns", og1.namespace, "-o=jsonpath={.metadata.labels}"}).check(oc)
-
-		g.By("Create og2 and recreate og1 and check the label")
-		og2.create(oc, itName, dr)
-		og2Uid := getResource(oc, asAdmin, withNamespace, "og", og2.name, "-o=jsonpath={.metadata.uid}")
-		og1.create(oc, itName, dr)
-		og1Uid = getResource(oc, asAdmin, withNamespace, "og", og1.name, "-o=jsonpath={.metadata.uid}")
-		labelNs := getResource(oc, asAdmin, withoutNamespace, "ns", og1.namespace, "-o=jsonpath={.metadata.labels}")
-		o.Expect(labelNs).To(o.ContainSubstring(og2Uid))
-		o.Expect(labelNs).To(o.ContainSubstring(og1Uid))
-
-		//OCP-29277
-		g.By("Check no label of global operator group ")
-		globalOgUID := getResource(oc, asAdmin, withoutNamespace, "og", "global-operators", "-n", "openshift-operators", "-o=jsonpath={.metadata.uid}")
-		newCheck("expect", asAdmin, withoutNamespace, contain, "olm.operatorgroup.uid/"+globalOgUID, nok,
-			[]string{"ns", "default", "-o=jsonpath={.metadata.labels}"}).check(oc)
-
-	})
 
 	// It will cover test case: OCP-23170, author: kuiwang@redhat.com
 	g.It("Medium-23170-API labels should be hash", func() {
@@ -781,7 +745,6 @@ var _ = g.Describe("[sig-operators] an end user handle OLM to support", func() {
 		cmLearnV2Template    = filepath.Join(buildPruningBaseDir, "cm-learn-v2.yaml")
 		catsrcCmTemplate     = filepath.Join(buildPruningBaseDir, "catalogsource-configmap.yaml")
 		ogTemplate           = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
-		ogMultiTemplate      = filepath.Join(buildPruningBaseDir, "og-multins.yaml")
 		subTemplate          = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
 		crdOlmtestTemplate   = filepath.Join(buildPruningBaseDir, "crd-olmtest.yaml")
 		dr                   = make(describerResrouce)
@@ -878,64 +841,6 @@ var _ = g.Describe("[sig-operators] an end user handle OLM to support", func() {
 	})
 
 	g.AfterEach(func() {})
-
-	// It will cover part of test case: OCP-29275, author: kuiwang@redhat.com
-	g.It("Medium-29275-label to target namespace of operator group with multi namespace", func() {
-		var (
-			itName = g.CurrentGinkgoTestDescription().TestText
-			og     = operatorGroupDescription{
-				name:         "og-1651-1",
-				namespace:    "",
-				multinslabel: "test-og-label-1651",
-				template:     ogMultiTemplate,
-			}
-			p1 = projectDescription{
-				name:            "test-ns1651-1",
-				targetNamespace: "",
-			}
-			p2 = projectDescription{
-				name:            "test-ns1651-2",
-				targetNamespace: "",
-			}
-		)
-
-		defer p1.delete(oc)
-		defer p2.delete(oc)
-		//oc.TeardownProject()
-		oc.SetupProject() //project and its resource are deleted automatically when out of It, so no need derfer or AfterEach
-		p1.targetNamespace = oc.Namespace()
-		p2.targetNamespace = oc.Namespace()
-		og.namespace = oc.Namespace()
-		g.By("Create new projects and label them")
-		p1.create(oc, itName, dr)
-		p1.label(oc, "test-og-label-1651")
-		p2.create(oc, itName, dr)
-		p2.label(oc, "test-og-label-1651")
-
-		g.By("Create og and check the label")
-		og.create(oc, itName, dr)
-		ogUID := getResource(oc, asAdmin, withNamespace, "og", og.name, "-o=jsonpath={.metadata.uid}")
-		newCheck("expect", asAdmin, withoutNamespace, contain, "olm.operatorgroup.uid/"+ogUID, ok,
-			[]string{"ns", p1.name, "-o=jsonpath={.metadata.labels}"}).check(oc)
-		newCheck("expect", asAdmin, withoutNamespace, contain, "olm.operatorgroup.uid/"+ogUID, ok,
-			[]string{"ns", p2.name, "-o=jsonpath={.metadata.labels}"}).check(oc)
-
-		g.By("delete og and check there is no label")
-		og.delete(itName, dr)
-		newCheck("expect", asAdmin, withoutNamespace, contain, "olm.operatorgroup.uid/"+ogUID, nok,
-			[]string{"ns", p1.name, "-o=jsonpath={.metadata.labels}"}).check(oc)
-		newCheck("expect", asAdmin, withoutNamespace, contain, "olm.operatorgroup.uid/"+ogUID, nok,
-			[]string{"ns", p2.name, "-o=jsonpath={.metadata.labels}"}).check(oc)
-
-		g.By("create another og to check the label")
-		og.name = "og-1651-2"
-		og.create(oc, itName, dr)
-		ogUID = getResource(oc, asAdmin, withNamespace, "og", og.name, "-o=jsonpath={.metadata.uid}")
-		newCheck("expect", asAdmin, withoutNamespace, contain, "olm.operatorgroup.uid/"+ogUID, ok,
-			[]string{"ns", p1.name, "-o=jsonpath={.metadata.labels}"}).check(oc)
-		newCheck("expect", asAdmin, withoutNamespace, contain, "olm.operatorgroup.uid/"+ogUID, ok,
-			[]string{"ns", p2.name, "-o=jsonpath={.metadata.labels}"}).check(oc)
-	})
 
 	// It will cover test case: OCP-22200, author: kuiwang@redhat.com
 	g.It("Medium-22200-add minimum kube version to CSV", func() {
@@ -1461,24 +1366,15 @@ func (catsrc *catalogSourceDescription) delete(itName string, dr describerResrou
 }
 
 type operatorGroupDescription struct {
-	name         string
-	namespace    string
-	multinslabel string
-	template     string
+	name      string
+	namespace string
+	template  string
 }
 
 func (og *operatorGroupDescription) create(oc *exutil.CLI, itName string, dr describerResrouce) {
-	var err error
-	if strings.Compare(og.multinslabel, "") == 0 {
-		err = applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", og.template, "-p", "NAME="+og.name, "NAMESPACE="+og.namespace)
-	} else {
-		err = applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", og.template, "-p", "NAME="+og.name, "NAMESPACE="+og.namespace, "MULTINSLABEL="+og.multinslabel)
-	}
+	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", og.template, "-p", "NAME="+og.name, "NAMESPACE="+og.namespace)
 	o.Expect(err).NotTo(o.HaveOccurred())
 	dr.getIr(itName).add(newResource(oc, "og", og.name, requireNS, og.namespace))
-}
-func (og *operatorGroupDescription) delete(itName string, dr describerResrouce) {
-	dr.getIr(itName).remove(og.name, "og", og.namespace)
 }
 
 type operatorSourceDescription struct {
