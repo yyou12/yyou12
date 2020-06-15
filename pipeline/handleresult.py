@@ -52,8 +52,11 @@ class TestResult:
                     if id in testsummary and "FAIL" in testsummary[id]["result"]: #the case already execute with failure
                         result = testsummary[id]["result"]
                     testsummary[id] = {"result":result, "title":casetitle.replace("'","")}
-        print("The Case Execution Summary:\\n ")
-        [print(testsummary[k]["result"]+"  ", k.replace("'","")+"  ", testsummary[k]["title"]+"\\n") for k in sorted(testsummary.keys())] 
+        print("The Case Execution Summary:\\n")
+        output = ""
+        for k in sorted(testsummary.keys()):
+            output += " "+testsummary[k]["result"]+"  "+k.replace("'","")+"  "+testsummary[k]["title"]+"\\n"
+        print(output)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("handleresult.py")
