@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os/exec"
 	"regexp"
 
 	"github.com/google/go-github/github"
@@ -355,6 +356,54 @@ var _ = g.Describe("[sig-operators] an end user handle OLM common object", func(
 
 		g.By("Check if it is appropriate in ClusterOperator")
 		newCheck("expect", asAdmin, withoutNamespace, compare, olmVersion, ok, []string{"clusteroperator", fmt.Sprintf("-o=jsonpath={.items[?(@.metadata.name==\"%s\")].status.versions[?(@.name==\"operator\")].version}", olmClusterOperatorName)}).check(oc)
+	})
+
+	// It will cover test case: OCP-29775 and OCP-29786, author: kuiwang@redhat.com
+	g.It("Medium-29775-Medium-29786-as oc user on linux to mirror catalog image", func() {
+		var (
+			bundleIndex1         = "quay.io/kuiwang/operators-all:v1"
+			bundleIndex2         = "quay.io/kuiwang/operators-dockerio:v1"
+			operatorAllPath      = "operators-all-manifests-" + getRandomString()
+			operatorDockerioPath = "operators-dockerio-manifests-" + getRandomString()
+		)
+		defer exec.Command("bash", "-c", "rm -fr ./"+operatorAllPath).Output()
+		defer exec.Command("bash", "-c", "rm -fr ./"+operatorDockerioPath).Output()
+
+		g.By("mirror to quay.io/kuiwang")
+		output, err := oc.AsAdmin().WithoutNamespace().Run("adm", "catalog", "mirror").Args("--manifests-only", "--to-manifests="+operatorAllPath, bundleIndex1, "quay.io/kuiwang").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring("operators-all-manifests"))
+
+		g.By("check mapping.txt")
+		result, err := exec.Command("bash", "-c", "cat ./"+operatorAllPath+"/mapping.txt|grep -E \"atlasmap-atlasmap-operator:0.1.0|quay.io/kuiwang/jmckind-argocd-operator:[a-z0-9][a-z0-9]|redhat-cop-cert-utils-operator:latest\"").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(result).To(o.ContainSubstring("atlasmap-atlasmap-operator:0.1.0"))
+		o.Expect(result).To(o.ContainSubstring("redhat-cop-cert-utils-operator:latest"))
+		o.Expect(result).To(o.ContainSubstring("quay.io/kuiwang/jmckind-argocd-operator"))
+
+		g.By("check icsp yaml")
+		result, err = exec.Command("bash", "-c", "cat ./"+operatorAllPath+"/imageContentSourcePolicy.yaml | grep -E \"quay.io/kuiwang/strimzi-operator|docker.io/strimzi/operator$\"").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(result).To(o.ContainSubstring("- quay.io/kuiwang/strimzi-operator"))
+		o.Expect(result).To(o.ContainSubstring("source: docker.io/strimzi/operator"))
+
+		g.By("mirror to localhost:5000")
+		output, err = oc.AsAdmin().WithoutNamespace().Run("adm", "catalog", "mirror").Args("--manifests-only", "--to-manifests="+operatorDockerioPath, bundleIndex2, "localhost:5000").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring("operators-dockerio-manifests"))
+
+		g.By("check mapping.txt to localhost:5000")
+		result, err = exec.Command("bash", "-c", "cat ./"+operatorDockerioPath+"/mapping.txt|grep -E \"localhost:5000/atlasmap/atlasmap-operator:0.1.0|localhost:5000/strimzi/operator:[a-z0-9][a-z0-9]\"").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(result).To(o.ContainSubstring("localhost:5000/atlasmap/atlasmap-operator:0.1.0"))
+		o.Expect(result).To(o.ContainSubstring("localhost:5000/strimzi/operator"))
+
+		g.By("check icsp yaml to localhost:5000")
+		result, err = exec.Command("bash", "-c", "cat ./"+operatorDockerioPath+"/imageContentSourcePolicy.yaml | grep -E \"localhost:5000/strimzi/operator|docker.io/strimzi/operator$\"").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(result).To(o.ContainSubstring("- localhost:5000/strimzi/operator"))
+		o.Expect(result).To(o.ContainSubstring("source: docker.io/strimzi/operator"))
+		o.Expect(result).NotTo(o.ContainSubstring("docker.io/atlasmap/atlasmap-operator"))
 	})
 
 	// It will cover test case: OCP-21825, author: kuiwang@redhat.com
