@@ -552,6 +552,55 @@ var _ = g.Describe("[sig-operators] an end user handle OLM within a namespace", 
 
 	g.AfterEach(func() {})
 
+	// It will cover test case: OCP-29231 and OCP-29277, author: kuiwang@redhat.com
+	g.It("Medium-29231-Medium-29277-label to target namespace of group", func() {
+		var (
+			itName = g.CurrentGinkgoTestDescription().TestText
+			og1    = operatorGroupDescription{
+				name:      "og1-singlenamespace",
+				namespace: "",
+				template:  ogSingleTemplate,
+			}
+			og2 = operatorGroupDescription{
+				name:      "og2-singlenamespace",
+				namespace: "",
+				template:  ogSingleTemplate,
+			}
+		)
+		oc.SetupProject() //project and its resource are deleted automatically when out of It, so no need derfer or AfterEach
+		og1.namespace = oc.Namespace()
+		og2.namespace = oc.Namespace()
+
+		g.By("Create og1 and check the label of target namespace of og1 is created")
+		og1.create(oc, itName, dr)
+		og1Uid := getResource(oc, asAdmin, withNamespace, "og", og1.name, "-o=jsonpath={.metadata.uid}")
+		newCheck("expect", asAdmin, withoutNamespace, contain, "olm.operatorgroup.uid/"+og1Uid, ok,
+			[]string{"ns", og1.namespace, "-o=jsonpath={.metadata.labels}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, contain, "olm.operatorgroup.uid/"+og1Uid, nok,
+			[]string{"ns", "openshift-operators", "-o=jsonpath={.metadata.labels}"}).check(oc)
+
+		g.By("Delete og1 and check the label of target namespace of og1 is removed")
+		og1.delete(itName, dr)
+		newCheck("expect", asAdmin, withoutNamespace, contain, "olm.operatorgroup.uid/"+og1Uid, nok,
+			[]string{"ns", og1.namespace, "-o=jsonpath={.metadata.labels}"}).check(oc)
+
+		g.By("Create og2 and recreate og1 and check the label")
+		og2.create(oc, itName, dr)
+		og2Uid := getResource(oc, asAdmin, withNamespace, "og", og2.name, "-o=jsonpath={.metadata.uid}")
+		og1.create(oc, itName, dr)
+		og1Uid = getResource(oc, asAdmin, withNamespace, "og", og1.name, "-o=jsonpath={.metadata.uid}")
+		labelNs := getResource(oc, asAdmin, withoutNamespace, "ns", og1.namespace, "-o=jsonpath={.metadata.labels}")
+		o.Expect(labelNs).To(o.ContainSubstring(og2Uid))
+		o.Expect(labelNs).To(o.ContainSubstring(og1Uid))
+
+		//OCP-29277
+		g.By("Check no label of global operator group ")
+		globalOgUID := getResource(oc, asAdmin, withoutNamespace, "og", "global-operators", "-n", "openshift-operators", "-o=jsonpath={.metadata.uid}")
+		newCheck("expect", asAdmin, withoutNamespace, contain, "olm.operatorgroup.uid/"+globalOgUID, nok,
+			[]string{"ns", "default", "-o=jsonpath={.metadata.labels}"}).check(oc)
+
+	})
+
 	// It will cover test case: OCP-23170, author: kuiwang@redhat.com
 	g.It("Medium-23170-API labels should be hash", func() {
 		var (
@@ -822,6 +871,7 @@ var _ = g.Describe("[sig-operators] an end user handle OLM to support", func() {
 		cmLearnV2Template    = filepath.Join(buildPruningBaseDir, "cm-learn-v2.yaml")
 		catsrcCmTemplate     = filepath.Join(buildPruningBaseDir, "catalogsource-configmap.yaml")
 		ogTemplate           = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+		ogMultiTemplate      = filepath.Join(buildPruningBaseDir, "og-multins.yaml")
 		subTemplate          = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
 		crdOlmtestTemplate   = filepath.Join(buildPruningBaseDir, "crd-olmtest.yaml")
 		dr                   = make(describerResrouce)
@@ -918,6 +968,64 @@ var _ = g.Describe("[sig-operators] an end user handle OLM to support", func() {
 	})
 
 	g.AfterEach(func() {})
+
+	// It will cover part of test case: OCP-29275, author: kuiwang@redhat.com
+	g.It("Medium-29275-label to target namespace of operator group with multi namespace", func() {
+		var (
+			itName = g.CurrentGinkgoTestDescription().TestText
+			og     = operatorGroupDescription{
+				name:         "og-1651-1",
+				namespace:    "",
+				multinslabel: "test-og-label-1651",
+				template:     ogMultiTemplate,
+			}
+			p1 = projectDescription{
+				name:            "test-ns1651-1",
+				targetNamespace: "",
+			}
+			p2 = projectDescription{
+				name:            "test-ns1651-2",
+				targetNamespace: "",
+			}
+		)
+
+		defer p1.delete(oc)
+		defer p2.delete(oc)
+		//oc.TeardownProject()
+		oc.SetupProject() //project and its resource are deleted automatically when out of It, so no need derfer or AfterEach
+		p1.targetNamespace = oc.Namespace()
+		p2.targetNamespace = oc.Namespace()
+		og.namespace = oc.Namespace()
+		g.By("Create new projects and label them")
+		p1.create(oc, itName, dr)
+		p1.label(oc, "test-og-label-1651")
+		p2.create(oc, itName, dr)
+		p2.label(oc, "test-og-label-1651")
+
+		g.By("Create og and check the label")
+		og.create(oc, itName, dr)
+		ogUID := getResource(oc, asAdmin, withNamespace, "og", og.name, "-o=jsonpath={.metadata.uid}")
+		newCheck("expect", asAdmin, withoutNamespace, contain, "olm.operatorgroup.uid/"+ogUID, ok,
+			[]string{"ns", p1.name, "-o=jsonpath={.metadata.labels}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, contain, "olm.operatorgroup.uid/"+ogUID, ok,
+			[]string{"ns", p2.name, "-o=jsonpath={.metadata.labels}"}).check(oc)
+
+		g.By("delete og and check there is no label")
+		og.delete(itName, dr)
+		newCheck("expect", asAdmin, withoutNamespace, contain, "olm.operatorgroup.uid/"+ogUID, nok,
+			[]string{"ns", p1.name, "-o=jsonpath={.metadata.labels}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, contain, "olm.operatorgroup.uid/"+ogUID, nok,
+			[]string{"ns", p2.name, "-o=jsonpath={.metadata.labels}"}).check(oc)
+
+		g.By("create another og to check the label")
+		og.name = "og-1651-2"
+		og.create(oc, itName, dr)
+		ogUID = getResource(oc, asAdmin, withNamespace, "og", og.name, "-o=jsonpath={.metadata.uid}")
+		newCheck("expect", asAdmin, withoutNamespace, contain, "olm.operatorgroup.uid/"+ogUID, ok,
+			[]string{"ns", p1.name, "-o=jsonpath={.metadata.labels}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, contain, "olm.operatorgroup.uid/"+ogUID, ok,
+			[]string{"ns", p2.name, "-o=jsonpath={.metadata.labels}"}).check(oc)
+	})
 
 	// It will cover test case: OCP-22200, author: kuiwang@redhat.com
 	g.It("Medium-22200-add minimum kube version to CSV", func() {
@@ -1443,15 +1551,24 @@ func (catsrc *catalogSourceDescription) delete(itName string, dr describerResrou
 }
 
 type operatorGroupDescription struct {
-	name      string
-	namespace string
-	template  string
+	name         string
+	namespace    string
+	multinslabel string
+	template     string
 }
 
 func (og *operatorGroupDescription) create(oc *exutil.CLI, itName string, dr describerResrouce) {
-	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", og.template, "-p", "NAME="+og.name, "NAMESPACE="+og.namespace)
+	var err error
+	if strings.Compare(og.multinslabel, "") == 0 {
+		err = applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", og.template, "-p", "NAME="+og.name, "NAMESPACE="+og.namespace)
+	} else {
+		err = applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", og.template, "-p", "NAME="+og.name, "NAMESPACE="+og.namespace, "MULTINSLABEL="+og.multinslabel)
+	}
 	o.Expect(err).NotTo(o.HaveOccurred())
 	dr.getIr(itName).add(newResource(oc, "og", og.name, requireNS, og.namespace))
+}
+func (og *operatorGroupDescription) delete(itName string, dr describerResrouce) {
+	dr.getIr(itName).remove(og.name, "og", og.namespace)
 }
 
 type operatorSourceDescription struct {
