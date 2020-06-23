@@ -39,22 +39,19 @@ function result_report {
 #execute cases
 function execute {
   echo "the scenario is \"${SCENARIO}\", and the importance is \"${IMPORTANCE}\""
-  if [ ${IMPORTANCE} == "all" ]; then
-    IMPORTANCE=""
-  fi
   eval rm -fr ${WORKSPACE}"/private/junit_e2e_*.xml" ${WORKSPACE}"/public/junit_e2e_*.xml"
   cd ${WORKBUILDDIR}
 
   case "$REPO_OWNER" in
     openshift)
-      echo "run case with oropenshift-tests-private under openshift or your account"
-      echo "ocrd ${TIERN_REPO_OWNER} ${SCENARIO} ${IMPORTANCE}"
-      ocrd ${TIERN_REPO_OWNER} "${SCENARIO}" ${IMPORTANCE}  || true
+      echo "run case with oropenshift-tests-private under openshift or your account. similar to ocrd"
+      echo "ocr ${TIERN_REPO_OWNER} \"${SCENARIO}\" ${IMPORTANCE} \"null${FILTERS}\""
+      ocr ${TIERN_REPO_OWNER} "${SCENARIO}" ${IMPORTANCE} "null${FILTERS}" || true
       ;;
     *)
-      echo "run case with oropenshift-tests under your account"
-      echo "ocru ${SCENARIO} ${IMPORTANCE}"
-      ocru "${SCENARIO}" ${IMPORTANCE} || true
+      echo "run case with oropenshift-tests under your account. similar to ocru"
+      echo "ocr null \"${SCENARIO}\" ${IMPORTANCE} \"null${FILTERS}\""
+      ocr "null" "${SCENARIO}" ${IMPORTANCE} "null${FILTERS}"|| true
       ;;
   esac
 }
