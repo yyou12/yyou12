@@ -1,0 +1,184 @@
+#!/bin/bash
+
+function run {
+  repo_owner="$1"
+  case_scenario="$2"
+  case_importance="$3"
+  case_filter="$4"
+
+  make clean
+  if [ "${repo_owner}" == "openshift" ]; then
+    echo "make all"
+    make all
+  else
+    echo "make build"
+    make build
+  fi
+
+  if [ "${case_importance}" == "all" ]; then
+    case_importance=""
+  fi
+  ./bin/extended-platform-tests run all --dry-run | \
+    grep -E "${case_scenario}" | grep -i -E "${case_importance}" > ./case_selected
+
+  handle_filters "${case_filter}"
+  echo "------------------the case selected------------------"
+  cat ./case_selected
+  echo "-----------------------------------------------------"
+
+  ./bin/extended-platform-tests run --junit-dir=./ -f ./case_selected
+  rm -fr ./case_selected
+}
+
+function handle_filters {
+  filter_tmp="$1"
+  if [ "${filter_tmp}" == "null" ]; then
+    echo "there is no filter"
+    return
+  fi
+  echo "try to handler filters..."
+  filter_tmp=${filter_tmp:4}
+  filters=(${filter_tmp//;/ })
+
+  filters_and=()
+  filters_or=()
+  for filter in "${filters[@]}"
+  do
+    echo "${filter}"
+    valid_filter "${filter}"
+    filter_logical="$(echo ${filter} | cut -d'-' -f3)"
+
+    if [ "W${filter_logical}W" == "WAW" ]; then
+      filters_and+=(${filter})
+    fi
+    if  [ "W${filter_logical}W" == "WOW" ]; then
+      filters_or+=(${filter})
+    fi
+  done
+
+  for filter in ${filters_and[*]}
+  do
+    echo "handle filter_and ${filter}"
+    handle_and_filter "${filter}"
+  done
+
+  rm -fr ./case_selected_or
+  for filter in ${filters_or[*]}
+  do
+    echo "handle filter_or ${filter}"
+    handle_or_filter "${filter}"
+  done
+  [ -e ./case_selected_or ] && sort -u ./case_selected_or > ./case_selected && rm -fr ./case_selected_or
+}
+
+function valid_filter {
+  filter="$1"
+  if ! echo ${filter} | grep -E '^[a-zA-Z0-9]{1,}\-[a-zA-Z0-9]{1,}\+[AYN]{1}\-[AO]{1}$'; then
+    echo "the filter "${filter}" is not correct format. it should be [a-zA-Z0-9]{1,}-[a-zA-Z0-9]{1,}+[AYN]{1}-[AO]{1}"
+    exit 1
+  fi
+  key="$(echo $filter | cut -d'-' -f1)"
+  value="$(echo $filter | cut -d'-' -f2)"
+  action="$(echo $value | cut -d'+' -f2)"
+  value="$(echo $value | cut -d'+' -f1)"
+  echo $key"--"$value"--"$action
+
+  case $key in
+    TestLabel)
+      echo "valid key TestLabel"
+      if ! echo ${value} | grep -E '(Disruptive|disruptive|Serial|serial|Flaky|flaky)'; then
+        echo "the filter value "${value}" is not supported."
+        exit 1
+      fi
+      ;;
+    Disconnection)
+      echo "valid key Disconnection"
+      if ! echo ${value} | grep -E '(Disconnected|disconnected)'; then
+        echo "the filter value "${value}" is not supported."
+        exit 1
+      fi
+      ;;
+    Example)
+      echo "valid key Exmpale which is for test"
+      if ! echo ${value} | grep -E '(Example|exmpale)'; then
+        echo "the filter value "${value}" is not supported."
+        exit 1
+      fi
+      ;;
+    *)
+      echo "the filter key "${key}" is not supported"
+      exit 1
+      ;;
+  esac
+}
+
+function handle_and_filter {
+  key="$(echo $1 | cut -d'-' -f1)"
+  value="$(echo $1 | cut -d'-' -f2)"
+  action="$(echo $value | cut -d'+' -f2)"
+  value="$(echo $value | cut -d'+' -f1)"
+  echo $key"--"$value"--"$action
+
+  case $key in
+    TestLabel)
+      echo "handle key TestLabel"
+      handle_and_action "${action}" "${value}"
+      ;;
+    Disconnection)
+      echo "handle key Disconnection"
+      handle_and_action "${action}"  "${value}"
+      ;;
+    Example)
+      echo "handle key Example"
+      ;;
+  esac
+}
+function handle_and_action {
+  action="$1"
+  value="$2"
+  if [ "${action}" == "A" ]; then
+    return
+  fi
+  if [ "${action}" == "Y" ]; then
+    cat ./case_selected | grep -i -E "${value}" > ./case_selected_and
+  fi
+  if [ "${action}" == "N" ]; then
+    cat ./case_selected | grep -i -v -E "${value}" > ./case_selected_and
+  fi
+  [ -e ./case_selected_and ] && cp -fr ./case_selected_and ./case_selected && rm -fr ./case_selected_and
+}
+function handle_or_filter {
+  key="$(echo $1 | cut -d'-' -f1)"
+  value="$(echo $1 | cut -d'-' -f2)"
+  action="$(echo $value | cut -d'+' -f2)"
+  value="$(echo $value | cut -d'+' -f1)"
+  echo $key"--"$value"--"$action
+
+  case $key in
+    TestLabel)
+      echo "handle key TestLabel"
+      handle_or_action "${action}" "${value}"
+      ;;
+    Disconnection)
+      echo "handle key Disconnection"
+      handle_or_action "${action}" "${value}"
+      ;;
+    Example)
+      echo "handle key Example"
+      ;;
+  esac
+}
+function handle_or_action {
+  action="$1"
+  value="$2"
+  if [ "${action}" == "A" ]; then
+    cat ./case_selected >> ./case_selected_or
+  fi
+  if [ "${action}" == "Y" ]; then
+    cat ./case_selected | grep -i -E "${value}" >> ./case_selected_or
+  fi
+  if [ "${action}" == "N" ]; then
+    cat ./case_selected | grep -i -v -E "${value}" >> ./case_selected_or
+  fi
+}
+run "$1" "$2" "$3" "$4"
