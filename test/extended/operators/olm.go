@@ -29,19 +29,6 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 
 	var oc = exutil.NewCLIWithoutNamespace("default")
 
-	// author: tbuskey@redhat.com
-	g.It("OLM-Low-OCP-23670-Checking description info for csc CRD", func() {
-		olmExplain := "csc"
-		msg, err := oc.AsAdmin().WithoutNamespace().Run("explain").Args(olmExplain).Output()
-		if err != nil {
-			e2e.Failf("Could not run oc explain %v:\n%v", olmExplain, msg)
-		}
-		o.Expect(err).NotTo(o.HaveOccurred())
-		if strings.Contains(msg, "<empty>") {
-			e2e.Failf("oc explain %v is empty:\n%v", olmExplain, msg)
-		}
-	})
-
 	// author: bandrade@redhat.com
 	g.It("Medium-21130-Fetching non-existent `PackageManifest` should return 404", func() {
 		msg, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("packagemanifest", "--all-namespaces", "--no-headers").Output()
@@ -143,87 +130,8 @@ var _ = g.Describe("[sig-operators] an end user use OLM", func() {
 	defer g.GinkgoRecover()
 
 	var (
-		oc           = exutil.NewCLI("olm-23440", exutil.KubeConfigPath())
-		operatorWait = 120 * time.Second
-
-		buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
+		oc = exutil.NewCLI("olm-23440", exutil.KubeConfigPath())
 	)
-
-	// author: tbuskey@redhat.com
-	g.It("Medium-21611-package manifest object has the description from CSV", func() {
-		olmName := "csc"
-		olmResource := "etcd-custom-" + olmName
-		olmFilename := olmResource + ".yaml"
-		olmFile := filepath.Join(buildPruningBaseDir, olmFilename)
-		currentNS := oc.Namespace()
-		msg := ""
-		count := 0
-		pass := false
-		passPkg := false
-
-		err := oc.AsAdmin().SetNamespace("openshift-marketplace").Run("create").Args("-f", olmFile).Execute()
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		// Check for csc every 10 seconds until operatorWait
-		err = wait.Poll(10*time.Second, operatorWait, func() (bool, error) {
-			count++
-			msg, err = oc.AsAdmin().SetNamespace(currentNS).Run("get").Args("csc", "-n", "openshift-marketplace").Output()
-			o.Expect(err).NotTo(o.HaveOccurred())
-
-			if err != nil {
-				e2e.Failf("Failed to get CatalogSourceConfig, error:%v, %v", err, msg)
-				return false, err
-			}
-			if strings.Contains(msg, "Succeeded") {
-				pass = true
-				return true, nil
-			}
-			//	e2e.Logf("Count %v, %v", count, msg)
-			return false, nil
-		})
-
-		if !pass { // Fail on timeout
-			e2e.Failf("Was not able to create CatalogSourceConfig %v after checking %v times:%v", olmResource, count, msg)
-		}
-		//  e2e.Logf("Created CatalogSourceConfig %v after %v tries", olmResource, count)
-
-		// Make sure status is Succeeded
-		msg, err = oc.SetNamespace(currentNS).AsAdmin().Run("get").Args("catalogsourceconfig", "-n", "openshift-marketplace", olmResource, "-o=jsonpath={.status.currentPhase.phase.name}").Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		if !strings.Contains(msg, "Succeeded") {
-			e2e.Failf("Did not find %v in:\n,%v", olmResource, msg)
-		}
-
-		// Loop over the PackageManifests to check for the custom etcd created above
-		// This has been looping through 3-4 times
-		count = 0
-		err = wait.Poll(10*time.Second, operatorWait, func() (bool, error) {
-			count++
-			msg, err = oc.SetNamespace(currentNS).AsAdmin().Run("get").Args("PackageManifest", "-n", "openshift-operators", "-o=jsonpath={.items[*].status.catalogSource}").Output()
-			o.Expect(err).NotTo(o.HaveOccurred())
-			if err != nil {
-				e2e.Failf("Failed to get PackageManifest, error:%v, %v", err, msg)
-				return false, err
-			}
-			if strings.Contains(msg, olmResource) {
-				passPkg = true
-				return true, nil
-			}
-			// e2e.Logf("Count %v, %v", count, msg)
-			return false, nil
-		})
-
-		if pass { // cleanup the csc
-			err = oc.AsAdmin().SetNamespace(currentNS).Run("delete").Args("csc", "-n", "openshift-marketplace", olmResource).Execute()
-			o.Expect(err).NotTo(o.HaveOccurred())
-		}
-
-		// Fail on timeout
-		if !strings.Contains(msg, olmResource) || !passPkg {
-			e2e.Failf("%v was not created after %v tries in %v seconds: %v.", olmResource, count, operatorWait, msg)
-		}
-
-	})
 
 	// author: tbuskey@redhat.com
 	g.It("Low-24058-components should have resource limits defined", func() {
