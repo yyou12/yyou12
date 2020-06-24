@@ -24,11 +24,27 @@ If you want to compile the `openshift-tests` binary, please see the [origin](htt
 ```console
 $ mkdir -p ${GOPATH}/src/github.com/openshift/
 $ cd ${GOPATH}/src/github.com/openshift/
-$ git clone git@github.com:openshift/openshift-tests.git
+$ git clone git@github.com:openshift/openshift-tests-private.git
+$ cd openshift-tests-private/
 $ make clean
 $ make build
-
 ```
+
+## How to Contribute 
+Below is an example of how to submit a PR. First, you should **Fork** this repo to yourself Github repo.
+Note that: please use `make build` instead of the `make all`/`make update-public` command in your development. 
+
+```console
+$ git remote add <user> git@github.com:<user>/openshift-tests-private.git
+$ git pull origin master
+$ git checkout -b example
+$ git add xxx
+$ make build
+$ ./bin/extended-platform-tests xxx
+$ git commit -m "xxx"
+$ git push <user> example:example
+```
+
 Run `./bin/extended-platform-tests --help` to get started.
 
 ```console
