@@ -120,6 +120,29 @@ $ git status
 	new file:   test/extended/testdata/olm/etcd-subscription-manual.yaml
 ```
 
+## Running on GCE
+You will get the below error when running the test cases on GCP platform. 
+```
+E0628 22:11:41.236497   25735 test_context.go:447] Failed to setup provider config for "gce": Error building GCE/GKE provider: google: could not find default credentials. See https://developers.google.com/accounts/docs/application-default-credentials for more information.
+```
+**You need to `export` the below environment variable before running test on GCP.**
+```
+$ export GOOGLE_APPLICATION_CREDENTIALS=`pwd`/secrets/gce/aos-qe-sa.json
+```
+
+### Update the GCE SA
+You may get `400 Bad Request` error even if you have `export` the above values. This error means it's time to update the SA.
+```
+E0628 22:18:22.290137   26212 gce.go:876] error fetching initial token: oauth2: cannot fetch token: 400 Bad Request
+Response: {"error":"invalid_grant","error_description":"Invalid JWT Signature."}
+```
+You can update the SA by following this [authentication](https://cloud.google.com/docs/authentication/production#cloud-console). As follows, or you can raise an issue here.
+1. Click the [apis](https://console.cloud.google.com/apis/credentials/serviceaccountkey?_ga=2.126026830.216162210.1593398139-2070485991.1569310149&project=openshift-qe&folder&organizationId=54643501348)
+2. From the `Service account` list, select New service account.
+3. In the `Service account` name field, enter a name.
+4. Click `Create`. A JSON file that contains your key downloads to your computer.
+
+
 ## Run ISV Operators test
 
 ```console
