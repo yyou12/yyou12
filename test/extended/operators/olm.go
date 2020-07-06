@@ -147,6 +147,9 @@ var _ = g.Describe("[sig-operators] an end user use OLM", func() {
 		o.Expect(msg).NotTo(o.ContainSubstring("No resources found"))
 		lines := strings.Split(msg, "\n")
 		for _, line := range lines {
+			if strings.Contains(line, "packageserver") {
+				continue
+			}
 			name := strings.Split(line, ",")
 			if len(name) > 1 {
 				if len(name) > 1 && len(name[1]) < 1 {
