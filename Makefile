@@ -1,10 +1,9 @@
-all: update-public build
+all: update update-public build
 .PHONY: all
 OUT_DIR=bin
-BRANCH = $(shell git symbolic-ref --short -q HEAD)
 
 update-public:
-	go get github.com/openshift/openshift-tests@${BRANCH}
+	go get github.com/openshift/openshift-tests@master
 
 build:
 	mkdir -p "${OUT_DIR}"

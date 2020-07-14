@@ -15,6 +15,8 @@
 // test/extended/testdata/olm/etcd-custom-csc.yaml
 // test/extended/testdata/olm/etcd-subscription-manual.yaml
 // test/extended/testdata/olm/etcd-subscription.yaml
+// test/extended/testdata/olm/image-catalogsource.yaml
+// test/extended/testdata/olm/image-sub.yaml
 // test/extended/testdata/olm/og-allns.yaml
 // test/extended/testdata/olm/og-multins.yaml
 // test/extended/testdata/olm/olm-subscription.yaml
@@ -2291,6 +2293,60 @@ func testExtendedTestdataOlmEtcdSubscriptionYaml() (*asset, error) {
 	return a, nil
 }
 
+var _testExtendedTestdataOlmImageCatalogsourceYaml = []byte(`apiVersion: operators.coreos.com/v1alpha1
+kind: CatalogSource
+metadata:
+  name: test-operator
+  namespace: openshift-marketplace
+spec:
+  sourceType: grpc
+  image: quay.io/olmqe/catalogsource:etcd-auto2
+  displayName: Test Operators
+  publisher: Test
+`)
+
+func testExtendedTestdataOlmImageCatalogsourceYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataOlmImageCatalogsourceYaml, nil
+}
+
+func testExtendedTestdataOlmImageCatalogsourceYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataOlmImageCatalogsourceYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/olm/image-catalogsource.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataOlmImageSubYaml = []byte(`apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+ generateName: etcd-auto-
+ namespace: openshift-operators
+spec:
+ source: test-operator
+ sourceNamespace: openshift-marketplace
+ name: etcd-auto
+ channel: clusterwide-alpha
+`)
+
+func testExtendedTestdataOlmImageSubYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataOlmImageSubYaml, nil
+}
+
+func testExtendedTestdataOlmImageSubYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataOlmImageSubYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/olm/image-sub.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
 var _testExtendedTestdataOlmOgAllnsYaml = []byte(`apiVersion: v1
 kind: Template
 metadata:
@@ -2544,6 +2600,8 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/olm/etcd-custom-csc.yaml":          testExtendedTestdataOlmEtcdCustomCscYaml,
 	"test/extended/testdata/olm/etcd-subscription-manual.yaml": testExtendedTestdataOlmEtcdSubscriptionManualYaml,
 	"test/extended/testdata/olm/etcd-subscription.yaml":        testExtendedTestdataOlmEtcdSubscriptionYaml,
+	"test/extended/testdata/olm/image-catalogsource.yaml":      testExtendedTestdataOlmImageCatalogsourceYaml,
+	"test/extended/testdata/olm/image-sub.yaml":                testExtendedTestdataOlmImageSubYaml,
 	"test/extended/testdata/olm/og-allns.yaml":                 testExtendedTestdataOlmOgAllnsYaml,
 	"test/extended/testdata/olm/og-multins.yaml":               testExtendedTestdataOlmOgMultinsYaml,
 	"test/extended/testdata/olm/olm-subscription.yaml":         testExtendedTestdataOlmOlmSubscriptionYaml,
@@ -2611,6 +2669,8 @@ var _bintree = &bintree{nil, map[string]*bintree{
 					"etcd-custom-csc.yaml":          {testExtendedTestdataOlmEtcdCustomCscYaml, map[string]*bintree{}},
 					"etcd-subscription-manual.yaml": {testExtendedTestdataOlmEtcdSubscriptionManualYaml, map[string]*bintree{}},
 					"etcd-subscription.yaml":        {testExtendedTestdataOlmEtcdSubscriptionYaml, map[string]*bintree{}},
+					"image-catalogsource.yaml":      {testExtendedTestdataOlmImageCatalogsourceYaml, map[string]*bintree{}},
+					"image-sub.yaml":                {testExtendedTestdataOlmImageSubYaml, map[string]*bintree{}},
 					"og-allns.yaml":                 {testExtendedTestdataOlmOgAllnsYaml, map[string]*bintree{}},
 					"og-multins.yaml":               {testExtendedTestdataOlmOgMultinsYaml, map[string]*bintree{}},
 					"olm-subscription.yaml":         {testExtendedTestdataOlmOlmSubscriptionYaml, map[string]*bintree{}},
