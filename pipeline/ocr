@@ -46,12 +46,11 @@ function handle_filters {
   do
     echo "${filter}"
     valid_filter "${filter}"
-    filter_logical="$(echo ${filter} | cut -d'-' -f3)"
+    filter_logical="$(echo $filter | grep -Eo '[&]?$')"
 
-    if [ "W${filter_logical}W" == "WAW" ]; then
+    if [ "W${filter_logical}W" == "W&W" ]; then
       filters_and+=(${filter})
-    fi
-    if  [ "W${filter_logical}W" == "WOW" ]; then
+    else
       filters_or+=(${filter})
     fi
   done
@@ -73,111 +72,34 @@ function handle_filters {
 
 function valid_filter {
   filter="$1"
-  if ! echo ${filter} | grep -E '^[a-zA-Z0-9]{1,}\-[a-zA-Z0-9]{1,}\+[AYN]{1}\-[AO]{1}$'; then
-    echo "the filter "${filter}" is not correct format. it should be [a-zA-Z0-9]{1,}-[a-zA-Z0-9]{1,}+[AYN]{1}-[AO]{1}"
+  if ! echo ${filter} | grep -E '^[~]?[a-zA-Z0-9]{1,}[&]?$'; then
+    echo "the filter "${filter}" is not correct format. it should be ^[~]?[a-zA-Z0-9]{1,}[&]?$"
     exit 1
   fi
-  key="$(echo $filter | cut -d'-' -f1)"
-  value="$(echo $filter | cut -d'-' -f2)"
-  action="$(echo $value | cut -d'+' -f2)"
-  value="$(echo $value | cut -d'+' -f1)"
-  echo $key"--"$value"--"$action
-
-  case $key in
-    TestLabel)
-      echo "valid key TestLabel"
-      if ! echo ${value} | grep -E '(Disruptive|disruptive|Serial|serial|Flaky|flaky)'; then
-        echo "the filter value "${value}" is not supported."
-        exit 1
-      fi
-      ;;
-    Disconnection)
-      echo "valid key Disconnection"
-      if ! echo ${value} | grep -E '(Disconnected|disconnected)'; then
-        echo "the filter value "${value}" is not supported."
-        exit 1
-      fi
-      ;;
-    Example)
-      echo "valid key Exmpale which is for test"
-      if ! echo ${value} | grep -E '(Example|exmpale)'; then
-        echo "the filter value "${value}" is not supported."
-        exit 1
-      fi
-      ;;
-    *)
-      echo "the filter key "${key}" is not supported"
-      exit 1
-      ;;
-  esac
+  action="$(echo $filter | grep -Eo '^[~]?')"
+  value="$(echo $filter | grep -Eo '[a-zA-Z0-9]{1,}')"
+  logical="$(echo $filter | grep -Eo '[&]?$')"
+  echo $action"--"$value"--"$logical
 }
 
 function handle_and_filter {
-  key="$(echo $1 | cut -d'-' -f1)"
-  value="$(echo $1 | cut -d'-' -f2)"
-  action="$(echo $value | cut -d'+' -f2)"
-  value="$(echo $value | cut -d'+' -f1)"
-  echo $key"--"$value"--"$action
+  action="$(echo $1 | grep -Eo '^[~]?')"
+  value="$(echo $1 | grep -Eo '[a-zA-Z0-9]{1,}')"
 
-  case $key in
-    TestLabel)
-      echo "handle key TestLabel"
-      handle_and_action "${action}" "${value}"
-      ;;
-    Disconnection)
-      echo "handle key Disconnection"
-      handle_and_action "${action}"  "${value}"
-      ;;
-    Example)
-      echo "handle key Example"
-      ;;
-  esac
-}
-function handle_and_action {
-  action="$1"
-  value="$2"
-  if [ "${action}" == "A" ]; then
-    return
-  fi
-  if [ "${action}" == "Y" ]; then
+  if [ "W${action}W" == "WW" ]; then
     cat ./case_selected | grep -i -E "${value}" > ./case_selected_and
-  fi
-  if [ "${action}" == "N" ]; then
+  else
     cat ./case_selected | grep -i -v -E "${value}" > ./case_selected_and
   fi
   [ -e ./case_selected_and ] && cp -fr ./case_selected_and ./case_selected && rm -fr ./case_selected_and
 }
 function handle_or_filter {
-  key="$(echo $1 | cut -d'-' -f1)"
-  value="$(echo $1 | cut -d'-' -f2)"
-  action="$(echo $value | cut -d'+' -f2)"
-  value="$(echo $value | cut -d'+' -f1)"
-  echo $key"--"$value"--"$action
+  action="$(echo $1 | grep -Eo '^[~]?')"
+  value="$(echo $1 | grep -Eo '[a-zA-Z0-9]{1,}')"
 
-  case $key in
-    TestLabel)
-      echo "handle key TestLabel"
-      handle_or_action "${action}" "${value}"
-      ;;
-    Disconnection)
-      echo "handle key Disconnection"
-      handle_or_action "${action}" "${value}"
-      ;;
-    Example)
-      echo "handle key Example"
-      ;;
-  esac
-}
-function handle_or_action {
-  action="$1"
-  value="$2"
-  if [ "${action}" == "A" ]; then
-    cat ./case_selected >> ./case_selected_or
-  fi
-  if [ "${action}" == "Y" ]; then
+  if [ "W${action}W" == "WW" ]; then
     cat ./case_selected | grep -i -E "${value}" >> ./case_selected_or
-  fi
-  if [ "${action}" == "N" ]; then
+  else
     cat ./case_selected | grep -i -v -E "${value}" >> ./case_selected_or
   fi
 }
