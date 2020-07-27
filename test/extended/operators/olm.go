@@ -19,6 +19,7 @@ import (
 	"sync"
 	"time"
 
+	isv "github.com/openshift/openshift-tests-private/test/extended/isv"
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
 	"k8s.io/apimachinery/pkg/util/wait"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
@@ -123,6 +124,20 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		}
 	})
 
+	// author: bandrade@redhat.com
+	g.It("High-32613-Operators won't install if the CSV dependency is already installed", func() {
+
+		namespace := "kogito"
+		infinispanPackage := isv.CreateSubscriptionSpecificNamespace("infinispan", oc, true, true, namespace)
+		isv.CheckDeployment(infinispanPackage, oc)
+		keycloakPackage := isv.CreateSubscriptionSpecificNamespace("keycloak-operator", oc, false, false, namespace)
+		isv.CheckDeployment(keycloakPackage, oc)
+		kogitoPackage := isv.CreateSubscriptionSpecificNamespace("kogito-operator", oc, false, false, namespace)
+		isv.CheckDeployment(kogitoPackage, oc)
+		isv.RemoveOperatorDependencies(kogitoPackage, oc, false)
+		isv.RemoveNamespace(namespace, oc)
+
+	})
 	// author: jiazha@redhat.com
 	g.It("Medium-20981-contain the source commit id [Serial]", func() {
 		sameCommit := ""
@@ -2080,4 +2095,3 @@ func doAction(oc *exutil.CLI, action string, asAdmin bool, withoutNamespace bool
 	}
 	return "", nil
 }
-
