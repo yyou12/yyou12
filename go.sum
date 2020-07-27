@@ -588,6 +588,8 @@ github.com/openshift/openshift-tests v0.0.0-20200617130544-e5a1e8537706 h1:4ybgL
 github.com/openshift/openshift-tests v0.0.0-20200617130544-e5a1e8537706/go.mod h1:SmM8O8DllJfgzXTZyZFolqcNy+1PuPG6RfLvSnHFIGI=
 github.com/openshift/openshift-tests v0.0.0-20200713020100-6593d99e0c99 h1:/gcsyXrvJBp68sNujgIMsmqQxY0Sxm7zY5VhGAINe6o=
 github.com/openshift/openshift-tests v0.0.0-20200713020100-6593d99e0c99/go.mod h1:SmM8O8DllJfgzXTZyZFolqcNy+1PuPG6RfLvSnHFIGI=
+github.com/openshift/openshift-tests v0.0.0-20200727022858-247d2f0510a2 h1:xTy2QY5vnD5dmPbvX7m67aIaEI2TqMurZ8h27mtgavU=
+github.com/openshift/openshift-tests v0.0.0-20200727022858-247d2f0510a2/go.mod h1:SmM8O8DllJfgzXTZyZFolqcNy+1PuPG6RfLvSnHFIGI=
 github.com/pborman/uuid v1.2.0 h1:J7Q5mO4ysT1dv8hyrUGHb9+ooztCXu1D8MY8DZYsu3g=
 github.com/pborman/uuid v1.2.0/go.mod h1:X/NO0urCmaxf9VXbdlT7C2Yzkj2IKimNn4k+gtPdI/k=
 github.com/pelletier/go-toml v1.1.0/go.mod h1:5z9KED0ma1S8pY6P1sdut58dfprrGBbd/94hg7ilaic=
