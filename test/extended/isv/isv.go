@@ -236,7 +236,7 @@ func RemoveOperatorDependencies(p Packagemanifest, oc *exutil.CLI, checkDeletion
 			}
 		}
 	}
-	if p.SupportsSingleNamespace || p.SupportsOwnNamespace {
+	if !p.SupportsAllNamespaces && (p.SupportsSingleNamespace || p.SupportsOwnNamespace) {
 		RemoveNamespace(p.Namespace, oc)
 	}
 
