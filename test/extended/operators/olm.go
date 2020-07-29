@@ -228,14 +228,15 @@ var _ = g.Describe("[sig-operators] an end user use OLM", func() {
 		for _, line := range lines {
 			if strings.Contains(line, "packageserver") {
 				continue
-			}
-			name := strings.Split(line, ",")
-			if len(name) > 1 {
-				if len(name) > 1 && len(name[1]) < 1 {
-					olmUnlimited++
-					olmNames = append(olmNames, name[0])
+			} else {
+				name := strings.Split(line, ",")
+				if len(name) > 1 {
+					if len(name) > 1 && len(name[1]) < 1 {
+						olmUnlimited++
+						olmNames = append(olmNames, name[0])
+					}
 				}
-			}
+			}	
 		}
 		if olmUnlimited > 0 {
 			e2e.Failf("There are no limits set on %v of %v OLM components: %v", olmUnlimited, len(lines), olmNames)
