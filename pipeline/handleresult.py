@@ -44,9 +44,15 @@ class TestResult:
                 result="PASS"
             caseids = re.findall(r'\d{5,}-', name)
             if len(caseids) == 0:
-                testsummary["the case title does not include case ID, so take case title:"+name.replace("'","").split("[Suite:")[0]] = {"result":result, "title":""}
+                tmpname = name.replace("'","")
+                if "[Suite:openshift/" in tmpname:
+                    testsummary["No-CASEID  so take title:"+tmpname.split("[Suite:openshift/")[-2]] = {"result":result, "title":""}
+                else:
+                    testsummary["No-CASEID  so take title:"+tmpname] = {"result":result, "title":""}
             else:
-                casetitle = name.split(caseids[-1])[1].split("[Suite:")[0]
+                casetitle = name.split(caseids[-1])[1]
+                if "[Suite:" in casetitle:
+                    casetitle = casetitle.split("[Suite:")[0]
                 for i in caseids:
                     id = "OCP-"+i[:-1]
                     if id in testsummary and "FAIL" in testsummary[id]["result"]: #the case already execute with failure
