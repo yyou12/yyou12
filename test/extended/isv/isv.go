@@ -103,12 +103,12 @@ func CreatePackageManifest(isv string, oc *exutil.CLI) Packagemanifest {
 }
 func CreateSubscription(isv string, oc *exutil.CLI) Packagemanifest {
 	p := CreatePackageManifest(isv, oc)
-	if p.SupportsAllNamespaces {
-		p.Namespace = "openshift-operators"
-
-	} else if p.SupportsSingleNamespace || p.SupportsOwnNamespace {
+	if p.SupportsSingleNamespace || p.SupportsOwnNamespace {
 		p = CreateNamespace(p, oc)
 		CreateOperatorGroup(p, oc)
+	} else if p.SupportsAllNamespaces {
+		p.Namespace = "openshift-operators"
+
 	} else {
 		g.Skip("Install Modes AllNamespaces and  SingleNamespace are disabled for Operator: " + isv)
 	}
