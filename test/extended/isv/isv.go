@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -29,7 +30,15 @@ type Packagemanifest struct {
 	CatalogSourceNamespace  string
 }
 
-var _ = g.Describe("[Suite:openshift/isv][Basic] Operator", func() {
+var CertifiedOperators = []string{"3scale-community-operator", "amq-streams", "appdynamics-operator",
+	"argocd-operator", "cert-utils-operator", "couchbase-enterprise", "dotscience-operator",
+	"jaeger", "keycloak-operator", "kiali", "mongodb-enterprise", "must-gather-operator",
+	"percona-server-mongodb-operator", "percona-xtradb-cluster-operator", "planetscale",
+	"portworx", "postgresql", "presto-operator", "prometheus", "radanalytics-spark",
+	"resource-locker-operator", "spark-gcp", "storageos", "strimzi-kafka-operator",
+	"syndesis", "tidb-operator"}
+
+var _ = g.Describe("[Suite:openshift/isv]", func() {
 
 	var (
 		oc                      = exutil.NewCLI("isv", exutil.KubeConfigPath())
@@ -42,6 +51,7 @@ var _ = g.Describe("[Suite:openshift/isv][Basic] Operator", func() {
 		communityPackages       = strings.Split(output3, "\n")
 		packages1               = append(certifiedPackages, redhatOperatorsPackages...)
 		allPackages             = append(packages1, communityPackages...)
+		basicPrefix             = "[Basic]"
 		//allPackages    = []string{"community-operators:knative-camel-operator"}
 		currentPackage Packagemanifest
 	)
@@ -51,10 +61,11 @@ var _ = g.Describe("[Suite:openshift/isv][Basic] Operator", func() {
 
 		isv := allPackages[i]
 		packageSplitted := strings.Split(isv, ":")
+
 		if len(packageSplitted) > 1 {
 			packageName := packageSplitted[1]
 
-			g.It(isv+" should work properly", func() {
+			g.It(TestCaseName(packageName, basicPrefix), func() {
 				g.By("by installing", func() {
 					currentPackage = CreateSubscription(packageName, oc)
 					CheckDeployment(currentPackage, oc)
@@ -68,6 +79,30 @@ var _ = g.Describe("[Suite:openshift/isv][Basic] Operator", func() {
 	}
 
 })
+
+func TestCaseName(isv string, initialPrefix string) string {
+
+	certifiedPrefix := "[Certified]"
+	suffix := " should work properly"
+	prefix := " Operator "
+	if IsCertifiedOperator(isv) {
+		return initialPrefix + certifiedPrefix + prefix + isv + suffix
+	} else {
+		return initialPrefix + prefix + isv + suffix
+	}
+}
+
+func IsCertifiedOperator(isv string) bool {
+	if contains(CertifiedOperators, isv) {
+		return true
+	}
+	return false
+}
+
+func contains(s []string, searchterm string) bool {
+	i := sort.SearchStrings(s, searchterm)
+	return i < len(s) && s[i] == searchterm
+}
 
 func checkOperatorInstallModes(p Packagemanifest, oc *exutil.CLI) Packagemanifest {
 	supportsAllNamespaces, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("packagemanifest", p.Name, "-o=jsonpath={.status.channels[?(.name=='"+p.DefaultChannel+"')].currentCSVDesc.installModes[?(.type=='AllNamespaces')].supported}").Output()
