@@ -11,12 +11,14 @@ import (
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 )
 
-var _ = g.Describe("[Suite:openshift/isv][Intermediate] Operator", func() {
+var _ = g.Describe("[Suite:openshift/isv]", func() {
 	var (
-		oc = exutil.NewCLI("isv", exutil.KubeConfigPath())
+		oc                     = exutil.NewCLI("isv", exutil.KubeConfigPath())
+		intermediateTestsSufix = "[Intermediate]"
 	)
 
-	g.It("AMQ-Streams should work properly", func() {
+	g.It(TestCaseName("amq-streams", intermediateTestsSufix), func() {
+
 		kafkaCR := "Kafka"
 		kafkaClusterName := "my-cluster"
 		kafkaPackageName := "amq-streams"
