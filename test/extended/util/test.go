@@ -561,8 +561,7 @@ var (
 			`\[Suite:openshift/operators\]`,
 		},
 		"[Suite:openshift/isv]": {
-			`\[Suite:openshift/operators\] \[Basic\]\[Certified\]`,
-			`\[Suite:openshift/operators\] \[Intermediate\]\[Certified\]`,
+			`\[Suite:openshift/isv\]`,
 		},
 	}
 

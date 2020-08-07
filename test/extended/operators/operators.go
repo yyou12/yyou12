@@ -37,23 +37,22 @@ var CertifiedOperators = []string{"3scale-community-operator", "amq-streams", "a
 	"portworx", "postgresql", "presto-operator", "prometheus", "radanalytics-spark",
 	"resource-locker-operator", "spark-gcp", "storageos", "strimzi-kafka-operator",
 	"syndesis", "tidb-operator"}
+var CatalogLabels = []string{"certified-operators", "redhat-operators", "community-operators"}
+var BasicPrefix = "[Basic]"
 
 var _ = g.Describe("[Suite:openshift/operators]", func() {
 
 	var (
 		oc                      = exutil.NewCLI("operator", exutil.KubeConfigPath())
-		catalogLabels           = []string{"certified-operators", "redhat-operators", "community-operators"}
-		output, _               = oc.AsAdmin().WithoutNamespace().NotShowInfo().Run("get").Args("packagemanifest", "-l catalog="+catalogLabels[0], "-o=jsonpath={range .items[*]}{.metadata.labels.catalog}:{.metadata.name}{'\\n'}{end}").Output()
+		output, _               = oc.AsAdmin().WithoutNamespace().NotShowInfo().Run("get").Args("packagemanifest", "-l catalog="+CatalogLabels[0], "-o=jsonpath={range .items[*]}{.metadata.labels.catalog}:{.metadata.name}{'\\n'}{end}").Output()
 		certifiedPackages       = strings.Split(output, "\n")
-		output2, _              = oc.AsAdmin().WithoutNamespace().NotShowInfo().Run("get").Args("packagemanifest", "-l catalog="+catalogLabels[1], "-o=jsonpath={range .items[*]}{.metadata.labels.catalog}:{.metadata.name}{'\\n'}{end}").Output()
+		output2, _              = oc.AsAdmin().WithoutNamespace().NotShowInfo().Run("get").Args("packagemanifest", "-l catalog="+CatalogLabels[1], "-o=jsonpath={range .items[*]}{.metadata.labels.catalog}:{.metadata.name}{'\\n'}{end}").Output()
 		redhatOperatorsPackages = strings.Split(output2, "\n")
-		output3, _              = oc.AsAdmin().WithoutNamespace().NotShowInfo().Run("get").Args("packagemanifest", "-l catalog="+catalogLabels[2], "-o=jsonpath={range .items[*]}{.metadata.labels.catalog}:{.metadata.name}{'\\n'}{end}").Output()
+		output3, _              = oc.AsAdmin().WithoutNamespace().NotShowInfo().Run("get").Args("packagemanifest", "-l catalog="+CatalogLabels[2], "-o=jsonpath={range .items[*]}{.metadata.labels.catalog}:{.metadata.name}{'\\n'}{end}").Output()
 		communityPackages       = strings.Split(output3, "\n")
 		packages1               = append(certifiedPackages, redhatOperatorsPackages...)
 		allPackages             = append(packages1, communityPackages...)
-		basicPrefix             = "[Basic]"
-		//allPackages    = []string{"community-operators:knative-camel-operator"}
-		currentPackage Packagemanifest
+		currentPackage          Packagemanifest
 	)
 	defer g.GinkgoRecover()
 
@@ -65,7 +64,7 @@ var _ = g.Describe("[Suite:openshift/operators]", func() {
 		if len(packageSplitted) > 1 {
 			packageName := packageSplitted[1]
 
-			g.It(TestCaseName(packageName, basicPrefix), func() {
+			g.It(TestCaseName(packageName, BasicPrefix), func() {
 				g.By("by installing", func() {
 					currentPackage = CreateSubscription(packageName, oc)
 					CheckDeployment(currentPackage, oc)
@@ -81,15 +80,9 @@ var _ = g.Describe("[Suite:openshift/operators]", func() {
 })
 
 func TestCaseName(operator string, initialPrefix string) string {
-
-	certifiedPrefix := "[Certified]"
 	suffix := " should work properly"
 	prefix := " Operator "
-	if IsCertifiedOperator(operator) {
-		return initialPrefix + certifiedPrefix + prefix + operator + suffix
-	} else {
-		return initialPrefix + prefix + operator + suffix
-	}
+	return initialPrefix + prefix + operator + suffix
 }
 
 func IsCertifiedOperator(operator string) bool {
