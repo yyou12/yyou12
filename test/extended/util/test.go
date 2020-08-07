@@ -557,6 +557,9 @@ var (
 		"[Suite:openshift/csi]": {
 			`External Storage \[Driver:`,
 		},
+		"[Suite:openshift/operators]": {
+			`\[Suite:openshift/operators\]`,
+		},
 		"[Suite:openshift/isv]": {
 			`\[Suite:openshift/isv\]`,
 		},

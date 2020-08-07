@@ -1,4 +1,4 @@
-package isv
+package operators
 
 import (
 	"io/ioutil"
@@ -37,35 +37,34 @@ var CertifiedOperators = []string{"3scale-community-operator", "amq-streams", "a
 	"portworx", "postgresql", "presto-operator", "prometheus", "radanalytics-spark",
 	"resource-locker-operator", "spark-gcp", "storageos", "strimzi-kafka-operator",
 	"syndesis", "tidb-operator"}
+var CatalogLabels = []string{"certified-operators", "redhat-operators", "community-operators"}
+var BasicPrefix = "[Basic]"
 
-var _ = g.Describe("[Suite:openshift/isv]", func() {
+var _ = g.Describe("[Suite:openshift/operators]", func() {
 
 	var (
-		oc                      = exutil.NewCLI("isv", exutil.KubeConfigPath())
-		catalogLabels           = []string{"certified-operators", "redhat-operators", "community-operators"}
-		output, _               = oc.AsAdmin().WithoutNamespace().NotShowInfo().Run("get").Args("packagemanifest", "-l catalog="+catalogLabels[0], "-o=jsonpath={range .items[*]}{.metadata.labels.catalog}:{.metadata.name}{'\\n'}{end}").Output()
+		oc                      = exutil.NewCLI("operator", exutil.KubeConfigPath())
+		output, _               = oc.AsAdmin().WithoutNamespace().NotShowInfo().Run("get").Args("packagemanifest", "-l catalog="+CatalogLabels[0], "-o=jsonpath={range .items[*]}{.metadata.labels.catalog}:{.metadata.name}{'\\n'}{end}").Output()
 		certifiedPackages       = strings.Split(output, "\n")
-		output2, _              = oc.AsAdmin().WithoutNamespace().NotShowInfo().Run("get").Args("packagemanifest", "-l catalog="+catalogLabels[1], "-o=jsonpath={range .items[*]}{.metadata.labels.catalog}:{.metadata.name}{'\\n'}{end}").Output()
+		output2, _              = oc.AsAdmin().WithoutNamespace().NotShowInfo().Run("get").Args("packagemanifest", "-l catalog="+CatalogLabels[1], "-o=jsonpath={range .items[*]}{.metadata.labels.catalog}:{.metadata.name}{'\\n'}{end}").Output()
 		redhatOperatorsPackages = strings.Split(output2, "\n")
-		output3, _              = oc.AsAdmin().WithoutNamespace().NotShowInfo().Run("get").Args("packagemanifest", "-l catalog="+catalogLabels[2], "-o=jsonpath={range .items[*]}{.metadata.labels.catalog}:{.metadata.name}{'\\n'}{end}").Output()
+		output3, _              = oc.AsAdmin().WithoutNamespace().NotShowInfo().Run("get").Args("packagemanifest", "-l catalog="+CatalogLabels[2], "-o=jsonpath={range .items[*]}{.metadata.labels.catalog}:{.metadata.name}{'\\n'}{end}").Output()
 		communityPackages       = strings.Split(output3, "\n")
 		packages1               = append(certifiedPackages, redhatOperatorsPackages...)
 		allPackages             = append(packages1, communityPackages...)
-		basicPrefix             = "[Basic]"
-		//allPackages    = []string{"community-operators:knative-camel-operator"}
-		currentPackage Packagemanifest
+		currentPackage          Packagemanifest
 	)
 	defer g.GinkgoRecover()
 
 	for i := range allPackages {
 
-		isv := allPackages[i]
-		packageSplitted := strings.Split(isv, ":")
+		operator := allPackages[i]
+		packageSplitted := strings.Split(operator, ":")
 
 		if len(packageSplitted) > 1 {
 			packageName := packageSplitted[1]
 
-			g.It(TestCaseName(packageName, basicPrefix), func() {
+			g.It(TestCaseName(packageName, BasicPrefix), func() {
 				g.By("by installing", func() {
 					currentPackage = CreateSubscription(packageName, oc)
 					CheckDeployment(currentPackage, oc)
@@ -80,20 +79,14 @@ var _ = g.Describe("[Suite:openshift/isv]", func() {
 
 })
 
-func TestCaseName(isv string, initialPrefix string) string {
-
-	certifiedPrefix := "[Certified]"
+func TestCaseName(operator string, initialPrefix string) string {
 	suffix := " should work properly"
 	prefix := " Operator "
-	if IsCertifiedOperator(isv) {
-		return initialPrefix + certifiedPrefix + prefix + isv + suffix
-	} else {
-		return initialPrefix + prefix + isv + suffix
-	}
+	return initialPrefix + prefix + operator + suffix
 }
 
-func IsCertifiedOperator(isv string) bool {
-	if contains(CertifiedOperators, isv) {
+func IsCertifiedOperator(operator string) bool {
+	if contains(CertifiedOperators, operator) {
 		return true
 	}
 	return false
@@ -123,11 +116,11 @@ func checkOperatorInstallModes(p Packagemanifest, oc *exutil.CLI) Packagemanifes
 	return p
 }
 
-func CreatePackageManifest(isv string, oc *exutil.CLI) Packagemanifest {
-	msg, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("packagemanifest", isv, "-o=jsonpath={.status.catalogSource}:{.status.catalogSourceNamespace}:{.status.defaultChannel}").Output()
+func CreatePackageManifest(operator string, oc *exutil.CLI) Packagemanifest {
+	msg, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("packagemanifest", operator, "-o=jsonpath={.status.catalogSource}:{.status.catalogSourceNamespace}:{.status.defaultChannel}").Output()
 	o.Expect(err).NotTo(o.HaveOccurred())
 	packageData := strings.Split(msg, ":")
-	p := Packagemanifest{CatalogSource: packageData[0], CatalogSourceNamespace: packageData[1], DefaultChannel: packageData[2], Name: isv}
+	p := Packagemanifest{CatalogSource: packageData[0], CatalogSourceNamespace: packageData[1], DefaultChannel: packageData[2], Name: operator}
 
 	csvVersion, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("packagemanifest", p.Name, "-o=jsonpath={.status.channels[?(.name=='"+p.DefaultChannel+"')].currentCSV}").Output()
 	o.Expect(err).NotTo(o.HaveOccurred())
@@ -136,8 +129,8 @@ func CreatePackageManifest(isv string, oc *exutil.CLI) Packagemanifest {
 	p = checkOperatorInstallModes(p, oc)
 	return p
 }
-func CreateSubscription(isv string, oc *exutil.CLI) Packagemanifest {
-	p := CreatePackageManifest(isv, oc)
+func CreateSubscription(operator string, oc *exutil.CLI) Packagemanifest {
+	p := CreatePackageManifest(operator, oc)
 	if p.SupportsSingleNamespace || p.SupportsOwnNamespace {
 		p = CreateNamespace(p, oc)
 		CreateOperatorGroup(p, oc)
@@ -145,7 +138,7 @@ func CreateSubscription(isv string, oc *exutil.CLI) Packagemanifest {
 		p.Namespace = "openshift-operators"
 
 	} else {
-		g.Skip("Install Modes AllNamespaces and  SingleNamespace are disabled for Operator: " + isv)
+		g.Skip("Install Modes AllNamespaces and  SingleNamespace are disabled for Operator: " + operator)
 	}
 
 	templateSubscriptionYAML := writeSubscription(p)
@@ -154,8 +147,8 @@ func CreateSubscription(isv string, oc *exutil.CLI) Packagemanifest {
 	return p
 }
 
-func CreateSubscriptionSpecificNamespace(isv string, oc *exutil.CLI, namespaceCreate bool, operatorGroupCreate bool, namespace string) Packagemanifest {
-	p := CreatePackageManifest(isv, oc)
+func CreateSubscriptionSpecificNamespace(operator string, oc *exutil.CLI, namespaceCreate bool, operatorGroupCreate bool, namespace string) Packagemanifest {
+	p := CreatePackageManifest(operator, oc)
 	p.Namespace = namespace
 	if namespaceCreate {
 		CreateNamespace(p, oc)
@@ -195,8 +188,8 @@ func CreateOperatorGroup(p Packagemanifest, oc *exutil.CLI) {
 }
 
 func writeOperatorGroup(namespace string) (templateOperatorYAML string) {
-	isvBaseDir := exutil.FixturePath("testdata", "isv")
-	operatorGroupYAML := filepath.Join(isvBaseDir, "operator_group.yaml")
+	operatorBaseDir := exutil.FixturePath("testdata", "operators")
+	operatorGroupYAML := filepath.Join(operatorBaseDir, "operator_group.yaml")
 	fileOperatorGroup, _ := os.Open(operatorGroupYAML)
 	operatorGroup, _ := ioutil.ReadAll(fileOperatorGroup)
 	operatorGroupTemplate := string(operatorGroup)
@@ -207,8 +200,8 @@ func writeOperatorGroup(namespace string) (templateOperatorYAML string) {
 }
 
 func writeSubscription(p Packagemanifest) (templateSubscriptionYAML string) {
-	isvBaseDir := exutil.FixturePath("testdata", "isv")
-	subscriptionYAML := filepath.Join(isvBaseDir, "subscription.yaml")
+	operatorBaseDir := exutil.FixturePath("testdata", "operators")
+	subscriptionYAML := filepath.Join(operatorBaseDir, "subscription.yaml")
 	fileSubscription, _ := os.Open(subscriptionYAML)
 	subscription, _ := ioutil.ReadAll(fileSubscription)
 	subscriptionTemplate := string(subscription)

@@ -143,8 +143,15 @@ You can update the SA by following this [authentication](https://cloud.google.co
 4. Click `Create`. A JSON file that contains your key downloads to your computer.
 
 
-## Run ISV Operators test
+## Run Certified Operators test
 
 ```console
 $ ./bin/extended-platform-tests run openshift/isv --dry-run | grep -E "<REGEX>" | ./bin/extended-platform-tests run -f -
+```
+
+
+## Run Operators test
+
+```console
+$ ./bin/extended-platform-tests run openshift/operators --dry-run | grep -E "<REGEX>" | ./bin/extended-platform-tests run -f -
 ```
