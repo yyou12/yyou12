@@ -1,4 +1,4 @@
-package isv
+package operators
 
 import (
 	"path/filepath"
@@ -11,9 +11,9 @@ import (
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 )
 
-var _ = g.Describe("[Suite:openshift/isv]", func() {
+var _ = g.Describe("[Suite:openshift/operators]", func() {
 	var (
-		oc                     = exutil.NewCLI("isv", exutil.KubeConfigPath())
+		oc                     = exutil.NewCLI("operators", exutil.KubeConfigPath())
 		intermediateTestsSufix = "[Intermediate]"
 	)
 
@@ -37,7 +37,7 @@ var _ = g.Describe("[Suite:openshift/isv]", func() {
 })
 
 func CreateCR(filename string, oc *exutil.CLI) {
-	buildPruningBaseDir := exutil.FixturePath("testdata", "isv")
+	buildPruningBaseDir := exutil.FixturePath("testdata", "operators")
 	cr := filepath.Join(buildPruningBaseDir, filename)
 	err := oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", cr).Execute()
 	o.Expect(err).NotTo(o.HaveOccurred())

@@ -158,10 +158,21 @@ var staticSuites = []*ginkgo.TestSuite{
 	{
 		Name: "openshift/isv",
 		Description: templates.LongDesc(`
+		This test suite verifies the Certified Operators execution on Openshift
+		`),
+		Matches: func(name string) bool {
+			return strings.Contains(name, "[Suite:openshift/operators] [Basic][Certified]") || strings.Contains(name, "[Suite:openshift/operators] [Intermediate][Certified]")
+		},
+		Parallelism: 3,
+		TestTimeout: 180 * time.Minute,
+	},
+	{
+		Name: "openshift/operators",
+		Description: templates.LongDesc(`
 		This test suite verifies the Operators execution on Openshift
 		`),
 		Matches: func(name string) bool {
-			return strings.Contains(name, "[Suite:openshift/isv]")
+			return strings.Contains(name, "[Suite:openshift/operators]")
 		},
 		Parallelism: 3,
 		TestTimeout: 180 * time.Minute,

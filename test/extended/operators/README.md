@@ -17,7 +17,7 @@ Running Tests
 To run the test suite
 
 ```console
-$ extended-platform-tests run openshift/isv
+$ extended-platform-tests run openshift/operators
 ```
 
 See the description on the test for more info about what prerequites may exist for the test.
@@ -25,6 +25,6 @@ See the description on the test for more info about what prerequites may exist f
 To run a subset of tests using a regexp, run:
 
 ```console
-$ extended-platform-tests run openshift/isv --dry-run | grep -E "<REGEX>" | extended-platform-tests run -f -
+$ extended-platform-tests run openshift/operators --dry-run | grep -E "<REGEX>" | extended-platform-tests run -f -
 ```
 
