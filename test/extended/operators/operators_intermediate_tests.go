@@ -11,7 +11,7 @@ import (
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 )
 
-var _ = g.Describe("[Suite:openshift/operators]", func() {
+var _ = g.Describe("[Suite:openshift/isv]", func() {
 	var (
 		oc                     = exutil.NewCLI("operators", exutil.KubeConfigPath())
 		intermediateTestsSufix = "[Intermediate]"
