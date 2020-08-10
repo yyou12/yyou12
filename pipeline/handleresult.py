@@ -2,6 +2,7 @@
 import xml.dom.minidom
 import argparse
 import re
+import codecs
 
 class TestResult:
 
@@ -25,8 +26,10 @@ class TestResult:
         if toBeRemove is not None:
             noderoot.firstChild.removeChild(toBeRemove)
 
-        with open(output, 'w+') as writer:
-            noderoot.writexml(writer)
+        with open(output, 'w+') as f:
+            writer = codecs.lookup('utf-8')[3](f)
+            noderoot.writexml(writer, encoding='utf-8')
+            writer.close()
 
     def pirntResult(self, input):
         testsummary = {}
