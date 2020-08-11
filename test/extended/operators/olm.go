@@ -127,11 +127,11 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	g.It("High-32613-Operators won't install if the CSV dependency is already installed", func() {
 
 		namespace := "kogito"
-		infinispanPackage := CreateSubscriptionSpecificNamespace("infinispan", oc, true, true, namespace)
+		infinispanPackage := CreateSubscriptionSpecificNamespace("infinispan", oc, true, true, namespace, "Automatic")
 		CheckDeployment(infinispanPackage, oc)
-		keycloakPackage := CreateSubscriptionSpecificNamespace("keycloak-operator", oc, false, false, namespace)
+		keycloakPackage := CreateSubscriptionSpecificNamespace("keycloak-operator", oc, false, false, namespace, "Automatic")
 		CheckDeployment(keycloakPackage, oc)
-		kogitoPackage := CreateSubscriptionSpecificNamespace("kogito-operator", oc, false, false, namespace)
+		kogitoPackage := CreateSubscriptionSpecificNamespace("kogito-operator", oc, false, false, namespace, "Automatic")
 		CheckDeployment(kogitoPackage, oc)
 		RemoveOperatorDependencies(kogitoPackage, oc, false)
 		RemoveNamespace(namespace, oc)
