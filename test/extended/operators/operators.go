@@ -40,6 +40,9 @@ var CertifiedOperators = []string{"3scale-community-operator", "amq-streams", "a
 var CatalogLabels = []string{"certified-operators", "redhat-operators", "community-operators"}
 var BasicPrefix = "[Basic]"
 
+const INSTALLPLAN_AUTOMATIC_MODE = "Automatic"
+const INSTALLPLAN_MANUAL_MODE = "Manual"
+
 var _ = g.Describe("[Suite:openshift/operators]", func() {
 
 	var (
@@ -66,7 +69,7 @@ var _ = g.Describe("[Suite:openshift/operators]", func() {
 
 			g.It(TestCaseName(packageName, BasicPrefix), func() {
 				g.By("by installing", func() {
-					currentPackage = CreateSubscription(packageName, oc, "Automatic")
+					currentPackage = CreateSubscription(packageName, oc, INSTALLPLAN_AUTOMATIC_MODE)
 					CheckDeployment(currentPackage, oc)
 				})
 				g.By("by uninstalling", func() {
