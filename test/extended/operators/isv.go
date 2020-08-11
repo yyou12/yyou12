@@ -17,7 +17,7 @@ var _ = g.Describe("[Suite:openshift/isv]", func() {
 
 		g.It(TestCaseName(CertifiedOperators[i], BasicPrefix), func() {
 			g.By("by installing", func() {
-				currentPackage = CreateSubscription(CertifiedOperators[i], oc)
+				currentPackage = CreateSubscription(CertifiedOperators[i], oc, "Automatic")
 				CheckDeployment(currentPackage, oc)
 			})
 			g.By("by uninstalling", func() {
