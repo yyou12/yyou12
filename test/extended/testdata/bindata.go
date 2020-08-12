@@ -3,6 +3,7 @@
 // test/extended/testdata/bindata.go
 // test/extended/testdata/olm/catalogsource-address.yaml
 // test/extended/testdata/olm/catalogsource-configmap.yaml
+// test/extended/testdata/olm/catalogsource-image.yaml
 // test/extended/testdata/olm/cm-certutil-readytest.yaml
 // test/extended/testdata/olm/cm-certutil-readytests.yaml
 // test/extended/testdata/olm/cm-learn-v1.yaml
@@ -166,6 +167,51 @@ func testExtendedTestdataOlmCatalogsourceConfigmapYaml() (*asset, error) {
 	}
 
 	info := bindataFileInfo{name: "test/extended/testdata/olm/catalogsource-configmap.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataOlmCatalogsourceImageYaml = []byte(`apiVersion: v1
+kind: Template
+metadata:
+  name: catalogsource-image-template
+objects:
+- apiVersion: operators.coreos.com/v1alpha1
+  kind: CatalogSource
+  metadata:
+    name: "${NAME}"
+    namespace: "${NAMESPACE}"
+  spec:
+    image: "${ADDRESS}"
+    displayName: "${DISPLAYNAME}"
+    icon:
+      base64data: ""
+      mediatype: ""
+    publisher: "${PUBLISHER}"
+    sourceType: "${SOURCETYPE}"
+    updateStrategy:
+      registryPoll:
+        interval: 10m0s
+parameters:
+- name: NAME
+- name: NAMESPACE
+- name: ADDRESS
+- name: DISPLAYNAME
+- name: PUBLISHER
+- name: SOURCETYPE
+`)
+
+func testExtendedTestdataOlmCatalogsourceImageYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataOlmCatalogsourceImageYaml, nil
+}
+
+func testExtendedTestdataOlmCatalogsourceImageYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataOlmCatalogsourceImageYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/olm/catalogsource-image.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -2682,6 +2728,7 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/bindata.go":                        testExtendedTestdataBindataGo,
 	"test/extended/testdata/olm/catalogsource-address.yaml":    testExtendedTestdataOlmCatalogsourceAddressYaml,
 	"test/extended/testdata/olm/catalogsource-configmap.yaml":  testExtendedTestdataOlmCatalogsourceConfigmapYaml,
+	"test/extended/testdata/olm/catalogsource-image.yaml":      testExtendedTestdataOlmCatalogsourceImageYaml,
 	"test/extended/testdata/olm/cm-certutil-readytest.yaml":    testExtendedTestdataOlmCmCertutilReadytestYaml,
 	"test/extended/testdata/olm/cm-certutil-readytests.yaml":   testExtendedTestdataOlmCmCertutilReadytestsYaml,
 	"test/extended/testdata/olm/cm-learn-v1.yaml":              testExtendedTestdataOlmCmLearnV1Yaml,
@@ -2754,6 +2801,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 				"olm": {nil, map[string]*bintree{
 					"catalogsource-address.yaml":    {testExtendedTestdataOlmCatalogsourceAddressYaml, map[string]*bintree{}},
 					"catalogsource-configmap.yaml":  {testExtendedTestdataOlmCatalogsourceConfigmapYaml, map[string]*bintree{}},
+					"catalogsource-image.yaml":      {testExtendedTestdataOlmCatalogsourceImageYaml, map[string]*bintree{}},
 					"cm-certutil-readytest.yaml":    {testExtendedTestdataOlmCmCertutilReadytestYaml, map[string]*bintree{}},
 					"cm-certutil-readytests.yaml":   {testExtendedTestdataOlmCmCertutilReadytestsYaml, map[string]*bintree{}},
 					"cm-learn-v1.yaml":              {testExtendedTestdataOlmCmLearnV1Yaml, map[string]*bintree{}},
