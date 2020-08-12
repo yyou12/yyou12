@@ -5,7 +5,7 @@ metadata:
   namespace: $OPERATOR_NAMESPACE
 spec:
   channel: $OPERATOR_CHANNEL
-  installPlanApproval: Automatic
+  installPlanApproval: $OPERATOR_INSTALLPLAN_APPROVAL
   name: $OPERATOR_PACKAGE_NAME
   source: $OPERATOR_SOURCE
   sourceNamespace: $OPERATOR_CATALOG_NAMESPACE

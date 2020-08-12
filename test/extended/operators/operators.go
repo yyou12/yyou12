@@ -40,6 +40,9 @@ var CertifiedOperators = []string{"3scale-community-operator", "amq-streams", "a
 var CatalogLabels = []string{"certified-operators", "redhat-operators", "community-operators"}
 var BasicPrefix = "[Basic]"
 
+const INSTALLPLAN_AUTOMATIC_MODE = "Automatic"
+const INSTALLPLAN_MANUAL_MODE = "Manual"
+
 var _ = g.Describe("[Suite:openshift/operators]", func() {
 
 	var (
@@ -66,7 +69,7 @@ var _ = g.Describe("[Suite:openshift/operators]", func() {
 
 			g.It(TestCaseName(packageName, BasicPrefix), func() {
 				g.By("by installing", func() {
-					currentPackage = CreateSubscription(packageName, oc)
+					currentPackage = CreateSubscription(packageName, oc, INSTALLPLAN_AUTOMATIC_MODE)
 					CheckDeployment(currentPackage, oc)
 				})
 				g.By("by uninstalling", func() {
@@ -129,7 +132,7 @@ func CreatePackageManifest(operator string, oc *exutil.CLI) Packagemanifest {
 	p = checkOperatorInstallModes(p, oc)
 	return p
 }
-func CreateSubscription(operator string, oc *exutil.CLI) Packagemanifest {
+func CreateSubscription(operator string, oc *exutil.CLI, installPlanApprovalMode string) Packagemanifest {
 	p := CreatePackageManifest(operator, oc)
 	if p.SupportsSingleNamespace || p.SupportsOwnNamespace {
 		p = CreateNamespace(p, oc)
@@ -141,13 +144,13 @@ func CreateSubscription(operator string, oc *exutil.CLI) Packagemanifest {
 		g.Skip("Install Modes AllNamespaces and  SingleNamespace are disabled for Operator: " + operator)
 	}
 
-	templateSubscriptionYAML := writeSubscription(p)
+	templateSubscriptionYAML := writeSubscription(p, installPlanApprovalMode)
 	_, err := oc.SetNamespace(p.Namespace).AsAdmin().Run("create").Args("-f", templateSubscriptionYAML).Output()
 	o.Expect(err).NotTo(o.HaveOccurred())
 	return p
 }
 
-func CreateSubscriptionSpecificNamespace(operator string, oc *exutil.CLI, namespaceCreate bool, operatorGroupCreate bool, namespace string) Packagemanifest {
+func CreateSubscriptionSpecificNamespace(operator string, oc *exutil.CLI, namespaceCreate bool, operatorGroupCreate bool, namespace string, installPlanApprovalMode string) Packagemanifest {
 	p := CreatePackageManifest(operator, oc)
 	p.Namespace = namespace
 	if namespaceCreate {
@@ -156,7 +159,7 @@ func CreateSubscriptionSpecificNamespace(operator string, oc *exutil.CLI, namesp
 	if operatorGroupCreate {
 		CreateOperatorGroup(p, oc)
 	}
-	templateSubscriptionYAML := writeSubscription(p)
+	templateSubscriptionYAML := writeSubscription(p, installPlanApprovalMode)
 	_, err := oc.SetNamespace(p.Namespace).AsAdmin().Run("create").Args("-f", templateSubscriptionYAML).Output()
 	o.Expect(err).NotTo(o.HaveOccurred())
 	return p
@@ -199,7 +202,7 @@ func writeOperatorGroup(namespace string) (templateOperatorYAML string) {
 	return
 }
 
-func writeSubscription(p Packagemanifest) (templateSubscriptionYAML string) {
+func writeSubscription(p Packagemanifest, installPlanApprovalMode string) (templateSubscriptionYAML string) {
 	operatorBaseDir := exutil.FixturePath("testdata", "operators")
 	subscriptionYAML := filepath.Join(operatorBaseDir, "subscription.yaml")
 	fileSubscription, _ := os.Open(subscriptionYAML)
@@ -213,6 +216,7 @@ func writeSubscription(p Packagemanifest) (templateSubscriptionYAML string) {
 	operatorSubscription = strings.ReplaceAll(operatorSubscription, "$OPERATOR_SOURCE", p.CatalogSource)
 	operatorSubscription = strings.ReplaceAll(operatorSubscription, "$OPERATOR_CATALOG_NAMESPACE", p.CatalogSourceNamespace)
 	operatorSubscription = strings.ReplaceAll(operatorSubscription, "$OPERATOR_CURRENT_CSV_VERSION", p.CsvVersion)
+	operatorSubscription = strings.ReplaceAll(operatorSubscription, "$OPERATOR_INSTALLPLAN_APPROVAL", installPlanApprovalMode)
 	ioutil.WriteFile(templateSubscriptionYAML, []byte(operatorSubscription), 0644)
 	e2e.Logf("Subscription: %s", operatorSubscription)
 	return

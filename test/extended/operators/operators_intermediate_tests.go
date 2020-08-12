@@ -24,7 +24,7 @@ var _ = g.Describe("[Suite:openshift/isv]", func() {
 		kafkaPackageName := "amq-streams"
 		kafkaFile := "kafka.yaml"
 		namespace := "amq-streams"
-		currentPackage := CreateSubscriptionSpecificNamespace(kafkaPackageName, oc, true, true, namespace)
+		currentPackage := CreateSubscriptionSpecificNamespace(kafkaPackageName, oc, true, true, namespace, INSTALLPLAN_AUTOMATIC_MODE)
 
 		CheckDeployment(currentPackage, oc)
 		CreateCR(kafkaFile, oc)
