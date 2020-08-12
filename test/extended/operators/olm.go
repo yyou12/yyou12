@@ -251,7 +251,6 @@ var _ = g.Describe("[sig-operators] an end user handle OLM common object", func(
 		oc = exutil.NewCLI("olm-common-"+getRandomString(), exutil.KubeConfigPath())
 
 		buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
-		catsrcGrpcTemplate  = filepath.Join(buildPruningBaseDir, "catalogsource-address.yaml")
 		opsrcTemlate        = filepath.Join(buildPruningBaseDir, "opsrc.yaml")
 		dr                  = make(describerResrouce)
 	)
@@ -265,46 +264,6 @@ var _ = g.Describe("[sig-operators] an end user handle OLM common object", func(
 		itName := g.CurrentGinkgoTestDescription().TestText
 		dr.getIr(itName).cleanup()
 		dr.rmIr(itName)
-	})
-
-	// It will cover test case: OCP-24904, author: kuiwang@redhat.com
-	g.It("Medium-24904-create catalogsource with grpc address", func() {
-		var (
-			itName = g.CurrentGinkgoTestDescription().TestText
-			catsrc = catalogSourceDescription{
-				name:        "address-operators",
-				namespace:   oc.Namespace(),
-				displayName: "Test grpc Address Operators",
-				publisher:   "Red Hat",
-				sourceType:  "grpc",
-				address:     "",
-				template:    catsrcGrpcTemplate,
-			}
-		)
-
-		g.By("an end user get the address of service certified-operators with namespace openshift-marketplace")
-		svcPort := getResource(oc, asAdmin, withoutNamespace, "svc", "-n", "openshift-marketplace", fmt.Sprintf("--selector=opsrc-owner-name=%s", "certified-operators"), "-o=jsonpath={.items[0].spec.ports[0].port}")
-		o.Expect(svcPort).NotTo(o.BeEmpty())
-		correctAddress := "certified-operators.openshift-marketplace.svc:" + svcPort
-
-		addresses := []string{correctAddress + "0", correctAddress}
-		applyStepDescription := map[bool]string{true: "correct address", false: "wrong address"}
-		checkStepDescription := map[bool]string{true: "success", false: "failure"}
-		expectedCheckDescription := map[bool]string{true: correctAddress + "READY", false: correctAddress + "0" + "TRANSIENT_FAILURE"}
-		workStepDescription := map[bool]string{true: "works", false: "does not works"}
-		for _, address := range addresses {
-			isCorrectAddress := strings.Compare(address, correctAddress) == 0
-
-			g.By("an end user apply catalogSource yaml with " + applyStepDescription[isCorrectAddress])
-			catsrc.address = address
-			catsrc.create(oc, itName, dr)
-
-			g.By("an end user check if the catalogSouce is created with " + checkStepDescription[isCorrectAddress])
-			newCheck("expect", asUser, withNamespace, compare, expectedCheckDescription[isCorrectAddress], ok, []string{"catsrc", catsrc.name, "-o=jsonpath={.spec.address}{.status..lastObservedState}"}).check(oc)
-
-			g.By("an end user check if the catalogSouce " + workStepDescription[isCorrectAddress] + " expected")
-			newCheck("expect", asUser, withNamespace, contain, "address-operators", isCorrectAddress, []string{"packagemanifest", fmt.Sprintf("--selector=catalog=%s", catsrc.name), "-o=jsonpath={.items[*].status.catalogSource}"}).check(oc)
-		}
 	})
 
 	// It will cover test case: OCP-24076, author: kuiwang@redhat.com
@@ -404,51 +363,8 @@ var _ = g.Describe("[sig-operators] an end user handle OLM common object", func(
 		})
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		newCheck("expect", asAdmin, withoutNamespace, contain, "certified-operators", ok, []string{"packagemanifest", fmt.Sprintf("--selector=catalog=%s", "certified-operators"), "-o=jsonpath={.items[*].status.catalogSource}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, contain, "redhat-operators", ok, []string{"packagemanifest", fmt.Sprintf("--selector=catalog=%s", "redhat-operators"), "-o=jsonpath={.items[*].status.catalogSource}"}).check(oc)
 
-	})
-
-	// It will cover test case: OCP-26002, author: kuiwang@redhat.com
-	g.It("Low-26002-allow pod of operator source on master", func() {
-		var (
-			osrc = operatorSourceDescription{
-				name:      "redhat-operators",
-				namespace: "openshift-marketplace",
-			}
-			moveToMaster = "{\"spec\": {\"template\": {\"spec\": {\"nodeSelector\": {\"node-role.kubernetes.io/master\": \"\"},\"tolerations\": [{\"effect\": \"NoSchedule\",\"key\": " +
-				"\"node-role.kubernetes.io/master\",\"operator\": \"Exists\"}, {\"effect\": \"NoExecute\",\"key\": \"node.kubernetes.io/unreachable\",\"operator\": " +
-				"\"Exists\",\"tolerationSeconds\": 120}, {\"effect\": \"NoExecute\",\"key\": \"node.kubernetes.io/not-ready\",\"operator\": \"Exists\",\"tolerationSeconds\": 120}]}}}}"
-			moveToWork = "{\"spec\": {\"template\": {\"spec\": {\"nodeSelector\": {\"node-role.kubernetes.io/master\": null}, %s}}}}"
-		)
-
-		g.By("Check it is on work node. if it is already master node, expected and do nothing")
-		currentNodes := osrc.getRunningNodes(oc)
-		for _, currentNode := range strings.Fields(currentNodes) {
-			err := newCheck("expect", asAdmin, withoutNamespace, contain, "master", nok, []string{"nodes", currentNode, "-o=jsonpath={.spec.taints[*].key}"}).checkWithoutAssert(oc)
-			if err != nil {
-				e2e.Logf("it is alredy running on master node")
-				return
-			}
-		}
-		osrc.getDeployment(oc)
-		origTolerations := osrc.getTolerations(oc)
-
-		g.By("Schedule it to master node")
-		osrc.patchDeployment(oc, moveToMaster)
-		nodes := osrc.getRunningNodes(oc)
-		onMasterNode := false
-		for _, node := range strings.Fields(nodes) {
-			if strings.Index(currentNodes, node) == -1 {
-				err := newCheck("expect", asAdmin, withoutNamespace, contain, "master", ok, []string{"nodes", node, "-o=jsonpath={.spec.taints[*].key}"}).checkWithoutAssert(oc)
-				if err == nil {
-					onMasterNode = true
-				}
-			}
-		}
-		o.Expect(onMasterNode).To(o.BeTrue())
-
-		g.By("Schedule it back to work node")
-		osrc.patchDeployment(oc, fmt.Sprintf(moveToWork, origTolerations))
 	})
 
 	// It will cover test case: OCP-24094, author: kuiwang@redhat.com
@@ -510,7 +426,7 @@ var _ = g.Describe("[sig-operators] an end user handle OLM within a namespace", 
 
 		buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
 		ogSingleTemplate    = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
-		catsrcGrpcTemplate  = filepath.Join(buildPruningBaseDir, "catalogsource-address.yaml")
+		catsrcImageTemplate = filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
 		subTemplate         = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
 		dr                  = make(describerResrouce)
 
@@ -612,11 +528,13 @@ var _ = g.Describe("[sig-operators] an end user handle OLM within a namespace", 
 		apiLabels := getResource(oc, asUser, withNamespace, "csv", sub.installedCSV, "-o=jsonpath={.metadata.labels}")
 		o.Expect(len(apiLabels)).NotTo(o.BeZero())
 
-		for _, v := range strings.Fields(strings.Trim(apiLabels, "map[]")) {
-			hash := strings.Split(strings.Split(v, ":")[0], ".")[2]
-			match, err := regexp.MatchString(`^[a-fA-F0-9]{16}$|^[a-fA-F0-9]{15}$`, hash)
-			o.Expect(err).NotTo(o.HaveOccurred())
-			o.Expect(match).To(o.BeTrue())
+		for _, v := range strings.Split(strings.Trim(apiLabels, "{}"), ",") {
+			if strings.Contains(v, "olm.api") {
+				hash := strings.Trim(strings.Split(strings.Split(v, ":")[0], ".")[2], "\"")
+				match, err := regexp.MatchString(`^[a-fA-F0-9]{16}$|^[a-fA-F0-9]{15}$`, hash)
+				o.Expect(err).NotTo(o.HaveOccurred())
+				o.Expect(match).To(o.BeTrue())
+			}
 		}
 	})
 
@@ -692,7 +610,7 @@ var _ = g.Describe("[sig-operators] an end user handle OLM within a namespace", 
 				publisher:   "Red Hat",
 				sourceType:  "grpc",
 				address:     "",
-				template:    catsrcGrpcTemplate,
+				template:    catsrcImageTemplate,
 			}
 			og  = ogD
 			sub = subD
@@ -715,9 +633,9 @@ var _ = g.Describe("[sig-operators] an end user handle OLM within a namespace", 
 		newCheck("expect", asUser, withoutNamespace, contain, "UnhealthyCatalogSourceFound", ok, []string{"sub", sub.name, "-n", sub.namespace, "-o=jsonpath={.status.conditions[*].reason}"}).check(oc)
 
 		g.By("create catalogsource")
-		svcPort := getResource(oc, asAdmin, withoutNamespace, "svc", "-n", "openshift-marketplace", fmt.Sprintf("--selector=opsrc-owner-name=%s", "community-operators"), "-o=jsonpath={.items[0].spec.ports[0].port}")
-		o.Expect(svcPort).NotTo(o.BeEmpty())
-		catsrc.address = "community-operators.openshift-marketplace.svc:" + svcPort
+		imageAddress := getResource(oc, asAdmin, withoutNamespace, "catsrc", "community-operators", "-n", "openshift-marketplace", "-o=jsonpath={.spec.image}")
+		o.Expect(imageAddress).NotTo(o.BeEmpty())
+		catsrc.address = imageAddress
 		catsrc.create(oc, itName, dr)
 		newCheck("expect", asAdmin, withoutNamespace, compare, "READY", ok, []string{"catsrc", catsrc.name, "-n", catsrc.namespace, "-o=jsonpath={.status..lastObservedState}"}).check(oc)
 
@@ -737,7 +655,7 @@ var _ = g.Describe("[sig-operators] an end user handle OLM within a namespace", 
 				publisher:   "Red Hat",
 				sourceType:  "grpc",
 				address:     "",
-				template:    catsrcGrpcTemplate,
+				template:    catsrcImageTemplate,
 			}
 			repeatedCount = 2
 			og            = ogD
@@ -755,9 +673,9 @@ var _ = g.Describe("[sig-operators] an end user handle OLM within a namespace", 
 		og.create(oc, itName, dr)
 
 		g.By("Get address of catalogsource and name")
-		svcPort := getResource(oc, asAdmin, withoutNamespace, "svc", "-n", "openshift-marketplace", fmt.Sprintf("--selector=opsrc-owner-name=%s", "community-operators"), "-o=jsonpath={.items[0].spec.ports[0].port}")
-		o.Expect(svcPort).NotTo(o.BeEmpty())
-		catsrc.address = "community-operators.openshift-marketplace.svc:" + svcPort
+		imageAddress := getResource(oc, asAdmin, withoutNamespace, "catsrc", "community-operators", "-n", "openshift-marketplace", "-o=jsonpath={.spec.image}")
+		o.Expect(imageAddress).NotTo(o.BeEmpty())
+		catsrc.address = imageAddress
 
 		for i := 0; i < repeatedCount; i++ {
 			g.By("Create Catalogsource")
