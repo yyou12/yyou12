@@ -250,9 +250,7 @@ var _ = g.Describe("[sig-operators] an end user handle OLM common object", func(
 	var (
 		oc = exutil.NewCLI("olm-common-"+getRandomString(), exutil.KubeConfigPath())
 
-		buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
-		opsrcTemlate        = filepath.Join(buildPruningBaseDir, "opsrc.yaml")
-		dr                  = make(describerResrouce)
+		dr = make(describerResrouce)
 	)
 
 	g.BeforeEach(func() {
@@ -388,32 +386,6 @@ var _ = g.Describe("[sig-operators] an end user handle OLM common object", func(
 
 		g.By("check if they exist")
 		cl.check(oc)
-	})
-
-	// It will cover test case: OCP-24093, author: kuiwang@redhat.com
-	g.It("Medium-24093-check the delete of operatorsource", func() {
-		var (
-			itName = g.CurrentGinkgoTestDescription().TestText
-			osrc   = operatorSourceDescription{
-				name:              "opsrctestolm",
-				namespace:         "openshift-marketplace",
-				namelabel:         "opsrctestolm",
-				registrynamespace: "certified-operators",
-				displayname:       "opsrctestolm",
-				publisher:         "opsrctestolm",
-				template:          opsrcTemlate,
-			}
-			cl = checkList{}
-		)
-
-		g.By("create operatorsource")
-		osrc.create(oc, itName, dr)
-		cl.add(newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"opsrc", osrc.name, "-n", osrc.namespace, "-o=jsonpath={.status.currentPhase.phase.name}"}))
-		cl.add(newCheck("expect", asAdmin, withoutNamespace, compare, "READY", ok, []string{"catsrc", osrc.name, "-n", osrc.namespace, "-o=jsonpath={.status.connectionState.lastObservedState}"}))
-		cl.check(oc)
-
-		g.By("delete operatorsource")
-		osrc.delete(itName, dr)
 	})
 
 })
