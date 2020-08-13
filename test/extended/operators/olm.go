@@ -175,33 +175,6 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		}
 	})
 
-	g.It("Medium-OCP-23395-Recreate catalog registry pods and if they are deleted", func() {
-		msg, err := oc.SetNamespace("openshift-marketplace").AsAdmin().Run("get").Args("operatorsource", "-o=jsonpath={range .items[*].metadata}{.name}{'\\n'}").Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		catalogSources := strings.Split(msg, "\n")
-		e2e.Logf("Catalog sources: %s", catalogSources)
-		if len(catalogSources) > 0 {
-			catalogSourceLabel := "marketplace.operatorSource=" + catalogSources[0]
-			msg, err := oc.SetNamespace("openshift-marketplace").AsAdmin().Run("delete").Args("pods", "-l "+catalogSourceLabel).Output()
-			o.Expect(err).NotTo(o.HaveOccurred())
-			o.Expect(msg).To(o.ContainSubstring("deleted"))
-
-			poolErr := wait.Poll(5*time.Second, 60*time.Second, func() (bool, error) {
-				msg, err := oc.SetNamespace("openshift-marketplace").AsAdmin().Run("get").Args("pods", "-l "+catalogSourceLabel, "-o=jsonpath={range .items[*].status}{.phase}").Output()
-				if err != nil {
-					e2e.Logf("Fail to get catalogsource pod, error: %v", err)
-					return false, err
-				}
-				if strings.Contains(msg, "Running") {
-					return true, nil
-				}
-				return false, nil
-			})
-			o.Expect(poolErr).NotTo(o.HaveOccurred())
-		} else {
-			e2e.Failf("Fail to get catalogsource pod %s", msg)
-		}
-	})
 })
 
 var _ = g.Describe("[sig-operators] an end user use OLM", func() {
@@ -363,29 +336,6 @@ var _ = g.Describe("[sig-operators] an end user handle OLM common object", func(
 
 		newCheck("expect", asAdmin, withoutNamespace, contain, "redhat-operators", ok, []string{"packagemanifest", fmt.Sprintf("--selector=catalog=%s", "redhat-operators"), "-o=jsonpath={.items[*].status.catalogSource}"}).check(oc)
 
-	})
-
-	// It will cover test case: OCP-24094, author: kuiwang@redhat.com
-	g.It("Medium-24094-Default resources of Marketplace operator", func() {
-		var (
-			cl = checkList{}
-		)
-
-		g.By("add checker for default resources of marketplace operator")
-		cl.add(newCheck("expect", asAdmin, withoutNamespace, compare, "Active", ok, []string{"ns", "openshift-marketplace", "-o=jsonpath={.status.phase}"}))
-		cl.add(newCheck("expect", asAdmin, withoutNamespace, compare, "CatalogSourceConfig", ok, []string{"crd", "catalogsourceconfigs.operators.coreos.com", "-o=jsonpath={.status.acceptedNames.kind}"}))
-		cl.add(newCheck("expect", asAdmin, withoutNamespace, compare, "OperatorSource", ok, []string{"crd", "operatorsources.operators.coreos.com", "-o=jsonpath={.status.acceptedNames.kind}"}))
-		cl.add(newCheck("expect", asAdmin, withoutNamespace, contain, "marketplace-operator", ok, []string{"sa", "marketplace-operator", "-n", "openshift-marketplace", "-o=jsonpath={.secrets[*].name}"}))
-		cl.add(newCheck("present", asAdmin, withoutNamespace, present, "", ok, []string{"clusterrole", "marketplace-operator"}))
-		cl.add(newCheck("present", asAdmin, withoutNamespace, present, "", ok, []string{"ClusterRoleBinding", "marketplace-operator"}))
-		cl.add(newCheck("expect", asAdmin, withoutNamespace, contain, "Succeeded", ok, []string{"operatorsource", "-n", "openshift-marketplace", "-o=jsonpath={.items[*].status.currentPhase.phase.name}"}))
-		cl.add(newCheck("expect", asAdmin, withoutNamespace, compare, "1", ok, []string{"deployment", "-l", "opsrc-owner-name=certified-operators", "-n", "openshift-marketplace", "-o=jsonpath={.items[*].status.availableReplicas}"}))
-		cl.add(newCheck("expect", asAdmin, withoutNamespace, compare, "grpc", ok, []string{"svc", "-l", "opsrc-owner-name=certified-operators", "-n", "openshift-marketplace", "-o=jsonpath={.items[*].spec.ports[*].name}"}))
-		cl.add(newCheck("expect", asAdmin, withoutNamespace, compare, "true", ok, []string{"pods", "-l", "marketplace.operatorSource=redhat-operators", "-n", "openshift-marketplace", "-o=jsonpath={.items[*].status.containerStatuses[*].ready}"}))
-		cl.add(newCheck("expect", asAdmin, withoutNamespace, contain, "READY", ok, []string{"catalogsource", "-n", "openshift-marketplace", "-o=jsonpath={.items[*].status.connectionState.lastObservedState}"}))
-
-		g.By("check if they exist")
-		cl.check(oc)
 	})
 
 })
