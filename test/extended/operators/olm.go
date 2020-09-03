@@ -177,7 +177,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 
 })
 
-var _ = g.Describe("[sig-operators] an end user use OLM", func() {
+var _ = g.Describe("[sig-operators] OLM for an end user use", func() {
 	defer g.GinkgoRecover()
 
 	var (
@@ -217,7 +217,7 @@ var _ = g.Describe("[sig-operators] an end user use OLM", func() {
 
 })
 
-var _ = g.Describe("[sig-operators] an end user handle OLM common object", func() {
+var _ = g.Describe("[sig-operators] OLM for an end user handle common object", func() {
 	defer g.GinkgoRecover()
 
 	var (
@@ -340,7 +340,7 @@ var _ = g.Describe("[sig-operators] an end user handle OLM common object", func(
 
 })
 
-var _ = g.Describe("[sig-operators] an end user handle OLM within a namespace", func() {
+var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespace", func() {
 	defer g.GinkgoRecover()
 
 	var (
@@ -687,7 +687,7 @@ var _ = g.Describe("[sig-operators] an end user handle OLM within a namespace", 
 
 })
 
-var _ = g.Describe("[sig-operators] an end user handle OLM to support", func() {
+var _ = g.Describe("[sig-operators] OLM for an end user handle to support", func() {
 	defer g.GinkgoRecover()
 
 	var (
@@ -1068,7 +1068,7 @@ var _ = g.Describe("[sig-operators] an end user handle OLM to support", func() {
 
 })
 
-var _ = g.Describe("[sig-operators] an end user handle OLM within all namespace", func() {
+var _ = g.Describe("[sig-operators] OLM for an end user handle within all namespace", func() {
 	defer g.GinkgoRecover()
 
 	var (
