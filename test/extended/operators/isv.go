@@ -5,7 +5,7 @@ import (
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
 )
 
-var _ = g.Describe("[Suite:openshift/isv]", func() {
+var _ = g.Describe("[Suite:openshift/isv] ISV_Operators", func() {
 
 	var (
 		oc             = exutil.NewCLI("isv", exutil.KubeConfigPath())
