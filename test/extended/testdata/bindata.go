@@ -11,6 +11,7 @@
 // test/extended/testdata/olm/cm-lightbend.yaml
 // test/extended/testdata/olm/cm-namespaceconfig.yaml
 // test/extended/testdata/olm/configmap-test.yaml
+// test/extended/testdata/olm/cs-without-image.yaml
 // test/extended/testdata/olm/csc.yaml
 // test/extended/testdata/olm/etcd-cluster.yaml
 // test/extended/testdata/olm/etcd-custom-csc.yaml
@@ -2167,6 +2168,46 @@ func testExtendedTestdataOlmConfigmapTestYaml() (*asset, error) {
 	return a, nil
 }
 
+var _testExtendedTestdataOlmCsWithoutImageYaml = []byte(`apiVersion: v1
+kind: Template
+metadata:
+  name: catalogsource-image-template
+objects:
+- apiVersion: operators.coreos.com/v1alpha1
+  kind: CatalogSource
+  metadata:
+    name: "${NAME}"
+    namespace: "${NAMESPACE}"
+  spec:
+    displayName: "${DISPLAYNAME}"
+    publisher: "${PUBLISHER}"
+    sourceType: "${SOURCETYPE}"
+    updateStrategy:
+      registryPoll:
+        interval: 10m0s
+parameters:
+- name: NAME
+- name: NAMESPACE
+- name: DISPLAYNAME
+- name: PUBLISHER
+- name: SOURCETYPE
+`)
+
+func testExtendedTestdataOlmCsWithoutImageYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataOlmCsWithoutImageYaml, nil
+}
+
+func testExtendedTestdataOlmCsWithoutImageYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataOlmCsWithoutImageYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/olm/cs-without-image.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
 var _testExtendedTestdataOlmCscYaml = []byte(`apiVersion: v1
 kind: Template
 metadata:
@@ -2736,6 +2777,7 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/olm/cm-lightbend.yaml":             testExtendedTestdataOlmCmLightbendYaml,
 	"test/extended/testdata/olm/cm-namespaceconfig.yaml":       testExtendedTestdataOlmCmNamespaceconfigYaml,
 	"test/extended/testdata/olm/configmap-test.yaml":           testExtendedTestdataOlmConfigmapTestYaml,
+	"test/extended/testdata/olm/cs-without-image.yaml":         testExtendedTestdataOlmCsWithoutImageYaml,
 	"test/extended/testdata/olm/csc.yaml":                      testExtendedTestdataOlmCscYaml,
 	"test/extended/testdata/olm/etcd-cluster.yaml":             testExtendedTestdataOlmEtcdClusterYaml,
 	"test/extended/testdata/olm/etcd-custom-csc.yaml":          testExtendedTestdataOlmEtcdCustomCscYaml,
@@ -2809,6 +2851,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 					"cm-lightbend.yaml":             {testExtendedTestdataOlmCmLightbendYaml, map[string]*bintree{}},
 					"cm-namespaceconfig.yaml":       {testExtendedTestdataOlmCmNamespaceconfigYaml, map[string]*bintree{}},
 					"configmap-test.yaml":           {testExtendedTestdataOlmConfigmapTestYaml, map[string]*bintree{}},
+					"cs-without-image.yaml":         {testExtendedTestdataOlmCsWithoutImageYaml, map[string]*bintree{}},
 					"csc.yaml":                      {testExtendedTestdataOlmCscYaml, map[string]*bintree{}},
 					"etcd-cluster.yaml":             {testExtendedTestdataOlmEtcdClusterYaml, map[string]*bintree{}},
 					"etcd-custom-csc.yaml":          {testExtendedTestdataOlmEtcdCustomCscYaml, map[string]*bintree{}},
