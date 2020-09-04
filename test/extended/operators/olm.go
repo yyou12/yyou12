@@ -29,6 +29,62 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 
 	var oc = exutil.NewCLIWithoutNamespace("default")
 
+	// author: jiazha@redhat.com
+	g.It("High-32559-catalog operator crashed", func() {
+		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
+		csImageTemplate := filepath.Join(buildPruningBaseDir, "cs-without-image.yaml")
+		csTypes := []struct {
+			name        string
+			csType      string
+			expectedMSG string
+		}{
+			{"cs-noimage", "grpc", "image and address unset"},
+			{"cs-noimage-cm", "configmap", "configmap name unset"},
+		}
+		for _, t := range csTypes {
+			g.By(fmt.Sprintf("test the %s type CatalogSource", t.csType))
+			cs := catalogSourceDescription{
+				name:        t.name,
+				namespace:   "openshift-marketplace",
+				displayName: "OLM QE",
+				publisher:   "OLM QE",
+				sourceType:  t.csType,
+				template:    csImageTemplate,
+			}
+			dr := make(describerResrouce)
+			itName := g.CurrentGinkgoTestDescription().TestText
+			dr.addIr(itName)
+			cs.create(oc, itName, dr)
+
+			err := wait.Poll(30*time.Second, 180*time.Second, func() (bool, error) {
+				output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", "openshift-marketplace", "catalogsource", cs.name, "-o=jsonpath={.status.message}").Output()
+				if err != nil {
+					e2e.Logf("Fail to get CatalogSource: %s, error: %s and try again", cs.name, err)
+					return false, nil
+				}
+				if strings.Contains(output, t.expectedMSG) {
+					e2e.Logf("Get expected message: %s", t.expectedMSG)
+					return true, nil
+				}
+				return false, nil
+			})
+
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			status, err := oc.AsAdmin().Run("get").Args("-n", "openshift-operator-lifecycle-manager", "pods", "-l", "app=catalog-operator", "-o=jsonpath={.items[0].status.phase}").Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			if status != "Running" {
+				e2e.Failf("The status of the CatalogSource: %s pod is: %s", cs.name, status)
+			}
+		}
+
+		//destroy the two CatalogSource CRs
+		for _, t := range csTypes {
+			_, err := oc.AsAdmin().WithoutNamespace().Run("delete").Args("-n", "openshift-marketplace", "catalogsource", t.name).Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}
+	})
+
 	g.It("Critical-22070-support grpc sourcetype [Serial]", func() {
 		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
 		catalogsourceYAML := filepath.Join(buildPruningBaseDir, "image-catalogsource.yaml")
