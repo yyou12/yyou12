@@ -293,6 +293,29 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle common object", f
 		dr.rmIr(itName)
 	})
 
+	// It will cover test case: OCP-22259, author: kuiwang@redhat.com
+	g.It("Medium-22259-marketplace operator CR status on a running cluster [Serial]", func() {
+
+		g.By("check marketplace status")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "TrueFalseFalse", ok, []string{"clusteroperator", "marketplace",
+			"-o=jsonpath={.status.conditions[?(@.type==\"Available\")].status}{.status.conditions[?(@.type==\"Progressing\")].status}{.status.conditions[?(@.type==\"Degraded\")].status}"}).check(oc)
+
+		g.By("get pod of marketplace")
+		podName := getResource(oc, asAdmin, withoutNamespace, "pod", "--selector=name=marketplace-operator", "-n", "openshift-marketplace",
+			"-o=jsonpath={...metadata.name}")
+		o.Expect(podName).NotTo(o.BeEmpty())
+
+		g.By("delete pod of marketplace")
+		_, err := doAction(oc, "delete", asAdmin, withoutNamespace, "pod", podName, "-n", "openshift-marketplace")
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		exec.Command("bash", "-c", "sleep 10").Output()
+
+		g.By("pod of marketplace restart")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "TrueFalseFalse", ok, []string{"clusteroperator", "marketplace",
+			"-o=jsonpath={.status.conditions[?(@.type==\"Available\")].status}{.status.conditions[?(@.type==\"Progressing\")].status}{.status.conditions[?(@.type==\"Degraded\")].status}"}).check(oc)
+	})
+
 	// It will cover test case: OCP-24076, author: kuiwang@redhat.com
 	g.It("Medium-24076-check the version of olm operator is appropriate in ClusterOperator", func() {
 		var (
@@ -741,6 +764,72 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		sa.checkAuth(oc, "yes", "Hawtio")
 	})
 
+	// It will cover test case: OCP-29723, author: kuiwang@redhat.com
+	g.It("Medium-29723-As cluster admin find abnormal status condition via components of operator resource", func() {
+		var (
+			itName = g.CurrentGinkgoTestDescription().TestText
+			og     = operatorGroupDescription{
+				name:      "og-singlenamespace",
+				namespace: "",
+				template:  ogSingleTemplate,
+			}
+			catsrc = catalogSourceDescription{
+				name:        "catsrc-29723-operator",
+				namespace:   "",
+				displayName: "Test Catsrc 29723 Operators",
+				publisher:   "Red Hat",
+				sourceType:  "grpc",
+				address:     "quay.io/olmqe/olm-api:v1",
+				template:    catsrcImageTemplate,
+			}
+			sub = subscriptionDescription{
+				name:                   "cockroachdb",
+				namespace:              "",
+				channel:                "stable",
+				ipApproval:             "Automatic",
+				operator:               "cockroachdb",
+				catalogSourceName:      catsrc.name,
+				catalogSourceNamespace: "",
+				startingCSV:            "cockroachdb.v2.1.11",
+				currentCSV:             "",
+				installedCSV:           "",
+				template:               subTemplate,
+				singleNamespace:        true,
+			}
+		)
+		oc.SetupProject() //project and its resource are deleted automatically when out of It, so no need derfer or AfterEach
+		og.namespace = oc.Namespace()
+		catsrc.namespace = oc.Namespace()
+		sub.namespace = oc.Namespace()
+		sub.catalogSourceNamespace = catsrc.namespace
+
+		g.By("create catalog source")
+		catsrc.create(oc, itName, dr)
+
+		g.By("Create og")
+		og.create(oc, itName, dr)
+
+		g.By("install perator")
+		sub.create(oc, itName, dr)
+
+		g.By("delete catalog source")
+		catsrc.delete(itName, dr)
+		g.By("delete sa")
+		_, err := doAction(oc, "delete", asAdmin, withoutNamespace, "sa", "cockroachdb-operator", "-n", sub.namespace)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("check abnormal status")
+		output := getResource(oc, asAdmin, withoutNamespace, "operator", sub.operator+"."+sub.namespace, "-o=json")
+		o.Expect(output).NotTo(o.BeEmpty())
+
+		output = getResource(oc, asAdmin, withoutNamespace, "operator", sub.operator+"."+sub.namespace,
+			fmt.Sprintf("-o=jsonpath={.status.components.refs[?(@.name==\"%s\")].conditions[*].reason}", sub.name))
+		o.Expect(output).To(o.ContainSubstring("UnhealthyCatalogSourceFound"))
+
+		output = getResource(oc, asAdmin, withoutNamespace, "operator", sub.operator+"."+sub.namespace,
+			fmt.Sprintf("-o=jsonpath={.status.components.refs[?(@.name==\"%s\")].conditions[*].message}", sub.installedCSV))
+		o.Expect(output).To(o.ContainSubstring("requirements not met"))
+	})
 })
 
 var _ = g.Describe("[sig-operators] OLM for an end user handle to support", func() {
