@@ -216,6 +216,7 @@ type catalogSourceDescription struct {
 	sourceType  string
 	address     string
 	template    string
+	priority    int
 }
 
 func (catsrc *catalogSourceDescription) create(oc *exutil.CLI, itName string, dr describerResrouce) {
@@ -236,6 +237,17 @@ type operatorGroupDescription struct {
 	template     string
 }
 
+func (og *operatorGroupDescription) createwithCheck(oc *exutil.CLI, itName string, dr describerResrouce) {
+	output, err := doAction(oc, "get", asAdmin, false, "operatorgroup")
+	o.Expect(err).NotTo(o.HaveOccurred())
+	if strings.Contains(output, "No resources found") {
+		e2e.Logf(fmt.Sprintf("No operatorgroup in project: %s, create one: %s", oc.Namespace, og.name))
+		og.create(oc, itName, dr)
+	} else {
+		e2e.Logf(fmt.Sprintf("Already exist operatorgroup in project: %s", oc.Namespace))
+	}
+
+}
 func (og *operatorGroupDescription) create(oc *exutil.CLI, itName string, dr describerResrouce) {
 	var err error
 	if strings.Compare(og.multinslabel, "") == 0 {
@@ -327,6 +339,20 @@ type projectDescription struct {
 	targetNamespace string
 }
 
+func (p *projectDescription) createwithCheck(oc *exutil.CLI, itName string, dr describerResrouce) {
+	output, err := doAction(oc, "get", asAdmin, withoutNamespace, "project", p.name)
+	if err != nil {
+		e2e.Logf(fmt.Sprintf("Output: %s, cannot find the %s project, create one", output, p.name))
+		_, err := doAction(oc, "adm", asAdmin, withoutNamespace, "new-project", p.name)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		dr.getIr(itName).add(newResource(oc, "project", p.name, notRequireNS, ""))
+		_, err = doAction(oc, "project", asAdmin, withoutNamespace, p.name)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+	} else {
+		e2e.Logf(fmt.Sprintf("project: %s already exist!", p.name))
+	}
+}
 func (p *projectDescription) create(oc *exutil.CLI, itName string, dr describerResrouce) {
 	removeResource(oc, asAdmin, withoutNamespace, "project", p.name)
 	_, err := doAction(oc, "new-project", asAdmin, withoutNamespace, p.name)
