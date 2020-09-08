@@ -2525,10 +2525,13 @@ parameters:
 - name: SUBNAMESPACE
 - name: CHANNEL
 - name: APPROVAL
+  value: "Automatic"
 - name: OPERATORNAME
 - name: SOURCENAME
 - name: SOURCENAMESPACE
+  value: "openshift-marketplace"
 - name: STARTINGCSV
+  value: ""
 `)
 
 func testExtendedTestdataOlmOlmSubscriptionYamlBytes() ([]byte, error) {

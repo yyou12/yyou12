@@ -30,6 +30,48 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	var oc = exutil.NewCLIWithoutNamespace("default")
 
 	// author: jiazha@redhat.com
+	g.It("Medium-32560-Unpacking bundle in InstallPlan fails", func() {
+		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
+		csImageTemplate := filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
+		subTemplate := filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+		g.By("Start to create the CatalogSource CR")
+		cs := catalogSourceDescription{
+			name:        "bug-1798645-cs",
+			namespace:   "openshift-marketplace",
+			displayName: "OLM QE",
+			publisher:   "OLM QE",
+			sourceType:  "grpc",
+			address:     "quay.io/olmtest/single-bundle-index:1.0.0",
+			template:    csImageTemplate,
+		}
+		dr := make(describerResrouce)
+		itName := g.CurrentGinkgoTestDescription().TestText
+		dr.addIr(itName)
+		cs.create(oc, itName, dr)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "READY", ok, []string{"catsrc", cs.name, "-n", cs.namespace, "-o=jsonpath={.status..lastObservedState}"}).check(oc)
+
+		g.By("Start to subscribe the Kiali operator")
+		sub := subscriptionDescription{
+			subName:                "bug-1798645-sub",
+			namespace:              "openshift-operators",
+			catalogSourceName:      "bug-1798645-cs",
+			catalogSourceNamespace: "openshift-marketplace",
+			channel:                "stable",
+			ipApproval:             "Automatic",
+			operatorPackage:        "kiali",
+			singleNamespace:        false,
+			template:               subTemplate,
+		}
+		sub.create(oc, itName, dr)
+		newCheck("expect", asAdmin, withNamespace, compare, "Succeeded", ok, []string{"csv", sub.installedCSV, "-o=jsonpath={.status.phase}"}).check(oc)
+
+		g.By("Remove catalog and sub")
+		sub.delete(itName, dr)
+		sub.getCSV().delete(itName, dr)
+		cs.delete(itName, dr)
+	})
+
+	// author: jiazha@redhat.com
 	g.It("High-32559-catalog operator crashed", func() {
 		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
 		csImageTemplate := filepath.Join(buildPruningBaseDir, "cs-without-image.yaml")
@@ -437,11 +479,11 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 			template:  ogSingleTemplate,
 		}
 		subD = subscriptionDescription{
-			name:                   "hawtio-operator",
+			subName:                "hawtio-operator",
 			namespace:              "",
 			channel:                "alpha",
 			ipApproval:             "Automatic",
-			operator:               "hawtio-operator",
+			operatorPackage:        "hawtio-operator",
 			catalogSourceName:      "community-operators",
 			catalogSourceNamespace: "openshift-marketplace",
 			startingCSV:            "",
@@ -589,7 +631,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		sub.create(oc, itName, dr)
 
 		g.By("the install plan is RequiresApproval")
-		installPlan := getResource(oc, asAdmin, withoutNamespace, "sub", sub.name, "-n", sub.namespace, "-o=jsonpath={.status.installplan.name}")
+		installPlan := getResource(oc, asAdmin, withoutNamespace, "sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.installplan.name}")
 		o.Expect(installPlan).NotTo(o.BeEmpty())
 		newCheck("expect", asAdmin, withoutNamespace, compare, "RequiresApproval", ok, []string{"ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
 
@@ -631,7 +673,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		sub.createWithoutCheck(oc, itName, dr)
 
 		g.By("check its condition is UnhealthyCatalogSourceFound")
-		newCheck("expect", asUser, withoutNamespace, contain, "UnhealthyCatalogSourceFound", ok, []string{"sub", sub.name, "-n", sub.namespace, "-o=jsonpath={.status.conditions[*].reason}"}).check(oc)
+		newCheck("expect", asUser, withoutNamespace, contain, "UnhealthyCatalogSourceFound", ok, []string{"sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.conditions[*].reason}"}).check(oc)
 
 		g.By("create catalogsource")
 		imageAddress := getResource(oc, asAdmin, withoutNamespace, "catsrc", "community-operators", "-n", "openshift-marketplace", "-o=jsonpath={.spec.image}")
@@ -641,7 +683,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		newCheck("expect", asAdmin, withoutNamespace, compare, "READY", ok, []string{"catsrc", catsrc.name, "-n", catsrc.namespace, "-o=jsonpath={.status..lastObservedState}"}).check(oc)
 
 		g.By("check its condition is AllCatalogSourcesHealthy and csv is created")
-		newCheck("expect", asUser, withoutNamespace, contain, "AllCatalogSourcesHealthy", ok, []string{"sub", sub.name, "-n", sub.namespace, "-o=jsonpath={.status.conditions[*].reason}"}).check(oc)
+		newCheck("expect", asUser, withoutNamespace, contain, "AllCatalogSourcesHealthy", ok, []string{"sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.conditions[*].reason}"}).check(oc)
 		sub.findInstalledCSV(oc, itName, dr)
 	})
 
@@ -894,11 +936,11 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle to support", func
 			template:    catsrcCmTemplate,
 		}
 		subNc = subscriptionDescription{
-			name:                   "namespace-configuration-operator",
+			subName:                "namespace-configuration-operator",
 			namespace:              "", //must be set in iT
 			channel:                "alpha",
 			ipApproval:             "Automatic",
-			operator:               "namespace-configuration-operator",
+			operatorPackage:        "namespace-configuration-operator",
 			catalogSourceName:      "catsrc-community-namespaceconfig-operators",
 			catalogSourceNamespace: "", //must be set in iT
 			startingCSV:            "",
@@ -908,11 +950,11 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle to support", func
 			singleNamespace:        true,
 		}
 		subLearn = subscriptionDescription{
-			name:                   "learn-operator",
+			subName:                "learn-operator",
 			namespace:              "", //must be set in iT
 			channel:                "alpha",
 			ipApproval:             "Automatic",
-			operator:               "learn-operator",
+			operatorPackage:        "learn-operator",
 			catalogSourceName:      "catsrc-learn-operators",
 			catalogSourceNamespace: "", //must be set in iT
 			startingCSV:            "",
@@ -922,11 +964,11 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle to support", func
 			singleNamespace:        true,
 		}
 		subCertUtilReadytest = subscriptionDescription{
-			name:                   "cert-utils-operator",
+			subName:                "cert-utils-operator",
 			namespace:              "", //must be set in iT
 			channel:                "alpha",
 			ipApproval:             "Automatic",
-			operator:               "cert-utils-operator",
+			operatorPackage:        "cert-utils-operator",
 			catalogSourceName:      "catsrc-certutil-readytest-operators",
 			catalogSourceNamespace: "", //must be set in iT
 			startingCSV:            "",
@@ -1200,7 +1242,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle to support", func
 
 		g.By("Create sub and canot succeed")
 		sub.createWithoutCheck(oc, itName, dr)
-		newCheck("expect", asAdmin, withoutNamespace, compare, "", ok, []string{"sub", sub.name, "-n", sub.namespace, "-o=jsonpath={.status.state}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "", ok, []string{"sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.state}"}).check(oc)
 
 		g.By("update cm to correct crd")
 		cm.template = cmReadyTestsTemplate
@@ -1240,11 +1282,11 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within all namesp
 		var (
 			itName = g.CurrentGinkgoTestDescription().TestText
 			sub    = subscriptionDescription{
-				name:                   "composable-operator",
+				subName:                "composable-operator",
 				namespace:              "openshift-operators",
 				channel:                "alpha",
 				ipApproval:             "Automatic",
-				operator:               "composable-operator",
+				operatorPackage:        "composable-operator",
 				catalogSourceName:      "community-operators",
 				catalogSourceNamespace: "openshift-marketplace",
 				// startingCSV:            "composable-operator.v0.1.3",
@@ -1290,11 +1332,11 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within all namesp
 		var (
 			itName = g.CurrentGinkgoTestDescription().TestText
 			sub    = subscriptionDescription{
-				name:                   "amq-streams",
+				subName:                "amq-streams",
 				namespace:              "openshift-operators",
 				channel:                "stable",
 				ipApproval:             "Automatic",
-				operator:               "amq-streams",
+				operatorPackage:        "amq-streams",
 				catalogSourceName:      "redhat-operators",
 				catalogSourceNamespace: "openshift-marketplace",
 				// startingCSV:            "amqstreams.v1.3.0",
@@ -1346,14 +1388,14 @@ func (csv csvDescription) delete(itName string, dr describerResrouce) {
 }
 
 type subscriptionDescription struct {
-	name                   string
-	namespace              string
-	channel                string
-	ipApproval             string
-	operator               string
-	catalogSourceName      string
-	catalogSourceNamespace string
-	startingCSV            string
+	subName                string `json:"name"`
+	namespace              string `json:"namespace"`
+	channel                string `json:"channel"`
+	ipApproval             string `json:"installPlanApproval"`
+	operatorPackage        string `json:"spec.name"`
+	catalogSourceName      string `json:"source"`
+	catalogSourceNamespace string `json:"sourceNamespace"`
+	startingCSV            string `json:"startingCSV,omitempty"`
 	currentCSV             string
 	installedCSV           string
 	template               string
@@ -1366,30 +1408,35 @@ func (sub *subscriptionDescription) create(oc *exutil.CLI, itName string, dr des
 	if strings.Compare(sub.ipApproval, "Automatic") == 0 {
 		sub.findInstalledCSV(oc, itName, dr)
 	} else {
-		newCheck("expect", asAdmin, withoutNamespace, compare, "UpgradePending", ok, []string{"sub", sub.name, "-n", sub.namespace, "-o=jsonpath={.status.state}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "UpgradePending", ok, []string{"sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.state}"}).check(oc)
 	}
 }
 
 func (sub *subscriptionDescription) createWithoutCheck(oc *exutil.CLI, itName string, dr describerResrouce) {
-	isAutomatic := strings.Compare(sub.ipApproval, "Automatic") == 0
-	if strings.Compare(sub.currentCSV, "") == 0 {
-		sub.currentCSV = getResource(oc, asAdmin, withoutNamespace, "packagemanifest", sub.name, fmt.Sprintf("-o=jsonpath={.status.channels[?(@.name==\"%s\")].currentCSV}", sub.channel))
-		o.Expect(sub.currentCSV).NotTo(o.BeEmpty())
-	}
-	if isAutomatic {
-		sub.startingCSV = sub.currentCSV
-	} else {
-		o.Expect(sub.startingCSV).NotTo(o.BeEmpty())
-	}
-	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", sub.template, "-p", "SUBNAME="+sub.name, "SUBNAMESPACE="+sub.namespace, "CHANNEL="+sub.channel,
-		"APPROVAL="+sub.ipApproval, "OPERATORNAME="+sub.operator, "SOURCENAME="+sub.catalogSourceName, "SOURCENAMESPACE="+sub.catalogSourceNamespace, "STARTINGCSV="+sub.startingCSV)
+	//isAutomatic := strings.Compare(sub.ipApproval, "Automatic") == 0
+
+	//startingCSV is not necessary. And, if there are multi same package from different CatalogSource, it will lead to error.
+	//if strings.Compare(sub.currentCSV, "") == 0 {
+	//	sub.currentCSV = getResource(oc, asAdmin, withoutNamespace, "packagemanifest", sub.operatorPackage, fmt.Sprintf("-o=jsonpath={.status.channels[?(@.name==\"%s\")].currentCSV}", sub.channel))
+	//	o.Expect(sub.currentCSV).NotTo(o.BeEmpty())
+	//}
+
+	//if isAutomatic {
+	//	sub.startingCSV = sub.currentCSV
+	//} else {
+	//	o.Expect(sub.startingCSV).NotTo(o.BeEmpty())
+	//}
+
+	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", sub.template, "-p", "SUBNAME="+sub.subName, "SUBNAMESPACE="+sub.namespace, "CHANNEL="+sub.channel,
+		"APPROVAL="+sub.ipApproval, "OPERATORNAME="+sub.operatorPackage, "SOURCENAME="+sub.catalogSourceName, "SOURCENAMESPACE="+sub.catalogSourceNamespace, "STARTINGCSV="+sub.startingCSV)
+
 	o.Expect(err).NotTo(o.HaveOccurred())
-	dr.getIr(itName).add(newResource(oc, "sub", sub.name, requireNS, sub.namespace))
+	dr.getIr(itName).add(newResource(oc, "sub", sub.subName, requireNS, sub.namespace))
 }
 
 func (sub *subscriptionDescription) findInstalledCSV(oc *exutil.CLI, itName string, dr describerResrouce) {
-	newCheck("expect", asAdmin, withoutNamespace, compare, "AtLatestKnown", ok, []string{"sub", sub.name, "-n", sub.namespace, "-o=jsonpath={.status.state}"}).check(oc)
-	installedCSV := getResource(oc, asAdmin, withoutNamespace, "sub", sub.name, "-n", sub.namespace, "-o=jsonpath={.status.installedCSV}")
+	newCheck("expect", asAdmin, withoutNamespace, compare, "AtLatestKnown", ok, []string{"sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.state}"}).check(oc)
+	installedCSV := getResource(oc, asAdmin, withoutNamespace, "sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.installedCSV}")
 	o.Expect(installedCSV).NotTo(o.BeEmpty())
 	if strings.Compare(sub.installedCSV, installedCSV) != 0 {
 		sub.installedCSV = installedCSV
@@ -1412,15 +1459,15 @@ func (sub *subscriptionDescription) expectCSV(oc *exutil.CLI, itName string, dr 
 func (sub *subscriptionDescription) approve(oc *exutil.CLI, itName string, dr describerResrouce) {
 	err := wait.Poll(1*time.Second, 60*time.Second, func() (bool, error) {
 		for strings.Compare(sub.installedCSV, "") == 0 {
-			state := getResource(oc, asAdmin, withoutNamespace, "sub", sub.name, "-n", sub.namespace, "-o=jsonpath={.status.state}")
+			state := getResource(oc, asAdmin, withoutNamespace, "sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.state}")
 			if strings.Compare(state, "AtLatestKnown") == 0 {
-				sub.installedCSV = getResource(oc, asAdmin, withoutNamespace, "sub", sub.name, "-n", sub.namespace, "-o=jsonpath={.status.installedCSV}")
+				sub.installedCSV = getResource(oc, asAdmin, withoutNamespace, "sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.installedCSV}")
 				dr.getIr(itName).add(newResource(oc, "csv", sub.installedCSV, requireNS, sub.namespace))
 				e2e.Logf("it is already done, and the installed CSV name is %s", sub.installedCSV)
 				continue
 			}
 
-			ipCsv := getResource(oc, asAdmin, withoutNamespace, "sub", sub.name, "-n", sub.namespace, "-o=jsonpath={.status.installplan.name}{\" \"}{.status.currentCSV}")
+			ipCsv := getResource(oc, asAdmin, withoutNamespace, "sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.installplan.name}{\" \"}{.status.currentCSV}")
 			sub.ipCsv = ipCsv + "##" + sub.ipCsv
 			installPlan := strings.Fields(ipCsv)[0]
 			o.Expect(installPlan).NotTo(o.BeEmpty())
@@ -1467,11 +1514,11 @@ func (sub *subscriptionDescription) createInstance(oc *exutil.CLI, instance stri
 }
 
 func (sub *subscriptionDescription) delete(itName string, dr describerResrouce) {
-	dr.getIr(itName).remove(sub.name, "sub", sub.namespace)
+	dr.getIr(itName).remove(sub.subName, "sub", sub.namespace)
 }
 
 func (sub *subscriptionDescription) patch(oc *exutil.CLI, patch string) {
-	patchResource(oc, asAdmin, withoutNamespace, "sub", sub.name, "-n", sub.namespace, "--type", "merge", "-p", patch)
+	patchResource(oc, asAdmin, withoutNamespace, "sub", sub.subName, "-n", sub.namespace, "--type", "merge", "-p", patch)
 }
 
 type crdDescription struct {
