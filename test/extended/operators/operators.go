@@ -127,7 +127,7 @@ func CreatePackageManifest(operator string, oc *exutil.CLI) Packagemanifest {
 
 	csvVersion, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("packagemanifest", p.Name, "-o=jsonpath={.status.channels[?(.name=='"+p.DefaultChannel+"')].currentCSV}").Output()
 	o.Expect(err).NotTo(o.HaveOccurred())
-	p.CsvVersion = csvVersion
+	p.CsvVersion = strings.ReplaceAll(csvVersion, "\"", "")
 
 	p = checkOperatorInstallModes(p, oc)
 	return p
@@ -246,7 +246,7 @@ func RemoveOperatorDependencies(p Packagemanifest, oc *exutil.CLI, checkDeletion
 		csvs := strings.Split(msg, " ")
 		for i := range csvs {
 			e2e.Logf("CSV_: %s", csvs[i])
-			msg, err := oc.SetNamespace(p.Namespace).AsAdmin().Run("delete").Args("csv", csvs[i]).Output()
+			msg, err := oc.SetNamespace(p.Namespace).AsAdmin().Run("delete").Args("csv", strings.ReplaceAll(csvs[i], "\"", "")).Output()
 			if checkDeletion {
 				o.Expect(err).NotTo(o.HaveOccurred())
 				o.Expect(msg).To(o.ContainSubstring("deleted"))
