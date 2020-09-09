@@ -976,6 +976,60 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 			fmt.Sprintf("-o=jsonpath={.status.components.refs[?(@.name==\"%s\")].conditions[*].message}", sub.installedCSV))
 		o.Expect(output).To(o.ContainSubstring("requirements not met"))
 	})
+
+	// It will cover test case: OCP-34472, author: kuiwang@redhat.com
+	g.It("Medium-34472-OLM label dependency", func() {
+		var (
+			itName = g.CurrentGinkgoTestDescription().TestText
+			og     = operatorGroupDescription{
+				name:      "og-singlenamespace",
+				namespace: "",
+				template:  ogSingleTemplate,
+			}
+			catsrc = catalogSourceDescription{
+				name:        "olm-1933-v8-catalog",
+				namespace:   "",
+				displayName: "OLM 1933 v8 Operator Catalog",
+				publisher:   "QE",
+				sourceType:  "grpc",
+				address:     "quay.io/olmqe/olm-dep:v8",
+				template:    catsrcImageTemplate,
+			}
+			sub = subscriptionDescription{
+				subName:                "teiid",
+				namespace:              "",
+				channel:                "beta",
+				ipApproval:             "Automatic",
+				operatorPackage:        "teiid",
+				catalogSourceName:      catsrc.name,
+				catalogSourceNamespace: "",
+				startingCSV:            "teiid.v0.4.0",
+				currentCSV:             "",
+				installedCSV:           "",
+				template:               subTemplate,
+				singleNamespace:        true,
+			}
+			dependentOperator = "microcks-operator.v1.0.0"
+		)
+		oc.SetupProject() //project and its resource are deleted automatically when out of It, so no need derfer or AfterEach
+		og.namespace = oc.Namespace()
+		catsrc.namespace = oc.Namespace()
+		sub.namespace = oc.Namespace()
+		sub.catalogSourceNamespace = catsrc.namespace
+
+		g.By("create catalog source")
+		catsrc.create(oc, itName, dr)
+
+		g.By("Create og")
+		og.create(oc, itName, dr)
+
+		g.By("install perator")
+		sub.create(oc, itName, dr)
+
+		g.By("check if dependent operator is installed")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", dependentOperator, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+	})
 })
 
 var _ = g.Describe("[sig-operators] OLM for an end user handle to support", func() {
