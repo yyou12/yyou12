@@ -14,10 +14,10 @@ var _ = g.Describe("[Suite:openshift/isv] ISV_Operators", func() {
 	defer g.GinkgoRecover()
 
 	for i := range CertifiedOperators {
-
-		g.It(TestCaseName(CertifiedOperators[i], BasicPrefix), func() {
+		operator := CertifiedOperators[i]
+		g.It(TestCaseName(operator, BasicPrefix), func() {
 			g.By("by installing", func() {
-				currentPackage = CreateSubscription(CertifiedOperators[i], oc, INSTALLPLAN_AUTOMATIC_MODE)
+				currentPackage = CreateSubscription(operator, oc, INSTALLPLAN_AUTOMATIC_MODE)
 				CheckDeployment(currentPackage, oc)
 			})
 			g.By("by uninstalling", func() {
