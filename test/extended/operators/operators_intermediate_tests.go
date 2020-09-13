@@ -2,6 +2,7 @@ package operators
 
 import (
 	"path/filepath"
+	"strings"
 	"time"
 
 	g "github.com/onsi/ginkgo"
@@ -10,6 +11,9 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 )
+
+const DEFAULT_STATUS_QUERY = "-o=jsonpath={.status.conditions[0].type}"
+const DEFAULT_EXPECTED_BEHAVIOR = "Ready"
 
 var _ = g.Describe("[Suite:openshift/isv] ISV_Operators", func() {
 	var (
@@ -25,21 +29,42 @@ var _ = g.Describe("[Suite:openshift/isv] ISV_Operators", func() {
 		kafkaFile := "kafka.yaml"
 		namespace := "amq-streams"
 		currentPackage := CreateSubscriptionSpecificNamespace(kafkaPackageName, oc, true, true, namespace, INSTALLPLAN_AUTOMATIC_MODE)
-
+		defer RemoveNamespace(currentPackage.Namespace, oc)
 		CheckDeployment(currentPackage, oc)
-		CreateCR(kafkaFile, oc)
-		CheckCR(currentPackage, kafkaCR, kafkaClusterName, oc)
+		CreateFromYAML(currentPackage, kafkaFile, oc)
+		CheckCR(currentPackage, kafkaCR, kafkaClusterName, DEFAULT_STATUS_QUERY, DEFAULT_EXPECTED_BEHAVIOR, oc)
 		RemoveCR(currentPackage, kafkaCR, kafkaClusterName, oc)
 		RemoveOperatorDependencies(currentPackage, oc, false)
-		RemoveNamespace(currentPackage.Namespace, oc)
+
+	})
+
+	g.It(TestCaseName("mongodb-enterprise", intermediateTestsSufix), func() {
+
+		mongodbPackageName := "mongodb-enterprise"
+		mongodbOpsManagerCR := "opsmanagers"
+		mongodbOpsManagerClusterName := "ops-manager"
+		namespace := "mongodb"
+
+		currentPackage := CreateSubscriptionSpecificNamespace(mongodbPackageName, oc, true, true, namespace, INSTALLPLAN_AUTOMATIC_MODE)
+		defer RemoveNamespace(currentPackage.Namespace, oc)
+		CheckDeployment(currentPackage, oc)
+		CreateFromYAML(currentPackage, "mongodb-ops-manager-secret.yaml", oc)
+		CreateFromYAML(currentPackage, "mongodb-ops-manager-cr.yaml", oc)
+		CheckCR(currentPackage, mongodbOpsManagerCR, mongodbOpsManagerClusterName,
+			"{.status.applicationDatabase.phase}", "Running", oc)
+		CheckCR(currentPackage, mongodbOpsManagerCR, mongodbOpsManagerClusterName,
+			"{.status.opsManager.phase}", "Running", oc)
+		RemoveCR(currentPackage, mongodbOpsManagerCR, mongodbOpsManagerClusterName, oc)
+		RemoveOperatorDependencies(currentPackage, oc, false)
+
 	})
 
 })
 
-func CreateCR(filename string, oc *exutil.CLI) {
+func CreateFromYAML(p Packagemanifest, filename string, oc *exutil.CLI) {
 	buildPruningBaseDir := exutil.FixturePath("testdata", "operators")
 	cr := filepath.Join(buildPruningBaseDir, filename)
-	err := oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", cr).Execute()
+	err := oc.SetNamespace(p.Namespace).AsAdmin().Run("create").Args("-f", cr).Execute()
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 func RemoveCR(p Packagemanifest, CRName string, instanceName string, oc *exutil.CLI) {
@@ -48,10 +73,11 @@ func RemoveCR(p Packagemanifest, CRName string, instanceName string, oc *exutil.
 	o.Expect(msg).To(o.ContainSubstring("deleted"))
 }
 
-func CheckCR(p Packagemanifest, CRName string, instanceName string, oc *exutil.CLI) {
-	poolErr := wait.Poll(10*time.Second, 300*time.Second, func() (bool, error) {
-		msg, _ := oc.SetNamespace(p.Namespace).AsAdmin().Run("get").Args(CRName, instanceName, "-o=jsonpath={.status.conditions[0].type}").Output()
-		if msg == "Ready" {
+func CheckCR(p Packagemanifest, CRName string, instanceName string, jsonPath string, expectedMessage string, oc *exutil.CLI) {
+
+	poolErr := wait.Poll(10*time.Second, 600*time.Second, func() (bool, error) {
+		msg, _ := oc.SetNamespace(p.Namespace).AsAdmin().Run("get").Args(CRName, instanceName, jsonPath).Output()
+		if strings.Contains(msg, expectedMessage) {
 			return true, nil
 		}
 		return false, nil

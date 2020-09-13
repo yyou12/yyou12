@@ -36,7 +36,7 @@ var CertifiedOperators = []string{"3scale-community-operator", "amq-streams", "a
 	"percona-server-mongodb-operator", "percona-xtradb-cluster-operator", "planetscale",
 	"portworx", "postgresql", "presto-operator", "prometheus", "radanalytics-spark",
 	"resource-locker-operator", "spark-gcp", "storageos", "strimzi-kafka-operator",
-	"syndesis", "tidb-operator"}
+	"syndesis", "tidb-operator-certified"}
 var CatalogLabels = []string{"certified-operators", "redhat-operators", "community-operators"}
 var BasicPrefix = "[Basic]"
 

@@ -25,6 +25,8 @@
 // test/extended/testdata/olm/operatorgroup.yaml
 // test/extended/testdata/olm/opsrc.yaml
 // test/extended/testdata/operators/kafka.yaml
+// test/extended/testdata/operators/mongodb-ops-manager-cr.yaml
+// test/extended/testdata/operators/mongodb-ops-manager-secret.yaml
 // test/extended/testdata/operators/operator_group.yaml
 // test/extended/testdata/operators/subscription.yaml
 // DO NOT EDIT!
@@ -2666,6 +2668,65 @@ func testExtendedTestdataOperatorsKafkaYaml() (*asset, error) {
 	return a, nil
 }
 
+var _testExtendedTestdataOperatorsMongodbOpsManagerCrYaml = []byte(`apiVersion: mongodb.com/v1
+kind: MongoDBOpsManager
+metadata:
+  name: ops-manager
+  namespace: mongodb
+spec:
+  externalConnectivity:
+    type: LoadBalancer
+  applicationDatabase:
+    podSpec:
+      cpu: '1'
+    persistent: true
+    members: 3
+  adminCredentials: opsman-admin-credentials
+  configuration:
+    mms.fromEmailAddr: admin@thecompany.com
+  version: 4.4.1`)
+
+func testExtendedTestdataOperatorsMongodbOpsManagerCrYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataOperatorsMongodbOpsManagerCrYaml, nil
+}
+
+func testExtendedTestdataOperatorsMongodbOpsManagerCrYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataOperatorsMongodbOpsManagerCrYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/operators/mongodb-ops-manager-cr.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataOperatorsMongodbOpsManagerSecretYaml = []byte(`apiVersion: v1
+kind: Secret
+stringData:
+  FirstName: Operations
+  LastName: Manager
+  Password: ")4Rv:yS@G@Z]"
+  Username: opsman4444
+type: Opaque
+metadata:
+  name: opsman-admin-credentials`)
+
+func testExtendedTestdataOperatorsMongodbOpsManagerSecretYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataOperatorsMongodbOpsManagerSecretYaml, nil
+}
+
+func testExtendedTestdataOperatorsMongodbOpsManagerSecretYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataOperatorsMongodbOpsManagerSecretYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/operators/mongodb-ops-manager-secret.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
 var _testExtendedTestdataOperatorsOperator_groupYaml = []byte(`apiVersion: operators.coreos.com/v1
 kind: OperatorGroup
 metadata:
@@ -2769,33 +2830,35 @@ func AssetNames() []string {
 
 // _bindata is a table, holding each asset generator, mapped to its name.
 var _bindata = map[string]func() (*asset, error){
-	"test/extended/testdata/bindata.go":                        testExtendedTestdataBindataGo,
-	"test/extended/testdata/olm/catalogsource-address.yaml":    testExtendedTestdataOlmCatalogsourceAddressYaml,
-	"test/extended/testdata/olm/catalogsource-configmap.yaml":  testExtendedTestdataOlmCatalogsourceConfigmapYaml,
-	"test/extended/testdata/olm/catalogsource-image.yaml":      testExtendedTestdataOlmCatalogsourceImageYaml,
-	"test/extended/testdata/olm/cm-certutil-readytest.yaml":    testExtendedTestdataOlmCmCertutilReadytestYaml,
-	"test/extended/testdata/olm/cm-certutil-readytests.yaml":   testExtendedTestdataOlmCmCertutilReadytestsYaml,
-	"test/extended/testdata/olm/cm-learn-v1.yaml":              testExtendedTestdataOlmCmLearnV1Yaml,
-	"test/extended/testdata/olm/cm-learn-v2.yaml":              testExtendedTestdataOlmCmLearnV2Yaml,
-	"test/extended/testdata/olm/cm-lightbend.yaml":             testExtendedTestdataOlmCmLightbendYaml,
-	"test/extended/testdata/olm/cm-namespaceconfig.yaml":       testExtendedTestdataOlmCmNamespaceconfigYaml,
-	"test/extended/testdata/olm/configmap-test.yaml":           testExtendedTestdataOlmConfigmapTestYaml,
-	"test/extended/testdata/olm/cs-without-image.yaml":         testExtendedTestdataOlmCsWithoutImageYaml,
-	"test/extended/testdata/olm/csc.yaml":                      testExtendedTestdataOlmCscYaml,
-	"test/extended/testdata/olm/etcd-cluster.yaml":             testExtendedTestdataOlmEtcdClusterYaml,
-	"test/extended/testdata/olm/etcd-custom-csc.yaml":          testExtendedTestdataOlmEtcdCustomCscYaml,
-	"test/extended/testdata/olm/etcd-subscription-manual.yaml": testExtendedTestdataOlmEtcdSubscriptionManualYaml,
-	"test/extended/testdata/olm/etcd-subscription.yaml":        testExtendedTestdataOlmEtcdSubscriptionYaml,
-	"test/extended/testdata/olm/image-catalogsource.yaml":      testExtendedTestdataOlmImageCatalogsourceYaml,
-	"test/extended/testdata/olm/image-sub.yaml":                testExtendedTestdataOlmImageSubYaml,
-	"test/extended/testdata/olm/og-allns.yaml":                 testExtendedTestdataOlmOgAllnsYaml,
-	"test/extended/testdata/olm/og-multins.yaml":               testExtendedTestdataOlmOgMultinsYaml,
-	"test/extended/testdata/olm/olm-subscription.yaml":         testExtendedTestdataOlmOlmSubscriptionYaml,
-	"test/extended/testdata/olm/operatorgroup.yaml":            testExtendedTestdataOlmOperatorgroupYaml,
-	"test/extended/testdata/olm/opsrc.yaml":                    testExtendedTestdataOlmOpsrcYaml,
-	"test/extended/testdata/operators/kafka.yaml":              testExtendedTestdataOperatorsKafkaYaml,
-	"test/extended/testdata/operators/operator_group.yaml":     testExtendedTestdataOperatorsOperator_groupYaml,
-	"test/extended/testdata/operators/subscription.yaml":       testExtendedTestdataOperatorsSubscriptionYaml,
+	"test/extended/testdata/bindata.go":                                testExtendedTestdataBindataGo,
+	"test/extended/testdata/olm/catalogsource-address.yaml":            testExtendedTestdataOlmCatalogsourceAddressYaml,
+	"test/extended/testdata/olm/catalogsource-configmap.yaml":          testExtendedTestdataOlmCatalogsourceConfigmapYaml,
+	"test/extended/testdata/olm/catalogsource-image.yaml":              testExtendedTestdataOlmCatalogsourceImageYaml,
+	"test/extended/testdata/olm/cm-certutil-readytest.yaml":            testExtendedTestdataOlmCmCertutilReadytestYaml,
+	"test/extended/testdata/olm/cm-certutil-readytests.yaml":           testExtendedTestdataOlmCmCertutilReadytestsYaml,
+	"test/extended/testdata/olm/cm-learn-v1.yaml":                      testExtendedTestdataOlmCmLearnV1Yaml,
+	"test/extended/testdata/olm/cm-learn-v2.yaml":                      testExtendedTestdataOlmCmLearnV2Yaml,
+	"test/extended/testdata/olm/cm-lightbend.yaml":                     testExtendedTestdataOlmCmLightbendYaml,
+	"test/extended/testdata/olm/cm-namespaceconfig.yaml":               testExtendedTestdataOlmCmNamespaceconfigYaml,
+	"test/extended/testdata/olm/configmap-test.yaml":                   testExtendedTestdataOlmConfigmapTestYaml,
+	"test/extended/testdata/olm/cs-without-image.yaml":                 testExtendedTestdataOlmCsWithoutImageYaml,
+	"test/extended/testdata/olm/csc.yaml":                              testExtendedTestdataOlmCscYaml,
+	"test/extended/testdata/olm/etcd-cluster.yaml":                     testExtendedTestdataOlmEtcdClusterYaml,
+	"test/extended/testdata/olm/etcd-custom-csc.yaml":                  testExtendedTestdataOlmEtcdCustomCscYaml,
+	"test/extended/testdata/olm/etcd-subscription-manual.yaml":         testExtendedTestdataOlmEtcdSubscriptionManualYaml,
+	"test/extended/testdata/olm/etcd-subscription.yaml":                testExtendedTestdataOlmEtcdSubscriptionYaml,
+	"test/extended/testdata/olm/image-catalogsource.yaml":              testExtendedTestdataOlmImageCatalogsourceYaml,
+	"test/extended/testdata/olm/image-sub.yaml":                        testExtendedTestdataOlmImageSubYaml,
+	"test/extended/testdata/olm/og-allns.yaml":                         testExtendedTestdataOlmOgAllnsYaml,
+	"test/extended/testdata/olm/og-multins.yaml":                       testExtendedTestdataOlmOgMultinsYaml,
+	"test/extended/testdata/olm/olm-subscription.yaml":                 testExtendedTestdataOlmOlmSubscriptionYaml,
+	"test/extended/testdata/olm/operatorgroup.yaml":                    testExtendedTestdataOlmOperatorgroupYaml,
+	"test/extended/testdata/olm/opsrc.yaml":                            testExtendedTestdataOlmOpsrcYaml,
+	"test/extended/testdata/operators/kafka.yaml":                      testExtendedTestdataOperatorsKafkaYaml,
+	"test/extended/testdata/operators/mongodb-ops-manager-cr.yaml":     testExtendedTestdataOperatorsMongodbOpsManagerCrYaml,
+	"test/extended/testdata/operators/mongodb-ops-manager-secret.yaml": testExtendedTestdataOperatorsMongodbOpsManagerSecretYaml,
+	"test/extended/testdata/operators/operator_group.yaml":             testExtendedTestdataOperatorsOperator_groupYaml,
+	"test/extended/testdata/operators/subscription.yaml":               testExtendedTestdataOperatorsSubscriptionYaml,
 }
 
 // AssetDir returns the file names below a certain
@@ -2869,9 +2932,11 @@ var _bintree = &bintree{nil, map[string]*bintree{
 					"opsrc.yaml":                    {testExtendedTestdataOlmOpsrcYaml, map[string]*bintree{}},
 				}},
 				"operators": {nil, map[string]*bintree{
-					"kafka.yaml":          {testExtendedTestdataOperatorsKafkaYaml, map[string]*bintree{}},
-					"operator_group.yaml": {testExtendedTestdataOperatorsOperator_groupYaml, map[string]*bintree{}},
-					"subscription.yaml":   {testExtendedTestdataOperatorsSubscriptionYaml, map[string]*bintree{}},
+					"kafka.yaml":                      {testExtendedTestdataOperatorsKafkaYaml, map[string]*bintree{}},
+					"mongodb-ops-manager-cr.yaml":     {testExtendedTestdataOperatorsMongodbOpsManagerCrYaml, map[string]*bintree{}},
+					"mongodb-ops-manager-secret.yaml": {testExtendedTestdataOperatorsMongodbOpsManagerSecretYaml, map[string]*bintree{}},
+					"operator_group.yaml":             {testExtendedTestdataOperatorsOperator_groupYaml, map[string]*bintree{}},
+					"subscription.yaml":               {testExtendedTestdataOperatorsSubscriptionYaml, map[string]*bintree{}},
 				}},
 			}},
 		}},
