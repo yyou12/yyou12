@@ -339,6 +339,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		RemoveNamespace(namespace, oc)
 
 	})
+
 	// author: jiazha@redhat.com
 	g.It("Medium-20981-contain the source commit id [Serial]", func() {
 		sameCommit := ""
@@ -377,6 +378,66 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		}
 	})
 
+        // author: yhui@redhat.com
+        g.It("High-30206-can include secrets and configmaps in the bundle", func() {
+                buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
+                operatorGroup := filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+                catsrcImage := filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
+                cockroachdbSub := filepath.Join(buildPruningBaseDir, "cockroachdb-sub.yaml")
+
+                configFile, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", catsrcImage, "-p", "NAME=cockroachdb-catalog-sm", "NAMESPACE=openshift-marketplace", "ADDRESS=quay.io/yuhui12/cockroachdb-index:2.0.9new", "DISPLAYNAME=OLMCOCKROACHDB-SM", "PUBLISHER=QE", "SOURCETYPE=grpc").OutputToFile("config.json")
+                o.Expect(err).NotTo(o.HaveOccurred())
+                err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", configFile).Execute()
+                o.Expect(err).NotTo(o.HaveOccurred())
+                defer oc.AsAdmin().Run("delete").Args("catalogsource", "cockroachdb-catalog-sm", "-n", "openshift-marketplace").Execute()
+
+                podName, err := oc.AsAdmin().Run("get").Args("-n", "openshift-marketplace", "pods", "-l", "olm.catalogSource=cockroachdb-catalog-sm", "-o=jsonpath={.items[0].metadata.name}").Output()
+                o.Expect(err).NotTo(o.HaveOccurred())
+                e2e.Logf("get pod name %s", podName)
+                err = wait.Poll(30*time.Second, 180*time.Second, func() (bool, error) {
+                        output, err := oc.AsAdmin().Run("get").Args("packagemanifests").Output()
+                        if err != nil {
+                                e2e.Logf("Failed to get packagemanifests, error:%v", err)
+                                return false, err
+                        }
+                        if strings.Contains(output, "OLMCOCKROACHDB-SM") {
+                                return true, nil
+                        }
+                        return false, nil
+                })
+                o.Expect(err).NotTo(o.HaveOccurred())
+
+                err = oc.AsAdmin().Run("create").Args("ns", "test-operators").Execute()
+                o.Expect(err).NotTo(o.HaveOccurred())
+                defer oc.AsAdmin().Run("delete").Args("ns", "test-operators").Execute()
+                configs := []string{operatorGroup, cockroachdbSub}
+                for _, v := range configs {
+                        configFile, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", v, "-p", "NAME=test-operator", "NAMESPACE=test-operators", "SOURCENAME=cockroachdb-catalog-sm", "SOURCENAMESPACE=openshift-marketplace").OutputToFile("config.json")
+                        o.Expect(err).NotTo(o.HaveOccurred())
+                        err = oc.SetNamespace("test-operators").AsAdmin().Run("create").Args("-f", configFile).Execute()
+                        o.Expect(err).NotTo(o.HaveOccurred())
+                }
+
+                err = wait.Poll(30*time.Second, 180*time.Second, func() (bool, error) {
+                        err := oc.SetNamespace("test-operators").AsAdmin().Run("get").Args("secrets", "mysecret").Execute()
+                        if err != nil {
+                                e2e.Logf("Failed to create secrets, error:%v", err)
+                                return false, err
+                        }
+                        return true, nil
+                })
+                o.Expect(err).NotTo(o.HaveOccurred())
+
+                err = wait.Poll(30*time.Second, 180*time.Second, func() (bool, error) {
+                        err := oc.AsAdmin().Run("get").Args("configmaps", "my-config-map").Execute()
+                        if err != nil {
+                                e2e.Logf("Failed to create secrets, error:%v", err)
+                                return false, err
+                        }
+                        return true, nil
+                })
+                o.Expect(err).NotTo(o.HaveOccurred())
+        })
 })
 
 var _ = g.Describe("[sig-operators] OLM for an end user use", func() {
