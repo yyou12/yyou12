@@ -28,8 +28,8 @@ var _ = g.Describe("[Suite:openshift/isv] ISV_Operators", func() {
 		kafkaPackageName := "amq-streams"
 		kafkaFile := "kafka.yaml"
 		namespace := "amq-streams"
+		defer RemoveNamespace(namespace, oc)
 		currentPackage := CreateSubscriptionSpecificNamespace(kafkaPackageName, oc, true, true, namespace, INSTALLPLAN_AUTOMATIC_MODE)
-		defer RemoveNamespace(currentPackage.Namespace, oc)
 		CheckDeployment(currentPackage, oc)
 		CreateFromYAML(currentPackage, kafkaFile, oc)
 		CheckCR(currentPackage, kafkaCR, kafkaClusterName, DEFAULT_STATUS_QUERY, DEFAULT_EXPECTED_BEHAVIOR, oc)
@@ -45,8 +45,8 @@ var _ = g.Describe("[Suite:openshift/isv] ISV_Operators", func() {
 		mongodbOpsManagerClusterName := "ops-manager"
 		namespace := "mongodb"
 
+		defer RemoveNamespace(namespace, oc)
 		currentPackage := CreateSubscriptionSpecificNamespace(mongodbPackageName, oc, true, true, namespace, INSTALLPLAN_AUTOMATIC_MODE)
-		defer RemoveNamespace(currentPackage.Namespace, oc)
 		CheckDeployment(currentPackage, oc)
 		CreateFromYAML(currentPackage, "mongodb-ops-manager-secret.yaml", oc)
 		CreateFromYAML(currentPackage, "mongodb-ops-manager-cr.yaml", oc)
