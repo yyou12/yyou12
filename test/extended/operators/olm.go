@@ -339,6 +339,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		RemoveNamespace(namespace, oc)
 
 	})
+
 	// author: jiazha@redhat.com
 	g.It("Medium-20981-contain the source commit id [Serial]", func() {
 		sameCommit := ""
@@ -377,6 +378,77 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		}
 	})
 
+        // author: yhui@redhat.com
+        g.It("High-30206-can include secrets and configmaps in the bundle", func() {
+                buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
+                operatorGroup := filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+                catsrcImage := filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
+                cockroachdbSub := filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+
+                g.By("create new catalogsource")
+                configFile, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", catsrcImage, "-p", "NAME=cockroachdb-catalog-sm", "NAMESPACE=openshift-marketplace", "ADDRESS=quay.io/yuhui12/cockroachdb-index:2.0.9new", "DISPLAYNAME=OLMCOCKROACHDB-SM", "PUBLISHER=QE", "SOURCETYPE=grpc").OutputToFile("config.json")
+                o.Expect(err).NotTo(o.HaveOccurred())
+                err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", configFile).Execute()
+                o.Expect(err).NotTo(o.HaveOccurred())
+                defer oc.AsAdmin().Run("delete").Args("catalogsource", "cockroachdb-catalog-sm", "-n", "openshift-marketplace").Execute()
+
+                g.By("check catalogsource pods status")
+                podName, err := oc.AsAdmin().Run("get").Args("-n", "openshift-marketplace", "pods", "-l", "olm.catalogSource=cockroachdb-catalog-sm", "-o=jsonpath={.items[0].metadata.name}").Output()
+                o.Expect(err).NotTo(o.HaveOccurred())
+                e2e.Logf("get pod name %s", podName)
+                g.By("check packagemanifests")
+                err = wait.Poll(10*time.Second, 150*time.Second, func() (bool, error) {
+                        output, err := oc.AsAdmin().Run("get").Args("packagemanifests").Output()
+                        if err != nil {
+                                e2e.Logf("Failed to get packagemanifests, error:%v", err)
+                                return false, err
+                        }
+                        if strings.Contains(output, "OLMCOCKROACHDB-SM") {
+                                return true, nil
+                        }
+                        return false, nil
+                })
+                o.Expect(err).NotTo(o.HaveOccurred())
+
+                g.By("create new namespace")
+                err = oc.AsAdmin().Run("create").Args("ns", "test-operators").Execute()
+                o.Expect(err).NotTo(o.HaveOccurred())
+                defer oc.AsAdmin().Run("delete").Args("ns", "test-operators").Execute()
+
+                g.By("create operatorGroup")
+                configFile, err = oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", operatorGroup, "-p", "NAME=test-operator", "NAMESPACE=test-operators").OutputToFile("config.json")
+                o.Expect(err).NotTo(o.HaveOccurred())
+                err = oc.AsAdmin().Run("create").Args("-f", configFile).Execute()
+                o.Expect(err).NotTo(o.HaveOccurred())
+
+                g.By("create subscription")
+                configFile, err = oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", cockroachdbSub, "-p", "SUBNAME=test-operator", "SUBNAMESPACE=test-operators", "CHANNEL=alpha", "APPROVAL=Automatic", "OPERATORNAME=cockroachdb", "SOURCENAME=cockroachdb-catalog-sm", "SOURCENAMESPACE=openshift-marketplace", "STARTINGCSV=cockroachdb.v2.0.9").OutputToFile("config.json")
+                o.Expect(err).NotTo(o.HaveOccurred())
+                err = oc.AsAdmin().Run("create").Args("-f", configFile).Execute()
+                o.Expect(err).NotTo(o.HaveOccurred())
+
+                g.By("check secrets")
+                err = wait.Poll(20*time.Second, 100*time.Second, func() (bool, error) {
+                        err := oc.AsAdmin().Run("get").Args("-n", "test-operators", "secrets", "mysecret").Execute()
+                        if err != nil {
+                                e2e.Logf("Failed to create secrets, error:%v", err)
+                                return false, err
+                        }
+                        return true, nil
+                })
+                o.Expect(err).NotTo(o.HaveOccurred())
+
+                g.By("check configmaps")
+                err = wait.Poll(20*time.Second, 100*time.Second, func() (bool, error) {
+                        err := oc.AsAdmin().Run("get").Args("-n", "test-operators", "configmaps", "my-config-map").Execute()
+                        if err != nil {
+                                e2e.Logf("Failed to create secrets, error:%v", err)
+                                return false, err
+                        }
+                        return true, nil
+                })
+                o.Expect(err).NotTo(o.HaveOccurred())
+        })
 })
 
 var _ = g.Describe("[sig-operators] OLM for an end user use", func() {
