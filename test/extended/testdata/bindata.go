@@ -10,7 +10,6 @@
 // test/extended/testdata/olm/cm-learn-v2.yaml
 // test/extended/testdata/olm/cm-lightbend.yaml
 // test/extended/testdata/olm/cm-namespaceconfig.yaml
-// test/extended/testdata/olm/cockroachdb-sub.yaml
 // test/extended/testdata/olm/configmap-test.yaml
 // test/extended/testdata/olm/cs-without-image.yaml
 // test/extended/testdata/olm/csc.yaml
@@ -2147,45 +2146,6 @@ func testExtendedTestdataOlmCmNamespaceconfigYaml() (*asset, error) {
 	return a, nil
 }
 
-var _testExtendedTestdataOlmCockroachdbSubYaml = []byte(`apiVersion: v1
-kind: Template
-metadata:
-  name: subscription-template
-objects:
-- apiVersion: operators.coreos.com/v1alpha1
-  kind: Subscription
-  metadata:
-    name: "${NAME}"
-    namespace: "${NAMESPACE}"
-  spec:
-    channel: alpha
-    installPlanApproval: Automatic
-    name: cockroachdb
-    source: "${SOURCENAME}"
-    sourceNamespace: "${SOURCENAMESPACE}"
-    startingCSV: cockroachdb.v2.0.9
-parameters:
-- name: NAME
-- name: NAMESPACE
-- name: SOURCENAME
-- name: SOURCENAMESPACE
-`)
-
-func testExtendedTestdataOlmCockroachdbSubYamlBytes() ([]byte, error) {
-	return _testExtendedTestdataOlmCockroachdbSubYaml, nil
-}
-
-func testExtendedTestdataOlmCockroachdbSubYaml() (*asset, error) {
-	bytes, err := testExtendedTestdataOlmCockroachdbSubYamlBytes()
-	if err != nil {
-		return nil, err
-	}
-
-	info := bindataFileInfo{name: "test/extended/testdata/olm/cockroachdb-sub.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
-	a := &asset{bytes: bytes, info: info}
-	return a, nil
-}
-
 var _testExtendedTestdataOlmConfigmapTestYaml = []byte(`apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -2819,7 +2779,6 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/olm/cm-learn-v2.yaml":              testExtendedTestdataOlmCmLearnV2Yaml,
 	"test/extended/testdata/olm/cm-lightbend.yaml":             testExtendedTestdataOlmCmLightbendYaml,
 	"test/extended/testdata/olm/cm-namespaceconfig.yaml":       testExtendedTestdataOlmCmNamespaceconfigYaml,
-	"test/extended/testdata/olm/cockroachdb-sub.yaml":          testExtendedTestdataOlmCockroachdbSubYaml,
 	"test/extended/testdata/olm/configmap-test.yaml":           testExtendedTestdataOlmConfigmapTestYaml,
 	"test/extended/testdata/olm/cs-without-image.yaml":         testExtendedTestdataOlmCsWithoutImageYaml,
 	"test/extended/testdata/olm/csc.yaml":                      testExtendedTestdataOlmCscYaml,
@@ -2894,7 +2853,6 @@ var _bintree = &bintree{nil, map[string]*bintree{
 					"cm-learn-v2.yaml":              {testExtendedTestdataOlmCmLearnV2Yaml, map[string]*bintree{}},
 					"cm-lightbend.yaml":             {testExtendedTestdataOlmCmLightbendYaml, map[string]*bintree{}},
 					"cm-namespaceconfig.yaml":       {testExtendedTestdataOlmCmNamespaceconfigYaml, map[string]*bintree{}},
-					"cockroachdb-sub.yaml":          {testExtendedTestdataOlmCockroachdbSubYaml, map[string]*bintree{}},
 					"configmap-test.yaml":           {testExtendedTestdataOlmConfigmapTestYaml, map[string]*bintree{}},
 					"cs-without-image.yaml":         {testExtendedTestdataOlmCsWithoutImageYaml, map[string]*bintree{}},
 					"csc.yaml":                      {testExtendedTestdataOlmCscYaml, map[string]*bintree{}},
