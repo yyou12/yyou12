@@ -64,7 +64,7 @@ var _ = g.Describe("[Suite:openshift/isv] ISV_Operators", func() {
 func CreateFromYAML(p Packagemanifest, filename string, oc *exutil.CLI) {
 	buildPruningBaseDir := exutil.FixturePath("testdata", "operators")
 	cr := filepath.Join(buildPruningBaseDir, filename)
-	err := oc.SetNamespace(p.Namespace).AsAdmin().Run("create").Args("-f", cr).Execute()
+	err := oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", cr, "-n", p.Namespace).Execute()
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 func RemoveCR(p Packagemanifest, CRName string, instanceName string, oc *exutil.CLI) {
@@ -76,7 +76,7 @@ func RemoveCR(p Packagemanifest, CRName string, instanceName string, oc *exutil.
 func CheckCR(p Packagemanifest, CRName string, instanceName string, jsonPath string, expectedMessage string, oc *exutil.CLI) {
 
 	poolErr := wait.Poll(10*time.Second, 600*time.Second, func() (bool, error) {
-		msg, _ := oc.SetNamespace(p.Namespace).AsAdmin().Run("get").Args(CRName, instanceName, jsonPath).Output()
+		msg, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args(CRName, instanceName, "-n", p.Namespace, jsonPath).Output()
 		if strings.Contains(msg, expectedMessage) {
 			return true, nil
 		}
