@@ -400,11 +400,12 @@ var _ = g.Describe("[sig-operators] OLM for an end user use", func() {
 		o.Expect(msg).NotTo(o.ContainSubstring("No resources found"))
 		lines := strings.Split(msg, "\n")
 		for _, line := range lines {
+			name := strings.Split(line, ",")
+			// e2e.Logf("Line is %v, len %v, len name %v, name0 %v, name1 %v\n", line, len(line), len(name), name[0], name[1])
 			if strings.Contains(line, "packageserver") {
 				continue
 			} else {
-				name := strings.Split(line, ",")
-				if len(name) > 1 {
+				if len(line) > 1 {
 					if len(name) > 1 && len(name[1]) < 1 {
 						olmUnlimited++
 						olmNames = append(olmNames, name[0])
@@ -412,7 +413,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user use", func() {
 				}
 			}
 		}
-		if olmUnlimited > 0 {
+		if olmUnlimited > 0 && len(olmNames) > 0 {
 			e2e.Failf("There are no limits set on %v of %v OLM components: %v", olmUnlimited, len(lines), olmNames)
 		}
 	})
