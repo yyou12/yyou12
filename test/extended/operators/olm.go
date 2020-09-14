@@ -311,11 +311,11 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 
 	// author: bandrade@redhat.com
 	g.It("Low-24057-Have terminationMessagePolicy defined as FallbackToLogsOnError", func() {
-		msg, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-n openshift-operator-lifecycle-manager", "-o=jsonpath={range .items[*].spec}{.containers[*].name}{\"\t\"}").Output()
+		msg, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-o=jsonpath={range .items[*].spec}{.containers[*].name}{\"\t\"}", "-n", "openshift-operator-lifecycle-manager").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		amountOfContainers := len(strings.Split(msg, "\t"))
 
-		msg, err = oc.AsAdmin().WithoutNamespace().Args("pods", "-n openshift-operator-lifecycle-manager", "-o=jsonpath={range .items[*].spec}{.containers[*].terminationMessagePolicy}{\"t\"}").Output()
+		msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-o=jsonpath={range .items[*].spec}{.containers[*].terminationMessagePolicy}{\"t\"}", "-n", "openshift-operator-lifecycle-manager").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		regexp := regexp.MustCompile("FallbackToLogsOnError")
 		amountOfContainersWithFallbackToLogsOnError := len(regexp.FindAllStringIndex(msg, -1))
