@@ -68,7 +68,7 @@ func CreateFromYAML(p Packagemanifest, filename string, oc *exutil.CLI) {
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 func RemoveCR(p Packagemanifest, CRName string, instanceName string, oc *exutil.CLI) {
-	msg, err := oc.SetNamespace(p.Namespace).AsAdmin().Run("delete").Args(CRName, instanceName).Output()
+	msg, err := oc.WithoutNamespace().AsAdmin().Run("delete").Args(CRName, instanceName, "-n", p.Namespace).Output()
 	o.Expect(err).NotTo(o.HaveOccurred())
 	o.Expect(msg).To(o.ContainSubstring("deleted"))
 }
@@ -76,7 +76,7 @@ func RemoveCR(p Packagemanifest, CRName string, instanceName string, oc *exutil.
 func CheckCR(p Packagemanifest, CRName string, instanceName string, jsonPath string, expectedMessage string, oc *exutil.CLI) {
 
 	poolErr := wait.Poll(10*time.Second, 600*time.Second, func() (bool, error) {
-		msg, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args(CRName, instanceName, "-n", p.Namespace, jsonPath).Output()
+		msg, _ := oc.WithoutNamespace().AsAdmin().Run("get").Args(CRName, instanceName, "-n", p.Namespace, jsonPath).Output()
 		if strings.Contains(msg, expectedMessage) {
 			return true, nil
 		}
