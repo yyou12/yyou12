@@ -351,8 +351,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 			e2e.Logf("get pod name:%s", podName)
 
 			g.By(fmt.Sprintf("get olm version from the %s pod", v))
-			oc.SetNamespace("openshift-operator-lifecycle-manager")
-			commands := []string{"exec", podName, "--", "olm", "--version"}
+			commands := []string{"-n", "openshift-operator-lifecycle-manager", "exec", podName, "--", "olm", "--version"}
 			olmVersion, err := oc.AsAdmin().Run(commands...).Args().Output()
 			o.Expect(err).NotTo(o.HaveOccurred())
 			idSlice := strings.Split(olmVersion, ":")

@@ -59,6 +59,51 @@ var _ = g.Describe("[Suite:openshift/isv] ISV_Operators", func() {
 
 	})
 
+	g.It(TestCaseName("portworx-certified", intermediateTestsSufix), func() {
+
+		packageName := "portworx-certified"
+		crdName := "storagenode"
+		crName := "storagenode-example"
+		crFile := "portworx-snode-cr.yaml"
+		namespace := "portworx-certified"
+		jsonPath := "-o=json"
+		expectedMsg := "storagenode-example"
+
+		defer RemoveNamespace(namespace, oc)
+		g.By("install operator")
+		currentPackage := CreateSubscriptionSpecificNamespace(packageName, oc, true, true, namespace, INSTALLPLAN_AUTOMATIC_MODE)
+		g.By("check deployment of operator")
+		CheckDeployment(currentPackage, oc)
+		g.By("create CR")
+		CreateFromYAML(currentPackage, crFile, oc)
+		g.By("check CR")
+		CheckCR(currentPackage, crdName, crName, jsonPath, expectedMsg, oc)
+		g.By("remvoe operator")
+		RemoveCR(currentPackage, crdName, crName, oc)
+		RemoveOperatorDependencies(currentPackage, oc, false)
+
+	})
+
+	g.It(TestCaseName("couchbase-enterprise-certified", intermediateTestsSufix), func() {
+
+		packageName := "couchbase-enterprise-certified"
+		crdName := "CouchbaseCluster"
+		crName := "cb-example"
+		crFile := "couchbase-enterprise-cr.yaml"
+		namespace := "couchbase-enterprise-certified"
+		jsonPath := "-o=json"
+		expectedMsg := "Running"
+
+		defer RemoveNamespace(namespace, oc)
+		currentPackage := CreateSubscriptionSpecificNamespace(packageName, oc, true, true, namespace, INSTALLPLAN_AUTOMATIC_MODE)
+		CheckDeployment(currentPackage, oc)
+		CreateFromYAML(currentPackage, crFile, oc)
+		CheckCR(currentPackage, crdName, crName, jsonPath, expectedMsg, oc)
+		RemoveCR(currentPackage, crdName, crName, oc)
+		RemoveOperatorDependencies(currentPackage, oc, false)
+
+	})
+
 })
 
 func CreateFromYAML(p Packagemanifest, filename string, oc *exutil.CLI) {
@@ -77,6 +122,7 @@ func CheckCR(p Packagemanifest, CRName string, instanceName string, jsonPath str
 
 	poolErr := wait.Poll(10*time.Second, 600*time.Second, func() (bool, error) {
 		msg, _ := oc.WithoutNamespace().AsAdmin().Run("get").Args(CRName, instanceName, "-n", p.Namespace, jsonPath).Output()
+		e2e.Logf(msg)
 		if strings.Contains(msg, expectedMessage) {
 			return true, nil
 		}

@@ -24,10 +24,12 @@
 // test/extended/testdata/olm/olm-subscription.yaml
 // test/extended/testdata/olm/operatorgroup.yaml
 // test/extended/testdata/olm/opsrc.yaml
+// test/extended/testdata/operators/couchbase-enterprise-cr.yaml
 // test/extended/testdata/operators/kafka.yaml
 // test/extended/testdata/operators/mongodb-ops-manager-cr.yaml
 // test/extended/testdata/operators/mongodb-ops-manager-secret.yaml
 // test/extended/testdata/operators/operator_group.yaml
+// test/extended/testdata/operators/portworx-snode-cr.yaml
 // test/extended/testdata/operators/subscription.yaml
 // DO NOT EDIT!
 
@@ -2628,6 +2630,113 @@ func testExtendedTestdataOlmOpsrcYaml() (*asset, error) {
 	return a, nil
 }
 
+var _testExtendedTestdataOperatorsCouchbaseEnterpriseCrYaml = []byte(`apiVersion: v1
+kind: Secret
+metadata:
+  name: cb-example-auth
+type: Opaque
+data:
+  username: QWRtaW5pc3RyYXRvcg==
+  password: cGFzc3dvcmQ=
+---
+apiVersion: couchbase.com/v2
+kind: CouchbaseCluster
+metadata:
+  name: cb-example
+spec:
+  image: registry.hub.docker.com/couchbase/server:6.5.1
+  cluster:
+    clusterName: cb-example
+    dataServiceMemoryQuota: 256Mi
+    indexServiceMemoryQuota: 256Mi
+    searchServiceMemoryQuota: 256Mi
+    eventingServiceMemoryQuota: 256Mi
+    analyticsServiceMemoryQuota: 1Gi
+    indexStorageSetting: memory_optimized
+    autoFailoverTimeout: 120s
+    autoFailoverMaxCount: 3
+    autoFailoverOnDataDiskIssues: true
+    autoFailoverOnDataDiskIssuesTimePeriod: 120s
+    autoFailoverServerGroup: false
+    autoCompaction:
+      databaseFragmentationThreshold:
+        percent: 30
+        size: 1Gi
+      viewFragmentationThreshold:
+        percent: 30
+        size: 1Gi
+      parallelCompaction: false
+      timeWindow:
+        start: '02:00'
+        end: '06:00'
+        abortCompactionOutsideWindow: true
+      tombstonePurgeInterval: 72h
+  security:
+    adminSecret: cb-example-auth
+    rbac:
+      managed: true
+      selector:
+        matchLabels:
+          cluster: cb-example
+  xdcr:
+    managed: false
+    selector:
+      matchLabels:
+        cluster: cb-example
+  backup:
+    image: registry.hub.docker.com/couchbase/operator-backup:6.5.1-104
+    managed: false
+    serviceAccountName: couchbase-backup
+    selector:
+      matchLabels:
+        cluster: cb-example
+  monitoring:
+    prometheus:
+      enabled: false
+      image: registry.hub.docker.com/couchbase/exporter:1.0.2
+  networking:
+    exposeAdminConsole: true
+    adminConsoleServices:
+    - data
+    exposedFeatures:
+    - xdcr
+    exposedFeatureServiceType: NodePort
+    adminConsoleServiceType: NodePort
+  buckets:
+    managed: true
+    selector:
+      matchLabels:
+        cluster: cb-example
+  logRetentionTime: 604800s
+  logRetentionCount: 20
+  servers:
+  - size: 3
+    name: all_services
+    services:
+    - data
+    - index
+    - query
+    - search
+    - eventing
+    - analytics
+status: {}
+`)
+
+func testExtendedTestdataOperatorsCouchbaseEnterpriseCrYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataOperatorsCouchbaseEnterpriseCrYaml, nil
+}
+
+func testExtendedTestdataOperatorsCouchbaseEnterpriseCrYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataOperatorsCouchbaseEnterpriseCrYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/operators/couchbase-enterprise-cr.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
 var _testExtendedTestdataOperatorsKafkaYaml = []byte(`apiVersion: kafka.strimzi.io/v1beta1
 kind: Kafka
 metadata:
@@ -2684,7 +2793,8 @@ spec:
   adminCredentials: opsman-admin-credentials
   configuration:
     mms.fromEmailAddr: admin@thecompany.com
-  version: 4.4.1`)
+  version: 4.4.1
+`)
 
 func testExtendedTestdataOperatorsMongodbOpsManagerCrYamlBytes() ([]byte, error) {
 	return _testExtendedTestdataOperatorsMongodbOpsManagerCrYaml, nil
@@ -2710,7 +2820,8 @@ stringData:
   Username: opsman4444
 type: Opaque
 metadata:
-  name: opsman-admin-credentials`)
+  name: opsman-admin-credentials
+`)
 
 func testExtendedTestdataOperatorsMongodbOpsManagerSecretYamlBytes() ([]byte, error) {
 	return _testExtendedTestdataOperatorsMongodbOpsManagerSecretYaml, nil
@@ -2746,6 +2857,28 @@ func testExtendedTestdataOperatorsOperator_groupYaml() (*asset, error) {
 	}
 
 	info := bindataFileInfo{name: "test/extended/testdata/operators/operator_group.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataOperatorsPortworxSnodeCrYaml = []byte(`apiVersion: core.libopenstorage.org/v1alpha1
+kind: StorageNode
+metadata:
+  name: storagenode-example
+  namespace: portworx-certified
+`)
+
+func testExtendedTestdataOperatorsPortworxSnodeCrYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataOperatorsPortworxSnodeCrYaml, nil
+}
+
+func testExtendedTestdataOperatorsPortworxSnodeCrYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataOperatorsPortworxSnodeCrYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/operators/portworx-snode-cr.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -2854,10 +2987,12 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/olm/olm-subscription.yaml":                 testExtendedTestdataOlmOlmSubscriptionYaml,
 	"test/extended/testdata/olm/operatorgroup.yaml":                    testExtendedTestdataOlmOperatorgroupYaml,
 	"test/extended/testdata/olm/opsrc.yaml":                            testExtendedTestdataOlmOpsrcYaml,
+	"test/extended/testdata/operators/couchbase-enterprise-cr.yaml":    testExtendedTestdataOperatorsCouchbaseEnterpriseCrYaml,
 	"test/extended/testdata/operators/kafka.yaml":                      testExtendedTestdataOperatorsKafkaYaml,
 	"test/extended/testdata/operators/mongodb-ops-manager-cr.yaml":     testExtendedTestdataOperatorsMongodbOpsManagerCrYaml,
 	"test/extended/testdata/operators/mongodb-ops-manager-secret.yaml": testExtendedTestdataOperatorsMongodbOpsManagerSecretYaml,
 	"test/extended/testdata/operators/operator_group.yaml":             testExtendedTestdataOperatorsOperator_groupYaml,
+	"test/extended/testdata/operators/portworx-snode-cr.yaml":          testExtendedTestdataOperatorsPortworxSnodeCrYaml,
 	"test/extended/testdata/operators/subscription.yaml":               testExtendedTestdataOperatorsSubscriptionYaml,
 }
 
@@ -2932,10 +3067,12 @@ var _bintree = &bintree{nil, map[string]*bintree{
 					"opsrc.yaml":                    {testExtendedTestdataOlmOpsrcYaml, map[string]*bintree{}},
 				}},
 				"operators": {nil, map[string]*bintree{
+					"couchbase-enterprise-cr.yaml":    {testExtendedTestdataOperatorsCouchbaseEnterpriseCrYaml, map[string]*bintree{}},
 					"kafka.yaml":                      {testExtendedTestdataOperatorsKafkaYaml, map[string]*bintree{}},
 					"mongodb-ops-manager-cr.yaml":     {testExtendedTestdataOperatorsMongodbOpsManagerCrYaml, map[string]*bintree{}},
 					"mongodb-ops-manager-secret.yaml": {testExtendedTestdataOperatorsMongodbOpsManagerSecretYaml, map[string]*bintree{}},
 					"operator_group.yaml":             {testExtendedTestdataOperatorsOperator_groupYaml, map[string]*bintree{}},
+					"portworx-snode-cr.yaml":          {testExtendedTestdataOperatorsPortworxSnodeCrYaml, map[string]*bintree{}},
 					"subscription.yaml":               {testExtendedTestdataOperatorsSubscriptionYaml, map[string]*bintree{}},
 				}},
 			}},
