@@ -34,7 +34,7 @@ var CertifiedOperators = []string{"3scale-community-operator", "amq-streams", "a
 	"argocd-operator", "cert-utils-operator", "couchbase-enterprise", "dotscience-operator",
 	"federatorai-certified", "jaeger", "keycloak-operator", "kiali", "mongodb-enterprise", "must-gather-operator",
 	"percona-server-mongodb-operator", "percona-xtradb-cluster-operator", "planetscale",
-	"portworx", "postgresql", "presto-operator", "prometheus", "radanalytics-spark",
+	"portworx-certified", "postgresql", "presto-operator", "prometheus", "radanalytics-spark",
 	"resource-locker-operator", "spark-gcp", "storageos", "strimzi-kafka-operator",
 	"syndesis", "tidb-operator-certified"}
 var CatalogLabels = []string{"certified-operators", "redhat-operators", "community-operators"}
