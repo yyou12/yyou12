@@ -30,6 +30,8 @@ type Packagemanifest struct {
 	CatalogSourceNamespace  string
 }
 
+var SkippedOperators = []string{"quay-bridge-operator", "kubevirt-hyperconverged", "cost-mgmt-operator", "ptp-operator"}
+
 var CertifiedOperators = []string{"3scale-community-operator", "amq-streams", "appdynamics-operator",
 	"argocd-operator", "cert-utils-operator", "couchbase-enterprise-certified", "dotscience-operator",
 	"federatorai-certified", "jaeger", "keycloak-operator", "kiali", "mongodb-enterprise", "must-gather-operator",
@@ -68,6 +70,9 @@ var _ = g.Describe("[Suite:openshift/operators]", func() {
 			packageName := packageSplitted[1]
 
 			g.It(TestCaseName(packageName, BasicPrefix), func() {
+				if contains(SkippedOperators, packageName) {
+					g.Skip("Operator " + packageName + " can't be tested in a generic way")
+				}
 				g.By("by installing", func() {
 					currentPackage = CreateSubscription(packageName, oc, INSTALLPLAN_AUTOMATIC_MODE)
 					CheckDeployment(currentPackage, oc)
