@@ -34,7 +34,7 @@ var SkippedOperators = []string{"quay-bridge-operator", "kubevirt-hyperconverged
 
 var CertifiedOperators = []string{"3scale-community-operator", "amq-streams", "appdynamics-operator",
 	"argocd-operator", "cert-utils-operator", "couchbase-enterprise-certified", "dotscience-operator",
-	"federatorai-certified", "jaeger", "keycloak-operator", "kiali", "mongodb-enterprise", "must-gather-operator",
+	"federatorai-certified", "jaeger-product", "keycloak-operator", "kiali", "mongodb-enterprise", "must-gather-operator",
 	"percona-server-mongodb-operator", "percona-xtradb-cluster-operator", "planetscale",
 	"portworx-certified", "postgresql", "presto-operator", "prometheus", "radanalytics-spark",
 	"resource-locker-operator", "spark-gcp", "storageos", "strimzi-kafka-operator",

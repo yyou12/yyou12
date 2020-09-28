@@ -104,6 +104,23 @@ var _ = g.Describe("[Suite:openshift/isv] ISV_Operators", func() {
 
 	})
 
+	g.It(TestCaseName("jaeger-product", intermediateTestsSufix), func() {
+
+		jaegerPackageName := "jaeger-product"
+		jaegerCR := "Jaeger"
+		jaegerCRClusterName := "jaeger-all-in-one-inmemory"
+		namespace := "openshift-operators"
+
+		currentPackage := CreateSubscriptionSpecificNamespace(jaegerPackageName, oc, false, false, namespace, INSTALLPLAN_AUTOMATIC_MODE)
+		CheckDeployment(currentPackage, oc)
+		CreateFromYAML(currentPackage, "jaeger.yaml", oc)
+		CheckCR(currentPackage, jaegerCR, jaegerCRClusterName,
+			"{.status.phase}", "Running", oc)
+		RemoveCR(currentPackage, jaegerCR, jaegerCRClusterName, oc)
+		RemoveOperatorDependencies(currentPackage, oc, false)
+
+	})
+
 })
 
 func CreateFromYAML(p Packagemanifest, filename string, oc *exutil.CLI) {
