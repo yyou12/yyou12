@@ -51,9 +51,9 @@ var _ = g.Describe("[Suite:openshift/isv] ISV_Operators", func() {
 		CreateFromYAML(currentPackage, "mongodb-ops-manager-secret.yaml", oc)
 		CreateFromYAML(currentPackage, "mongodb-ops-manager-cr.yaml", oc)
 		CheckCR(currentPackage, mongodbOpsManagerCR, mongodbOpsManagerClusterName,
-			"{.status.applicationDatabase.phase}", "Running", oc)
+			"-o=jsonpath={.status.applicationDatabase.phase}", "Running", oc)
 		CheckCR(currentPackage, mongodbOpsManagerCR, mongodbOpsManagerClusterName,
-			"{.status.opsManager.phase}", "Running", oc)
+			"-o=jsonpath={.status.opsManager.phase}", "Running", oc)
 		RemoveCR(currentPackage, mongodbOpsManagerCR, mongodbOpsManagerClusterName, oc)
 		RemoveOperatorDependencies(currentPackage, oc, false)
 
@@ -115,8 +115,25 @@ var _ = g.Describe("[Suite:openshift/isv] ISV_Operators", func() {
 		CheckDeployment(currentPackage, oc)
 		CreateFromYAML(currentPackage, "jaeger.yaml", oc)
 		CheckCR(currentPackage, jaegerCR, jaegerCRClusterName,
-			"{.status.phase}", "Running", oc)
+			"-o=jsonpath={.status.phase}", "Running", oc)
 		RemoveCR(currentPackage, jaegerCR, jaegerCRClusterName, oc)
+		RemoveOperatorDependencies(currentPackage, oc, false)
+
+	})
+
+	g.It(TestCaseName("keycloak-operator", intermediateTestsSufix), func() {
+
+		keycloakCR := "Keycloak"
+		keycloakCRName := "example-keycloak"
+		keycloakPackageName := "keycloak-operator"
+		keycloakFile := "keycloak-cr.yaml"
+		namespace := "keycloak"
+		defer RemoveNamespace(namespace, oc)
+		currentPackage := CreateSubscriptionSpecificNamespace(keycloakPackageName, oc, true, true, namespace, INSTALLPLAN_AUTOMATIC_MODE)
+		CheckDeployment(currentPackage, oc)
+		CreateFromYAML(currentPackage, keycloakFile, oc)
+		CheckCR(currentPackage, keycloakCR, keycloakCRName, "-o=jsonpath={.status.ready}", "true", oc)
+		RemoveCR(currentPackage, keycloakCR, keycloakCRName, oc)
 		RemoveOperatorDependencies(currentPackage, oc, false)
 
 	})
