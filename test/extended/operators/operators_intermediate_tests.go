@@ -138,6 +138,29 @@ var _ = g.Describe("[Suite:openshift/isv] ISV_Operators", func() {
 
 	})
 
+	g.It(TestCaseName("spark-gcp", intermediateTestsSufix), func() {
+		packageName := "spark-gcp" // spark-operator in OperatorHub
+		namespace := "spark-gcp"
+		crFile := "spark-gcp-sparkapplication-cr.yaml"
+		sparkgcpCR := "SparkApplication"
+		sparkgcpName := "spark-pi"
+		crPodname := "spark-pi-driver"
+		jsonPath := "-o=jsonpath={.status.applicationState.state}"
+		expectedMsg := "COMPLETE"
+		searchMsg := "Pi is roughly "
+		defer RemoveNamespace(namespace, oc)
+		currentPackage := CreateSubscriptionSpecificNamespace(packageName, oc, true, true, namespace, INSTALLPLAN_AUTOMATIC_MODE)
+		CheckDeployment(currentPackage, oc)
+		CreateFromYAML(currentPackage, crFile, oc)
+		CheckCR(currentPackage, sparkgcpCR, sparkgcpName, jsonPath, expectedMsg, oc)
+		msg, err := oc.WithoutNamespace().AsAdmin().Run("logs").Args(crPodname, "-n", namespace).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(msg).To(o.ContainSubstring(searchMsg))
+		// e2e.Logf("DEBUG", "Found it", "DEBUG finish")
+		RemoveCR(currentPackage, sparkgcpCR, sparkgcpName, oc)
+		RemoveOperatorDependencies(currentPackage, oc, false)
+	})
+
 })
 
 func CreateFromYAML(p Packagemanifest, filename string, oc *exutil.CLI) {
