@@ -161,6 +161,23 @@ var _ = g.Describe("[Suite:openshift/isv] ISV_Operators", func() {
 		RemoveOperatorDependencies(currentPackage, oc, false)
 	})
 
+	g.It(TestCaseName("strimzi-kafka-operator", intermediateTestsSufix), func() {
+
+		strimziCR := "Kafka"
+		strimziClusterName := "my-cluster"
+		strimziPackageName := "strimzi-kafka-operator"
+		strimziFile := "strimzi-cr.yaml"
+		namespace := "strimzi"
+		defer RemoveNamespace(namespace, oc)
+		currentPackage := CreateSubscriptionSpecificNamespace(strimziPackageName, oc, true, true, namespace, INSTALLPLAN_AUTOMATIC_MODE)
+		CheckDeployment(currentPackage, oc)
+		CreateFromYAML(currentPackage, strimziFile, oc)
+		CheckCR(currentPackage, strimziCR, strimziClusterName, DEFAULT_STATUS_QUERY, DEFAULT_EXPECTED_BEHAVIOR, oc)
+		RemoveCR(currentPackage, strimziCR, strimziClusterName, oc)
+		RemoveOperatorDependencies(currentPackage, oc, false)
+
+	})
+
 })
 
 func CreateFromYAML(p Packagemanifest, filename string, oc *exutil.CLI) {

@@ -32,6 +32,7 @@
 // test/extended/testdata/operators/mongodb-ops-manager-secret.yaml
 // test/extended/testdata/operators/operator_group.yaml
 // test/extended/testdata/operators/portworx-snode-cr.yaml
+// test/extended/testdata/operators/strimzi-cr.yaml
 // test/extended/testdata/operators/subscription.yaml
 // DO NOT EDIT!
 
@@ -2938,6 +2939,49 @@ func testExtendedTestdataOperatorsPortworxSnodeCrYaml() (*asset, error) {
 	return a, nil
 }
 
+var _testExtendedTestdataOperatorsStrimziCrYaml = []byte(`apiVersion: kafka.strimzi.io/v1beta1
+kind: Kafka
+metadata:
+  name: my-cluster
+  namespace: strimzi
+spec:
+  kafka:
+    version: 2.5.0
+    replicas: 3
+    listeners:
+      plain: {}
+      tls: {}
+    config:
+      offsets.topic.replication.factor: 3
+      transaction.state.log.replication.factor: 3
+      transaction.state.log.min.isr: 2
+      log.message.format.version: "2.5"
+    storage:
+      type: ephemeral
+  zookeeper:
+    replicas: 3
+    storage:
+      type: ephemeral
+  entityOperator:
+    topicOperator: {}
+    userOperator: {}
+`)
+
+func testExtendedTestdataOperatorsStrimziCrYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataOperatorsStrimziCrYaml, nil
+}
+
+func testExtendedTestdataOperatorsStrimziCrYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataOperatorsStrimziCrYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/operators/strimzi-cr.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
 var _testExtendedTestdataOperatorsSubscriptionYaml = []byte(`apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:
@@ -3050,6 +3094,7 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/operators/mongodb-ops-manager-secret.yaml": testExtendedTestdataOperatorsMongodbOpsManagerSecretYaml,
 	"test/extended/testdata/operators/operator_group.yaml":             testExtendedTestdataOperatorsOperator_groupYaml,
 	"test/extended/testdata/operators/portworx-snode-cr.yaml":          testExtendedTestdataOperatorsPortworxSnodeCrYaml,
+	"test/extended/testdata/operators/strimzi-cr.yaml":                 testExtendedTestdataOperatorsStrimziCrYaml,
 	"test/extended/testdata/operators/subscription.yaml":               testExtendedTestdataOperatorsSubscriptionYaml,
 }
 
@@ -3132,6 +3177,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 					"mongodb-ops-manager-secret.yaml": {testExtendedTestdataOperatorsMongodbOpsManagerSecretYaml, map[string]*bintree{}},
 					"operator_group.yaml":             {testExtendedTestdataOperatorsOperator_groupYaml, map[string]*bintree{}},
 					"portworx-snode-cr.yaml":          {testExtendedTestdataOperatorsPortworxSnodeCrYaml, map[string]*bintree{}},
+					"strimzi-cr.yaml":                 {testExtendedTestdataOperatorsStrimziCrYaml, map[string]*bintree{}},
 					"subscription.yaml":               {testExtendedTestdataOperatorsSubscriptionYaml, map[string]*bintree{}},
 				}},
 			}},
