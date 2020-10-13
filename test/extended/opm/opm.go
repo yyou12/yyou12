@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	g "github.com/onsi/ginkgo"
-	o "github.com/onsi/gomega"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 )
 
@@ -37,14 +36,5 @@ var _ = g.Describe("[sig-operators] OLM opm should", func() {
 
 		}
 
-	})
-
-	// author: bandrade@redhat.com
-	g.It("Medium-34049-opm can prune operators from index", func() {
-		output, err := opmCLI.Run("index").Args("prune", "-f", "quay.io/bandrade/multi-index:2.0", "-p", "planetscale", "-t", "quay.io/bandrade/multi-index:3.0").Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		if !strings.Contains(output, "deleting packages") || !strings.Contains(output, "pkg=lib-bucket-provisioner") {
-			e2e.Failf(fmt.Sprintf("Failed to obtain the removed packages from prune : %s", output))
-		}
 	})
 })
