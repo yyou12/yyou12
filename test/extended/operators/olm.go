@@ -448,32 +448,32 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		})
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-                g.By("start to test OCP-30242")
-                g.By("delete csv")
-                err = oc.AsAdmin().WithoutNamespace().Run("delete").Args("-n", "test-operators-30206", "csv", "cockroachdb.v2.0.9").Execute()
-                o.Expect(err).NotTo(o.HaveOccurred())
+		g.By("start to test OCP-30242")
+		g.By("delete csv")
+		err = oc.AsAdmin().WithoutNamespace().Run("delete").Args("-n", "test-operators-30206", "csv", "cockroachdb.v2.0.9").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
 
-                g.By("check secrets has been deleted")
-                err = wait.Poll(20*time.Second, 100*time.Second, func() (bool, error) {
-                        err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", "test-operators-30206", "secrets", "mysecret").Execute()
-                        if err != nil {
-                                e2e.Logf("The secrets has been deleted")
-                                return true, nil
-                        }
-                        return false, nil
-                })
-                o.Expect(err).NotTo(o.HaveOccurred())
+		g.By("check secrets has been deleted")
+		err = wait.Poll(20*time.Second, 100*time.Second, func() (bool, error) {
+			err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", "test-operators-30206", "secrets", "mysecret").Execute()
+			if err != nil {
+				e2e.Logf("The secrets has been deleted")
+				return true, nil
+			}
+			return false, nil
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
 
-                g.By("check configmaps has been deleted")
-                err = wait.Poll(20*time.Second, 100*time.Second, func() (bool, error) {
-                        err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", "test-operators-30206", "configmaps", "my-config-map").Execute()
-                        if err != nil {
-                                e2e.Logf("The configmaps has been deleted")
-                                return true, nil
-                        }
-                        return false, nil
-                })
-                o.Expect(err).NotTo(o.HaveOccurred())
+		g.By("check configmaps has been deleted")
+		err = wait.Poll(20*time.Second, 100*time.Second, func() (bool, error) {
+			err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", "test-operators-30206", "configmaps", "my-config-map").Execute()
+			if err != nil {
+				e2e.Logf("The configmaps has been deleted")
+				return true, nil
+			}
+			return false, nil
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
 	})
 })
 
@@ -1071,9 +1071,125 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 			fmt.Sprintf("-o=jsonpath={.status.components.refs[?(@.name==\"%s\")].conditions[*].reason}", sub.subName))
 		o.Expect(output).To(o.ContainSubstring("UnhealthyCatalogSourceFound"))
 
-		output = getResource(oc, asAdmin, withoutNamespace, "operator", sub.operatorPackage+"."+sub.namespace,
-			fmt.Sprintf("-o=jsonpath={.status.components.refs[?(@.name==\"%s\")].conditions[*].message}", sub.installedCSV))
-		o.Expect(output).To(o.ContainSubstring("requirements not met"))
+		newCheck("expect", asAdmin, withoutNamespace, contain, "RequirementsNotMet", ok, []string{"operator", sub.operatorPackage + "." + sub.namespace,
+			fmt.Sprintf("-o=jsonpath={.status.components.refs[?(@.name==\"%s\")].conditions[*].reason}", sub.installedCSV)}).check(oc)
+	})
+
+	// It will cover test case: OCP-30762, author: kuiwang@redhat.com
+	g.It("Medium-30762-installs bundles with v1 CRDs", func() {
+		var (
+			itName = g.CurrentGinkgoTestDescription().TestText
+			og     = operatorGroupDescription{
+				name:      "og-singlenamespace",
+				namespace: "",
+				template:  ogSingleTemplate,
+			}
+			catsrc = catalogSourceDescription{
+				name:        "catsrc-30762-operator",
+				namespace:   "",
+				displayName: "Test Catsrc 30762 Operators",
+				publisher:   "Red Hat",
+				sourceType:  "grpc",
+				address:     "quay.io/olmqe/olm-api:v1",
+				template:    catsrcImageTemplate,
+			}
+			sub = subscriptionDescription{
+				subName:                "cockroachdb",
+				namespace:              "",
+				channel:                "stable",
+				ipApproval:             "Automatic",
+				operatorPackage:        "cockroachdb",
+				catalogSourceName:      catsrc.name,
+				catalogSourceNamespace: "",
+				startingCSV:            "cockroachdb.v2.1.11",
+				currentCSV:             "",
+				installedCSV:           "",
+				template:               subTemplate,
+				singleNamespace:        true,
+			}
+		)
+		oc.SetupProject() //project and its resource are deleted automatically when out of It, so no need derfer or AfterEach
+		og.namespace = oc.Namespace()
+		catsrc.namespace = oc.Namespace()
+		sub.namespace = oc.Namespace()
+		sub.catalogSourceNamespace = catsrc.namespace
+
+		g.By("create catalog source")
+		catsrc.create(oc, itName, dr)
+
+		g.By("Create og")
+		og.create(oc, itName, dr)
+
+		g.By("install perator")
+		sub.create(oc, itName, dr)
+
+		g.By("check csv")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+	})
+
+	// It will cover test case: OCP-27683, author: kuiwang@redhat.com
+	g.It("Medium-27683-InstallPlans can install from extracted bundles", func() {
+		var (
+			itName = g.CurrentGinkgoTestDescription().TestText
+			og     = operatorGroupDescription{
+				name:      "og-singlenamespace",
+				namespace: "",
+				template:  ogSingleTemplate,
+			}
+			catsrc = catalogSourceDescription{
+				name:        "catsrc-27683-operator",
+				namespace:   "",
+				displayName: "Test Catsrc 27683 Operators",
+				publisher:   "Red Hat",
+				sourceType:  "grpc",
+				address:     "quay.io/olmqe/single-bundle-index:1.0.0",
+				template:    catsrcImageTemplate,
+			}
+			sub = subscriptionDescription{
+				subName:                "kiali",
+				namespace:              "",
+				channel:                "stable",
+				ipApproval:             "Automatic",
+				operatorPackage:        "kiali",
+				catalogSourceName:      catsrc.name,
+				catalogSourceNamespace: "",
+				startingCSV:            "kiali-operator.v1.4.2",
+				currentCSV:             "",
+				installedCSV:           "",
+				template:               subTemplate,
+				singleNamespace:        true,
+			}
+		)
+		oc.SetupProject() //project and its resource are deleted automatically when out of It, so no need derfer or AfterEach
+		og.namespace = oc.Namespace()
+		catsrc.namespace = oc.Namespace()
+		sub.namespace = oc.Namespace()
+		sub.catalogSourceNamespace = catsrc.namespace
+
+		g.By("create catalog source")
+		catsrc.create(oc, itName, dr)
+
+		g.By("Create og")
+		og.create(oc, itName, dr)
+
+		g.By("install perator")
+		sub.create(oc, itName, dr)
+
+		g.By("check csv")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+
+		g.By("get bundle package from ip")
+		installPlan := getResource(oc, asAdmin, withoutNamespace, "sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.installplan.name}")
+		o.Expect(installPlan).NotTo(o.BeEmpty())
+		ipBundle := getResource(oc, asAdmin, withoutNamespace, "ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.bundleLookups[0].path}")
+		o.Expect(ipBundle).NotTo(o.BeEmpty())
+
+		g.By("get bundle package from job")
+		jobName := getResource(oc, asAdmin, withoutNamespace, "job", "-n", catsrc.namespace, "-o=jsonpath={.items[0].metadata.name}")
+		o.Expect(jobName).NotTo(o.BeEmpty())
+		jobBundle := getResource(oc, asAdmin, withoutNamespace, "pod", "-l", "job-name="+jobName, "-n", catsrc.namespace, "-o=jsonpath={.items[0].status.initContainerStatuses[*].image}")
+		o.Expect(jobName).NotTo(o.BeEmpty())
+		o.Expect(jobBundle).To(o.ContainSubstring(ipBundle))
 	})
 
 	// It will cover test case: OCP-34472, author: kuiwang@redhat.com
