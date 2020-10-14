@@ -1192,6 +1192,128 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		o.Expect(jobBundle).To(o.ContainSubstring(ipBundle))
 	})
 
+	// It will cover test case: OCP-24513, author: kuiwang@redhat.com
+	g.It("Medium-24513-Operator config support env only", func() {
+		var (
+			itName = g.CurrentGinkgoTestDescription().TestText
+			og     = operatorGroupDescription{
+				name:      "og-singlenamespace",
+				namespace: "",
+				template:  ogSingleTemplate,
+			}
+			catsrc = catalogSourceDescription{
+				name:        "catsrc-24513-operator",
+				namespace:   "",
+				displayName: "Test Catsrc 24513 Operators",
+				publisher:   "Red Hat",
+				sourceType:  "grpc",
+				address:     "quay.io/olmqe/olm-dep:venv",
+				template:    catsrcImageTemplate,
+			}
+			sub = subscriptionDescription{
+				subName:                "teiid",
+				namespace:              "",
+				channel:                "beta",
+				ipApproval:             "Automatic",
+				operatorPackage:        "teiid",
+				catalogSourceName:      catsrc.name,
+				catalogSourceNamespace: "",
+				startingCSV:            "teiid.v0.4.0",
+				currentCSV:             "",
+				installedCSV:           "",
+				template:               subTemplate,
+				singleNamespace:        true,
+			}
+			opename = "teiid-operator"
+		)
+		oc.SetupProject() //project and its resource are deleted automatically when out of It, so no need derfer or AfterEach
+		og.namespace = oc.Namespace()
+		catsrc.namespace = oc.Namespace()
+		sub.namespace = oc.Namespace()
+		sub.catalogSourceNamespace = catsrc.namespace
+
+		g.By("create catalog source")
+		catsrc.create(oc, itName, dr)
+
+		g.By("Create og")
+		og.create(oc, itName, dr)
+
+		g.By("install perator")
+		sub.create(oc, itName, dr)
+
+		g.By("check csv")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+
+		g.By("get parameter of deployment")
+		newCheck("expect", asAdmin, withoutNamespace, contain, "ARGS1", ok, []string{"deployment", opename, "-n", sub.namespace, "-o=jsonpath={.spec.template.spec.containers[0].command}"}).check(oc)
+
+		g.By("patch env for sub")
+		sub.patch(oc, "{\"spec\": {\"config\": {\"env\": [{\"name\": \"EMPTY_ENV\"},{\"name\": \"ARGS1\",\"value\": \"-v=4\"}]}}}")
+
+		g.By("check the empty env")
+		newCheck("expect", asAdmin, withoutNamespace, contain, "EMPTY_ENV", ok, []string{"deployment", opename, "-n", sub.namespace, "-o=jsonpath={.spec.template.spec.containers[0].env[*].name}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, contain, "-v=4", ok, []string{"deployment", opename, "-n", sub.namespace, "-o=jsonpath={.spec.template.spec.containers[0].env[*].value}"}).check(oc)
+	})
+
+	// It will cover test case: OCP-25760, author: kuiwang@redhat.com
+	g.It("Medium-25760-Operator upgrades does not fail after change the channel", func() {
+		var (
+			itName = g.CurrentGinkgoTestDescription().TestText
+			og     = operatorGroupDescription{
+				name:      "og-singlenamespace",
+				namespace: "",
+				template:  ogSingleTemplate,
+			}
+			catsrc = catalogSourceDescription{
+				name:        "catsrc-25760-operator",
+				namespace:   "",
+				displayName: "Test Catsrc 25760 Operators",
+				publisher:   "Red Hat",
+				sourceType:  "grpc",
+				address:     "quay.io/olmqe/olm-dep:vchannel",
+				template:    catsrcImageTemplate,
+			}
+			sub = subscriptionDescription{
+				subName:                "teiid",
+				namespace:              "",
+				channel:                "alpha",
+				ipApproval:             "Automatic",
+				operatorPackage:        "teiid",
+				catalogSourceName:      catsrc.name,
+				catalogSourceNamespace: "",
+				startingCSV:            "teiid.v0.3.0",
+				currentCSV:             "",
+				installedCSV:           "",
+				template:               subTemplate,
+				singleNamespace:        true,
+			}
+		)
+		oc.SetupProject() //project and its resource are deleted automatically when out of It, so no need derfer or AfterEach
+		og.namespace = oc.Namespace()
+		catsrc.namespace = oc.Namespace()
+		sub.namespace = oc.Namespace()
+		sub.catalogSourceNamespace = catsrc.namespace
+
+		g.By("create catalog source")
+		catsrc.create(oc, itName, dr)
+
+		g.By("Create og")
+		og.create(oc, itName, dr)
+
+		g.By("install perator")
+		sub.create(oc, itName, dr)
+
+		g.By("check csv")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+
+		g.By("switch channel")
+		sub.patch(oc, "{\"spec\": {\"channel\": \"beta\"}}")
+		sub.findInstalledCSV(oc, itName, dr)
+
+		g.By("check csv of new channel")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+	})
+
 	// It will cover test case: OCP-34472, author: kuiwang@redhat.com
 	g.It("Medium-34472-OLM label dependency", func() {
 		var (
