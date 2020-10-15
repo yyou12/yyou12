@@ -24,6 +24,7 @@
 // test/extended/testdata/olm/olm-subscription.yaml
 // test/extended/testdata/olm/operatorgroup.yaml
 // test/extended/testdata/olm/opsrc.yaml
+// test/extended/testdata/olm/vpa-crd.yaml
 // test/extended/testdata/operators/couchbase-enterprise-cr.yaml
 // test/extended/testdata/operators/jaeger.yaml
 // test/extended/testdata/operators/kafka.yaml
@@ -2634,6 +2635,95 @@ func testExtendedTestdataOlmOpsrcYaml() (*asset, error) {
 	return a, nil
 }
 
+var _testExtendedTestdataOlmVpaCrdYaml = []byte(`apiVersion: v1
+kind: Template
+metadata:
+  name: vpa-template
+objects:
+- kind: CustomResourceDefinition
+  apiVersion: apiextensions.k8s.io/v1beta1
+  metadata:
+    name: "${NAME}"
+    annotations:
+      "api-approved.kubernetes.io": "https://github.com/kubernetes/kubernetes/pull/63797"
+  spec:
+    group: autoscaling.k8s.io
+    scope: Namespaced
+    names:
+      plural: verticalpodautoscalers
+      singular: verticalpodautoscaler
+      kind: VerticalPodAutoscaler
+      shortNames:
+        - vpa
+    version: v1beta1
+    versions:
+      - name: v1beta1
+        served: false
+        storage: false
+      - name: v1beta2
+        served: true
+        storage: true
+      - name: v1
+        served: true
+        storage: false
+    validation:
+      # openAPIV3Schema is the schema for validating custom objects.
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            required: []
+            properties:
+              targetRef:
+                type: object
+              updatePolicy:
+                type: object
+                properties:
+                  updateMode:
+                    type: string
+              resourcePolicy:
+                type: object
+                properties:
+                  containerPolicies:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        containerName:
+                          type: string
+                        mode:
+                          type: string
+                          enum: ["Auto", "Off"]
+                        minAllowed:
+                          type: object
+                        maxAllowed:
+                          type: object
+                        controlledResources:
+                          type: array
+                          items:
+                            type: string
+                            enum: ["cpu", "memory"]
+parameters:
+- name: NAME
+  value: "verticalpodautoscalers.autoscaling.k8s.io"
+`)
+
+func testExtendedTestdataOlmVpaCrdYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataOlmVpaCrdYaml, nil
+}
+
+func testExtendedTestdataOlmVpaCrdYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataOlmVpaCrdYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/olm/vpa-crd.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
 var _testExtendedTestdataOperatorsCouchbaseEnterpriseCrYaml = []byte(`apiVersion: v1
 kind: Secret
 metadata:
@@ -3144,6 +3234,7 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/olm/olm-subscription.yaml":                    testExtendedTestdataOlmOlmSubscriptionYaml,
 	"test/extended/testdata/olm/operatorgroup.yaml":                       testExtendedTestdataOlmOperatorgroupYaml,
 	"test/extended/testdata/olm/opsrc.yaml":                               testExtendedTestdataOlmOpsrcYaml,
+	"test/extended/testdata/olm/vpa-crd.yaml":                             testExtendedTestdataOlmVpaCrdYaml,
 	"test/extended/testdata/operators/couchbase-enterprise-cr.yaml":       testExtendedTestdataOperatorsCouchbaseEnterpriseCrYaml,
 	"test/extended/testdata/operators/jaeger.yaml":                        testExtendedTestdataOperatorsJaegerYaml,
 	"test/extended/testdata/operators/kafka.yaml":                         testExtendedTestdataOperatorsKafkaYaml,
@@ -3226,6 +3317,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 					"olm-subscription.yaml":         {testExtendedTestdataOlmOlmSubscriptionYaml, map[string]*bintree{}},
 					"operatorgroup.yaml":            {testExtendedTestdataOlmOperatorgroupYaml, map[string]*bintree{}},
 					"opsrc.yaml":                    {testExtendedTestdataOlmOpsrcYaml, map[string]*bintree{}},
+					"vpa-crd.yaml":                  {testExtendedTestdataOlmVpaCrdYaml, map[string]*bintree{}},
 				}},
 				"operators": {nil, map[string]*bintree{
 					"couchbase-enterprise-cr.yaml":       {testExtendedTestdataOperatorsCouchbaseEnterpriseCrYaml, map[string]*bintree{}},

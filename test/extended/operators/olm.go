@@ -1387,6 +1387,74 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
 	})
 
+	// It will cover test case: OCP-32863, author: kuiwang@redhat.com
+	g.It("Medium-32863-Support resources required for SAP Gardener Control Plane Operator", func() {
+		var (
+			itName      = g.CurrentGinkgoTestDescription().TestText
+			vpaTemplate = filepath.Join(buildPruningBaseDir, "vpa-crd.yaml")
+			crdVpa      = crdDescription{
+				name:     "verticalpodautoscalers.autoscaling.k8s.io",
+				template: vpaTemplate,
+			}
+			og = operatorGroupDescription{
+				name:      "og-singlenamespace",
+				namespace: "",
+				template:  ogSingleTemplate,
+			}
+			catsrc = catalogSourceDescription{
+				name:        "catsrc-32863-operator",
+				namespace:   "",
+				displayName: "Test Catsrc 32863 Operators",
+				publisher:   "Red Hat",
+				sourceType:  "grpc",
+				address:     "quay.io/olmqe/single-bundle-index:pdb",
+				template:    catsrcImageTemplate,
+			}
+			sub = subscriptionDescription{
+				subName:                "busybox",
+				namespace:              "",
+				channel:                "alpha",
+				ipApproval:             "Automatic",
+				operatorPackage:        "busybox",
+				catalogSourceName:      catsrc.name,
+				catalogSourceNamespace: "",
+				startingCSV:            "busybox.v2.0.0",
+				currentCSV:             "",
+				installedCSV:           "",
+				template:               subTemplate,
+				singleNamespace:        true,
+			}
+		)
+
+		// defer crdVpa.delete(oc) //it is not needed in case it already exist
+
+		oc.SetupProject() //project and its resource are deleted automatically when out of It, so no need derfer or AfterEach
+		og.namespace = oc.Namespace()
+		catsrc.namespace = oc.Namespace()
+		sub.namespace = oc.Namespace()
+		sub.catalogSourceNamespace = catsrc.namespace
+
+		g.By("create vpa crd")
+		crdVpa.create(oc, itName, dr)
+
+		g.By("create catalog source")
+		catsrc.create(oc, itName, dr)
+
+		g.By("Create og")
+		og.create(oc, itName, dr)
+
+		g.By("install perator")
+		sub.create(oc, itName, dr)
+
+		g.By("check csv")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+
+		g.By("check additional resources")
+		newCheck("present", asAdmin, withoutNamespace, present, "", ok, []string{"vpa", "busybox-vpa", "-n", sub.namespace}).check(oc)
+		newCheck("present", asAdmin, withoutNamespace, present, "", ok, []string{"PriorityClass", "super-priority", "-n", sub.namespace}).check(oc)
+		newCheck("present", asAdmin, withoutNamespace, present, "", ok, []string{"PodDisruptionBudget", "busybox-pdb", "-n", sub.namespace}).check(oc)
+	})
+
 	// It will cover test case: OCP-34472, author: kuiwang@redhat.com
 	g.It("Medium-34472-OLM label dependency", func() {
 		var (
