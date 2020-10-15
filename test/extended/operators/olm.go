@@ -24,6 +24,22 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 
 	var oc = exutil.NewCLIWithoutNamespace("default")
 
+	// author: bandrade@redhat.com
+	g.It("Medium-31693-Check CSV information on the PackageManifest", func() {
+		g.By("1) The relatedImages should exist")
+		msg, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("packagemanifest", "prometheus", "-o=jsonpath={.status.channels[?(.name=='beta')].currentCSVDesc.relatedImages}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(msg).To(o.ContainSubstring("quay.io/coreos/prometheus-operator"))
+
+		g.By("2) The minKubeVersion should exist")
+		msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("packagemanifest", "prometheus", "-o=jsonpath={.status.channels[?(.name=='beta')].currentCSVDesc.minKubeVersion}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(msg).To(o.ContainSubstring("1.11.0"))
+
+		g.By("3) In this case, nativeAPI is optional, and prometheus does not have any nativeAPIs, which is ok.")
+		oc.AsAdmin().WithoutNamespace().Run("get").Args("packagemanifest", "prometheus", "-o=jsonpath={.status.channels[?(.name=='beta')].currentCSVDesc.nativeAPIs}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+	})
 	// author: jiazha@redhat.com
 	g.It("Medium-33902-Catalog Weighting", func() {
 		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
