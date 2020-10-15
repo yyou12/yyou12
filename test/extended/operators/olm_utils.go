@@ -230,6 +230,23 @@ func (catsrc *catalogSourceDescription) delete(itName string, dr describerResrou
 	dr.getIr(itName).remove(catsrc.name, "catsrc", catsrc.namespace)
 }
 
+type customResourceDescription struct {
+	name      string
+	namespace string
+	typename  string
+	template  string
+}
+
+func (crinstance *customResourceDescription) create(oc *exutil.CLI, itName string, dr describerResrouce) {
+	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", crinstance.template,
+		"-p", "NAME="+crinstance.name, "NAMESPACE="+crinstance.namespace)
+	o.Expect(err).NotTo(o.HaveOccurred())
+	dr.getIr(itName).add(newResource(oc, crinstance.typename, crinstance.name, requireNS, crinstance.namespace))
+}
+func (crinstance *customResourceDescription) delete(itName string, dr describerResrouce) {
+	dr.getIr(itName).remove(crinstance.name, crinstance.typename, crinstance.namespace)
+}
+
 type operatorGroupDescription struct {
 	name         string
 	namespace    string

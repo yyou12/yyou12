@@ -1255,6 +1255,79 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		newCheck("expect", asAdmin, withoutNamespace, contain, "-v=4", ok, []string{"deployment", opename, "-n", sub.namespace, "-o=jsonpath={.spec.template.spec.containers[0].env[*].value}"}).check(oc)
 	})
 
+	// It will cover test case: OCP-24382, author: kuiwang@redhat.com
+	g.It("Medium-24382-Should restrict CRD update if schema changes [Serial]", func() {
+		var (
+			etcdCluster = filepath.Join(buildPruningBaseDir, "etcd-cluster.yaml")
+			itName      = g.CurrentGinkgoTestDescription().TestText
+			og          = operatorGroupDescription{
+				name:      "og-singlenamespace",
+				namespace: "",
+				template:  ogSingleTemplate,
+			}
+			catsrc = catalogSourceDescription{
+				name:        "catsrc-24382-operator",
+				namespace:   "",
+				displayName: "Test Catsrc 24382 Operators",
+				publisher:   "Red Hat",
+				sourceType:  "grpc",
+				address:     "quay.io/olmqe/olm-dep:vschema",
+				template:    catsrcImageTemplate,
+			}
+			sub = subscriptionDescription{
+				subName:                "etcd",
+				namespace:              "",
+				channel:                "alpha",
+				ipApproval:             "Automatic",
+				operatorPackage:        "etcd",
+				catalogSourceName:      catsrc.name,
+				catalogSourceNamespace: "",
+				startingCSV:            "etcdoperator.v0.9.2",
+				currentCSV:             "",
+				installedCSV:           "",
+				template:               subTemplate,
+				singleNamespace:        true,
+			}
+			etcdCr = customResourceDescription{
+				name:      "example-24382",
+				namespace: "",
+				typename:  "EtcdCluster",
+				template:  etcdCluster,
+			}
+		)
+		oc.SetupProject() //project and its resource are deleted automatically when out of It, so no need derfer or AfterEach
+		og.namespace = oc.Namespace()
+		catsrc.namespace = oc.Namespace()
+		sub.namespace = oc.Namespace()
+		sub.catalogSourceNamespace = catsrc.namespace
+		etcdCr.namespace = oc.Namespace()
+
+		g.By("create catalog source")
+		catsrc.create(oc, itName, dr)
+
+		g.By("Create og")
+		og.create(oc, itName, dr)
+
+		g.By("install perator")
+		sub.create(oc, itName, dr)
+
+		g.By("check csv")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+
+		g.By("creat cr")
+		etcdCr.create(oc, itName, dr)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Running", ok, []string{etcdCr.typename, etcdCr.name, "-n", etcdCr.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+
+		g.By("update operator")
+		sub.patch(oc, "{\"spec\": {\"channel\": \"beta\"}}")
+		sub.findInstalledCSV(oc, itName, dr)
+
+		g.By("check schema does not work")
+		installPlan := getResource(oc, asAdmin, withoutNamespace, "sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.installplan.name}")
+		o.Expect(installPlan).NotTo(o.BeEmpty())
+		newCheck("expect", asAdmin, withoutNamespace, contain, "error validating existing CRs agains new CRD's schema", ok, []string{"ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.conditions[*].message}"}).check(oc)
+	})
+
 	// It will cover test case: OCP-25760, author: kuiwang@redhat.com
 	g.It("Medium-25760-Operator upgrades does not fail after change the channel", func() {
 		var (
