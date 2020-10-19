@@ -24,6 +24,22 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 
 	var oc = exutil.NewCLIWithoutNamespace("default")
 
+	// author: jiazha@redhat.com
+	g.It("Medium-35631-Remove OperatorSource API", func() {
+		g.By("1) Check the operatorsource resource")
+		msg, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("operatorsource").Output()
+		e2e.Logf("Get the expected error: %s", msg)
+		o.Expect(msg).To(o.ContainSubstring("the server doesn't have a resource type"))
+
+		g.By("2) Check the default 4 CatalogSource CRs")
+		msg, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("catalogsource", "-n", "openshift-marketplace").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf("Get the 4 CatalogSource CRs:\n %s", msg)
+		o.Expect(msg).To(o.ContainSubstring("certified-operators"))
+		o.Expect(msg).To(o.ContainSubstring("community-operators"))
+		o.Expect(msg).To(o.ContainSubstring("redhat-marketplace"))
+		o.Expect(msg).To(o.ContainSubstring("redhat-operators"))
+	})
 	// author: bandrade@redhat.com
 	g.It("Medium-31693-Check CSV information on the PackageManifest", func() {
 		g.By("1) The relatedImages should exist")
