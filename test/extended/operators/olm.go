@@ -372,6 +372,63 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 
 	})
 
+	// author: bandrade@redhat.com
+	g.It("Low-24055-Check for defaultChannel mandatory field when having multiple channels", func() {
+		olmBaseDir := exutil.FixturePath("testdata", "olm")
+		cmMapWithoutDefaultChannel := filepath.Join(olmBaseDir, "configmap-without-defaultchannel.yaml")
+		cmMapWithDefaultChannel := filepath.Join(olmBaseDir, "configmap-with-defaultchannel.yaml")
+		csNamespaced := filepath.Join(olmBaseDir, "catalogsource-namespace.yaml")
+
+		namespace := "scenario3"
+		defer RemoveNamespace(namespace, oc)
+		g.By("1) Creating a namespace")
+		_, err := oc.WithoutNamespace().AsAdmin().Run("create").Args("ns", namespace).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("2) Creating a ConfigMap without a default channel")
+		_, err = oc.WithoutNamespace().AsAdmin().Run("create").Args("-f", cmMapWithoutDefaultChannel).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("3) Creating a CatalogSource")
+		_, err = oc.WithoutNamespace().AsAdmin().Run("create").Args("-f", csNamespaced).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("4) Checking CatalogSource error statement due to the absense of a default channel")
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		err = wait.Poll(30*time.Second, 180*time.Second, func() (bool, error) {
+			output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-l olm.catalogSource=scenario3", "-n", "scenario3").Output()
+			if err != nil {
+				return false, nil
+			}
+			if strings.Contains(output, "CrashLoopBackOff") {
+
+				return true, nil
+			}
+			return false, nil
+		})
+
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("5) Changing the CatalogSource to include default channel for each package")
+		_, err = oc.WithoutNamespace().AsAdmin().Run("apply").Args("-f", cmMapWithDefaultChannel).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("6) Checking the state of CatalogSource(Running)")
+		err = wait.Poll(30*time.Second, 180*time.Second, func() (bool, error) {
+			output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-l olm.catalogSource=scenario3", "-n", "scenario3").Output()
+			if err != nil {
+				return false, nil
+			}
+			if strings.Contains(output, "Running") {
+
+				return true, nil
+			}
+			return false, nil
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
+	})
+
 	// author: jiazha@redhat.com
 	g.It("Medium-20981-contain the source commit id [Serial]", func() {
 		sameCommit := ""
