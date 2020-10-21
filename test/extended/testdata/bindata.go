@@ -40,6 +40,11 @@
 // test/extended/testdata/operators/strimzi-cr.yaml
 // test/extended/testdata/operators/subscription.yaml
 // test/extended/testdata/opm/index_34016.db
+// test/extended/testdata/securityandcompliance/catalogsource-image.yaml
+// test/extended/testdata/securityandcompliance/fileintegrity.yaml
+// test/extended/testdata/securityandcompliance/operator-group.yaml
+// test/extended/testdata/securityandcompliance/pod_modify.yaml
+// test/extended/testdata/securityandcompliance/subscription.yaml
 // DO NOT EDIT!
 
 package testdata
@@ -4483,6 +4488,228 @@ func testExtendedTestdataOpmIndex_34016Db() (*asset, error) {
 	return a, nil
 }
 
+var _testExtendedTestdataSecurityandcomplianceCatalogsourceImageYaml = []byte(`apiVersion: v1
+kind: Template
+metadata:
+  name: isc-catalogsource-image-template
+objects:
+- apiVersion: operators.coreos.com/v1alpha1
+  kind: CatalogSource
+  metadata:
+    name: "${NAME}"
+    namespace: "${NAMESPACE}"
+  spec:
+    image: "${ADDRESS}"
+    displayName: "${DISPLAYNAME}"
+    icon:
+      base64data: ""
+      mediatype: ""
+    publisher: "${PUBLISHER}"
+    sourceType: "${SOURCETYPE}"
+    updateStrategy:
+      registryPoll:
+        interval: 10m0s
+parameters:
+- name: NAME
+- name: NAMESPACE
+- name: ADDRESS
+- name: DISPLAYNAME
+- name: PUBLISHER
+- name: SOURCETYPE
+
+`)
+
+func testExtendedTestdataSecurityandcomplianceCatalogsourceImageYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataSecurityandcomplianceCatalogsourceImageYaml, nil
+}
+
+func testExtendedTestdataSecurityandcomplianceCatalogsourceImageYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataSecurityandcomplianceCatalogsourceImageYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/securityandcompliance/catalogsource-image.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataSecurityandcomplianceFileintegrityYaml = []byte(`apiVersion: v1
+kind: Template
+metadata:
+  name: fileintegrity-template
+objects:
+- apiVersion: fileintegrity.openshift.io/v1alpha1
+  kind: FileIntegrity
+  metadata:
+    name: "${NAME}"
+    namespace: "${NAMESPACE}"
+  spec:
+    config:
+      name: "${CONFNAME}"
+      namespace: "${NAMESPACE}"
+      key: "${CONFKEY}"
+      gracePeriod: 20
+    debug: false
+parameters:
+- name: NAME
+- name: NAMESPACE
+- name: CONFNAME
+- name: CONFKEY
+- name: DEBUG
+
+`)
+
+func testExtendedTestdataSecurityandcomplianceFileintegrityYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataSecurityandcomplianceFileintegrityYaml, nil
+}
+
+func testExtendedTestdataSecurityandcomplianceFileintegrityYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataSecurityandcomplianceFileintegrityYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/securityandcompliance/fileintegrity.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataSecurityandcomplianceOperatorGroupYaml = []byte(`apiVersion: v1
+kind: Template
+metadata:
+  name: isc-operatorgroup-template
+objects:
+- kind: OperatorGroup
+  apiVersion: operators.coreos.com/v1
+  metadata:
+    name: "${NAME}"
+    namespace: "${NAMESPACE}"
+  spec:
+    targetNamespaces:
+    - "${NAMESPACE}"
+
+parameters:
+- name: NAME
+- name: NAMESPACE
+
+`)
+
+func testExtendedTestdataSecurityandcomplianceOperatorGroupYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataSecurityandcomplianceOperatorGroupYaml, nil
+}
+
+func testExtendedTestdataSecurityandcomplianceOperatorGroupYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataSecurityandcomplianceOperatorGroupYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/securityandcompliance/operator-group.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataSecurityandcompliancePod_modifyYaml = []byte(`apiVersion: v1
+kind: Template
+metadata:
+  name: pod-modify-template
+objects:
+- kind: Pod
+  apiVersion: v1
+  metadata:
+    name: "${NAME}"
+    namespace: "${NAMESPACE}"
+  spec:
+    nodeName: "${NODENAME}"
+    containers:
+    - image: "quay.io/openshifttest/hello-openshift@sha256:424e57db1f2e8e8ac9087d2f5e8faea6d73811f0b6f96301bc94293680897073"
+      name: hello-pod
+      args: 
+      - "-c"
+      - "${PARAC}"
+      command:
+      - "/bin/sh"
+      imagePullPolicy: Always
+      securityContext:
+        privileged: true
+        runAsUser: 0
+      volumeMounts:
+      - mountPath: /hostroot
+        name: hostroot
+    restartPolicy: Never
+    volumes:
+    - hostPath:
+        path: /
+        type: ""
+      name: hostroot
+parameters:
+- name: NAME
+- name: NODENAME
+- name: NAMESPACE
+- name: PARAC
+
+`)
+
+func testExtendedTestdataSecurityandcompliancePod_modifyYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataSecurityandcompliancePod_modifyYaml, nil
+}
+
+func testExtendedTestdataSecurityandcompliancePod_modifyYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataSecurityandcompliancePod_modifyYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/securityandcompliance/pod_modify.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataSecurityandcomplianceSubscriptionYaml = []byte(`apiVersion: v1
+kind: Template
+metadata:
+  name: isc-sub-template
+objects:
+- apiVersion: operators.coreos.com/v1alpha1
+  kind: Subscription
+  metadata:
+    name: "${SUBNAME}"
+    namespace: "${SUBNAMESPACE}"
+  spec:
+    channel: "${CHANNEL}"
+    installPlanApproval: "${APPROVAL}"
+    name: "${OPERATORNAME}"
+    source: "${SOURCENAME}"
+    sourceNamespace: "${SOURCENAMESPACE}"
+    startingCSV: "${STARTINGCSV}"
+parameters:
+- name: SUBNAME
+- name: SUBNAMESPACE
+- name: CHANNEL
+- name: APPROVAL
+- name: OPERATORNAME
+- name: SOURCENAME
+- name: SOURCENAMESPACE
+- name: STARTINGCSV
+
+`)
+
+func testExtendedTestdataSecurityandcomplianceSubscriptionYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataSecurityandcomplianceSubscriptionYaml, nil
+}
+
+func testExtendedTestdataSecurityandcomplianceSubscriptionYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataSecurityandcomplianceSubscriptionYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/securityandcompliance/subscription.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
 // Asset loads and returns the asset for the given name.
 // It returns an error if the asset could not be found or
 // could not be loaded.
@@ -4535,46 +4762,51 @@ func AssetNames() []string {
 
 // _bindata is a table, holding each asset generator, mapped to its name.
 var _bindata = map[string]func() (*asset, error){
-	"test/extended/testdata/bindata.go":                                   testExtendedTestdataBindataGo,
-	"test/extended/testdata/olm/catalogsource-address.yaml":               testExtendedTestdataOlmCatalogsourceAddressYaml,
-	"test/extended/testdata/olm/catalogsource-configmap.yaml":             testExtendedTestdataOlmCatalogsourceConfigmapYaml,
-	"test/extended/testdata/olm/catalogsource-image.yaml":                 testExtendedTestdataOlmCatalogsourceImageYaml,
-	"test/extended/testdata/olm/catalogsource-namespace.yaml":             testExtendedTestdataOlmCatalogsourceNamespaceYaml,
-	"test/extended/testdata/olm/cm-certutil-readytest.yaml":               testExtendedTestdataOlmCmCertutilReadytestYaml,
-	"test/extended/testdata/olm/cm-certutil-readytests.yaml":              testExtendedTestdataOlmCmCertutilReadytestsYaml,
-	"test/extended/testdata/olm/cm-learn-v1.yaml":                         testExtendedTestdataOlmCmLearnV1Yaml,
-	"test/extended/testdata/olm/cm-learn-v2.yaml":                         testExtendedTestdataOlmCmLearnV2Yaml,
-	"test/extended/testdata/olm/cm-lightbend.yaml":                        testExtendedTestdataOlmCmLightbendYaml,
-	"test/extended/testdata/olm/cm-namespaceconfig.yaml":                  testExtendedTestdataOlmCmNamespaceconfigYaml,
-	"test/extended/testdata/olm/configmap-test.yaml":                      testExtendedTestdataOlmConfigmapTestYaml,
-	"test/extended/testdata/olm/configmap-with-defaultchannel.yaml":       testExtendedTestdataOlmConfigmapWithDefaultchannelYaml,
-	"test/extended/testdata/olm/configmap-without-defaultchannel.yaml":    testExtendedTestdataOlmConfigmapWithoutDefaultchannelYaml,
-	"test/extended/testdata/olm/cs-without-image.yaml":                    testExtendedTestdataOlmCsWithoutImageYaml,
-	"test/extended/testdata/olm/csc.yaml":                                 testExtendedTestdataOlmCscYaml,
-	"test/extended/testdata/olm/etcd-cluster.yaml":                        testExtendedTestdataOlmEtcdClusterYaml,
-	"test/extended/testdata/olm/etcd-custom-csc.yaml":                     testExtendedTestdataOlmEtcdCustomCscYaml,
-	"test/extended/testdata/olm/etcd-subscription-manual.yaml":            testExtendedTestdataOlmEtcdSubscriptionManualYaml,
-	"test/extended/testdata/olm/etcd-subscription.yaml":                   testExtendedTestdataOlmEtcdSubscriptionYaml,
-	"test/extended/testdata/olm/image-catalogsource.yaml":                 testExtendedTestdataOlmImageCatalogsourceYaml,
-	"test/extended/testdata/olm/image-sub.yaml":                           testExtendedTestdataOlmImageSubYaml,
-	"test/extended/testdata/olm/og-allns.yaml":                            testExtendedTestdataOlmOgAllnsYaml,
-	"test/extended/testdata/olm/og-multins.yaml":                          testExtendedTestdataOlmOgMultinsYaml,
-	"test/extended/testdata/olm/olm-subscription.yaml":                    testExtendedTestdataOlmOlmSubscriptionYaml,
-	"test/extended/testdata/olm/operatorgroup.yaml":                       testExtendedTestdataOlmOperatorgroupYaml,
-	"test/extended/testdata/olm/opsrc.yaml":                               testExtendedTestdataOlmOpsrcYaml,
-	"test/extended/testdata/olm/vpa-crd.yaml":                             testExtendedTestdataOlmVpaCrdYaml,
-	"test/extended/testdata/operators/couchbase-enterprise-cr.yaml":       testExtendedTestdataOperatorsCouchbaseEnterpriseCrYaml,
-	"test/extended/testdata/operators/jaeger.yaml":                        testExtendedTestdataOperatorsJaegerYaml,
-	"test/extended/testdata/operators/kafka.yaml":                         testExtendedTestdataOperatorsKafkaYaml,
-	"test/extended/testdata/operators/keycloak-cr.yaml":                   testExtendedTestdataOperatorsKeycloakCrYaml,
-	"test/extended/testdata/operators/mongodb-ops-manager-cr.yaml":        testExtendedTestdataOperatorsMongodbOpsManagerCrYaml,
-	"test/extended/testdata/operators/mongodb-ops-manager-secret.yaml":    testExtendedTestdataOperatorsMongodbOpsManagerSecretYaml,
-	"test/extended/testdata/operators/operator_group.yaml":                testExtendedTestdataOperatorsOperator_groupYaml,
-	"test/extended/testdata/operators/portworx-snode-cr.yaml":             testExtendedTestdataOperatorsPortworxSnodeCrYaml,
-	"test/extended/testdata/operators/spark-gcp-sparkapplication-cr.yaml": testExtendedTestdataOperatorsSparkGcpSparkapplicationCrYaml,
-	"test/extended/testdata/operators/strimzi-cr.yaml":                    testExtendedTestdataOperatorsStrimziCrYaml,
-	"test/extended/testdata/operators/subscription.yaml":                  testExtendedTestdataOperatorsSubscriptionYaml,
-	"test/extended/testdata/opm/index_34016.db":                           testExtendedTestdataOpmIndex_34016Db,
+	"test/extended/testdata/bindata.go":                                     testExtendedTestdataBindataGo,
+	"test/extended/testdata/olm/catalogsource-address.yaml":                 testExtendedTestdataOlmCatalogsourceAddressYaml,
+	"test/extended/testdata/olm/catalogsource-configmap.yaml":               testExtendedTestdataOlmCatalogsourceConfigmapYaml,
+	"test/extended/testdata/olm/catalogsource-image.yaml":                   testExtendedTestdataOlmCatalogsourceImageYaml,
+	"test/extended/testdata/olm/catalogsource-namespace.yaml":               testExtendedTestdataOlmCatalogsourceNamespaceYaml,
+	"test/extended/testdata/olm/cm-certutil-readytest.yaml":                 testExtendedTestdataOlmCmCertutilReadytestYaml,
+	"test/extended/testdata/olm/cm-certutil-readytests.yaml":                testExtendedTestdataOlmCmCertutilReadytestsYaml,
+	"test/extended/testdata/olm/cm-learn-v1.yaml":                           testExtendedTestdataOlmCmLearnV1Yaml,
+	"test/extended/testdata/olm/cm-learn-v2.yaml":                           testExtendedTestdataOlmCmLearnV2Yaml,
+	"test/extended/testdata/olm/cm-lightbend.yaml":                          testExtendedTestdataOlmCmLightbendYaml,
+	"test/extended/testdata/olm/cm-namespaceconfig.yaml":                    testExtendedTestdataOlmCmNamespaceconfigYaml,
+	"test/extended/testdata/olm/configmap-test.yaml":                        testExtendedTestdataOlmConfigmapTestYaml,
+	"test/extended/testdata/olm/configmap-with-defaultchannel.yaml":         testExtendedTestdataOlmConfigmapWithDefaultchannelYaml,
+	"test/extended/testdata/olm/configmap-without-defaultchannel.yaml":      testExtendedTestdataOlmConfigmapWithoutDefaultchannelYaml,
+	"test/extended/testdata/olm/cs-without-image.yaml":                      testExtendedTestdataOlmCsWithoutImageYaml,
+	"test/extended/testdata/olm/csc.yaml":                                   testExtendedTestdataOlmCscYaml,
+	"test/extended/testdata/olm/etcd-cluster.yaml":                          testExtendedTestdataOlmEtcdClusterYaml,
+	"test/extended/testdata/olm/etcd-custom-csc.yaml":                       testExtendedTestdataOlmEtcdCustomCscYaml,
+	"test/extended/testdata/olm/etcd-subscription-manual.yaml":              testExtendedTestdataOlmEtcdSubscriptionManualYaml,
+	"test/extended/testdata/olm/etcd-subscription.yaml":                     testExtendedTestdataOlmEtcdSubscriptionYaml,
+	"test/extended/testdata/olm/image-catalogsource.yaml":                   testExtendedTestdataOlmImageCatalogsourceYaml,
+	"test/extended/testdata/olm/image-sub.yaml":                             testExtendedTestdataOlmImageSubYaml,
+	"test/extended/testdata/olm/og-allns.yaml":                              testExtendedTestdataOlmOgAllnsYaml,
+	"test/extended/testdata/olm/og-multins.yaml":                            testExtendedTestdataOlmOgMultinsYaml,
+	"test/extended/testdata/olm/olm-subscription.yaml":                      testExtendedTestdataOlmOlmSubscriptionYaml,
+	"test/extended/testdata/olm/operatorgroup.yaml":                         testExtendedTestdataOlmOperatorgroupYaml,
+	"test/extended/testdata/olm/opsrc.yaml":                                 testExtendedTestdataOlmOpsrcYaml,
+	"test/extended/testdata/olm/vpa-crd.yaml":                               testExtendedTestdataOlmVpaCrdYaml,
+	"test/extended/testdata/operators/couchbase-enterprise-cr.yaml":         testExtendedTestdataOperatorsCouchbaseEnterpriseCrYaml,
+	"test/extended/testdata/operators/jaeger.yaml":                          testExtendedTestdataOperatorsJaegerYaml,
+	"test/extended/testdata/operators/kafka.yaml":                           testExtendedTestdataOperatorsKafkaYaml,
+	"test/extended/testdata/operators/keycloak-cr.yaml":                     testExtendedTestdataOperatorsKeycloakCrYaml,
+	"test/extended/testdata/operators/mongodb-ops-manager-cr.yaml":          testExtendedTestdataOperatorsMongodbOpsManagerCrYaml,
+	"test/extended/testdata/operators/mongodb-ops-manager-secret.yaml":      testExtendedTestdataOperatorsMongodbOpsManagerSecretYaml,
+	"test/extended/testdata/operators/operator_group.yaml":                  testExtendedTestdataOperatorsOperator_groupYaml,
+	"test/extended/testdata/operators/portworx-snode-cr.yaml":               testExtendedTestdataOperatorsPortworxSnodeCrYaml,
+	"test/extended/testdata/operators/spark-gcp-sparkapplication-cr.yaml":   testExtendedTestdataOperatorsSparkGcpSparkapplicationCrYaml,
+	"test/extended/testdata/operators/strimzi-cr.yaml":                      testExtendedTestdataOperatorsStrimziCrYaml,
+	"test/extended/testdata/operators/subscription.yaml":                    testExtendedTestdataOperatorsSubscriptionYaml,
+	"test/extended/testdata/opm/index_34016.db":                             testExtendedTestdataOpmIndex_34016Db,
+	"test/extended/testdata/securityandcompliance/catalogsource-image.yaml": testExtendedTestdataSecurityandcomplianceCatalogsourceImageYaml,
+	"test/extended/testdata/securityandcompliance/fileintegrity.yaml":       testExtendedTestdataSecurityandcomplianceFileintegrityYaml,
+	"test/extended/testdata/securityandcompliance/operator-group.yaml":      testExtendedTestdataSecurityandcomplianceOperatorGroupYaml,
+	"test/extended/testdata/securityandcompliance/pod_modify.yaml":          testExtendedTestdataSecurityandcompliancePod_modifyYaml,
+	"test/extended/testdata/securityandcompliance/subscription.yaml":        testExtendedTestdataSecurityandcomplianceSubscriptionYaml,
 }
 
 // AssetDir returns the file names below a certain
@@ -4666,6 +4898,13 @@ var _bintree = &bintree{nil, map[string]*bintree{
 				}},
 				"opm": {nil, map[string]*bintree{
 					"index_34016.db": {testExtendedTestdataOpmIndex_34016Db, map[string]*bintree{}},
+				}},
+				"securityandcompliance": {nil, map[string]*bintree{
+					"catalogsource-image.yaml": {testExtendedTestdataSecurityandcomplianceCatalogsourceImageYaml, map[string]*bintree{}},
+					"fileintegrity.yaml":       {testExtendedTestdataSecurityandcomplianceFileintegrityYaml, map[string]*bintree{}},
+					"operator-group.yaml":      {testExtendedTestdataSecurityandcomplianceOperatorGroupYaml, map[string]*bintree{}},
+					"pod_modify.yaml":          {testExtendedTestdataSecurityandcompliancePod_modifyYaml, map[string]*bintree{}},
+					"subscription.yaml":        {testExtendedTestdataSecurityandcomplianceSubscriptionYaml, map[string]*bintree{}},
 				}},
 			}},
 		}},
