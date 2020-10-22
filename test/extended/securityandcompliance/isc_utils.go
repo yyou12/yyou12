@@ -61,6 +61,7 @@ const (
 	withoutNamespace = true
 	requireNS        = true
 	compare          = true
+	contain          = false
 	present          = true
 	ok               = true
 )
