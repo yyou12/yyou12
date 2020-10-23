@@ -4554,14 +4554,15 @@ objects:
       name: "${CONFNAME}"
       namespace: "${NAMESPACE}"
       key: "${CONFKEY}"
-      gracePeriod: 20
-    debug: false
+      gracePeriod: ${{GRACEPERIOD}}
+    debug: ${{DEBUG}}
 parameters:
 - name: NAME
 - name: NAMESPACE
 - name: CONFNAME
 - name: CONFKEY
 - name: DEBUG
+- name: GRACEPERIOD
 
 `)
 

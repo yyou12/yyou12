@@ -124,4 +124,44 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 		fi1.getDataFromConfigmap(oc, cmName, "/hostroot/root/test")
 	})
 
+	g.It("Medium-31979-the enabling debug flag of the logcollector should work [Serial]", func() {
+		var itName = g.CurrentGinkgoTestDescription().TestText
+		oc.SetupProject()
+		catsrc.namespace = oc.Namespace()
+		og.namespace = oc.Namespace()
+		sub.namespace = oc.Namespace()
+		sub.catalogSourceName = catsrc.name
+		sub.catalogSourceNamespace = catsrc.namespace
+		fi1.namespace = oc.Namespace()
+		fi1.debug = false
+
+		g.By("Create catsrc")
+		catsrc.create(oc, itName, dr)
+		catsrc.checkPackagemanifest(oc, catsrc.displayName)
+		g.By("Create og")
+		og.create(oc, itName, dr)
+		og.checkOperatorgroup(oc, og.name)
+		g.By("Create subscription")
+		sub.create(oc, itName, dr)
+		g.By("check csv")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+		sub.checkPodFioStatus(oc, "running")
+
+		g.By("Create fileintegrity with debug=false")
+		fi1.createFIOWithoutConfig(oc, itName, dr)
+		fi1.checkFileintegrityStatus(oc, "running")
+		var podName = fi1.getOneFioPodName(oc)
+		fi1.checkdebugFlag(oc, "debug=false")
+		fi1.checkKeywordNotExistInLog(oc, podName, "debug:")
+
+		g.By("Configure fileintegrity with debug=true")
+		fi1.debug = true
+		fi1.createFIOWithoutConfig(oc, itName, dr)
+		fi1.checkFileintegrityStatus(oc, "running")
+		podName = fi1.getOneFioPodName(oc)
+		fi1.checkdebugFlag(oc, "debug=true")
+		fi1.checkKeywordExistInLog(oc, podName, "debug:")
+
+	})
+
 })

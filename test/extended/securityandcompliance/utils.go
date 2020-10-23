@@ -1,6 +1,7 @@
 package securityandcompliance
 
 import (
+	"strconv"
 	"strings"
 	"time"
 
@@ -15,7 +16,7 @@ type fileintegrity struct {
 	namespace   string
 	configname  string
 	configkey   string
-	graceperiod int64
+	graceperiod int
 	debug       bool
 	template    string
 }
@@ -81,6 +82,57 @@ func getOneWorkerNodeName(oc *exutil.CLI) string {
 	return nodeName
 }
 
+func (fi1 *fileintegrity) getOneFioPodName(oc *exutil.CLI) string {
+	fioPodName, err1 := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-l file-integrity.openshift.io/pod=",
+		"-n", fi1.namespace, "-o=jsonpath={.items[0].metadata.name}").Output()
+	o.Expect(err1).NotTo(o.HaveOccurred())
+	e2e.Logf("the result of fioPodName:%v", fioPodName)
+	if strings.Compare(fioPodName, "") != 0 {
+		return fioPodName
+	}
+	return fioPodName
+}
+
+func (fi1 *fileintegrity) checkKeywordNotExistInLog(oc *exutil.CLI, podName string, expected string) {
+	err := wait.Poll(5*time.Second, 20*time.Second, func() (bool, error) {
+		logs, err1 := oc.AsAdmin().WithoutNamespace().Run("logs").Args(podName, "-n", fi1.namespace).Output()
+		o.Expect(err1).NotTo(o.HaveOccurred())
+		e2e.Logf("the result of logs:%v", logs)
+		if strings.Compare(logs, "") != 0 && !strings.Contains(logs, expected) {
+			return true, nil
+		}
+		return false, nil
+	})
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+func (fi1 *fileintegrity) checkKeywordExistInLog(oc *exutil.CLI, podName string, expected string) {
+	err := wait.Poll(5*time.Second, 20*time.Second, func() (bool, error) {
+		logs, err1 := oc.AsAdmin().WithoutNamespace().Run("logs").Args(podName, "-n", fi1.namespace).Output()
+		o.Expect(err1).NotTo(o.HaveOccurred())
+		e2e.Logf("the result of logs:%v", logs)
+		if strings.Contains(logs, expected) {
+			return true, nil
+		}
+		return false, nil
+	})
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+func (fi1 *fileintegrity) checkdebugFlag(oc *exutil.CLI, expected string) {
+	err := wait.Poll(5*time.Second, 20*time.Second, func() (bool, error) {
+		fioPodArgs, err1 := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-l file-integrity.openshift.io/pod=",
+			"-n", fi1.namespace, "-o=jsonpath={.items[0].spec.containers[].args}").Output()
+		o.Expect(err1).NotTo(o.HaveOccurred())
+		e2e.Logf("the result of fioPodArgs: %v", fioPodArgs)
+		if strings.Contains(fioPodArgs, expected) {
+			return true, nil
+		}
+		return false, nil
+	})
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
 func (pod *podModify) doActionsOnNode(oc *exutil.CLI, expected string, dr describerResrouce) {
 	err := wait.Poll(5*time.Second, 20*time.Second, func() (bool, error) {
 		err1 := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", pod.template, "-p", "NAME="+pod.name, "NAMESPACE="+pod.namespace,
@@ -97,14 +149,15 @@ func (pod *podModify) doActionsOnNode(oc *exutil.CLI, expected string, dr descri
 }
 
 func (fi1 *fileintegrity) createFIOWithoutConfig(oc *exutil.CLI, itName string, dr describerResrouce) {
-	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", fi1.template, "-p", "NAME="+fi1.name, "NAMESPACE="+fi1.namespace)
+	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", fi1.template, "-p", "NAME="+fi1.name, "NAMESPACE="+fi1.namespace,
+		"GRACEPERIOD="+strconv.Itoa(fi1.graceperiod), "DEBUG="+strconv.FormatBool(fi1.debug))
 	o.Expect(err).NotTo(o.HaveOccurred())
 	dr.getIr(itName).add(newResource(oc, "fileintegrity", fi1.name, requireNS, fi1.namespace))
 }
 
-func (fi1 *fileintegrity) createFIOWitConfig(oc *exutil.CLI, itName string, dr describerResrouce) {
+func (fi1 *fileintegrity) createFIOWithConfig(oc *exutil.CLI, itName string, dr describerResrouce) {
 	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", fi1.template, "-p", "NAME="+fi1.name, "NAMESPACE="+fi1.namespace,
-		"CONFNAME="+fi1.configname, "CONFKEY="+fi1.configkey)
+		"GRACEPERIOD="+strconv.Itoa(fi1.graceperiod), "DEBUG="+strconv.FormatBool(fi1.debug), "CONFNAME="+fi1.configname, "CONFKEY="+fi1.configkey)
 	o.Expect(err).NotTo(o.HaveOccurred())
 	dr.getIr(itName).add(newResource(oc, "fileintegrity", fi1.name, requireNS, fi1.namespace))
 }
