@@ -45,6 +45,11 @@
 // test/extended/testdata/securityandcompliance/operator-group.yaml
 // test/extended/testdata/securityandcompliance/pod_modify.yaml
 // test/extended/testdata/securityandcompliance/subscription.yaml
+// test/extended/testdata/winc/aws_windows_machineset_no_label.yaml
+// test/extended/testdata/winc/azure_windows_machineset_no_label.yaml
+// test/extended/testdata/winc/linux_web_server.yaml
+// test/extended/testdata/winc/windows_web_server.yaml
+// test/extended/testdata/winc/windows_web_server_no_taint.yaml
 // DO NOT EDIT!
 
 package testdata
@@ -4710,6 +4715,309 @@ func testExtendedTestdataSecurityandcomplianceSubscriptionYaml() (*asset, error)
 	return a, nil
 }
 
+var _testExtendedTestdataWincAws_windows_machineset_no_labelYaml = []byte(`apiVersion: machine.openshift.io/v1beta1
+kind: MachineSet
+metadata:
+  labels:
+    machine.openshift.io/cluster-api-cluster: <infrastructureID>
+  name: <infrastructureID>-windows-without-label-worker-<zone>
+  namespace: openshift-machine-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      machine.openshift.io/cluster-api-cluster: <infrastructureID>
+      machine.openshift.io/cluster-api-machineset: <infrastructureID>-windows-without-label-worker-<zone>
+  template:
+    metadata:
+      labels:
+        machine.openshift.io/cluster-api-cluster: <infrastructureID>
+        machine.openshift.io/cluster-api-machine-role: worker
+        machine.openshift.io/cluster-api-machine-type: worker
+        machine.openshift.io/cluster-api-machineset: <infrastructureID>-windows-without-label-worker-<zone>
+
+    spec:
+      metadata:
+        labels:
+          node-role.kubernetes.io/worker: ""
+      providerSpec:
+        value:
+          ami:
+            id: <windows_image_with_container_runtime_installed>
+          apiVersion: awsproviderconfig.openshift.io/v1beta1
+          blockDevices:
+            - ebs:
+                iops: 0
+                volumeSize: 120
+                volumeType: gp2
+          credentialsSecret:
+            name: aws-cloud-credentials
+          deviceIndex: 0
+          iamInstanceProfile:
+            id: <infrastructureID>-worker-profile
+          instanceType: m5a.large
+          kind: AWSMachineProviderConfig
+          placement:
+            availabilityZone: <zone>
+            region: <region>
+          securityGroups:
+            - filters:
+                - name: tag:Name
+                  values:
+                    - <infrastructureID>-worker-sg
+          subnet:
+            filters:
+              - name: tag:Name
+                values:
+                  - <infrastructureID>-private-<zone>
+          tags:
+            - name: kubernetes.io/cluster/<infrastructureID>
+              value: owned
+`)
+
+func testExtendedTestdataWincAws_windows_machineset_no_labelYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataWincAws_windows_machineset_no_labelYaml, nil
+}
+
+func testExtendedTestdataWincAws_windows_machineset_no_labelYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataWincAws_windows_machineset_no_labelYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/winc/aws_windows_machineset_no_label.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataWincAzure_windows_machineset_no_labelYaml = []byte(`apiVersion: machine.openshift.io/v1beta1
+kind: MachineSet
+metadata:
+  labels:
+    machine.openshift.io/cluster-api-cluster: <infrastructureID>
+  name: win-nol
+  namespace: openshift-machine-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      machine.openshift.io/cluster-api-cluster: <infrastructureID>
+      machine.openshift.io/cluster-api-machineset: win-nol
+  template:
+    metadata:
+      labels:
+        machine.openshift.io/cluster-api-cluster: <infrastructureID>
+        machine.openshift.io/cluster-api-machine-role: worker
+        machine.openshift.io/cluster-api-machine-type: worker
+        machine.openshift.io/cluster-api-machineset: win-nol
+
+    spec:
+      metadata:
+        labels:
+          node-role.kubernetes.io/worker: ""
+      providerSpec:
+        value:
+          apiVersion: azureproviderconfig.openshift.io/v1beta1
+          credentialsSecret:
+            name: azure-cloud-credentials
+            namespace: openshift-machine-api
+          image:
+            offer: WindowsServer
+            publisher: MicrosoftWindowsServer
+            resourceID: ""
+            sku: 2019-Datacenter-with-Containers
+            version: latest
+          kind: AzureMachineProviderSpec
+          location: <location>
+          managedIdentity: <infrastructureID>-identity
+          networkResourceGroup: <infrastructureID>-rg
+          osDisk:
+            diskSizeGB: 128
+            managedDisk:
+              storageAccountType: Premium_LRS
+            osType: Windows
+          publicIP: false
+          resourceGroup: <infrastructureID>-rg
+          subnet: <infrastructureID>-worker-subnet
+          userDataSecret:
+            name: windows-user-data
+            namespace: openshift-machine-api
+          vmSize: Standard_D2s_v3
+          vnet: <infrastructureID>-vnet
+          zone: ""
+`)
+
+func testExtendedTestdataWincAzure_windows_machineset_no_labelYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataWincAzure_windows_machineset_no_labelYaml, nil
+}
+
+func testExtendedTestdataWincAzure_windows_machineset_no_labelYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataWincAzure_windows_machineset_no_labelYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/winc/azure_windows_machineset_no_label.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataWincLinux_web_serverYaml = []byte(`apiVersion: v1
+kind: Service
+metadata:
+  name: linux-webserver
+  labels:
+    run: linux-webserver
+spec:
+  ports:
+  - port: 8080
+    protocol: TCP
+  selector:
+    run: linux-webserver
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: linux-webserver
+spec:
+  selector:
+    matchLabels:
+      run: linux-webserver
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        run: linux-webserver
+    spec:
+      containers:
+      - name: linux-webserver
+        image: quay.io/sgaoshang/python-sample-app
+        ports:
+        - containerPort: 8080
+`)
+
+func testExtendedTestdataWincLinux_web_serverYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataWincLinux_web_serverYaml, nil
+}
+
+func testExtendedTestdataWincLinux_web_serverYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataWincLinux_web_serverYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/winc/linux_web_server.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataWincWindows_web_serverYaml = []byte(`apiVersion: v1
+kind: Service
+metadata:
+  name: win-webserver
+  labels:
+    app: win-webserver
+spec:
+  ports:
+    # the port that this service should serve on
+  - port: 80
+    targetPort: 80
+  selector:
+    app: win-webserver
+  type: LoadBalancer
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: win-webserver
+  name: win-webserver
+spec:
+  selector:
+    matchLabels:
+      app: win-webserver
+  replicas: 5
+  template:
+    metadata:
+      labels:
+        app: win-webserver
+      name: win-webserver
+    spec:
+      tolerations:
+      - key: "os"
+        value: "Windows"
+        Effect: "NoSchedule"
+      containers:
+      - name: windowswebserver
+        image: mcr.microsoft.com/windows/servercore:ltsc2019
+        imagePullPolicy: IfNotPresent
+        command:
+        - powershell.exe
+        - -command
+        - $listener = New-Object System.Net.HttpListener; $listener.Prefixes.Add('http://*:80/'); $listener.Start();Write-Host('Listening at http://*:80/'); while ($listener.IsListening) { $context = $listener.GetContext(); $response = $context.Response; $content='<html><body><H1>Windows Container Web Server</H1></body></html>'; $buffer = [System.Text.Encoding]::UTF8.GetBytes($content); $response.ContentLength64 = $buffer.Length; $response.OutputStream.Write($buffer, 0, $buffer.Length); $response.Close(); };
+      nodeSelector:
+        beta.kubernetes.io/os: windows
+`)
+
+func testExtendedTestdataWincWindows_web_serverYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataWincWindows_web_serverYaml, nil
+}
+
+func testExtendedTestdataWincWindows_web_serverYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataWincWindows_web_serverYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/winc/windows_web_server.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataWincWindows_web_server_no_taintYaml = []byte(`apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: win-webserver-no-taint
+  name: win-webserver-no-taint
+spec:
+  selector:
+    matchLabels:
+      app: win-webserver-no-taint
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: win-webserver-no-taint
+      name: win-webserver-no-taint
+    spec:
+      containers:
+      - name: windowswebserver
+        image: mcr.microsoft.com/windows/servercore:ltsc2019
+        imagePullPolicy: IfNotPresent
+        command:
+        - powershell.exe
+        - -command
+        - $listener = New-Object System.Net.HttpListener; $listener.Prefixes.Add('http://*:80/'); $listener.Start();Write-Host('Listening at http://*:80/'); while ($listener.IsListening) { $context = $listener.GetContext(); $response = $context.Response; $content='<html><body><H1>Windows Container Web Server</H1></body></html>'; $buffer = [System.Text.Encoding]::UTF8.GetBytes($content); $response.ContentLength64 = $buffer.Length; $response.OutputStream.Write($buffer, 0, $buffer.Length); $response.Close(); };
+      nodeSelector:
+        beta.kubernetes.io/os: windows
+`)
+
+func testExtendedTestdataWincWindows_web_server_no_taintYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataWincWindows_web_server_no_taintYaml, nil
+}
+
+func testExtendedTestdataWincWindows_web_server_no_taintYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataWincWindows_web_server_no_taintYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/winc/windows_web_server_no_taint.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
 // Asset loads and returns the asset for the given name.
 // It returns an error if the asset could not be found or
 // could not be loaded.
@@ -4807,6 +5115,11 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/securityandcompliance/operator-group.yaml":      testExtendedTestdataSecurityandcomplianceOperatorGroupYaml,
 	"test/extended/testdata/securityandcompliance/pod_modify.yaml":          testExtendedTestdataSecurityandcompliancePod_modifyYaml,
 	"test/extended/testdata/securityandcompliance/subscription.yaml":        testExtendedTestdataSecurityandcomplianceSubscriptionYaml,
+	"test/extended/testdata/winc/aws_windows_machineset_no_label.yaml":      testExtendedTestdataWincAws_windows_machineset_no_labelYaml,
+	"test/extended/testdata/winc/azure_windows_machineset_no_label.yaml":    testExtendedTestdataWincAzure_windows_machineset_no_labelYaml,
+	"test/extended/testdata/winc/linux_web_server.yaml":                     testExtendedTestdataWincLinux_web_serverYaml,
+	"test/extended/testdata/winc/windows_web_server.yaml":                   testExtendedTestdataWincWindows_web_serverYaml,
+	"test/extended/testdata/winc/windows_web_server_no_taint.yaml":          testExtendedTestdataWincWindows_web_server_no_taintYaml,
 }
 
 // AssetDir returns the file names below a certain
@@ -4905,6 +5218,13 @@ var _bintree = &bintree{nil, map[string]*bintree{
 					"operator-group.yaml":      {testExtendedTestdataSecurityandcomplianceOperatorGroupYaml, map[string]*bintree{}},
 					"pod_modify.yaml":          {testExtendedTestdataSecurityandcompliancePod_modifyYaml, map[string]*bintree{}},
 					"subscription.yaml":        {testExtendedTestdataSecurityandcomplianceSubscriptionYaml, map[string]*bintree{}},
+				}},
+				"winc": {nil, map[string]*bintree{
+					"aws_windows_machineset_no_label.yaml":   {testExtendedTestdataWincAws_windows_machineset_no_labelYaml, map[string]*bintree{}},
+					"azure_windows_machineset_no_label.yaml": {testExtendedTestdataWincAzure_windows_machineset_no_labelYaml, map[string]*bintree{}},
+					"linux_web_server.yaml":                  {testExtendedTestdataWincLinux_web_serverYaml, map[string]*bintree{}},
+					"windows_web_server.yaml":                {testExtendedTestdataWincWindows_web_serverYaml, map[string]*bintree{}},
+					"windows_web_server_no_taint.yaml":       {testExtendedTestdataWincWindows_web_server_no_taintYaml, map[string]*bintree{}},
 				}},
 			}},
 		}},
