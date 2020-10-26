@@ -42,6 +42,7 @@
 // test/extended/testdata/operators/subscription.yaml
 // test/extended/testdata/opm/index_34016.db
 // test/extended/testdata/securityandcompliance/catalogsource-image.yaml
+// test/extended/testdata/securityandcompliance/compliancesuite.yaml
 // test/extended/testdata/securityandcompliance/fileintegrity.yaml
 // test/extended/testdata/securityandcompliance/operator-group.yaml
 // test/extended/testdata/securityandcompliance/pod_modify.yaml
@@ -4660,6 +4661,57 @@ func testExtendedTestdataSecurityandcomplianceCatalogsourceImageYaml() (*asset, 
 	return a, nil
 }
 
+var _testExtendedTestdataSecurityandcomplianceCompliancesuiteYaml = []byte(`apiVersion: v1
+kind: Template
+metadata:
+  name: compliancesuite-template
+objects:
+- apiVersion: compliance.openshift.io/v1alpha1
+  kind: ComplianceSuite
+  metadata:
+    name: "${NAME}"
+    namespace: "${NAMESPACE}"
+  spec:
+    autoApplyRemediations: false
+    schedule: "0 1 * * *"
+    scans:
+      - name: "${SCANNAME}" 
+        profile: "${PROFILE}"
+        content: "${CONTENT}"
+        contentImage: "${CONTENTIMAGE}"
+        rule: "${RULE}"
+        debug: true
+        nodeSelector: 
+          node-role.kubernetes.io/${NODESELECTOR}: ""
+
+parameters:
+- name: NAME
+- name: NAMESPACE
+- name: SCANNAME
+- name: PROFILE
+- name: CONTENT
+- name: CONTENTIMAGE
+- name: RULE
+- name: NODESELECTOR
+
+  
+`)
+
+func testExtendedTestdataSecurityandcomplianceCompliancesuiteYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataSecurityandcomplianceCompliancesuiteYaml, nil
+}
+
+func testExtendedTestdataSecurityandcomplianceCompliancesuiteYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataSecurityandcomplianceCompliancesuiteYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/securityandcompliance/compliancesuite.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
 var _testExtendedTestdataSecurityandcomplianceFileintegrityYaml = []byte(`apiVersion: v1
 kind: Template
 metadata:
@@ -5234,6 +5286,7 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/operators/subscription.yaml":                    testExtendedTestdataOperatorsSubscriptionYaml,
 	"test/extended/testdata/opm/index_34016.db":                             testExtendedTestdataOpmIndex_34016Db,
 	"test/extended/testdata/securityandcompliance/catalogsource-image.yaml": testExtendedTestdataSecurityandcomplianceCatalogsourceImageYaml,
+	"test/extended/testdata/securityandcompliance/compliancesuite.yaml":     testExtendedTestdataSecurityandcomplianceCompliancesuiteYaml,
 	"test/extended/testdata/securityandcompliance/fileintegrity.yaml":       testExtendedTestdataSecurityandcomplianceFileintegrityYaml,
 	"test/extended/testdata/securityandcompliance/operator-group.yaml":      testExtendedTestdataSecurityandcomplianceOperatorGroupYaml,
 	"test/extended/testdata/securityandcompliance/pod_modify.yaml":          testExtendedTestdataSecurityandcompliancePod_modifyYaml,
@@ -5338,6 +5391,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 				}},
 				"securityandcompliance": {nil, map[string]*bintree{
 					"catalogsource-image.yaml": {testExtendedTestdataSecurityandcomplianceCatalogsourceImageYaml, map[string]*bintree{}},
+					"compliancesuite.yaml":     {testExtendedTestdataSecurityandcomplianceCompliancesuiteYaml, map[string]*bintree{}},
 					"fileintegrity.yaml":       {testExtendedTestdataSecurityandcomplianceFileintegrityYaml, map[string]*bintree{}},
 					"operator-group.yaml":      {testExtendedTestdataSecurityandcomplianceOperatorGroupYaml, map[string]*bintree{}},
 					"pod_modify.yaml":          {testExtendedTestdataSecurityandcompliancePod_modifyYaml, map[string]*bintree{}},
