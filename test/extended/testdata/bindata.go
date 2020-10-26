@@ -22,6 +22,7 @@
 // test/extended/testdata/olm/etcd-subscription.yaml
 // test/extended/testdata/olm/image-catalogsource.yaml
 // test/extended/testdata/olm/image-sub.yaml
+// test/extended/testdata/olm/mutatingwebhook-csv.yaml
 // test/extended/testdata/olm/og-allns.yaml
 // test/extended/testdata/olm/og-multins.yaml
 // test/extended/testdata/olm/olm-subscription.yaml
@@ -3766,6 +3767,126 @@ func testExtendedTestdataOlmImageSubYaml() (*asset, error) {
 	return a, nil
 }
 
+var _testExtendedTestdataOlmMutatingwebhookCsvYaml = []byte(`apiVersion: v1
+kind: Template
+metadata:
+  name: validatingwebhook-csv-template
+objects:
+- apiVersion: operators.coreos.com/v1alpha1
+  kind: ClusterServiceVersion
+  metadata:
+    annotations:
+      alm-examples: '[{"apiVersion":"serving.knative.dev/v1alpha1","kind":"KnativeServing","metadata":{"name":"knative-serving"},"spec":{"config":{"autoscaler":{"container-concurrency-target-default":"100","container-concurrency-target-percentage":"1.0","enable-scale-to-zero":"true","max-scale-up-rate":"10","panic-threshold-percentage":"200.0","panic-window":"6s","panic-window-percentage":"10.0","scale-to-zero-grace-period":"30s","stable-window":"60s","tick-interval":"2s"},"defaults":{"revision-cpu-limit":"1000m","revision-cpu-request":"400m","revision-memory-limit":"200M","revision-memory-request":"100M","revision-timeout-seconds":"300"},"deployment":{"registriesSkippingTagResolving":"ko.local,dev.local"},"gc":{"stale-revision-create-delay":"24h","stale-revision-lastpinned-debounce":"5h","stale-revision-minimum-generations":"1","stale-revision-timeout":"15h"},"logging":{"loglevel.activator":"info","loglevel.autoscaler":"info","loglevel.controller":"info","loglevel.queueproxy":"info","loglevel.webhook":"info"},"observability":{"logging.enable-var-log-collection":"false","metrics.backend-destination":"prometheus"},"tracing":{"enable":"false","sample-rate":"0.1"}}}}]'
+      capabilities: Seamless Upgrades
+      categories: Networking,Integration & Delivery,Cloud Provider,Developer Tools
+      certified: "false"
+      containerImage: quay.io/openshift-knative/serverless-operator:v1.0.0
+      createdAt: "2019-07-27T17:00:00Z"
+      description: |-
+        Provides a collection of API's to support deploying and serving
+        of serverless applications and functions.
+      repository: https://github.com/openshift-knative/serverless-operator
+      support: Red Hat
+    name: webhook.v1.0.0
+    namespace: "${NAMESPACE}"
+  spec:
+    apiservicedefinitions: {}
+    webhookdefinitions:
+    - generateName: object.auditor.com
+      type: MutatingAdmissionWebhook
+      deploymentName: "object-auditor-webhook-deployment"
+      containerPort: 443
+      namespaceSelector:
+        matchLabels:
+          olm.operatorgroup/olm.olm-operators: ""
+      sideEffects: "None"
+      failurePolicy: Ignore
+      admissionReviewVersions:
+      - "v1"
+      - "v1beta1"
+      rules:
+      - operations:
+        - "${OPERATION}"
+        apiGroups:
+        - ""
+        apiVersions:
+        - "v1"
+        resources:
+        - "configmaps"
+      selector:
+        name: mywebhook
+      webhookPath: "/mutate"
+    description: |
+      A simple Webhook.
+    displayName: Simple Webhook
+    install:
+      spec:
+        deployments:
+        - name: object-auditor-webhook-deployment
+          spec:
+            replicas: 1
+            selector:
+              matchLabels:
+                  app: object-auditor
+                  name: mywebhook
+            template:
+              metadata:
+                labels:
+                  app: object-auditor
+                  name: mywebhook
+              spec:
+                containers:
+                  - name: object-auditor
+                    image: quay.io/agreene/object-auditor:latest
+                    imagePullPolicy: IfNotPresent
+                    args:
+                      - -tlsCertFile=/apiserver.local.config/certificates/apiserver.crt
+                      - -tlsKeyFile=/apiserver.local.config/certificates/apiserver.key
+                      - -alsologtostderr
+                      - -v=4
+                      - 2>&1
+      strategy: deployment
+    installModes:
+    - supported: true
+      type: OwnNamespace
+    - supported: true
+      type: SingleNamespace
+    - supported: true
+      type: MultiNamespace
+    - supported: true
+      type: AllNamespaces
+    keywords:
+    - wbhooks
+    links:
+    - name: Documentation
+      url: https://access.redhat.com/documentation/en-us/openshift_container_platform/4.1/html-single/serverless/index
+    maintainers:
+    - email: knative@redhat.com(opens in new tab)
+      name: Serverless Team
+    maturity: alpha
+    provider:
+      name: Red Hat
+    version: 1.0.0
+parameters:
+- name: NAMESPACE
+- name: OPERATION
+`)
+
+func testExtendedTestdataOlmMutatingwebhookCsvYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataOlmMutatingwebhookCsvYaml, nil
+}
+
+func testExtendedTestdataOlmMutatingwebhookCsvYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataOlmMutatingwebhookCsvYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/olm/mutatingwebhook-csv.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
 var _testExtendedTestdataOlmOgAllnsYaml = []byte(`apiVersion: v1
 kind: Template
 metadata:
@@ -5266,6 +5387,7 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/olm/etcd-subscription.yaml":                     testExtendedTestdataOlmEtcdSubscriptionYaml,
 	"test/extended/testdata/olm/image-catalogsource.yaml":                   testExtendedTestdataOlmImageCatalogsourceYaml,
 	"test/extended/testdata/olm/image-sub.yaml":                             testExtendedTestdataOlmImageSubYaml,
+	"test/extended/testdata/olm/mutatingwebhook-csv.yaml":                   testExtendedTestdataOlmMutatingwebhookCsvYaml,
 	"test/extended/testdata/olm/og-allns.yaml":                              testExtendedTestdataOlmOgAllnsYaml,
 	"test/extended/testdata/olm/og-multins.yaml":                            testExtendedTestdataOlmOgMultinsYaml,
 	"test/extended/testdata/olm/olm-subscription.yaml":                      testExtendedTestdataOlmOlmSubscriptionYaml,
@@ -5365,6 +5487,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 					"etcd-subscription.yaml":                {testExtendedTestdataOlmEtcdSubscriptionYaml, map[string]*bintree{}},
 					"image-catalogsource.yaml":              {testExtendedTestdataOlmImageCatalogsourceYaml, map[string]*bintree{}},
 					"image-sub.yaml":                        {testExtendedTestdataOlmImageSubYaml, map[string]*bintree{}},
+					"mutatingwebhook-csv.yaml":              {testExtendedTestdataOlmMutatingwebhookCsvYaml, map[string]*bintree{}},
 					"og-allns.yaml":                         {testExtendedTestdataOlmOgAllnsYaml, map[string]*bintree{}},
 					"og-multins.yaml":                       {testExtendedTestdataOlmOgMultinsYaml, map[string]*bintree{}},
 					"olm-subscription.yaml":                 {testExtendedTestdataOlmOlmSubscriptionYaml, map[string]*bintree{}},
