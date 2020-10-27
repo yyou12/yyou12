@@ -20,6 +20,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 		subTemplate         = filepath.Join(buildPruningBaseDir, "subscription.yaml")
 		fioTemplate         = filepath.Join(buildPruningBaseDir, "fileintegrity.yaml")
 		podModifyTemplate   = filepath.Join(buildPruningBaseDir, "pod_modify.yaml")
+		configFile          = filepath.Join(buildPruningBaseDir, "aide.conf.rhel8")
 
 		catsrc = catalogSourceDescription{
 			name:        "file-integrity-operator",
@@ -151,7 +152,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 		fi1.createFIOWithoutConfig(oc, itName, dr)
 		fi1.checkFileintegrityStatus(oc, "running")
 		var podName = fi1.getOneFioPodName(oc)
-		fi1.checkdebugFlag(oc, "debug=false")
+		fi1.checkArgsInPod(oc, "debug=false")
 		fi1.checkKeywordNotExistInLog(oc, podName, "debug:")
 
 		g.By("Configure fileintegrity with debug=true")
@@ -159,9 +160,103 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 		fi1.createFIOWithoutConfig(oc, itName, dr)
 		fi1.checkFileintegrityStatus(oc, "running")
 		podName = fi1.getOneFioPodName(oc)
-		fi1.checkdebugFlag(oc, "debug=true")
+		fi1.checkArgsInPod(oc, "debug=true")
 		fi1.checkKeywordExistInLog(oc, podName, "debug:")
 
+	})
+
+	g.It("Medium-31933-the disabling debug flag of the logcollector should work [Serial]", func() {
+		var itName = g.CurrentGinkgoTestDescription().TestText
+		oc.SetupProject()
+		catsrc.namespace = oc.Namespace()
+		og.namespace = oc.Namespace()
+		sub.namespace = oc.Namespace()
+		sub.catalogSourceName = catsrc.name
+		sub.catalogSourceNamespace = catsrc.namespace
+		fi1.namespace = oc.Namespace()
+		fi1.debug = true
+
+		g.By("Create catsrc")
+		catsrc.create(oc, itName, dr)
+		catsrc.checkPackagemanifest(oc, catsrc.displayName)
+		g.By("Create og")
+		og.create(oc, itName, dr)
+		og.checkOperatorgroup(oc, og.name)
+		g.By("Create subscription")
+		sub.create(oc, itName, dr)
+		g.By("check csv")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+		sub.checkPodFioStatus(oc, "running")
+
+		g.By("Create fileintegrity with debug=true")
+		fi1.createFIOWithoutConfig(oc, itName, dr)
+		fi1.checkFileintegrityStatus(oc, "running")
+		var podName = fi1.getOneFioPodName(oc)
+		fi1.checkArgsInPod(oc, "debug=true")
+		fi1.checkKeywordExistInLog(oc, podName, "debug:")
+
+		g.By("Configure fileintegrity with debug=false")
+		fi1.debug = false
+		fi1.createFIOWithoutConfig(oc, itName, dr)
+		fi1.checkFileintegrityStatus(oc, "running")
+		podName = fi1.getOneFioPodName(oc)
+		fi1.checkArgsInPod(oc, "debug=false")
+		fi1.checkKeywordNotExistInLog(oc, podName, "debug:")
+
+	})
+
+	g.It("Medium-31873-check the gracePeriod is configurable [Serial]", func() {
+		var itName = g.CurrentGinkgoTestDescription().TestText
+		oc.SetupProject()
+		catsrc.namespace = oc.Namespace()
+		og.namespace = oc.Namespace()
+		sub.namespace = oc.Namespace()
+		sub.catalogSourceName = catsrc.name
+		sub.catalogSourceNamespace = catsrc.namespace
+		fi1.namespace = oc.Namespace()
+		fi1.debug = false
+
+		g.By("Create catsrc")
+		catsrc.create(oc, itName, dr)
+		catsrc.checkPackagemanifest(oc, catsrc.displayName)
+		g.By("Create og")
+		og.create(oc, itName, dr)
+		og.checkOperatorgroup(oc, og.name)
+		g.By("Create subscription")
+		sub.create(oc, itName, dr)
+		g.By("check csv")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+		sub.checkPodFioStatus(oc, "running")
+
+		g.By("Create fileintegrity without gracePeriod")
+		fi1.createFIOWithoutKeyword(oc, itName, dr, "gracePeriod")
+		fi1.checkFileintegrityStatus(oc, "running")
+		fi1.checkArgsInPod(oc, "interval=900")
+
+		g.By("create fileintegrity with configmap and gracePeriod")
+		fi1.configname = "myconf"
+		fi1.configkey = "aide-conf"
+		fi1.graceperiod = 0
+		fi1.createConfigmapFromFile(oc, itName, dr, fi1.configname, fi1.configkey, configFile, "created")
+		fi1.checkConfigmapCreated(oc)
+		fi1.createFIOWithConfig(oc, itName, dr)
+		fi1.checkFileintegrityStatus(oc, "running")
+		fi1.checkArgsInPod(oc, "interval=10")
+
+		fi1.graceperiod = 11
+		fi1.createFIOWithConfig(oc, itName, dr)
+		fi1.checkFileintegrityStatus(oc, "running")
+		fi1.checkArgsInPod(oc, "interval=11")
+
+		fi1.graceperiod = 120
+		fi1.createFIOWithConfig(oc, itName, dr)
+		fi1.checkFileintegrityStatus(oc, "running")
+		fi1.checkArgsInPod(oc, "interval=120")
+
+		fi1.graceperiod = -10
+		fi1.createFIOWithConfig(oc, itName, dr)
+		fi1.checkFileintegrityStatus(oc, "running")
+		fi1.checkArgsInPod(oc, "interval=10")
 	})
 
 })

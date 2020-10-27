@@ -119,7 +119,7 @@ func (fi1 *fileintegrity) checkKeywordExistInLog(oc *exutil.CLI, podName string,
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
-func (fi1 *fileintegrity) checkdebugFlag(oc *exutil.CLI, expected string) {
+func (fi1 *fileintegrity) checkArgsInPod(oc *exutil.CLI, expected string) {
 	err := wait.Poll(5*time.Second, 20*time.Second, func() (bool, error) {
 		fioPodArgs, err1 := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-l file-integrity.openshift.io/pod=",
 			"-n", fi1.namespace, "-o=jsonpath={.items[0].spec.containers[].args}").Output()
@@ -155,6 +155,13 @@ func (fi1 *fileintegrity) createFIOWithoutConfig(oc *exutil.CLI, itName string, 
 	dr.getIr(itName).add(newResource(oc, "fileintegrity", fi1.name, requireNS, fi1.namespace))
 }
 
+func (fi1 *fileintegrity) createFIOWithoutKeyword(oc *exutil.CLI, itName string, dr describerResrouce, keyword string) {
+	err := applyResourceFromTemplateWithoutKeyword(oc, keyword, "--ignore-unknown-parameters=true", "-f", fi1.template, "-p", "NAME="+fi1.name, "NAMESPACE="+fi1.namespace,
+		"CONFNAME="+fi1.configname, "CONFKEY="+fi1.configkey, "DEBUG="+strconv.FormatBool(fi1.debug))
+	o.Expect(err).NotTo(o.HaveOccurred())
+	dr.getIr(itName).add(newResource(oc, "fileintegrity", fi1.name, requireNS, fi1.namespace))
+}
+
 func (fi1 *fileintegrity) createFIOWithConfig(oc *exutil.CLI, itName string, dr describerResrouce) {
 	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", fi1.template, "-p", "NAME="+fi1.name, "NAMESPACE="+fi1.namespace,
 		"GRACEPERIOD="+strconv.Itoa(fi1.graceperiod), "DEBUG="+strconv.FormatBool(fi1.debug), "CONFNAME="+fi1.configname, "CONFKEY="+fi1.configkey)
@@ -168,6 +175,28 @@ func (sub *subscriptionDescription) checkPodFioStatus(oc *exutil.CLI, expected s
 			"-o=jsonpath={.items[*].status.containerStatuses[*].state}").Output()
 		e2e.Logf("the result of checkPodFioStatus:%v", output)
 		if strings.Contains(strings.ToLower(output), expected) {
+			return true, nil
+		}
+		return false, nil
+	})
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+func (fi1 *fileintegrity) createConfigmapFromFile(oc *exutil.CLI, itName string, dr describerResrouce, cmName string, aideKey string, aideFile string, expected string) (bool, error) {
+	output, _ := oc.AsAdmin().WithoutNamespace().Run("create").Args("configmap", cmName, "-n", fi1.namespace, "--from-file="+aideKey+"="+aideFile).Output()
+	dr.getIr(itName).add(newResource(oc, "configmap", cmName, requireNS, fi1.namespace))
+	e2e.Logf("the result of checkPodFioStatus:%v", output)
+	if strings.Contains(strings.ToLower(output), expected) {
+		return true, nil
+	}
+	return false, nil
+}
+
+func (fi1 *fileintegrity) checkConfigmapCreated(oc *exutil.CLI) {
+	err := wait.Poll(5*time.Second, 30*time.Second, func() (bool, error) {
+		output, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("configmap", fi1.configname, "-n", fi1.namespace).Output()
+		e2e.Logf("the result of checkFileintegrityStatus:%v", output)
+		if strings.Contains(output, fi1.configname) {
 			return true, nil
 		}
 		return false, nil

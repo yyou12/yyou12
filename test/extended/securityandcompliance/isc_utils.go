@@ -2,6 +2,7 @@ package securityandcompliance
 
 import (
 	"fmt"
+	"io/ioutil"
 	"math/rand"
 	"strings"
 	"time"
@@ -348,6 +349,43 @@ func applyResourceFromTemplate(oc *exutil.CLI, parameters ...string) error {
 
 	e2e.Logf("the file of resource is %s", configFile)
 	return oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", configFile).Execute()
+}
+
+func applyResourceFromTemplateWithoutKeyword(oc *exutil.CLI, keyword string, parameters ...string) error {
+	var configFile string
+	err := wait.Poll(3*time.Second, 15*time.Second, func() (bool, error) {
+		output, err := oc.AsAdmin().Run("process").Args(parameters...).OutputToFile(getRandomString() + "isc-config.json")
+		if err != nil {
+			e2e.Logf("the err:%v, and try next round", err)
+			return false, nil
+		}
+		configFile = output
+		return true, nil
+	})
+	o.Expect(err).NotTo(o.HaveOccurred())
+	e2e.Logf("the file of resource is %s", configFile)
+	removeKeywordFromFile(configFile, keyword)
+	return oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", configFile).Execute()
+}
+
+func removeKeywordFromFile(fileLocation string, keyword string) {
+	input, err := ioutil.ReadFile(fileLocation)
+	if err != nil {
+		e2e.Failf("the result of ReadFile:%v", err)
+	}
+
+	lines := strings.Split(string(input), "\n")
+
+	for i, line := range lines {
+		if strings.Contains(line, keyword) {
+			lines[i] = ""
+		}
+	}
+	output := strings.Join(lines, "\n")
+	err = ioutil.WriteFile(fileLocation, []byte(output), 0644)
+	if err != nil {
+		e2e.Failf("the result of WriteFile:%v", err)
+	}
 }
 
 func removeResource(oc *exutil.CLI, asAdmin bool, withoutNamespace bool, parameters ...string) {
