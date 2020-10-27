@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os/exec"
 	"regexp"
+	"strconv"
 
 	"github.com/google/go-github/github"
 	g "github.com/onsi/ginkgo"
@@ -563,120 +564,174 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 			return false, nil
 		})
 		o.Expect(err).NotTo(o.HaveOccurred())
-        })
-
-        // author: yhui@redhat.com
-        g.It("Medium-30312-can allow admission webhook definitions in CSV", func() {
-                buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
-                operatorGroup := filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
-                validatingCsv := filepath.Join(buildPruningBaseDir, "validatingwebhook-csv.yaml")
-
-                g.By("create new namespace")
-                newNamespace := "test-operators-30312"
-                err := oc.AsAdmin().WithoutNamespace().Run("create").Args("ns", newNamespace).Execute()
-                o.Expect(err).NotTo(o.HaveOccurred())
-                defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("ns", newNamespace).Execute()
-
-                g.By("create operatorGroup")
-                configFile, err := oc.AsAdmin().WithoutNamespace().Run("process").Args("--ignore-unknown-parameters=true", "-f", operatorGroup, "-p", "NAME=test-operator", fmt.Sprintf("NAMESPACE=%s", newNamespace)).OutputToFile("config-30312.json")
-                o.Expect(err).NotTo(o.HaveOccurred())
-                err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", configFile).Execute()
-                o.Expect(err).NotTo(o.HaveOccurred())
-
-                g.By("create csv")
-                configFile, err = oc.AsAdmin().WithoutNamespace().Run("process").Args("--ignore-unknown-parameters=true", "-f", validatingCsv, "-p", fmt.Sprintf("NAMESPACE=%s", newNamespace), "OPERATION=CREATE").OutputToFile("config-30312.json")
-                o.Expect(err).NotTo(o.HaveOccurred())
-                err = oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", configFile).Execute()
-                o.Expect(err).NotTo(o.HaveOccurred())
-
-                err = wait.Poll(20*time.Second, 100*time.Second, func() (bool, error) {
-                        err := oc.AsAdmin().WithoutNamespace().Run("get").Args("validatingwebhookconfiguration", "-l", "olm.owner.namespace=test-operators-30312").Execute()
-                        if err != nil {
-                                e2e.Logf("The validatingwebhookconfiguration is not created:%v", err)
-                                return false, nil
-                        }
-                        return true, nil
-                })
-                o.Expect(err).NotTo(o.HaveOccurred())
-
-                g.By("update csv")
-                configFile, err = oc.AsAdmin().WithoutNamespace().Run("process").Args("--ignore-unknown-parameters=true", "-f", validatingCsv, "-p", fmt.Sprintf("NAMESPACE=%s", newNamespace), "OPERATION=DELETE").OutputToFile("config-30312.json")
-                o.Expect(err).NotTo(o.HaveOccurred())
-                err = oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", configFile).Execute()
-                o.Expect(err).NotTo(o.HaveOccurred())
-
-                validatingwebhookName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("validatingwebhookconfiguration", "-l", "olm.owner.namespace=test-operators-30312", "-o=jsonpath={.items[0].metadata.name}").Output()
-                err = wait.Poll(20*time.Second, 100*time.Second, func() (bool, error) {
-                        output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("validatingwebhookconfiguration", validatingwebhookName, "-o=jsonpath={..operations}").Output()
-                        e2e.Logf(output)
-                        if err != nil {
-                                e2e.Logf("DELETE operations cannot be found:%v", err)
-                                return false, nil
-                        }
-                        if strings.Contains(output, "DELETE") {
-                                return true, nil
-                        }
-                        return false, nil
-                })
-                o.Expect(err).NotTo(o.HaveOccurred())
 	})
 
-        // author: yhui@redhat.com
-        g.It("Medium-30317-can allow mutating admission webhook definitions in CSV", func() {
-                buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
-                operatorGroup := filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
-                mutatingCsv := filepath.Join(buildPruningBaseDir, "mutatingwebhook-csv.yaml")
+	// author: yhui@redhat.com
+	g.It("Medium-30312-can allow admission webhook definitions in CSV", func() {
+		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
+		operatorGroup := filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+		validatingCsv := filepath.Join(buildPruningBaseDir, "validatingwebhook-csv.yaml")
 
-                g.By("create new namespace")
-                newNamespace := "test-operators-30317"
-                err := oc.AsAdmin().WithoutNamespace().Run("create").Args("ns", newNamespace).Execute()
-                o.Expect(err).NotTo(o.HaveOccurred())
-                defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("ns", newNamespace).Execute()
+		g.By("create new namespace")
+		newNamespace := "test-operators-30312"
+		err := oc.AsAdmin().WithoutNamespace().Run("create").Args("ns", newNamespace).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("ns", newNamespace).Execute()
 
-                g.By("create operatorGroup")
-                configFile, err := oc.AsAdmin().WithoutNamespace().Run("process").Args("--ignore-unknown-parameters=true", "-f", operatorGroup, "-p", "NAME=test-operator", fmt.Sprintf("NAMESPACE=%s", newNamespace)).OutputToFile("config-30317.json")
-                o.Expect(err).NotTo(o.HaveOccurred())
-                err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", configFile).Execute()
-                o.Expect(err).NotTo(o.HaveOccurred())
+		g.By("create operatorGroup")
+		configFile, err := oc.AsAdmin().WithoutNamespace().Run("process").Args("--ignore-unknown-parameters=true", "-f", operatorGroup, "-p", "NAME=test-operator", fmt.Sprintf("NAMESPACE=%s", newNamespace)).OutputToFile("config-30312.json")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", configFile).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
 
-                g.By("create csv")
-                configFile, err = oc.AsAdmin().WithoutNamespace().Run("process").Args("--ignore-unknown-parameters=true", "-f", mutatingCsv, "-p", fmt.Sprintf("NAMESPACE=%s", newNamespace), "OPERATION=CREATE").OutputToFile("config-30317.json")
-                o.Expect(err).NotTo(o.HaveOccurred())
-                err = oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", configFile).Execute()
-                o.Expect(err).NotTo(o.HaveOccurred())
+		g.By("create csv")
+		configFile, err = oc.AsAdmin().WithoutNamespace().Run("process").Args("--ignore-unknown-parameters=true", "-f", validatingCsv, "-p", fmt.Sprintf("NAMESPACE=%s", newNamespace), "OPERATION=CREATE").OutputToFile("config-30312.json")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", configFile).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
 
-                err = wait.Poll(20*time.Second, 100*time.Second, func() (bool, error) {
-                        err := oc.AsAdmin().WithoutNamespace().Run("get").Args("mutatingwebhookconfiguration", "-l", "olm.owner.namespace=test-operators-30317").Execute()
-                        if err != nil {
-                                e2e.Logf("The mutatingwebhookconfiguration is not created:%v", err)
-                                return false, nil
-                        }
-                        return true, nil
-                })
-                o.Expect(err).NotTo(o.HaveOccurred())
+		err = wait.Poll(20*time.Second, 100*time.Second, func() (bool, error) {
+			err := oc.AsAdmin().WithoutNamespace().Run("get").Args("validatingwebhookconfiguration", "-l", "olm.owner.namespace=test-operators-30312").Execute()
+			if err != nil {
+				e2e.Logf("The validatingwebhookconfiguration is not created:%v", err)
+				return false, nil
+			}
+			return true, nil
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
 
-                g.By("Start to test 30374")
-                g.By("update csv")
-                configFile, err = oc.AsAdmin().WithoutNamespace().Run("process").Args("--ignore-unknown-parameters=true", "-f", mutatingCsv, "-p", fmt.Sprintf("NAMESPACE=%s", newNamespace), "OPERATION=DELETE").OutputToFile("config-30317.json")
-                o.Expect(err).NotTo(o.HaveOccurred())
-                err = oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", configFile).Execute()
-                o.Expect(err).NotTo(o.HaveOccurred())
+		g.By("update csv")
+		configFile, err = oc.AsAdmin().WithoutNamespace().Run("process").Args("--ignore-unknown-parameters=true", "-f", validatingCsv, "-p", fmt.Sprintf("NAMESPACE=%s", newNamespace), "OPERATION=DELETE").OutputToFile("config-30312.json")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", configFile).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
 
-                mutatingwebhookName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("mutatingwebhookconfiguration", "-l", "olm.owner.namespace=test-operators-30317", "-o=jsonpath={.items[0].metadata.name}").Output()
-                err = wait.Poll(20*time.Second, 100*time.Second, func() (bool, error) {
-                        output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("mutatingwebhookconfiguration", mutatingwebhookName, "-o=jsonpath={..operations}").Output()
-                        e2e.Logf(output)
-                        if err != nil {
-                                e2e.Logf("DELETE operations cannot be found:%v", err)
-                                return false, nil
-                        }
-                        if strings.Contains(output, "DELETE") {
-                                return true, nil
-                        }
-                        return false, nil
-                })
-                o.Expect(err).NotTo(o.HaveOccurred())
-        })
+		validatingwebhookName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("validatingwebhookconfiguration", "-l", "olm.owner.namespace=test-operators-30312", "-o=jsonpath={.items[0].metadata.name}").Output()
+		err = wait.Poll(20*time.Second, 100*time.Second, func() (bool, error) {
+			output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("validatingwebhookconfiguration", validatingwebhookName, "-o=jsonpath={..operations}").Output()
+			e2e.Logf(output)
+			if err != nil {
+				e2e.Logf("DELETE operations cannot be found:%v", err)
+				return false, nil
+			}
+			if strings.Contains(output, "DELETE") {
+				return true, nil
+			}
+			return false, nil
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
+	})
+
+	// author: yhui@redhat.com
+	g.It("Medium-30317-can allow mutating admission webhook definitions in CSV", func() {
+		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
+		operatorGroup := filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+		mutatingCsv := filepath.Join(buildPruningBaseDir, "mutatingwebhook-csv.yaml")
+
+		g.By("create new namespace")
+		newNamespace := "test-operators-30317"
+		err := oc.AsAdmin().WithoutNamespace().Run("create").Args("ns", newNamespace).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("ns", newNamespace).Execute()
+
+		g.By("create operatorGroup")
+		configFile, err := oc.AsAdmin().WithoutNamespace().Run("process").Args("--ignore-unknown-parameters=true", "-f", operatorGroup, "-p", "NAME=test-operator", fmt.Sprintf("NAMESPACE=%s", newNamespace)).OutputToFile("config-30317.json")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", configFile).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("create csv")
+		configFile, err = oc.AsAdmin().WithoutNamespace().Run("process").Args("--ignore-unknown-parameters=true", "-f", mutatingCsv, "-p", fmt.Sprintf("NAMESPACE=%s", newNamespace), "OPERATION=CREATE").OutputToFile("config-30317.json")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", configFile).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		err = wait.Poll(20*time.Second, 100*time.Second, func() (bool, error) {
+			err := oc.AsAdmin().WithoutNamespace().Run("get").Args("mutatingwebhookconfiguration", "-l", "olm.owner.namespace=test-operators-30317").Execute()
+			if err != nil {
+				e2e.Logf("The mutatingwebhookconfiguration is not created:%v", err)
+				return false, nil
+			}
+			return true, nil
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Start to test 30374")
+		g.By("update csv")
+		configFile, err = oc.AsAdmin().WithoutNamespace().Run("process").Args("--ignore-unknown-parameters=true", "-f", mutatingCsv, "-p", fmt.Sprintf("NAMESPACE=%s", newNamespace), "OPERATION=DELETE").OutputToFile("config-30317.json")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", configFile).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		mutatingwebhookName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("mutatingwebhookconfiguration", "-l", "olm.owner.namespace=test-operators-30317", "-o=jsonpath={.items[0].metadata.name}").Output()
+		err = wait.Poll(20*time.Second, 100*time.Second, func() (bool, error) {
+			output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("mutatingwebhookconfiguration", mutatingwebhookName, "-o=jsonpath={..operations}").Output()
+			e2e.Logf(output)
+			if err != nil {
+				e2e.Logf("DELETE operations cannot be found:%v", err)
+				return false, nil
+			}
+			if strings.Contains(output, "DELETE") {
+				return true, nil
+			}
+			return false, nil
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
+	})
+
+	// author: yhui@redhat.com
+	g.It("Medium-30319-Admission Webhook Configuration names should be unique", func() {
+		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
+		operatorGroup := filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+		validatingCsv := filepath.Join(buildPruningBaseDir, "validatingwebhook-csv.yaml")
+
+		var validatingwebhookName1, validatingwebhookName2 string
+		for i := 1; i < 3; i++ {
+			istr := strconv.Itoa(i)
+			g.By("create new namespace")
+			newNamespace := "test-operators-30319-"
+			newNamespace += istr
+			err := oc.AsAdmin().WithoutNamespace().Run("create").Args("ns", newNamespace).Execute()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("ns", newNamespace).Execute()
+
+			g.By("create operatorGroup")
+			configFile, err := oc.AsAdmin().WithoutNamespace().Run("process").Args("--ignore-unknown-parameters=true", "-f", operatorGroup, "-p", "NAME=test-operator", fmt.Sprintf("NAMESPACE=%s", newNamespace)).OutputToFile("config-30319.json")
+			o.Expect(err).NotTo(o.HaveOccurred())
+			err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", configFile).Execute()
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			g.By("create csv")
+			configFile, err = oc.AsAdmin().WithoutNamespace().Run("process").Args("--ignore-unknown-parameters=true", "-f", validatingCsv, "-p", fmt.Sprintf("NAMESPACE=%s", newNamespace), "OPERATION=CREATE").OutputToFile("config-30319.json")
+			o.Expect(err).NotTo(o.HaveOccurred())
+			err = oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", configFile).Execute()
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			err = wait.Poll(20*time.Second, 100*time.Second, func() (bool, error) {
+				err := oc.AsAdmin().WithoutNamespace().Run("get").Args("validatingwebhookconfiguration", "-l", fmt.Sprintf("olm.owner.namespace=%s", newNamespace)).Execute()
+				if err != nil {
+					e2e.Logf("The validatingwebhookconfiguration is not created:%v", err)
+					return false, nil
+				}
+				return true, nil
+			})
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			validatingwebhookName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("validatingwebhookconfiguration", "-l", fmt.Sprintf("olm.owner.namespace=%s", newNamespace), "-o=jsonpath={.items[0].metadata.name}").Output()
+			if i == 1 {
+				validatingwebhookName1 = validatingwebhookName
+			}
+			if i == 2 {
+				validatingwebhookName2 = validatingwebhookName
+			}
+		}
+		if validatingwebhookName1 != validatingwebhookName2 {
+			e2e.Logf("The test case pass")
+		} else {
+			err := "The test case fail"
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}
+	})
 })
 
 var _ = g.Describe("[sig-operators] OLM for an end user use", func() {
