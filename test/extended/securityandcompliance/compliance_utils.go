@@ -46,18 +46,20 @@ type complianceScanDescription struct {
 	contentImage string
 	rule         string
 	debug        bool
+	nodeSelector string
 	template     string
 }
 
 func (cscan *complianceScanDescription) create(oc *exutil.CLI, itName string, dr describerResrouce) {
-	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", cscan.template, "-p", "NAME="+cscan.name, "NAMESPACE="+cscan.namespace,
-		"SCANTYPE="+cscan.scanType, "PROFILE="+cscan.profile, "CONTENT="+cscan.content, "CONTENTIMAGE="+cscan.contentImage, "RULE="+cscan.rule)
+	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", cscan.template, "-p", "NAME="+cscan.name,
+		"NAMESPACE="+cscan.namespace, "SCANTYPE="+cscan.scanType, "PROFILE="+cscan.profile, "CONTENT="+cscan.content,
+		"CONTENTIMAGE="+cscan.contentImage, "RULE="+cscan.rule, "NODESELECTOR="+cscan.nodeSelector)
 	o.Expect(err).NotTo(o.HaveOccurred())
-	dr.getIr(itName).add(newResource(oc, "cscan", cscan.name, requireNS, cscan.namespace))
+	dr.getIr(itName).add(newResource(oc, "compliancescan", cscan.name, requireNS, cscan.namespace))
 }
 
 func (cscan *complianceScanDescription) delete(itName string, dr describerResrouce) {
-	dr.getIr(itName).remove(cscan.name, "cscan", cscan.namespace)
+	dr.getIr(itName).remove(cscan.name, "compliancescan", cscan.namespace)
 }
 
 func setLabelToNode(oc *exutil.CLI) string {
@@ -112,8 +114,22 @@ func (subD *subscriptionDescription) complianceSuiteName(oc *exutil.CLI, expecte
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
+func (subD *subscriptionDescription) complianceScanName(oc *exutil.CLI, expected string) {
+	scName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", subD.namespace, "compliancescan", "-o=jsonpath={.items[0].metadata.name}").Output()
+	o.Expect(scName).To(o.ContainSubstring(expected))
+	e2e.Logf("\n%v\n\n", scName)
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
 func (subD *subscriptionDescription) complianceSuiteResult(oc *exutil.CLI, expected string) {
 	coStat, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", subD.namespace, "compliancesuite", "-o=jsonpath={.items[0].status.scanStatuses[0].result}").Output()
+	o.Expect(coStat).To(o.ContainSubstring(expected))
+	e2e.Logf("\n%v\n\n", coStat)
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+func (subD *subscriptionDescription) complianceScanResult(oc *exutil.CLI, expected string) {
+	coStat, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", subD.namespace, "compliancescan", "-o=jsonpath={.items[0].status.result}").Output()
 	o.Expect(coStat).To(o.ContainSubstring(expected))
 	e2e.Logf("\n%v\n\n", coStat)
 	o.Expect(err).NotTo(o.HaveOccurred())

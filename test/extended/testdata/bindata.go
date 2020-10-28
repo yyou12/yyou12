@@ -44,6 +44,7 @@
 // test/extended/testdata/opm/index_34016.db
 // test/extended/testdata/securityandcompliance/aide.conf.rhel8
 // test/extended/testdata/securityandcompliance/catalogsource-image.yaml
+// test/extended/testdata/securityandcompliance/compliancescan.yaml
 // test/extended/testdata/securityandcompliance/compliancesuite.yaml
 // test/extended/testdata/securityandcompliance/fileintegrity.yaml
 // test/extended/testdata/securityandcompliance/operator-group.yaml
@@ -5116,6 +5117,50 @@ func testExtendedTestdataSecurityandcomplianceCatalogsourceImageYaml() (*asset, 
 	return a, nil
 }
 
+var _testExtendedTestdataSecurityandcomplianceCompliancescanYaml = []byte(`apiVersion: v1
+kind: Template
+metadata:
+  name: compliancescan-template
+objects:
+- apiVersion: compliance.openshift.io/v1alpha1
+  kind: ComplianceScan
+  metadata:
+    name: "${NAME}"
+    namespace: "${NAMESPACE}"
+  spec:
+    profile: "${PROFILE}"
+    content: "${CONTENT}"
+    contentImage: "${CONTENTIMAGE}"
+    rule: "${RULE}"
+    debug: true
+    nodeSelector:
+      node-role.kubernetes.io/${NODESELECTOR}: ""
+
+parameters:
+- name: NAME
+- name: NAMESPACE
+- name: PROFILE
+- name: CONTENT
+- name: CONTENTIMAGE
+- name: RULE
+- name: NODESELECTOR
+`)
+
+func testExtendedTestdataSecurityandcomplianceCompliancescanYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataSecurityandcomplianceCompliancescanYaml, nil
+}
+
+func testExtendedTestdataSecurityandcomplianceCompliancescanYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataSecurityandcomplianceCompliancescanYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/securityandcompliance/compliancescan.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
 var _testExtendedTestdataSecurityandcomplianceCompliancesuiteYaml = []byte(`apiVersion: v1
 kind: Template
 metadata:
@@ -5743,6 +5788,7 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/opm/index_34016.db":                             testExtendedTestdataOpmIndex_34016Db,
 	"test/extended/testdata/securityandcompliance/aide.conf.rhel8":          testExtendedTestdataSecurityandcomplianceAideConfRhel8,
 	"test/extended/testdata/securityandcompliance/catalogsource-image.yaml": testExtendedTestdataSecurityandcomplianceCatalogsourceImageYaml,
+	"test/extended/testdata/securityandcompliance/compliancescan.yaml":      testExtendedTestdataSecurityandcomplianceCompliancescanYaml,
 	"test/extended/testdata/securityandcompliance/compliancesuite.yaml":     testExtendedTestdataSecurityandcomplianceCompliancesuiteYaml,
 	"test/extended/testdata/securityandcompliance/fileintegrity.yaml":       testExtendedTestdataSecurityandcomplianceFileintegrityYaml,
 	"test/extended/testdata/securityandcompliance/operator-group.yaml":      testExtendedTestdataSecurityandcomplianceOperatorGroupYaml,
@@ -5850,6 +5896,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 				"securityandcompliance": {nil, map[string]*bintree{
 					"aide.conf.rhel8":          {testExtendedTestdataSecurityandcomplianceAideConfRhel8, map[string]*bintree{}},
 					"catalogsource-image.yaml": {testExtendedTestdataSecurityandcomplianceCatalogsourceImageYaml, map[string]*bintree{}},
+					"compliancescan.yaml":      {testExtendedTestdataSecurityandcomplianceCompliancescanYaml, map[string]*bintree{}},
 					"compliancesuite.yaml":     {testExtendedTestdataSecurityandcomplianceCompliancesuiteYaml, map[string]*bintree{}},
 					"fileintegrity.yaml":       {testExtendedTestdataSecurityandcomplianceFileintegrityYaml, map[string]*bintree{}},
 					"operator-group.yaml":      {testExtendedTestdataSecurityandcomplianceOperatorGroupYaml, map[string]*bintree{}},
