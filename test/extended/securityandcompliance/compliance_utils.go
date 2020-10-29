@@ -3,11 +3,9 @@ package securityandcompliance
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	o "github.com/onsi/gomega"
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
-	"k8s.io/apimachinery/pkg/util/wait"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 )
 
@@ -108,23 +106,33 @@ func (subD *subscriptionDescription) scanPodStatus(oc *exutil.CLI, expected stri
 }
 
 func (subD *subscriptionDescription) complianceSuiteName(oc *exutil.CLI, expected string) {
-	scName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", subD.namespace, "compliancesuite", "-o=jsonpath={.items[0].metadata.name}").Output()
-	o.Expect(scName).To(o.ContainSubstring(expected))
-	e2e.Logf("\n%v\n\n", scName)
+	csuiteName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", subD.namespace, "compliancesuite", "-o=jsonpath={.items[*].metadata.name}").Output()
+	lines := strings.Fields(csuiteName)
+	for _, line := range lines {
+		if strings.Contains(line, expected) {
+			e2e.Logf("\n%v\n\n", line)
+			break
+		}
+	}
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
 func (subD *subscriptionDescription) complianceScanName(oc *exutil.CLI, expected string) {
-	scName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", subD.namespace, "compliancescan", "-o=jsonpath={.items[0].metadata.name}").Output()
+	scName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", subD.namespace, "compliancescan", "-o=jsonpath={.items[*].metadata.name}").Output()
 	o.Expect(scName).To(o.ContainSubstring(expected))
 	e2e.Logf("\n%v\n\n", scName)
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
 func (subD *subscriptionDescription) complianceSuiteResult(oc *exutil.CLI, expected string) {
-	coStat, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", subD.namespace, "compliancesuite", "-o=jsonpath={.items[0].status.scanStatuses[0].result}").Output()
-	o.Expect(coStat).To(o.ContainSubstring(expected))
-	e2e.Logf("\n%v\n\n", coStat)
+	csuiteResult, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", subD.namespace, "compliancesuite", "-o=jsonpath={.items[*].status.scanStatuses[0].result}").Output()
+	lines := strings.Fields(csuiteResult)
+	for _, line := range lines {
+		if strings.Compare(line, expected) == 0 {
+			e2e.Logf("\n%v\n\n", line)
+			return
+		}
+	}
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
@@ -136,17 +144,16 @@ func (subD *subscriptionDescription) complianceScanResult(oc *exutil.CLI, expect
 }
 
 func (subD *subscriptionDescription) getScanExitCodeFromConfigmap(oc *exutil.CLI, expected string) {
-	err := wait.Poll(5*time.Second, 150*time.Second, func() (bool, error) {
-		podName, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", subD.namespace, "pods", "--selector=workload=scanner", "-o=jsonpath={.items[0].metadata.name}").Output()
-		cmCode, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("configmap", podName, "-n", subD.namespace, "-o=jsonpath={.data.exit-code}").Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
+	podName, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", subD.namespace, "pods", "--selector=workload=scanner", "-o=jsonpath={.items[*].metadata.name}").Output()
+	lines := strings.Fields(podName)
+	for _, line := range lines {
+		cmCode, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("configmap", line, "-n", subD.namespace, "-o=jsonpath={.data.exit-code}").Output()
 		e2e.Logf("\n%v\n\n", cmCode)
 		if strings.Contains(cmCode, expected) {
-			return true, nil
+			break
 		}
-		return false, nil
-	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(err).NotTo(o.HaveOccurred())
+	}
 }
 
 func (subD *subscriptionDescription) getScanResultFromConfigmap(oc *exutil.CLI, expected string) {
