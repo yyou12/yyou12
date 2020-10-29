@@ -208,6 +208,34 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		cs.delete(itName, dr)
 	})
 
+	g.It("Medium-24916-Operators in AllNamespaces should be granted namespace list", func() {
+		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
+		subTemplate := filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+		dr := make(describerResrouce)
+		itName := g.CurrentGinkgoTestDescription().TestText
+		dr.addIr(itName)
+		g.By("Start to subscribe the AMQ-Streams operator")
+		sub := subscriptionDescription{
+			subName:                "jaeger-product",
+			namespace:              "openshift-operators",
+			catalogSourceName:      "redhat-operators",
+			catalogSourceNamespace: "openshift-marketplace",
+			channel:                "stable",
+			ipApproval:             "Automatic",
+			operatorPackage:        "jaeger-product",
+			singleNamespace:        false,
+			template:               subTemplate,
+		}
+
+		defer sub.delete(itName, dr)
+
+		sub.create(oc, itName, dr)
+		defer sub.getCSV().delete(itName, dr)
+		newCheck("expect", asAdmin, withNamespace, compare, "Succeeded", ok, []string{"csv", sub.installedCSV, "-o=jsonpath={.status.phase}"}).check(oc)
+		msg, err := oc.AsAdmin().WithoutNamespace().Run("policy").Args("who-can", "list", "namespaces").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(msg).To(o.ContainSubstring("system:serviceaccount:openshift-operators:jaeger-operator"))
+	})
 	// author: jiazha@redhat.com
 	g.It("High-32559-catalog operator crashed", func() {
 		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
