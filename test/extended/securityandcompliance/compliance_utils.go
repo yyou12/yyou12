@@ -118,9 +118,14 @@ func (subD *subscriptionDescription) complianceSuiteName(oc *exutil.CLI, expecte
 }
 
 func (subD *subscriptionDescription) complianceScanName(oc *exutil.CLI, expected string) {
-	scName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", subD.namespace, "compliancescan", "-o=jsonpath={.items[*].metadata.name}").Output()
-	o.Expect(scName).To(o.ContainSubstring(expected))
-	e2e.Logf("\n%v\n\n", scName)
+	cscanName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", subD.namespace, "compliancescan", "-o=jsonpath={.items[*].metadata.name}").Output()
+	lines := strings.Fields(cscanName)
+	for _, line := range lines {
+		if strings.Contains(line, expected) {
+			e2e.Logf("\n%v\n\n", line)
+			break
+		}
+	}
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
@@ -137,10 +142,15 @@ func (subD *subscriptionDescription) complianceSuiteResult(oc *exutil.CLI, expec
 }
 
 func (subD *subscriptionDescription) complianceScanResult(oc *exutil.CLI, expected string) {
-	coStat, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", subD.namespace, "compliancescan", "-o=jsonpath={.items[0].status.result}").Output()
-	o.Expect(coStat).To(o.ContainSubstring(expected))
-	e2e.Logf("\n%v\n\n", coStat)
-	o.Expect(err).NotTo(o.HaveOccurred())
+	cscanResult, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", subD.namespace, "compliancescan", "-o=jsonpath={.items[*].status.result}").Output()
+	lines := strings.Fields(cscanResult)
+	for _, line := range lines {
+		if strings.Compare(line, expected) == 0 {
+			e2e.Logf("\n%v\n\n", line)
+			return
+		}
+		o.Expect(err).NotTo(o.HaveOccurred())
+	}
 }
 
 func (subD *subscriptionDescription) getScanExitCodeFromConfigmap(oc *exutil.CLI, expected string) {
