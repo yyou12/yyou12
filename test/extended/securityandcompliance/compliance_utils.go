@@ -20,13 +20,14 @@ type complianceSuiteDescription struct {
 	rule         string
 	debug        bool
 	nodeSelector string
+	size         string
 	template     string
 }
 
 func (csuite *complianceSuiteDescription) create(oc *exutil.CLI, itName string, dr describerResrouce) {
 	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", csuite.template, "-p", "NAME="+csuite.name, "NAMESPACE="+csuite.namespace,
 		"SCANNAME="+csuite.scanname, "SCANTYPE="+csuite.scanType, "PROFILE="+csuite.profile, "CONTENT="+csuite.content, "CONTENTIMAGE="+csuite.contentImage,
-		"RULE="+csuite.rule, "NODESELECTOR="+csuite.nodeSelector)
+		"RULE="+csuite.rule, "NODESELECTOR="+csuite.nodeSelector, "SIZE="+csuite.size)
 	o.Expect(err).NotTo(o.HaveOccurred())
 	dr.getIr(itName).add(newResource(oc, "compliancesuite", csuite.name, requireNS, csuite.namespace))
 }
@@ -45,13 +46,14 @@ type complianceScanDescription struct {
 	rule         string
 	debug        bool
 	nodeSelector string
+	size         string
 	template     string
 }
 
 func (cscan *complianceScanDescription) create(oc *exutil.CLI, itName string, dr describerResrouce) {
 	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", cscan.template, "-p", "NAME="+cscan.name,
 		"NAMESPACE="+cscan.namespace, "SCANTYPE="+cscan.scanType, "PROFILE="+cscan.profile, "CONTENT="+cscan.content,
-		"CONTENTIMAGE="+cscan.contentImage, "RULE="+cscan.rule, "NODESELECTOR="+cscan.nodeSelector)
+		"CONTENTIMAGE="+cscan.contentImage, "RULE="+cscan.rule, "NODESELECTOR="+cscan.nodeSelector, "SIZE="+cscan.size)
 	o.Expect(err).NotTo(o.HaveOccurred())
 	dr.getIr(itName).add(newResource(oc, "compliancescan", cscan.name, requireNS, cscan.namespace))
 }
@@ -171,5 +173,29 @@ func (subD *subscriptionDescription) getScanResultFromConfigmap(oc *exutil.CLI, 
 	cmMsg, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", subD.namespace, "configmap", podName, "-o=jsonpath={.data.error-msg}").Output()
 	e2e.Logf("\n%v\n\n", cmMsg)
 	o.Expect(cmMsg).To(o.ContainSubstring(expected))
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+func (subD *subscriptionDescription) getPVCName(oc *exutil.CLI, expected string) {
+	pvcName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", subD.namespace, "pvc", "-o=jsonpath={.items[*].metadata.name}").Output()
+	lines := strings.Fields(pvcName)
+	for _, line := range lines {
+		if strings.Contains(line, expected) {
+			e2e.Logf("\n%v\n\n", line)
+			break
+		}
+	}
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+func (subD *subscriptionDescription) getPVCSize(oc *exutil.CLI, expected string) {
+	pvcSize, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", subD.namespace, "pvc", "-o=jsonpath={.items[*].status.capacity.storage}").Output()
+	lines := strings.Fields(pvcSize)
+	for _, line := range lines {
+		if strings.Contains(line, expected) {
+			e2e.Logf("\n%v\n\n", line)
+			break
+		}
+	}
 	o.Expect(err).NotTo(o.HaveOccurred())
 }

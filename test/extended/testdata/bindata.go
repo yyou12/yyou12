@@ -5337,6 +5337,8 @@ objects:
     debug: true
     nodeSelector:
       node-role.kubernetes.io/${NODESELECTOR}: ""
+    rawResultStorage:
+      size: "${SIZE}"
 
 parameters:
 - name: NAME
@@ -5346,6 +5348,7 @@ parameters:
 - name: CONTENTIMAGE
 - name: RULE
 - name: NODESELECTOR
+- name: SIZE
 `)
 
 func testExtendedTestdataSecurityandcomplianceCompliancescanYamlBytes() ([]byte, error) {
@@ -5385,6 +5388,8 @@ objects:
         debug: true
         nodeSelector: 
           node-role.kubernetes.io/${NODESELECTOR}: ""
+        rawResultStorage:
+          size: "${SIZE}"
 
 parameters:
 - name: NAME
@@ -5395,7 +5400,7 @@ parameters:
 - name: CONTENTIMAGE
 - name: RULE
 - name: NODESELECTOR
-
+- name: SIZE
   
 `)
 
