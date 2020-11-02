@@ -42,10 +42,6 @@
 // test/extended/testdata/operators/strimzi-cr.yaml
 // test/extended/testdata/operators/subscription.yaml
 // test/extended/testdata/opm/index_34016.db
-// test/extended/testdata/scheduler/pod_multiple_pts.yaml
-// test/extended/testdata/scheduler/pod_nodeselector.yaml
-// test/extended/testdata/scheduler/pod_single_pts.yaml
-// test/extended/testdata/scheduler/pod_single_pts_nodeselector.yaml
 // test/extended/testdata/securityandcompliance/aide.conf.rhel8
 // test/extended/testdata/securityandcompliance/catalogsource-image.yaml
 // test/extended/testdata/securityandcompliance/compliancescan.yaml
@@ -59,6 +55,12 @@
 // test/extended/testdata/winc/linux_web_server.yaml
 // test/extended/testdata/winc/windows_web_server.yaml
 // test/extended/testdata/winc/windows_web_server_no_taint.yaml
+// test/extended/testdata/workloads/dns.yaml
+// test/extended/testdata/workloads/dsp.yaml
+// test/extended/testdata/workloads/pmp.yaml
+// test/extended/testdata/workloads/pns.yaml
+// test/extended/testdata/workloads/psn.yaml
+// test/extended/testdata/workloads/psp.yaml
 // DO NOT EDIT!
 
 package testdata
@@ -4742,204 +4744,6 @@ func testExtendedTestdataOpmIndex_34016Db() (*asset, error) {
 	return a, nil
 }
 
-var _testExtendedTestdataSchedulerPod_multiple_ptsYaml = []byte(`apiVersion: v1
-kind: Template
-metadata:
-  name: pod-multiple-pts-template
-objects:
-- kind: Pod
-  apiVersion: v1
-  metadata:
-    name: "${NAME}"
-    namespace: "${NAMESPACE}"
-    labels:
-      "${LABELKEY}": "${LABELVALUE}"
-  spec:
-    topologySpreadConstraints:
-    - maxSkew: ${{SKEWNUM}}
-      topologyKey: "${PTSKEYNAME}"
-      whenUnsatisfiable: "${PTSPOLICY}"
-      labelSelector:
-        matchLabels:
-          "${LABELKEY}": "${LABELVALUE}"
-    - maxSkew: ${{SKEWNUM2}}
-      topologyKey: "${PTSKEY2NAME}"
-      whenUnsatisfiable: "${PTSPOLICY2}"
-      labelSelector:
-        matchLabels:
-          "${LABELKEY}": "${LABELVALUE}"
-    containers:
-    - image: "quay.io/openshifttest/hello-openshift@sha256:424e57db1f2e8e8ac9087d2f5e8faea6d73811f0b6f96301bc94293680897073"
-      name: hello-pod
-parameters:
-- name: NAME
-- name: NAMESPACE
-- name: LABELKEY
-- name: LABELVALUE
-- name: PTSKEYNAME
-- name: PTSPOLICY
-- name: SKEWNUM
-- name: PTSKEY2NAME
-- name: PTSPOLICY2
-- name: SKEWNUM2
-`)
-
-func testExtendedTestdataSchedulerPod_multiple_ptsYamlBytes() ([]byte, error) {
-	return _testExtendedTestdataSchedulerPod_multiple_ptsYaml, nil
-}
-
-func testExtendedTestdataSchedulerPod_multiple_ptsYaml() (*asset, error) {
-	bytes, err := testExtendedTestdataSchedulerPod_multiple_ptsYamlBytes()
-	if err != nil {
-		return nil, err
-	}
-
-	info := bindataFileInfo{name: "test/extended/testdata/scheduler/pod_multiple_pts.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
-	a := &asset{bytes: bytes, info: info}
-	return a, nil
-}
-
-var _testExtendedTestdataSchedulerPod_nodeselectorYaml = []byte(`apiVersion: v1
-kind: Template
-metadata:
-  name: pod-nodeselector-template
-objects:
-- kind: Pod
-  apiVersion: v1
-  metadata:
-    name: "${NAME}"
-    namespace: "${NAMESPACE}"
-    labels:
-      "${LABELKEY}": "${LABELVALUE}"
-  spec:
-    nodeSelector:
-      node: "${NODENAME}"
-    containers:
-    - image: "quay.io/openshifttest/hello-openshift@sha256:424e57db1f2e8e8ac9087d2f5e8faea6d73811f0b6f96301bc94293680897073"
-      name: hello-pod
-parameters:
-- name: NAME
-- name: NODENAME
-- name: NAMESPACE
-- name: LABELKEY
-- name: LABELVALUE
-`)
-
-func testExtendedTestdataSchedulerPod_nodeselectorYamlBytes() ([]byte, error) {
-	return _testExtendedTestdataSchedulerPod_nodeselectorYaml, nil
-}
-
-func testExtendedTestdataSchedulerPod_nodeselectorYaml() (*asset, error) {
-	bytes, err := testExtendedTestdataSchedulerPod_nodeselectorYamlBytes()
-	if err != nil {
-		return nil, err
-	}
-
-	info := bindataFileInfo{name: "test/extended/testdata/scheduler/pod_nodeselector.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
-	a := &asset{bytes: bytes, info: info}
-	return a, nil
-}
-
-var _testExtendedTestdataSchedulerPod_single_ptsYaml = []byte(`apiVersion: v1
-kind: Template
-metadata:
-  name: pod-sigle-pts-template
-objects:
-- kind: Pod
-  apiVersion: v1
-  metadata:
-    name: "${NAME}"
-    namespace: "${NAMESPACE}"
-    labels:
-      "${LABELKEY}": "${LABELVALUE}"
-  spec:
-    topologySpreadConstraints:
-    - maxSkew: ${{SKEWNUM}}
-      topologyKey: "${PTSKEYNAME}"
-      whenUnsatisfiable: "${PTSPOLICY}"
-      labelSelector:
-        matchLabels:
-          "${LABELKEY}": "${LABELVALUE}"
-    containers:
-    - image: "quay.io/openshifttest/hello-openshift@sha256:424e57db1f2e8e8ac9087d2f5e8faea6d73811f0b6f96301bc94293680897073"
-      name: hello-pod
-parameters:
-- name: NAME
-- name: NAMESPACE
-- name: LABELKEY
-- name: LABELVALUE
-- name: PTSKEYNAME
-- name: PTSPOLICY
-- name: SKEWNUM
-`)
-
-func testExtendedTestdataSchedulerPod_single_ptsYamlBytes() ([]byte, error) {
-	return _testExtendedTestdataSchedulerPod_single_ptsYaml, nil
-}
-
-func testExtendedTestdataSchedulerPod_single_ptsYaml() (*asset, error) {
-	bytes, err := testExtendedTestdataSchedulerPod_single_ptsYamlBytes()
-	if err != nil {
-		return nil, err
-	}
-
-	info := bindataFileInfo{name: "test/extended/testdata/scheduler/pod_single_pts.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
-	a := &asset{bytes: bytes, info: info}
-	return a, nil
-}
-
-var _testExtendedTestdataSchedulerPod_single_pts_nodeselectorYaml = []byte(`apiVersion: v1
-kind: Template
-metadata:
-  name: pod-sigle-pts-nodeselector-template
-objects:
-- kind: Pod
-  apiVersion: v1
-  metadata:
-    name: "${NAME}"
-    namespace: "${NAMESPACE}"
-    labels:
-      "${LABELKEY}": "${LABELVALUE}"
-  spec:
-    topologySpreadConstraints:
-    - maxSkew: ${{SKEWNUM}}
-      topologyKey: "${PTSKEYNAME}"
-      whenUnsatisfiable: "${PTSPOLICY}"
-      labelSelector:
-        matchLabels:
-          "${LABELKEY}": "${LABELVALUE}"
-    nodeSelector:
-      "${NODEKEY}": "${NODEVALUE}"
-    containers:
-    - image: "quay.io/openshifttest/hello-openshift@sha256:424e57db1f2e8e8ac9087d2f5e8faea6d73811f0b6f96301bc94293680897073"
-      name: hello-pod
-parameters:
-- name: NAME
-- name: NAMESPACE
-- name: LABELKEY
-- name: LABELVALUE
-- name: PTSKEYNAME
-- name: PTSPOLICY
-- name: SKEWNUM
-- name: NODEKEY
-- name: NODEVALUE
-`)
-
-func testExtendedTestdataSchedulerPod_single_pts_nodeselectorYamlBytes() ([]byte, error) {
-	return _testExtendedTestdataSchedulerPod_single_pts_nodeselectorYaml, nil
-}
-
-func testExtendedTestdataSchedulerPod_single_pts_nodeselectorYaml() (*asset, error) {
-	bytes, err := testExtendedTestdataSchedulerPod_single_pts_nodeselectorYamlBytes()
-	if err != nil {
-		return nil, err
-	}
-
-	info := bindataFileInfo{name: "test/extended/testdata/scheduler/pod_single_pts_nodeselector.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
-	a := &asset{bytes: bytes, info: info}
-	return a, nil
-}
-
 var _testExtendedTestdataSecurityandcomplianceAideConfRhel8 = []byte(`# Example configuration file for AIDE.
 
 @@define DBDIR /var/lib/aide
@@ -5899,6 +5703,317 @@ func testExtendedTestdataWincWindows_web_server_no_taintYaml() (*asset, error) {
 	return a, nil
 }
 
+var _testExtendedTestdataWorkloadsDnsYaml = []byte(`apiVersion: v1
+kind: Template
+metadata:
+  name: deploy-single-pts-template
+objects:
+- kind: Deployment
+  apiVersion: apps/v1
+  metadata:
+    labels:
+      app: "${DNAME}"
+    name: "${DNAME}"
+    namespace: "${NAMESPACE}"
+  spec:
+    replicas: ${{REPLICASNUM}}
+    selector:
+      matchLabels:
+        app: "${DNAME}"
+    template:
+      metadata:
+        labels:
+          app: "${DNAME}"
+          "${LABELKEY}": "${LABELVALUE}"
+      spec:
+        nodeSelector:
+          "${NODEKEY}": "${NODEVALUE}"
+        containers:
+        - image: "quay.io/openshifttest/hello-openshift@sha256:424e57db1f2e8e8ac9087d2f5e8faea6d73811f0b6f96301bc94293680897073"
+          name: hello-openshift
+parameters:
+- name: DNAME
+- name: NAMESPACE
+- name: REPLICASNUM
+- name: LABELKEY
+- name: LABELVALUE
+- name: NODEKEY
+- name: NODEVALUE
+`)
+
+func testExtendedTestdataWorkloadsDnsYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataWorkloadsDnsYaml, nil
+}
+
+func testExtendedTestdataWorkloadsDnsYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataWorkloadsDnsYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/workloads/dns.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataWorkloadsDspYaml = []byte(`apiVersion: v1
+kind: Template
+metadata:
+  name: deploy-single-pts-template
+objects:
+- kind: Deployment
+  apiVersion: apps/v1
+  metadata:
+    labels:
+      app: "${DNAME}"
+    name: "${DNAME}"
+    namespace: "${NAMESPACE}"
+  spec:
+    replicas: ${{REPLICASNUM}}
+    selector:
+      matchLabels:
+        app: "${DNAME}"
+    template:
+      metadata:
+        labels:
+          app: "${DNAME}"
+          "${LABELKEY}": "${LABELVALUE}"
+      spec:
+        topologySpreadConstraints:
+        - maxSkew: ${{SKEWNUM}}
+          topologyKey: "${PTSKEYNAME}"
+          whenUnsatisfiable: "${PTSPOLICY}"
+          labelSelector:
+            matchLabels:
+              "${LABELKEY}": "${LABELVALUE}"
+        containers:
+        - image: "quay.io/openshifttest/hello-openshift@sha256:424e57db1f2e8e8ac9087d2f5e8faea6d73811f0b6f96301bc94293680897073"
+          name: hello-openshift
+parameters:
+- name: DNAME
+- name: NAMESPACE
+- name: REPLICASNUM
+- name: LABELKEY
+- name: LABELVALUE
+- name: PTSKEYNAME
+- name: PTSPOLICY
+- name: SKEWNUM
+
+`)
+
+func testExtendedTestdataWorkloadsDspYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataWorkloadsDspYaml, nil
+}
+
+func testExtendedTestdataWorkloadsDspYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataWorkloadsDspYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/workloads/dsp.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataWorkloadsPmpYaml = []byte(`apiVersion: v1
+kind: Template
+metadata:
+  name: pod-multiple-pts-template
+objects:
+- kind: Pod
+  apiVersion: v1
+  metadata:
+    name: "${NAME}"
+    namespace: "${NAMESPACE}"
+    labels:
+      "${LABELKEY}": "${LABELVALUE}"
+  spec:
+    topologySpreadConstraints:
+    - maxSkew: ${{SKEWNUM}}
+      topologyKey: "${PTSKEYNAME}"
+      whenUnsatisfiable: "${PTSPOLICY}"
+      labelSelector:
+        matchLabels:
+          "${LABELKEY}": "${LABELVALUE}"
+    - maxSkew: ${{SKEWNUM2}}
+      topologyKey: "${PTSKEY2NAME}"
+      whenUnsatisfiable: "${PTSPOLICY2}"
+      labelSelector:
+        matchLabels:
+          "${LABELKEY}": "${LABELVALUE}"
+    containers:
+    - image: "quay.io/openshifttest/hello-openshift@sha256:424e57db1f2e8e8ac9087d2f5e8faea6d73811f0b6f96301bc94293680897073"
+      name: hello-pod
+parameters:
+- name: NAME
+- name: NAMESPACE
+- name: LABELKEY
+- name: LABELVALUE
+- name: PTSKEYNAME
+- name: PTSPOLICY
+- name: SKEWNUM
+- name: PTSKEY2NAME
+- name: PTSPOLICY2
+- name: SKEWNUM2
+`)
+
+func testExtendedTestdataWorkloadsPmpYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataWorkloadsPmpYaml, nil
+}
+
+func testExtendedTestdataWorkloadsPmpYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataWorkloadsPmpYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/workloads/pmp.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataWorkloadsPnsYaml = []byte(`apiVersion: v1
+kind: Template
+metadata:
+  name: pod-nodeselector-template
+objects:
+- kind: Pod
+  apiVersion: v1
+  metadata:
+    name: "${NAME}"
+    namespace: "${NAMESPACE}"
+    labels:
+      "${LABELKEY}": "${LABELVALUE}"
+  spec:
+    nodeSelector:
+      node: "${NODENAME}"
+    containers:
+    - image: "quay.io/openshifttest/hello-openshift@sha256:424e57db1f2e8e8ac9087d2f5e8faea6d73811f0b6f96301bc94293680897073"
+      name: hello-pod
+parameters:
+- name: NAME
+- name: NODENAME
+- name: NAMESPACE
+- name: LABELKEY
+- name: LABELVALUE
+`)
+
+func testExtendedTestdataWorkloadsPnsYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataWorkloadsPnsYaml, nil
+}
+
+func testExtendedTestdataWorkloadsPnsYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataWorkloadsPnsYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/workloads/pns.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataWorkloadsPsnYaml = []byte(`apiVersion: v1
+kind: Template
+metadata:
+  name: pod-sigle-pts-nodeselector-template
+objects:
+- kind: Pod
+  apiVersion: v1
+  metadata:
+    name: "${NAME}"
+    namespace: "${NAMESPACE}"
+    labels:
+      "${LABELKEY}": "${LABELVALUE}"
+  spec:
+    topologySpreadConstraints:
+    - maxSkew: ${{SKEWNUM}}
+      topologyKey: "${PTSKEYNAME}"
+      whenUnsatisfiable: "${PTSPOLICY}"
+      labelSelector:
+        matchLabels:
+          "${LABELKEY}": "${LABELVALUE}"
+    nodeSelector:
+      "${NODEKEY}": "${NODEVALUE}"
+    containers:
+    - image: "quay.io/openshifttest/hello-openshift@sha256:424e57db1f2e8e8ac9087d2f5e8faea6d73811f0b6f96301bc94293680897073"
+      name: hello-pod
+parameters:
+- name: NAME
+- name: NAMESPACE
+- name: LABELKEY
+- name: LABELVALUE
+- name: PTSKEYNAME
+- name: PTSPOLICY
+- name: SKEWNUM
+- name: NODEKEY
+- name: NODEVALUE
+`)
+
+func testExtendedTestdataWorkloadsPsnYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataWorkloadsPsnYaml, nil
+}
+
+func testExtendedTestdataWorkloadsPsnYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataWorkloadsPsnYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/workloads/psn.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataWorkloadsPspYaml = []byte(`apiVersion: v1
+kind: Template
+metadata:
+  name: pod-sigle-pts-template
+objects:
+- kind: Pod
+  apiVersion: v1
+  metadata:
+    name: "${NAME}"
+    namespace: "${NAMESPACE}"
+    labels:
+      "${LABELKEY}": "${LABELVALUE}"
+  spec:
+    topologySpreadConstraints:
+    - maxSkew: ${{SKEWNUM}}
+      topologyKey: "${PTSKEYNAME}"
+      whenUnsatisfiable: "${PTSPOLICY}"
+      labelSelector:
+        matchLabels:
+          "${LABELKEY}": "${LABELVALUE}"
+    containers:
+    - image: "quay.io/openshifttest/hello-openshift@sha256:424e57db1f2e8e8ac9087d2f5e8faea6d73811f0b6f96301bc94293680897073"
+      name: hello-pod
+parameters:
+- name: NAME
+- name: NAMESPACE
+- name: LABELKEY
+- name: LABELVALUE
+- name: PTSKEYNAME
+- name: PTSPOLICY
+- name: SKEWNUM
+`)
+
+func testExtendedTestdataWorkloadsPspYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataWorkloadsPspYaml, nil
+}
+
+func testExtendedTestdataWorkloadsPspYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataWorkloadsPspYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/workloads/psp.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
 // Asset loads and returns the asset for the given name.
 // It returns an error if the asset could not be found or
 // could not be loaded.
@@ -5993,10 +6108,6 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/operators/strimzi-cr.yaml":                      testExtendedTestdataOperatorsStrimziCrYaml,
 	"test/extended/testdata/operators/subscription.yaml":                    testExtendedTestdataOperatorsSubscriptionYaml,
 	"test/extended/testdata/opm/index_34016.db":                             testExtendedTestdataOpmIndex_34016Db,
-	"test/extended/testdata/scheduler/pod_multiple_pts.yaml":                testExtendedTestdataSchedulerPod_multiple_ptsYaml,
-	"test/extended/testdata/scheduler/pod_nodeselector.yaml":                testExtendedTestdataSchedulerPod_nodeselectorYaml,
-	"test/extended/testdata/scheduler/pod_single_pts.yaml":                  testExtendedTestdataSchedulerPod_single_ptsYaml,
-	"test/extended/testdata/scheduler/pod_single_pts_nodeselector.yaml":     testExtendedTestdataSchedulerPod_single_pts_nodeselectorYaml,
 	"test/extended/testdata/securityandcompliance/aide.conf.rhel8":          testExtendedTestdataSecurityandcomplianceAideConfRhel8,
 	"test/extended/testdata/securityandcompliance/catalogsource-image.yaml": testExtendedTestdataSecurityandcomplianceCatalogsourceImageYaml,
 	"test/extended/testdata/securityandcompliance/compliancescan.yaml":      testExtendedTestdataSecurityandcomplianceCompliancescanYaml,
@@ -6010,6 +6121,12 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/winc/linux_web_server.yaml":                     testExtendedTestdataWincLinux_web_serverYaml,
 	"test/extended/testdata/winc/windows_web_server.yaml":                   testExtendedTestdataWincWindows_web_serverYaml,
 	"test/extended/testdata/winc/windows_web_server_no_taint.yaml":          testExtendedTestdataWincWindows_web_server_no_taintYaml,
+	"test/extended/testdata/workloads/dns.yaml":                             testExtendedTestdataWorkloadsDnsYaml,
+	"test/extended/testdata/workloads/dsp.yaml":                             testExtendedTestdataWorkloadsDspYaml,
+	"test/extended/testdata/workloads/pmp.yaml":                             testExtendedTestdataWorkloadsPmpYaml,
+	"test/extended/testdata/workloads/pns.yaml":                             testExtendedTestdataWorkloadsPnsYaml,
+	"test/extended/testdata/workloads/psn.yaml":                             testExtendedTestdataWorkloadsPsnYaml,
+	"test/extended/testdata/workloads/psp.yaml":                             testExtendedTestdataWorkloadsPspYaml,
 }
 
 // AssetDir returns the file names below a certain
@@ -6104,12 +6221,6 @@ var _bintree = &bintree{nil, map[string]*bintree{
 				"opm": {nil, map[string]*bintree{
 					"index_34016.db": {testExtendedTestdataOpmIndex_34016Db, map[string]*bintree{}},
 				}},
-				"scheduler": {nil, map[string]*bintree{
-					"pod_multiple_pts.yaml":            {testExtendedTestdataSchedulerPod_multiple_ptsYaml, map[string]*bintree{}},
-					"pod_nodeselector.yaml":            {testExtendedTestdataSchedulerPod_nodeselectorYaml, map[string]*bintree{}},
-					"pod_single_pts.yaml":              {testExtendedTestdataSchedulerPod_single_ptsYaml, map[string]*bintree{}},
-					"pod_single_pts_nodeselector.yaml": {testExtendedTestdataSchedulerPod_single_pts_nodeselectorYaml, map[string]*bintree{}},
-				}},
 				"securityandcompliance": {nil, map[string]*bintree{
 					"aide.conf.rhel8":          {testExtendedTestdataSecurityandcomplianceAideConfRhel8, map[string]*bintree{}},
 					"catalogsource-image.yaml": {testExtendedTestdataSecurityandcomplianceCatalogsourceImageYaml, map[string]*bintree{}},
@@ -6126,6 +6237,14 @@ var _bintree = &bintree{nil, map[string]*bintree{
 					"linux_web_server.yaml":                  {testExtendedTestdataWincLinux_web_serverYaml, map[string]*bintree{}},
 					"windows_web_server.yaml":                {testExtendedTestdataWincWindows_web_serverYaml, map[string]*bintree{}},
 					"windows_web_server_no_taint.yaml":       {testExtendedTestdataWincWindows_web_server_no_taintYaml, map[string]*bintree{}},
+				}},
+				"workloads": {nil, map[string]*bintree{
+					"dns.yaml": {testExtendedTestdataWorkloadsDnsYaml, map[string]*bintree{}},
+					"dsp.yaml": {testExtendedTestdataWorkloadsDspYaml, map[string]*bintree{}},
+					"pmp.yaml": {testExtendedTestdataWorkloadsPmpYaml, map[string]*bintree{}},
+					"pns.yaml": {testExtendedTestdataWorkloadsPnsYaml, map[string]*bintree{}},
+					"psn.yaml": {testExtendedTestdataWorkloadsPsnYaml, map[string]*bintree{}},
+					"psp.yaml": {testExtendedTestdataWorkloadsPspYaml, map[string]*bintree{}},
 				}},
 			}},
 		}},

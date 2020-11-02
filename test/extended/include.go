@@ -19,10 +19,10 @@ import (
 	_ "k8s.io/kubernetes/test/e2e/storage"
 
 	_ "github.com/openshift/openshift-tests-private/test/extended/operators"
-	_ "github.com/openshift/openshift-tests-private/test/extended/scheduler"
 	_ "github.com/openshift/openshift-tests-private/test/extended/securityandcompliance"
 	_ "github.com/openshift/openshift-tests-private/test/extended/opm"
 	_ "github.com/openshift/openshift-tests-private/test/extended/winc"
+	_ "github.com/openshift/openshift-tests-private/test/extended/workloads"
 	_ "github.com/openshift/openshift-tests/test/extended/apiserver"
 	_ "github.com/openshift/openshift-tests/test/extended/authentication"
 	_ "github.com/openshift/openshift-tests/test/extended/authorization"

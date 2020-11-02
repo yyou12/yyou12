@@ -1,12 +1,15 @@
-package scheduler
+package workloads
 
 import (
 	"path/filepath"
+	"strconv"
+	"time"
 
 	g "github.com/onsi/ginkgo"
 	o "github.com/onsi/gomega"
 
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
+	"k8s.io/apimachinery/pkg/util/wait"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 	e2enode "k8s.io/kubernetes/test/e2e/framework/node"
 )
@@ -20,10 +23,10 @@ var _ = g.Describe("[sig-scheduling] Workloads", func() {
 
 	// author: yinzhou@redhat.com
 	g.It("Critical-33836-Critical-33845-High-33767-Check Validate Pod with only one TopologySpreadConstraint topologyKey node", func() {
-		buildPruningBaseDir := exutil.FixturePath("testdata", "scheduler")
-		podSelectorT := filepath.Join(buildPruningBaseDir, "pod_nodeselector.yaml")
-		podSinglePtsT := filepath.Join(buildPruningBaseDir, "pod_single_pts.yaml")
-		podSinglePtsNodeSelectorT := filepath.Join(buildPruningBaseDir, "pod_single_pts_nodeselector.yaml")
+		buildPruningBaseDir := exutil.FixturePath("testdata", "workloads")
+		podSelectorT := filepath.Join(buildPruningBaseDir, "pns.yaml")
+		podSinglePtsT := filepath.Join(buildPruningBaseDir, "psp.yaml")
+		podSinglePtsNodeSelectorT := filepath.Join(buildPruningBaseDir, "psn.yaml")
 
 		nodeList, err := e2enode.GetReadySchedulableNodes(oc.KubeFramework().ClientSet)
 		if err != nil {
@@ -208,5 +211,88 @@ var _ = g.Describe("[sig-scheduling] Workloads", func() {
 		pod337672nodename := pod337672.getPodNodeName(oc)
 		o.Expect(pod337672nodename).Should(o.BeElementOf([]string{nodeList.Items[0].Name, nodeList.Items[1].Name}))
 		o.Expect(pod337672nodename).NotTo(o.Equal(pod337671nodename))
+	})
+	// author: yinzhou@redhat.com
+	g.It("High-34019-Check validate TopologySpreadConstraints ignored the node without the label", func() {
+		buildPruningBaseDir := exutil.FixturePath("testdata", "workloads")
+		deploySinglePtsT := filepath.Join(buildPruningBaseDir, "dsp.yaml")
+		var ktz = "testzone"
+		var ktn = "testnode"
+
+		nodeList, err := e2enode.GetReadySchedulableNodes(oc.KubeFramework().ClientSet)
+		if err != nil {
+			e2e.Logf("Unexpected error occurred: %v", err)
+		}
+		expectNodeList := []string{nodeList.Items[0].Name, nodeList.Items[1].Name}
+		g.By("Apply dedicated Key for this test on the 3 nodes.")
+		e2e.AddOrUpdateLabelOnNode(oc.KubeFramework().ClientSet, nodeList.Items[0].Name, ktz, "testzoneA")
+		e2e.AddOrUpdateLabelOnNode(oc.KubeFramework().ClientSet, nodeList.Items[0].Name, ktn, "testnode1")
+		e2e.AddOrUpdateLabelOnNode(oc.KubeFramework().ClientSet, nodeList.Items[1].Name, ktz, "testzoneB")
+		e2e.AddOrUpdateLabelOnNode(oc.KubeFramework().ClientSet, nodeList.Items[1].Name, ktn, "testnode2")
+		e2e.AddOrUpdateLabelOnNode(oc.KubeFramework().ClientSet, nodeList.Items[2].Name, ktz, "testzoneC")
+
+		g.By("Remove dedicated Key for this test on the 3 nodes.")
+		defer e2e.RemoveLabelOffNode(oc.KubeFramework().ClientSet, nodeList.Items[0].Name, ktz)
+		defer e2e.RemoveLabelOffNode(oc.KubeFramework().ClientSet, nodeList.Items[0].Name, ktn)
+		defer e2e.RemoveLabelOffNode(oc.KubeFramework().ClientSet, nodeList.Items[1].Name, ktz)
+		defer e2e.RemoveLabelOffNode(oc.KubeFramework().ClientSet, nodeList.Items[1].Name, ktn)
+		defer e2e.RemoveLabelOffNode(oc.KubeFramework().ClientSet, nodeList.Items[2].Name, ktz)
+
+		g.By("Test for case OCP-34019")
+		g.By("create new namespace")
+		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("ns", "test-pts-34019").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("ns", "test-pts-34019").Execute()
+
+		deploy34019 := deploySinglePts{
+			dName:      "d34019",
+			namespace:  "test-pts-34019",
+			replicaNum: 2,
+			labelKey:   "foo",
+			labelValue: "bar",
+			ptsKeyName: "testnode",
+			ptsPolicy:  "DoNotSchedule",
+			skewNum:    1,
+			template:   deploySinglePtsT,
+		}
+
+		g.By("Trying to launch a deploy with a label to node with testnode label")
+		deploy34019.createDeploySinglePts(oc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Geting the node list where pods running")
+		podNodeList := getPodNodeListByLabel(oc, deploy34019.namespace, deploy34019.labelKey)
+
+		g.By("Checking all the pods scheduled to node with testnode label")
+		for _, nodeName := range podNodeList {
+			o.Expect(nodeName).Should(o.BeElementOf(expectNodeList))
+		}
+
+		g.By("Scale up the deploy")
+		_, err = oc.WithoutNamespace().Run("scale").Args("deploy", "-n", deploy34019.namespace, deploy34019.dName, "--replicas="+strconv.Itoa(5)).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Waiting for the deploy scale up")
+		err = wait.Poll(2*time.Second, 30*time.Second, func() (bool, error) {
+			output, err := oc.WithoutNamespace().Run("get").Args("-n", deploy34019.namespace, "deploy", deploy34019.dName, "-o=jsonpath={.status.replicas}").Output()
+			if err != nil {
+				e2e.Logf("Fail to get podnum: %s, error: %s and try again", deploy34019.dName, err)
+				return false, nil
+			}
+			if output == "5" {
+				e2e.Logf("Get expected pod num: %s", output)
+				return true, nil
+			}
+			return false, nil
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Geting the node list where pods running")
+		podNodeList = getPodNodeListByLabel(oc, deploy34019.namespace, deploy34019.labelKey)
+
+		g.By("Checking all the pods scheduled to node with testnode label")
+		for _, nodeName := range podNodeList {
+			o.Expect(nodeName).Should(o.BeElementOf(expectNodeList))
+		}
 	})
 })

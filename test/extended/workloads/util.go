@@ -1,10 +1,11 @@
-package scheduler
+package workloads
 
 import (
 	o "github.com/onsi/gomega"
 
 	"math/rand"
 	"strconv"
+	"strings"
 	"time"
 
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
@@ -45,6 +46,29 @@ type podSinglePtsNodeSelector struct {
 	template   string
 }
 
+type deploySinglePts struct {
+	dName      string
+	namespace  string
+	replicaNum int
+	labelKey   string
+	labelValue string
+	ptsKeyName string
+	ptsPolicy  string
+	skewNum    int
+	template   string
+}
+
+type deployNodeSelector struct {
+	dName      string
+	namespace  string
+	replicaNum int
+	labelKey   string
+	labelValue string
+	nodeKey    string
+	nodeValue  string
+	template   string
+}
+
 func (pod *podNodeSelector) createPodNodeSelector(oc *exutil.CLI) {
 	err := wait.Poll(5*time.Second, 20*time.Second, func() (bool, error) {
 		err1 := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", pod.template, "-p", "NAME="+pod.name, "NAMESPACE="+pod.namespace,
@@ -76,6 +100,20 @@ func (pod *podSinglePtsNodeSelector) createPodSinglePtsNodeSelector(oc *exutil.C
 		err1 := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", pod.template, "-p", "NAME="+pod.name, "NAMESPACE="+pod.namespace,
 			"LABELKEY="+pod.labelKey, "LABELVALUE="+pod.labelValue, "PTSKEYNAME="+pod.ptsKeyName, "PTSPOLICY="+pod.ptsPolicy, "SKEWNUM="+strconv.Itoa(pod.skewNum),
 			"NODEKEY="+pod.nodeKey, "NODEVALUE="+pod.nodeValue)
+		if err1 != nil {
+			e2e.Logf("the err:%v, and try next round", err1)
+			return false, nil
+		}
+		return true, nil
+	})
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+func (deploy *deploySinglePts) createDeploySinglePts(oc *exutil.CLI) {
+	err := wait.Poll(5*time.Second, 20*time.Second, func() (bool, error) {
+		err1 := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", deploy.template, "-p", "DNAME="+deploy.dName, "NAMESPACE="+deploy.namespace,
+			"REPLICASNUM="+strconv.Itoa(deploy.replicaNum), "LABELKEY="+deploy.labelKey, "LABELVALUE="+deploy.labelValue, "PTSKEYNAME="+deploy.ptsKeyName,
+			"PTSPOLICY="+deploy.ptsPolicy, "SKEWNUM="+strconv.Itoa(deploy.skewNum))
 		if err1 != nil {
 			e2e.Logf("the err:%v, and try next round", err1)
 			return false, nil
@@ -123,6 +161,12 @@ func applyResourceFromTemplate(oc *exutil.CLI, parameters ...string) error {
 	return oc.WithoutNamespace().Run("apply").Args("-f", configFile).Execute()
 }
 
+func getPodNodeListByLabel(oc *exutil.CLI, namespace string, labelKey string) []string {
+	output, err := oc.WithoutNamespace().Run("get").Args("pod", "-n", namespace, "-l", labelKey, "-o=jsonpath={.items[*].spec.nodeName}").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	nodeNameList := strings.Fields(output)
+	return nodeNameList
+}
 func getRandomString() string {
 	chars := "abcdefghijklmnopqrstuvwxyz0123456789"
 	seed := rand.New(rand.NewSource(time.Now().UnixNano()))
