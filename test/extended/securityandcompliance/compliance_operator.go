@@ -789,4 +789,138 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		g.By("The ocp-33230 complianceScan has performed successfully and storage size verified ..!!!\n")
 	})
 
+	// author: pdhamdhe@redhat.com
+	g.It("Critical-28949-The complianceSuite and ComplianeScan perform scan using Platform scan type", func() {
+
+		var (
+			csuiteD = complianceSuiteDescription{
+				name:         "platform-compliancesuite",
+				namespace:    "",
+				scanType:     "platform",
+				scanname:     "platform-scan",
+				profile:      "xccdf_org.ssgproject.content_profile_moderate",
+				content:      "ssg-ocp4-ds.xml",
+				contentImage: "quay.io/complianceascode/ocp4:latest",
+				template:     csuiteTemplate,
+			}
+			cscanMD = complianceScanDescription{
+				name:         "platform-new-scan",
+				namespace:    "",
+				scanType:     "platform",
+				profile:      "xccdf_org.ssgproject.content_profile_moderate",
+				content:      "ssg-ocp4-ds.xml",
+				contentImage: "quay.io/complianceascode/ocp4:latest",
+				template:     cscanTemplate,
+			}
+
+			itName = g.CurrentGinkgoTestDescription().TestText
+		)
+
+		oc.SetupProject()
+		catSrc.namespace = oc.Namespace()
+		ogD.namespace = oc.Namespace()
+		subD.namespace = oc.Namespace()
+		subD.catalogSourceName = catSrc.name
+		subD.catalogSourceNamespace = catSrc.namespace
+
+		g.By("Create catalogSource !!!")
+		e2e.Logf("Here catsrc namespace : %v\n", catSrc.namespace)
+		catSrc.create(oc, itName, dr)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "READY", ok, []string{"catsrc", catSrc.name, "-n", catSrc.namespace,
+			"-o=jsonpath={.status..lastObservedState}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Running", ok, []string{"pod", "-n", catSrc.namespace,
+			"-o=jsonpath={.items[0].status.phase}"}).check(oc)
+
+		g.By("Create operatorGroup !!!")
+		ogD.create(oc, itName, dr)
+
+		g.By("Create subscription for above catalogsource !!!")
+		subD.create(oc, itName, dr)
+		e2e.Logf("Here subscp namespace : %v\n", subD.namespace)
+		newCheck("expect", asAdmin, withoutNamespace, contain, "AllCatalogSourcesHealthy", ok, []string{"sub", subD.subName, "-n",
+			subD.namespace, "-o=jsonpath={.status.conditions[0].reason}"}).check(oc)
+
+		defer func() {
+			// These are special steps to overcome problem which are discussed in [1] so that namespace should not stuck in 'Terminating' state
+			// [1] https://bugzilla.redhat.com/show_bug.cgi?id=1858186
+			removeCmds := []struct {
+				kind      string
+				namespace string
+				name      string
+			}{
+				{"compliancesuite", subD.namespace, "platform-compliancesuite"},
+				{"compliancescan", subD.namespace, "platform-new-scan"},
+				{"profilebundle.compliance", subD.namespace, "ocp4"},
+				{"profilebundle.compliance", subD.namespace, "rhcos4"},
+				{"deployment", subD.namespace, "compliance-operator"},
+			}
+			for _, v := range removeCmds {
+				e2e.Logf("Start to remove: %v", v)
+				_, err := oc.AsAdmin().WithoutNamespace().Run("delete").Args(v.kind, "-n", v.namespace, v.name).Output()
+				o.Expect(err).NotTo(o.HaveOccurred())
+			}
+		}()
+
+		g.By("Check CSV is created sucessfully.. !!!")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", subD.installedCSV, "-n", subD.namespace,
+			"-o=jsonpath={.status.phase}"}).check(oc)
+
+		g.By("Check Compliance Operator & profileParser pods are created.. !!!")
+		newCheck("expect", asAdmin, withoutNamespace, contain, "compliance-operator", ok, []string{"pod", "--selector=name=compliance-operator",
+			"-n", subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, contain, "ocp4-pp", ok, []string{"pod", "--selector=profile-bundle=ocp4", "-n",
+			subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, contain, "rhcos4-pp", ok, []string{"pod", "--selector=profile-bundle=rhcos4", "-n",
+			subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
+
+		g.By("Check Compliance Operator & profileParser pods are in running state.. !!!")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Running", ok, []string{"pod", "--selector=name=compliance-operator", "-n",
+			subD.namespace, "-o=jsonpath={.items[0].status.phase}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Running", ok, []string{"pod", "--selector=profile-bundle=ocp4", "-n",
+			subD.namespace, "-o=jsonpath={.items[0].status.phase}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Running", ok, []string{"pod", "--selector=profile-bundle=rhcos4", "-n",
+			subD.namespace, "-o=jsonpath={.items[0].status.phase}"}).check(oc)
+
+		g.By("Compliance Operator sucessfully installed.. !!! ")
+
+		csuiteD.namespace = subD.namespace
+		g.By("Create platform-compliancesuite.. !!!\n")
+		e2e.Logf("Here namespace : %v\n", catSrc.namespace)
+		csuiteD.create(oc, itName, dr)
+
+		cscanMD.namespace = subD.namespace
+		g.By("Create platform-new-scan.. !!!\n")
+		cscanMD.create(oc, itName, dr)
+
+		newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", csuiteD.name, "-n",
+			subD.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancescan", cscanMD.name, "-n",
+			subD.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+
+		g.By("Check platform-scan pod.. !!!\n")
+		subD.scanPodName(oc, "platform-scan-api-checks-pod")
+
+		g.By("Check platform-new-scan pod.. !!!\n")
+		subD.scanPodName(oc, "platform-new-scan-api-checks-pod")
+
+		g.By("Check platform scan pods status.. !!! \n")
+		subD.scanPodStatus(oc, "Succeeded")
+
+		g.By("Check platform-compliancesuite name and result.. !!!\n")
+		subD.complianceSuiteName(oc, "platform-compliancesuite")
+		subD.complianceSuiteResult(oc, "NON-COMPLIANT")
+
+		g.By("Check platform-compliancesuite result through exit-code.. !!!\n")
+		subD.getScanExitCodeFromConfigmap(oc, "2")
+
+		g.By("Check platform-new-scan name and result..!!!\n")
+		subD.complianceScanName(oc, "platform-new-scan")
+		subD.complianceScanResult(oc, "NON-COMPLIANT")
+
+		g.By("Check platform-new-scan result through exit-code ..!!!\n")
+		subD.getScanExitCodeFromConfigmap(oc, "2")
+
+		g.By("The ocp-28949 complianceScan for platform has performed successfully ..!!!\n")
+	})
+
 })

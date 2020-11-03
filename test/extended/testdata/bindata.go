@@ -5135,6 +5135,7 @@ objects:
     namespace: "${NAMESPACE}"
   spec:
     profile: "${PROFILE}"
+    scanType: "${SCANTYPE}"
     content: "${CONTENT}"
     contentImage: "${CONTENTIMAGE}"
     rule: "${RULE}"
@@ -5148,6 +5149,7 @@ parameters:
 - name: NAME
 - name: NAMESPACE
 - name: PROFILE
+- name: SCANTYPE
 - name: CONTENT
 - name: CONTENTIMAGE
 - name: RULE
@@ -5186,6 +5188,7 @@ objects:
     scans:
       - name: "${SCANNAME}" 
         profile: "${PROFILE}"
+        scanType: "${SCANTYPE}"  
         content: "${CONTENT}"
         contentImage: "${CONTENTIMAGE}"
         rule: "${RULE}"
@@ -5200,6 +5203,7 @@ parameters:
 - name: NAMESPACE
 - name: SCANNAME
 - name: PROFILE
+- name: SCANTYPE  
 - name: CONTENT
 - name: CONTENTIMAGE
 - name: RULE
