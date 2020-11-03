@@ -26,6 +26,80 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	var oc = exutil.NewCLIWithoutNamespace("default")
 
 	// author: jiazha@redhat.com
+	g.It("Medium-25922-Support spec.config.volumes and volumemount in Subscription", func() {
+		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
+		ogSingleTemplate := filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+		subTemplate := filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+		oc.SetupProject()
+		og := operatorGroupDescription{
+			name:      "test-og",
+			namespace: oc.Namespace(),
+			template:  ogSingleTemplate,
+		}
+		dr := make(describerResrouce)
+		itName := g.CurrentGinkgoTestDescription().TestText
+		dr.addIr(itName)
+
+		g.By(fmt.Sprintf("1) create the OperatorGroup in project: %s", oc.Namespace()))
+		og.createwithCheck(oc, itName, dr)
+
+		g.By("2) install etcd operator")
+		sub := subscriptionDescription{
+			subName:                "etcd-sub",
+			namespace:              oc.Namespace(),
+			catalogSourceName:      "community-operators",
+			catalogSourceNamespace: "openshift-marketplace",
+			channel:                "alpha",
+			ipApproval:             "Automatic",
+			operatorPackage:        "etcd",
+			singleNamespace:        true,
+			template:               subTemplate,
+		}
+		sub.create(oc, itName, dr)
+
+		g.By("3) create a ConfigMap")
+		cmTemplate := filepath.Join(buildPruningBaseDir, "cm-template.yaml")
+
+		cm := configMapDescription{
+			name:      "special-config",
+			namespace: oc.Namespace(),
+			template:  cmTemplate,
+		}
+		cm.create(oc, itName, dr)
+
+		g.By("4) Patch this ConfigMap a volume")
+		sub.patch(oc, "{\"spec\": {\"channel\":\"alpha\",\"config\":{\"volumeMounts\":[{\"mountPath\":\"/test\",\"name\":\"config-volume\"}],\"volumes\":[{\"configMap\":{\"name\":\"special-config\"},\"name\":\"config-volume\"}]},\"name\":\"etcd\",\"source\":\"community-operators\",\"sourceNamespace\":\"openshift-marketplace\"}}")
+		err := wait.Poll(10*time.Second, 180*time.Second, func() (bool, error) {
+			podName, err := oc.AsAdmin().Run("get").Args("pods", "-l", "name=etcd-operator-alm-owned", "-o=jsonpath={.items[0].metadata.name}").Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			e2e.Logf("4-1) Get etcd operator pod name:%s", podName)
+			result, err := oc.AsAdmin().Run("exec").Args(podName, "--", "cat", "/test/special.how").Output()
+			e2e.Logf("4-2) Check if the ConfigMap mount well")
+			if strings.Contains(result, "very") {
+				e2e.Logf("4-3) The ConfigMap: special-config mount well")
+				return true, nil
+			}
+			return false, nil
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
+		g.By("5) Patch a non-exist volume")
+		sub.patch(oc, "{\"spec\":{\"channel\":\"alpha\",\"config\":{\"volumeMounts\":[{\"mountPath\":\"/test\",\"name\":\"volume1\"}],\"volumes\":[{\"persistentVolumeClaim\":{\"claimName\":\"claim1\"},\"name\":\"volume1\"}]},\"name\":\"etcd\",\"source\":\"community-operators\",\"sourceNamespace\":\"openshift-marketplace\"}}")
+		err = wait.Poll(10*time.Second, 180*time.Second, func() (bool, error) {
+			for i := 0; i < 2; i++ {
+				g.By("5-1) Check the pods status")
+				podStatus, err := oc.AsAdmin().Run("get").Args("pods", "-l", "name=etcd-operator-alm-owned", fmt.Sprintf("-o=jsonpath={.items[%d].status.phase}", i)).Output()
+				o.Expect(err).NotTo(o.HaveOccurred())
+				if podStatus == "Pending" {
+					g.By("5-2) The pod status is Pending as expected")
+					return true, nil
+				}
+			}
+			return false, nil
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
+	})
+
+	// author: jiazha@redhat.com
 	g.It("Medium-35631-Remove OperatorSource API", func() {
 		g.By("1) Check the operatorsource resource")
 		msg, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("operatorsource").Output()
