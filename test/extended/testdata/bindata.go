@@ -5334,6 +5334,7 @@ objects:
         contentImage: "${CONTENTIMAGE}"
         rule: "${RULE}"
         debug: true
+        noExternalResources: ${{NOEXTERNALRESOURCES}}
         nodeSelector: 
           node-role.kubernetes.io/${NODESELECTOR}: ""
         rawResultStorage:
@@ -5348,6 +5349,7 @@ parameters:
 - name: CONTENT
 - name: CONTENTIMAGE
 - name: RULE
+- name: NOEXTERNALRESOURCES
 - name: NODESELECTOR
 - name: SIZE
   

@@ -2,32 +2,36 @@ package securityandcompliance
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
+	"time"
 
 	o "github.com/onsi/gomega"
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
+	"k8s.io/apimachinery/pkg/util/wait"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 )
 
 type complianceSuiteDescription struct {
-	name         string
-	namespace    string
-	scanname     string
-	scanType     string
-	profile      string
-	content      string
-	contentImage string
-	rule         string
-	debug        bool
-	nodeSelector string
-	size         string
-	template     string
+	name                string
+	namespace           string
+	scanname            string
+	scanType            string
+	profile             string
+	content             string
+	contentImage        string
+	rule                string
+	debug               bool
+	noExternalResources bool
+	nodeSelector        string
+	size                string
+	template            string
 }
 
 func (csuite *complianceSuiteDescription) create(oc *exutil.CLI, itName string, dr describerResrouce) {
 	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", csuite.template, "-p", "NAME="+csuite.name, "NAMESPACE="+csuite.namespace,
 		"SCANNAME="+csuite.scanname, "SCANTYPE="+csuite.scanType, "PROFILE="+csuite.profile, "CONTENT="+csuite.content, "CONTENTIMAGE="+csuite.contentImage,
-		"RULE="+csuite.rule, "NODESELECTOR="+csuite.nodeSelector, "SIZE="+csuite.size)
+		"RULE="+csuite.rule, "NOEXTERNALRESOURCES="+strconv.FormatBool(csuite.noExternalResources), "NODESELECTOR="+csuite.nodeSelector, "SIZE="+csuite.size)
 	o.Expect(err).NotTo(o.HaveOccurred())
 	dr.getIr(itName).add(newResource(oc, "compliancesuite", csuite.name, requireNS, csuite.namespace))
 }
@@ -60,6 +64,18 @@ func (cscan *complianceScanDescription) create(oc *exutil.CLI, itName string, dr
 
 func (cscan *complianceScanDescription) delete(itName string, dr describerResrouce) {
 	dr.getIr(itName).remove(cscan.name, "compliancescan", cscan.namespace)
+}
+
+func (csuite *complianceSuiteDescription) checkComplianceSuiteStatus(oc *exutil.CLI, expected string) {
+	err := wait.Poll(5*time.Second, 300*time.Second, func() (bool, error) {
+		output, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", csuite.namespace, "compliancesuite", csuite.name, "-o=jsonpath={.status.phase}").Output()
+		e2e.Logf("the result of complianceSuite:%v", output)
+		if strings.Contains(output, expected) {
+			return true, nil
+		}
+		return false, nil
+	})
+	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
 func setLabelToNode(oc *exutil.CLI) string {
@@ -198,4 +214,18 @@ func (subD *subscriptionDescription) getPVCSize(oc *exutil.CLI, expected string)
 		}
 	}
 	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+func (subD *subscriptionDescription) getRuleStatus(oc *exutil.CLI, expected string) {
+	ruleName, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", subD.namespace, "compliancecheckresult", "-o=jsonpath={.items[0:5].metadata.name}").Output()
+	lines := strings.Fields(ruleName)
+	for _, line := range lines {
+		e2e.Logf("\n%v\n\n", line)
+		ruleStatus, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("compliancecheckresult", line, "-n", subD.namespace, "-o=jsonpath={.status}").Output()
+		if strings.Contains(ruleStatus, expected) {
+			e2e.Logf("\n%v\n\n", ruleStatus)
+			continue
+		}
+		o.Expect(err).NotTo(o.HaveOccurred())
+	}
 }
