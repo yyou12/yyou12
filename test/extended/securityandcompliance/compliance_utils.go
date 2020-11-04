@@ -257,3 +257,17 @@ func (subD *subscriptionDescription) getProfileName(oc *exutil.CLI, expected str
 	}
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
+
+func (subD *subscriptionDescription) getARFreportFromPVC(oc *exutil.CLI, expected string) {
+	commands := []string{"exec", "pod/pv-extract", "--", "ls", "/workers-scan-results/0"}
+	arfReport, err := oc.AsAdmin().Run(commands...).Args().Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	lines := strings.Fields(arfReport)
+	for _, line := range lines {
+		if strings.Contains(line, expected) {
+			e2e.Logf("\n%v\n\n", line)
+			break
+		}
+	}
+	o.Expect(err).NotTo(o.HaveOccurred())
+}

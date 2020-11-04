@@ -21,6 +21,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		subCoTemplate       = filepath.Join(buildPruningBaseDir, "subscription.yaml")
 		csuiteTemplate      = filepath.Join(buildPruningBaseDir, "compliancesuite.yaml")
 		cscanTemplate       = filepath.Join(buildPruningBaseDir, "compliancescan.yaml")
+		pvextractpodYAML    = filepath.Join(buildPruningBaseDir, "pv-extract-pod.yaml")
 		dr                  = make(describerResrouce)
 
 		catSrc = catalogSourceDescription{
@@ -1230,5 +1231,122 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		subD.getProfileName(oc, "rhcos4-ncp")
 
 		g.By("ocp-32814 The Compliance Operator by default created ProfileBundles and profiles are verified successfully.. !!!\n")
+	})
+
+	// author: pdhamdhe@redhat.com
+	g.It("Medium-33449-The compliance-operator raw results store in ARF format on a PVC", func() {
+
+		var (
+			csuiteD = complianceSuiteDescription{
+				name:         "worker-compliancesuite",
+				namespace:    "",
+				scanname:     "worker-scan",
+				profile:      "xccdf_org.ssgproject.content_profile_moderate",
+				content:      "ssg-rhcos4-ds.xml",
+				contentImage: "quay.io/complianceascode/ocp4:latest",
+				rule:         "xccdf_org.ssgproject.content_rule_no_empty_passwords",
+				nodeSelector: "wscan",
+				template:     csuiteTemplate,
+			}
+			itName = g.CurrentGinkgoTestDescription().TestText
+		)
+
+		oc.SetupProject()
+		catSrc.namespace = oc.Namespace()
+		ogD.namespace = oc.Namespace()
+		subD.namespace = oc.Namespace()
+		subD.catalogSourceName = catSrc.name
+		subD.catalogSourceNamespace = catSrc.namespace
+
+		g.By("Create catalogSource !!!")
+		e2e.Logf("Here catsrc namespace : %v\n", catSrc.namespace)
+		catSrc.create(oc, itName, dr)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "READY", ok, []string{"catsrc", catSrc.name, "-n", catSrc.namespace,
+			"-o=jsonpath={.status..lastObservedState}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Running", ok, []string{"pod", "-n", catSrc.namespace,
+			"-o=jsonpath={.items[0].status.phase}"}).check(oc)
+
+		g.By("Create operatorGroup !!!")
+		ogD.create(oc, itName, dr)
+
+		g.By("Create subscription for above catalogsource !!!")
+		subD.create(oc, itName, dr)
+		e2e.Logf("Here subscp namespace : %v\n", subD.namespace)
+		newCheck("expect", asAdmin, withoutNamespace, contain, "AllCatalogSourcesHealthy", ok, []string{"sub", subD.subName, "-n",
+			subD.namespace, "-o=jsonpath={.status.conditions[0].reason}"}).check(oc)
+
+		defer func() {
+			// These are special steps to overcome problem which are discussed in [1] so that namespace should not stuck in 'Terminating' state
+			// [1] https://bugzilla.redhat.com/show_bug.cgi?id=1858186
+			removeCmds := []struct {
+				kind      string
+				namespace string
+				name      string
+			}{
+				{"compliancesuite", subD.namespace, "worker-compliancesuite"},
+				{"pod", subD.namespace, "pv-extract"},
+				{"profilebundle.compliance", subD.namespace, "ocp4"},
+				{"profilebundle.compliance", subD.namespace, "rhcos4"},
+				{"deployment", subD.namespace, "compliance-operator"},
+			}
+			for _, v := range removeCmds {
+				e2e.Logf("Start to remove: %v", v)
+				_, err := oc.AsAdmin().WithoutNamespace().Run("delete").Args(v.kind, "-n", v.namespace, v.name).Output()
+				o.Expect(err).NotTo(o.HaveOccurred())
+			}
+		}()
+
+		g.By("Check CSV is created sucessfully !!!")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", subD.installedCSV, "-n", subD.namespace,
+			"-o=jsonpath={.status.phase}"}).check(oc)
+
+		g.By("Check Compliance Operator & profileParser pods are created !!!")
+		newCheck("expect", asAdmin, withoutNamespace, contain, "compliance-operator", ok, []string{"pod", "--selector=name=compliance-operator",
+			"-n", subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, contain, "ocp4-pp", ok, []string{"pod", "--selector=profile-bundle=ocp4", "-n",
+			subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, contain, "rhcos4-pp", ok, []string{"pod", "--selector=profile-bundle=rhcos4", "-n",
+			subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
+
+		g.By("Check Compliance Operator & profileParser pods are in running state !!!")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Running", ok, []string{"pod", "--selector=name=compliance-operator", "-n",
+			subD.namespace, "-o=jsonpath={.items[0].status.phase}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Running", ok, []string{"pod", "--selector=profile-bundle=ocp4", "-n",
+			subD.namespace, "-o=jsonpath={.items[0].status.phase}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Running", ok, []string{"pod", "--selector=profile-bundle=rhcos4", "-n",
+			subD.namespace, "-o=jsonpath={.items[0].status.phase}"}).check(oc)
+
+		g.By("Compliance Operator sucessfully installed !!! ")
+
+		csuiteD.namespace = subD.namespace
+		g.By("Create worker-compliancesuite !!!\n")
+		csuiteD.create(oc, itName, dr)
+		newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", csuiteD.name, "-n",
+			subD.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+
+		g.By("Check worker scan pods !!!\n")
+		subD.scanPodName(oc, "worker-scan")
+
+		g.By("Check worker scan pods status !!! \n")
+		subD.scanPodStatus(oc, "Succeeded")
+
+		g.By("Check complianceSuite name and result..!!!\n")
+		subD.complianceSuiteName(oc, "worker-compliancesuite")
+		subD.complianceSuiteResult(oc, "NON-COMPLIANT")
+
+		g.By("Check worker-compliancesuite result through exit-code ..!!!\n")
+		subD.getScanExitCodeFromConfigmap(oc, "2")
+
+		g.By("Create pv-extract pod and check status.. !!!\n")
+		_, err := oc.AsAdmin().WithoutNamespace().Run("create").Args("-n", subD.namespace, "-f", pvextractpodYAML).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		newCheck("expect", asAdmin, withoutNamespace, contain, "Running", ok, []string{"pod", "pv-extract", "-n",
+			subD.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+
+		g.By("Check ARF report generates in xml format.. !!!\n")
+		subD.getARFreportFromPVC(oc, ".xml.bzip2")
+
+		g.By("The ocp-33449 complianceScan raw result successfully stored in ARF format on the PVC... !!!!\n")
+
 	})
 })
