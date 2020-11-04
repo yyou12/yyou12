@@ -1143,4 +1143,92 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		g.By("The ocp-28949 complianceScan for platform has performed successfully ..!!!\n")
 	})
 
+	// author: pdhamdhe@redhat.com
+	g.It("Medium-32814-The compliance operator by default creates ProfileBundles", func() {
+
+		var (
+			itName = g.CurrentGinkgoTestDescription().TestText
+		)
+
+		oc.SetupProject()
+		catSrc.namespace = oc.Namespace()
+		ogD.namespace = oc.Namespace()
+		subD.namespace = oc.Namespace()
+		subD.catalogSourceName = catSrc.name
+		subD.catalogSourceNamespace = catSrc.namespace
+
+		g.By("Create catalogSource !!!")
+		e2e.Logf("Here catsrc namespace : %v\n", catSrc.namespace)
+		catSrc.create(oc, itName, dr)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "READY", ok, []string{"catsrc", catSrc.name, "-n", catSrc.namespace,
+			"-o=jsonpath={.status..lastObservedState}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Running", ok, []string{"pod", "-n", catSrc.namespace,
+			"-o=jsonpath={.items[0].status.phase}"}).check(oc)
+
+		g.By("Create operatorGroup !!!")
+		ogD.create(oc, itName, dr)
+
+		g.By("Create subscription for above catalogsource !!!")
+		subD.create(oc, itName, dr)
+		e2e.Logf("Here subscp namespace : %v\n", subD.namespace)
+		newCheck("expect", asAdmin, withoutNamespace, contain, "AllCatalogSourcesHealthy", ok, []string{"sub", subD.subName, "-n",
+			subD.namespace, "-o=jsonpath={.status.conditions[0].reason}"}).check(oc)
+
+		defer func() {
+			// These are special steps to overcome problem which are discussed in [1] so that namespace should not stuck in 'Terminating' state
+			// [1] https://bugzilla.redhat.com/show_bug.cgi?id=1858186
+			removeCmds := []struct {
+				kind      string
+				namespace string
+				name      string
+			}{
+				{"profilebundle.compliance", subD.namespace, "ocp4"},
+				{"profilebundle.compliance", subD.namespace, "rhcos4"},
+				{"deployment", subD.namespace, "compliance-operator"},
+			}
+			for _, v := range removeCmds {
+				e2e.Logf("Start to remove: %v", v)
+				_, err := oc.AsAdmin().WithoutNamespace().Run("delete").Args(v.kind, "-n", v.namespace, v.name).Output()
+				o.Expect(err).NotTo(o.HaveOccurred())
+			}
+		}()
+
+		g.By("Check CSV is created sucessfully.. !!!")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", subD.installedCSV, "-n", subD.namespace,
+			"-o=jsonpath={.status.phase}"}).check(oc)
+
+		g.By("Check Compliance Operator & profileParser pods are created.. !!!")
+		newCheck("expect", asAdmin, withoutNamespace, contain, "compliance-operator", ok, []string{"pod", "--selector=name=compliance-operator",
+			"-n", subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, contain, "ocp4-pp", ok, []string{"pod", "--selector=profile-bundle=ocp4", "-n",
+			subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, contain, "rhcos4-pp", ok, []string{"pod", "--selector=profile-bundle=rhcos4", "-n",
+			subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
+
+		g.By("Check Compliance Operator & profileParser pods are in running state.. !!!")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Running", ok, []string{"pod", "--selector=name=compliance-operator", "-n",
+			subD.namespace, "-o=jsonpath={.items[0].status.phase}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Running", ok, []string{"pod", "--selector=profile-bundle=ocp4", "-n",
+			subD.namespace, "-o=jsonpath={.items[0].status.phase}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Running", ok, []string{"pod", "--selector=profile-bundle=rhcos4", "-n",
+			subD.namespace, "-o=jsonpath={.items[0].status.phase}"}).check(oc)
+
+		g.By("Compliance Operator sucessfully installed.. !!!\n")
+
+		g.By("Check default profilebundles name and status.. !!!\n")
+		subD.getProfileBundleNameandStatus(oc, "ocp4")
+		subD.getProfileBundleNameandStatus(oc, "rhcos4")
+
+		g.By("Check default profiles name.. !!!\n")
+		subD.getProfileName(oc, "ocp4-cis")
+		subD.getProfileName(oc, "ocp4-cis-node")
+		subD.getProfileName(oc, "ocp4-e8")
+		subD.getProfileName(oc, "ocp4-moderate")
+		subD.getProfileName(oc, "ocp4-ncp")
+		subD.getProfileName(oc, "rhcos4-e8")
+		subD.getProfileName(oc, "rhcos4-moderate")
+		subD.getProfileName(oc, "rhcos4-ncp")
+
+		g.By("ocp-32814 The Compliance Operator by default created ProfileBundles and profiles are verified successfully.. !!!\n")
+	})
 })

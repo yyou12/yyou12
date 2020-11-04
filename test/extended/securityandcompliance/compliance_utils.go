@@ -229,3 +229,31 @@ func (subD *subscriptionDescription) getRuleStatus(oc *exutil.CLI, expected stri
 		o.Expect(err).NotTo(o.HaveOccurred())
 	}
 }
+
+func (subD *subscriptionDescription) getProfileBundleNameandStatus(oc *exutil.CLI, expected string) {
+	pbName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", subD.namespace, "profilebundles", "-o=jsonpath={.items[*].metadata.name}").Output()
+	lines := strings.Fields(pbName)
+	for _, line := range lines {
+		if strings.Compare(line, expected) == 0 {
+			e2e.Logf("\n%v\n\n", line)
+			// verify profilebundle status
+			pbStatus, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", subD.namespace, "profilebundles", line, "-o=jsonpath={.status.dataStreamStatus}").Output()
+			o.Expect(pbStatus).To(o.ContainSubstring("VALID"))
+			o.Expect(err).NotTo(o.HaveOccurred())
+			return
+		}
+	}
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+func (subD *subscriptionDescription) getProfileName(oc *exutil.CLI, expected string) {
+	pName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", subD.namespace, "profile.compliance", "-o=jsonpath={.items[*].metadata.name}").Output()
+	lines := strings.Fields(pName)
+	for _, line := range lines {
+		if strings.Compare(line, expected) == 0 {
+			e2e.Logf("\n%v\n\n", line)
+			return
+		}
+	}
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
