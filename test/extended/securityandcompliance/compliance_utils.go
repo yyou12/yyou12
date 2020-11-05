@@ -66,6 +66,28 @@ func (cscan *complianceScanDescription) delete(itName string, dr describerResrou
 	dr.getIr(itName).remove(cscan.name, "compliancescan", cscan.namespace)
 }
 
+type tailoredProfileDescription struct {
+	name         string
+	namespace    string
+	extends      string
+	disrulename1 string
+	disrulename2 string
+	varname      string
+	value        string
+	template     string
+}
+
+func (tprofile *tailoredProfileDescription) create(oc *exutil.CLI, itName string, dr describerResrouce) {
+	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", tprofile.template, "-p", "NAME="+tprofile.name, "NAMESPACE="+tprofile.namespace,
+		"EXTENDS="+tprofile.extends, "DISRULENAME1="+tprofile.disrulename1, "DISRULENAME2="+tprofile.disrulename2, "VARNAME="+tprofile.varname, "VALUE="+tprofile.value)
+	o.Expect(err).NotTo(o.HaveOccurred())
+	dr.getIr(itName).add(newResource(oc, "tailoredprofile", tprofile.name, requireNS, tprofile.namespace))
+}
+
+func (tprofile *tailoredProfileDescription) delete(itName string, dr describerResrouce) {
+	dr.getIr(itName).remove(tprofile.name, "tailoredprofile", tprofile.namespace)
+}
+
 func (csuite *complianceSuiteDescription) checkComplianceSuiteStatus(oc *exutil.CLI, expected string) {
 	err := wait.Poll(5*time.Second, 300*time.Second, func() (bool, error) {
 		output, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", csuite.namespace, "compliancesuite", csuite.name, "-o=jsonpath={.status.phase}").Output()
@@ -239,6 +261,22 @@ func (subD *subscriptionDescription) getProfileBundleNameandStatus(oc *exutil.CL
 			// verify profilebundle status
 			pbStatus, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", subD.namespace, "profilebundles", line, "-o=jsonpath={.status.dataStreamStatus}").Output()
 			o.Expect(pbStatus).To(o.ContainSubstring("VALID"))
+			o.Expect(err).NotTo(o.HaveOccurred())
+			return
+		}
+	}
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+func (subD *subscriptionDescription) getTailoredProfileNameandStatus(oc *exutil.CLI, expected string) {
+	tpName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", subD.namespace, "tailoredprofile", "-o=jsonpath={.items[*].metadata.name}").Output()
+	lines := strings.Fields(tpName)
+	for _, line := range lines {
+		if strings.Compare(line, expected) == 0 {
+			e2e.Logf("\n%v\n\n", line)
+			// verify tailoredprofile status
+			tpStatus, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", subD.namespace, "tailoredprofile", line, "-o=jsonpath={.status.state}").Output()
+			o.Expect(tpStatus).To(o.ContainSubstring("READY"))
 			o.Expect(err).NotTo(o.HaveOccurred())
 			return
 		}

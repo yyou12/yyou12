@@ -21,6 +21,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		subCoTemplate       = filepath.Join(buildPruningBaseDir, "subscription.yaml")
 		csuiteTemplate      = filepath.Join(buildPruningBaseDir, "compliancesuite.yaml")
 		cscanTemplate       = filepath.Join(buildPruningBaseDir, "compliancescan.yaml")
+		tprofileTemplate    = filepath.Join(buildPruningBaseDir, "tailoredprofile.yaml")
 		pvextractpodYAML    = filepath.Join(buildPruningBaseDir, "pv-extract-pod.yaml")
 		dr                  = make(describerResrouce)
 
@@ -389,6 +390,109 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		subD.getRuleStatus(oc, "SKIP")
 
 		g.By("The ocp-32082 complianceScan has performed successfully....!!!\n")
+
+	})
+
+	// author: pdhamdhe@redhat.com
+	g.It("High-33398-The Compliance Operator supports to variables in tailored profile", func() {
+
+		var (
+			tprofileD = tailoredProfileDescription{
+				name:         "rhcos-tailoredprofile",
+				namespace:    "",
+				extends:      "rhcos4-ncp",
+				disrulename1: "rhcos4-audit-rules-dac-modification-chmod",
+				disrulename2: "rhcos4-audit-rules-etc-group-open",
+				varname:      "rhcos4-var-selinux-state",
+				value:        "permissive",
+				template:     tprofileTemplate,
+			}
+			itName = g.CurrentGinkgoTestDescription().TestText
+		)
+
+		oc.SetupProject()
+		catSrc.namespace = oc.Namespace()
+		ogD.namespace = oc.Namespace()
+		subD.namespace = oc.Namespace()
+		subD.catalogSourceName = catSrc.name
+		subD.catalogSourceNamespace = catSrc.namespace
+
+		g.By("Create catalogSource !!!")
+		e2e.Logf("Here catsrc namespace : %v\n", catSrc.namespace)
+		catSrc.create(oc, itName, dr)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "READY", ok, []string{"catsrc", catSrc.name, "-n", catSrc.namespace,
+			"-o=jsonpath={.status..lastObservedState}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Running", ok, []string{"pod", "-n", catSrc.namespace,
+			"-o=jsonpath={.items[0].status.phase}"}).check(oc)
+
+		g.By("Create operatorGroup !!!")
+		ogD.create(oc, itName, dr)
+
+		g.By("Create subscription for above catalogsource !!!")
+		subD.create(oc, itName, dr)
+		e2e.Logf("Here subscp namespace : %v\n", subD.namespace)
+		newCheck("expect", asAdmin, withoutNamespace, contain, "AllCatalogSourcesHealthy", ok, []string{"sub", subD.subName, "-n",
+			subD.namespace, "-o=jsonpath={.status.conditions[0].reason}"}).check(oc)
+
+		defer func() {
+			// These are special steps to overcome problem which are discussed in [1] so that namespace should not stuck in 'Terminating' state
+			// [1] https://bugzilla.redhat.com/show_bug.cgi?id=1858186
+			removeCmds := []struct {
+				kind      string
+				namespace string
+				name      string
+			}{
+				{"tailoredprofile", subD.namespace, "rhcos-tailoredprofile"},
+				{"profilebundle.compliance", subD.namespace, "ocp4"},
+				{"profilebundle.compliance", subD.namespace, "rhcos4"},
+				{"deployment", subD.namespace, "compliance-operator"},
+			}
+			for _, v := range removeCmds {
+				e2e.Logf("Start to remove: %v", v)
+				_, err := oc.AsAdmin().WithoutNamespace().Run("delete").Args(v.kind, "-n", v.namespace, v.name).Output()
+				o.Expect(err).NotTo(o.HaveOccurred())
+			}
+		}()
+
+		g.By("Check CSV is created sucessfully !!!")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", subD.installedCSV, "-n", subD.namespace,
+			"-o=jsonpath={.status.phase}"}).check(oc)
+
+		g.By("Check Compliance Operator & profileParser pods are created !!!")
+		newCheck("expect", asAdmin, withoutNamespace, contain, "compliance-operator", ok, []string{"pod", "--selector=name=compliance-operator",
+			"-n", subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, contain, "ocp4-pp", ok, []string{"pod", "--selector=profile-bundle=ocp4", "-n",
+			subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, contain, "rhcos4-pp", ok, []string{"pod", "--selector=profile-bundle=rhcos4", "-n",
+			subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
+
+		g.By("Check Compliance Operator & profileParser pods are in running state !!!")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Running", ok, []string{"pod", "--selector=name=compliance-operator", "-n",
+			subD.namespace, "-o=jsonpath={.items[0].status.phase}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Running", ok, []string{"pod", "--selector=profile-bundle=ocp4", "-n",
+			subD.namespace, "-o=jsonpath={.items[0].status.phase}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Running", ok, []string{"pod", "--selector=profile-bundle=rhcos4", "-n",
+			subD.namespace, "-o=jsonpath={.items[0].status.phase}"}).check(oc)
+
+		g.By("Compliance Operator sucessfully installed !!! ")
+
+		tprofileD.namespace = subD.namespace
+		g.By("Create tailoredprofile !!!\n")
+		e2e.Logf("Here namespace : %v\n", catSrc.namespace)
+		tprofileD.create(oc, itName, dr)
+
+		g.By("Check tailoredprofile name and status !!!\n")
+		subD.getTailoredProfileNameandStatus(oc, "rhcos-tailoredprofile")
+
+		g.By("Verify the tailoredprofile details through configmap ..!!!\n")
+		newCheck("expect", asAdmin, withoutNamespace, contain, "xccdf_org.ssgproject.content_rule_audit_rules_dac_modification_chmod", ok,
+			[]string{"configmap", "rhcos-tailoredprofile-tp", "-n", subD.namespace, "-o=jsonpath={.data}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, contain, "xccdf_org.ssgproject.content_value_var_selinux_state", ok,
+			[]string{"configmap", "rhcos-tailoredprofile-tp", "-n", subD.namespace, "-o=jsonpath={.data}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, contain, "permissive", ok, []string{"configmap", "rhcos-tailoredprofile-tp", "-n", subD.namespace,
+			"-o=jsonpath={.data}"}).check(oc)
+
+		g.By("ocp-33398 The Compliance Operator supported variables in tailored profile... !!!\n")
 
 	})
 

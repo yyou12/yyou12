@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: Template
+metadata:
+  name: tailoredprofile-template
+objects:
+- apiVersion: compliance.openshift.io/v1alpha1
+  kind: TailoredProfile
+  metadata:
+    name: "${NAME}"
+    namespace: "${NAMESPACE}"
+  spec:
+    extends: "${EXTENDS}"
+    title: My little profile
+    disableRules:
+      - name: "${DISRULENAME1}"
+        rationale: testing this
+      - name: "${DISRULENAME2}"
+        rationale: testing this
+    setValues:
+    - name: "${VARNAME}"
+      rationale: test
+      value: "${VALUE}"
+
+parameters:
+- name: NAME
+- name: NAMESPACE  
+- name: EXTENDS
+- name: DISRULENAME1
+- name: DISRULENAME2
+- name: VARNAME
+- name: VALUE
