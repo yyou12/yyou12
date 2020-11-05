@@ -282,6 +282,40 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		cs.delete(itName, dr)
 	})
 
+	// author: bandrade@redhat.com
+	g.It("Medium-30765-Operator-version based dependencies metadata", func() {
+		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
+		csImageTemplate := filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
+
+		oc.SetupProject()
+		g.By("Start to create the CatalogSource CR")
+		cs := catalogSourceDescription{
+			name:        "prometheus-dependency-cs",
+			namespace:   "openshift-marketplace",
+			displayName: "OLM QE",
+			publisher:   "OLM QE",
+			sourceType:  "grpc",
+			address:     "quay.io/olmqe/etcd-prometheus-dependency-index:8.0",
+			template:    csImageTemplate,
+		}
+		dr := make(describerResrouce)
+		itName := g.CurrentGinkgoTestDescription().TestText
+		dr.addIr(itName)
+		defer cs.delete(itName, dr)
+		cs.create(oc, itName, dr)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "READY", ok, []string{"catsrc", cs.name, "-n", cs.namespace, "-o=jsonpath={.status..lastObservedState}"}).check(oc)
+
+		g.By("Start to subscribe the Etcd operator")
+		etcdPackage := CreateSubscriptionSpecificNamespace("etcd-prometheus", oc, false, true, oc.Namespace(), INSTALLPLAN_AUTOMATIC_MODE)
+		CheckDeployment(etcdPackage, oc)
+
+		g.By("Assert that prometheus dependency is resolved")
+		msg, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", "-n", oc.Namespace()).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(msg).To(o.ContainSubstring("prometheus"))
+
+	})
+
 	g.It("Medium-24916-Operators in AllNamespaces should be granted namespace list", func() {
 		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
 		subTemplate := filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
