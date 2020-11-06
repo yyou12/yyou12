@@ -25,13 +25,15 @@ type complianceSuiteDescription struct {
 	noExternalResources bool
 	nodeSelector        string
 	size                string
+	tailoringConfigMap  string
 	template            string
 }
 
 func (csuite *complianceSuiteDescription) create(oc *exutil.CLI, itName string, dr describerResrouce) {
 	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", csuite.template, "-p", "NAME="+csuite.name, "NAMESPACE="+csuite.namespace,
 		"SCANNAME="+csuite.scanname, "SCANTYPE="+csuite.scanType, "PROFILE="+csuite.profile, "CONTENT="+csuite.content, "CONTENTIMAGE="+csuite.contentImage,
-		"RULE="+csuite.rule, "NOEXTERNALRESOURCES="+strconv.FormatBool(csuite.noExternalResources), "NODESELECTOR="+csuite.nodeSelector, "SIZE="+csuite.size)
+		"RULE="+csuite.rule, "NOEXTERNALRESOURCES="+strconv.FormatBool(csuite.noExternalResources), "NODESELECTOR="+csuite.nodeSelector, "SIZE="+csuite.size,
+		"TAILORCONFIGMAPNAME="+csuite.tailoringConfigMap)
 	o.Expect(err).NotTo(o.HaveOccurred())
 	dr.getIr(itName).add(newResource(oc, "compliancesuite", csuite.name, requireNS, csuite.namespace))
 }
@@ -70,6 +72,7 @@ type tailoredProfileDescription struct {
 	name         string
 	namespace    string
 	extends      string
+	enrulename1  string
 	disrulename1 string
 	disrulename2 string
 	varname      string
@@ -79,7 +82,8 @@ type tailoredProfileDescription struct {
 
 func (tprofile *tailoredProfileDescription) create(oc *exutil.CLI, itName string, dr describerResrouce) {
 	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", tprofile.template, "-p", "NAME="+tprofile.name, "NAMESPACE="+tprofile.namespace,
-		"EXTENDS="+tprofile.extends, "DISRULENAME1="+tprofile.disrulename1, "DISRULENAME2="+tprofile.disrulename2, "VARNAME="+tprofile.varname, "VALUE="+tprofile.value)
+		"EXTENDS="+tprofile.extends, "ENRULENAME1="+tprofile.enrulename1, "DISRULENAME1="+tprofile.disrulename1, "DISRULENAME2="+tprofile.disrulename2,
+		"VARNAME="+tprofile.varname, "VALUE="+tprofile.value)
 	o.Expect(err).NotTo(o.HaveOccurred())
 	dr.getIr(itName).add(newResource(oc, "tailoredprofile", tprofile.name, requireNS, tprofile.namespace))
 }
@@ -276,6 +280,7 @@ func (subD *subscriptionDescription) getTailoredProfileNameandStatus(oc *exutil.
 			e2e.Logf("\n%v\n\n", line)
 			// verify tailoredprofile status
 			tpStatus, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", subD.namespace, "tailoredprofile", line, "-o=jsonpath={.status.state}").Output()
+			e2e.Logf("\n%v\n\n", tpStatus)
 			o.Expect(tpStatus).To(o.ContainSubstring("READY"))
 			o.Expect(err).NotTo(o.HaveOccurred())
 			return

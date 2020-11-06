@@ -5334,6 +5334,8 @@ objects:
           node-role.kubernetes.io/${NODESELECTOR}: ""
         rawResultStorage:
           size: "${SIZE}"
+        tailoringConfigMap:
+          name: "${TAILORCONFIGMAPNAME}"
 
 parameters:
 - name: NAME
@@ -5347,6 +5349,7 @@ parameters:
 - name: NOEXTERNALRESOURCES
 - name: NODESELECTOR
 - name: SIZE
+- name: TAILORCONFIGMAPNAME
   
 `)
 
@@ -5588,6 +5591,9 @@ objects:
   spec:
     extends: "${EXTENDS}"
     title: My little profile
+    enableRules:
+      - name: "${ENRULENAME1}"
+        rationale: testing this
     disableRules:
       - name: "${DISRULENAME1}"
         rationale: testing this
@@ -5602,6 +5608,7 @@ parameters:
 - name: NAME
 - name: NAMESPACE  
 - name: EXTENDS
+- name: ENRULENAME1
 - name: DISRULENAME1
 - name: DISRULENAME2
 - name: VARNAME

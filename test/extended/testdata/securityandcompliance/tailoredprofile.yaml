@@ -11,6 +11,9 @@ objects:
   spec:
     extends: "${EXTENDS}"
     title: My little profile
+    enableRules:
+      - name: "${ENRULENAME1}"
+        rationale: testing this
     disableRules:
       - name: "${DISRULENAME1}"
         rationale: testing this
@@ -25,6 +28,7 @@ parameters:
 - name: NAME
 - name: NAMESPACE  
 - name: EXTENDS
+- name: ENRULENAME1
 - name: DISRULENAME1
 - name: DISRULENAME2
 - name: VARNAME

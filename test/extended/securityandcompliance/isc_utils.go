@@ -65,6 +65,7 @@ const (
 	contain          = false
 	present          = true
 	ok               = true
+	nok              = false
 )
 
 func getWorkerNumber(oc *exutil.CLI) string {
