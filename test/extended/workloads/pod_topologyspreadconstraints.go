@@ -18,15 +18,16 @@ var _ = g.Describe("[sig-scheduling] Workloads", func() {
 	defer g.GinkgoRecover()
 
 	var oc = exutil.NewCLIWithoutNamespace("default")
-	var kz = "zone"
-	var kn = "node"
 
 	// author: yinzhou@redhat.com
 	g.It("Critical-33836-Critical-33845-High-33767-Check Validate Pod with only one TopologySpreadConstraint topologyKey node", func() {
 		buildPruningBaseDir := exutil.FixturePath("testdata", "workloads")
-		podSelectorT := filepath.Join(buildPruningBaseDir, "pns.yaml")
-		podSinglePtsT := filepath.Join(buildPruningBaseDir, "psp.yaml")
-		podSinglePtsNodeSelectorT := filepath.Join(buildPruningBaseDir, "psn.yaml")
+		podSelectorT := filepath.Join(buildPruningBaseDir, "pod_nodeselect.yaml")
+		podSinglePtsT := filepath.Join(buildPruningBaseDir, "pod_singlepts.yaml")
+		podSinglePtsNodeSelectorT := filepath.Join(buildPruningBaseDir, "pod_singlepts_nodeselect.yaml")
+
+		var kz = "zone"
+		var kn = "node"
 
 		nodeList, err := e2enode.GetReadySchedulableNodes(oc.KubeFramework().ClientSet)
 		if err != nil {
@@ -56,7 +57,8 @@ var _ = g.Describe("[sig-scheduling] Workloads", func() {
 		pod1 := podNodeSelector{
 			name:       "mypod1-33836",
 			namespace:  "test-pts-33836",
-			nodeName:   "node1",
+			nodeKey:    "node",
+			nodeValue:  "node1",
 			labelKey:   "foo",
 			labelValue: "bar",
 			template:   podSelectorT,
@@ -65,7 +67,8 @@ var _ = g.Describe("[sig-scheduling] Workloads", func() {
 		pod2 := podNodeSelector{
 			name:       "mypod2-33836",
 			namespace:  "test-pts-33836",
-			nodeName:   "node2",
+			nodeKey:    "node",
+			nodeValue:  "node2",
 			labelKey:   "foo",
 			labelValue: "bar",
 			template:   podSelectorT,
@@ -108,7 +111,8 @@ var _ = g.Describe("[sig-scheduling] Workloads", func() {
 		pod338451 := podNodeSelector{
 			name:       "mypod1-33845",
 			namespace:  "test-pts-33845",
-			nodeName:   "node1",
+			nodeKey:    "node",
+			nodeValue:  "node1",
 			labelKey:   "foo",
 			labelValue: "bar",
 			template:   podSelectorT,
@@ -117,7 +121,8 @@ var _ = g.Describe("[sig-scheduling] Workloads", func() {
 		pod338452 := podNodeSelector{
 			name:       "mypod2-33845",
 			namespace:  "test-pts-33845",
-			nodeName:   "node2",
+			nodeKey:    "node",
+			nodeValue:  "node2",
 			labelKey:   "foo",
 			labelValue: "bar",
 			template:   podSelectorT,
@@ -126,7 +131,8 @@ var _ = g.Describe("[sig-scheduling] Workloads", func() {
 		pod338453 := podNodeSelector{
 			name:       "mypod3-33845",
 			namespace:  "test-pts-33845",
-			nodeName:   "node3",
+			nodeKey:    "node",
+			nodeValue:  "node3",
 			labelKey:   "foo",
 			labelValue: "bar",
 			template:   podSelectorT,
@@ -215,7 +221,7 @@ var _ = g.Describe("[sig-scheduling] Workloads", func() {
 	// author: yinzhou@redhat.com
 	g.It("High-34019-Check validate TopologySpreadConstraints ignored the node without the label", func() {
 		buildPruningBaseDir := exutil.FixturePath("testdata", "workloads")
-		deploySinglePtsT := filepath.Join(buildPruningBaseDir, "dsp.yaml")
+		deploySinglePtsT := filepath.Join(buildPruningBaseDir, "deploy_single_pts.yaml")
 		var ktz = "testzone"
 		var ktn = "testnode"
 
@@ -294,5 +300,137 @@ var _ = g.Describe("[sig-scheduling] Workloads", func() {
 		for _, nodeName := range podNodeList {
 			o.Expect(nodeName).Should(o.BeElementOf(expectNodeList))
 		}
+	})
+
+	// author: yinzhou@redhat.com
+	g.It("Medium-33824-Check Validate TopologySpreadConstraint with podAffinity and podAntiAffinity", func() {
+		buildPruningBaseDir := exutil.FixturePath("testdata", "workloads")
+		podSelectorT := filepath.Join(buildPruningBaseDir, "pod_nodeselect.yaml")
+		podAffinityPreferredPtsT := filepath.Join(buildPruningBaseDir, "pod_singlepts_prefer.yaml")
+		podAffinityRequiredPtsT := filepath.Join(buildPruningBaseDir, "pod_singlepts_required.yaml")
+
+		var kz = "zone33824"
+		var kn = "node33824"
+
+		nodeList, err := e2enode.GetReadySchedulableNodes(oc.KubeFramework().ClientSet)
+		if err != nil {
+			e2e.Logf("Unexpected error occurred: %v", err)
+		}
+		g.By("Apply dedicated Key for this test on the 3 nodes.")
+		e2e.AddOrUpdateLabelOnNode(oc.KubeFramework().ClientSet, nodeList.Items[0].Name, kz, "zone33824A")
+		e2e.AddOrUpdateLabelOnNode(oc.KubeFramework().ClientSet, nodeList.Items[0].Name, kn, "node338241")
+		e2e.AddOrUpdateLabelOnNode(oc.KubeFramework().ClientSet, nodeList.Items[1].Name, kz, "zone33824B")
+		e2e.AddOrUpdateLabelOnNode(oc.KubeFramework().ClientSet, nodeList.Items[1].Name, kn, "node338242")
+		e2e.AddOrUpdateLabelOnNode(oc.KubeFramework().ClientSet, nodeList.Items[2].Name, kz, "zone33824B")
+		e2e.AddOrUpdateLabelOnNode(oc.KubeFramework().ClientSet, nodeList.Items[2].Name, kn, "node338243")
+		g.By("Remove dedicated Key for this test on the 3 nodes.")
+		defer e2e.RemoveLabelOffNode(oc.KubeFramework().ClientSet, nodeList.Items[0].Name, kz)
+		defer e2e.RemoveLabelOffNode(oc.KubeFramework().ClientSet, nodeList.Items[0].Name, kn)
+		defer e2e.RemoveLabelOffNode(oc.KubeFramework().ClientSet, nodeList.Items[1].Name, kz)
+		defer e2e.RemoveLabelOffNode(oc.KubeFramework().ClientSet, nodeList.Items[1].Name, kn)
+		defer e2e.RemoveLabelOffNode(oc.KubeFramework().ClientSet, nodeList.Items[2].Name, kz)
+		defer e2e.RemoveLabelOffNode(oc.KubeFramework().ClientSet, nodeList.Items[2].Name, kn)
+
+		g.By("Test for case OCP-33824")
+		g.By("create new namespace")
+		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("ns", "test-pts-33824").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("ns", "test-pts-33824").Execute()
+
+		pod338241 := podNodeSelector{
+			name:       "mypod1-33824",
+			namespace:  "test-pts-33824",
+			nodeKey:    "node33824",
+			nodeValue:  "node338241",
+			labelKey:   "foo",
+			labelValue: "bar",
+			template:   podSelectorT,
+		}
+
+		pod338242 := podNodeSelector{
+			name:       "mypod2-33824",
+			namespace:  "test-pts-33824",
+			nodeKey:    "node33824",
+			nodeValue:  "node338243",
+			labelKey:   "security",
+			labelValue: "S1",
+			template:   podSelectorT,
+		}
+
+		pod338243 := podAffinityPreferredPts{
+			name:           "mypod3-33824",
+			namespace:      "test-pts-33824",
+			labelKey:       "foo",
+			labelValue:     "bar",
+			ptsKeyName:     "zone33824",
+			ptsPolicy:      "DoNotSchedule",
+			skewNum:        1,
+			affinityMethod: "podAntiAffinity",
+			weigthNum:      100,
+			keyName:        "security",
+			valueName:      "S1",
+			operatorName:   "In",
+			template:       podAffinityPreferredPtsT,
+		}
+
+		pod338244 := podAffinityRequiredPts{
+			name:           "mypod4-33824",
+			namespace:      "test-pts-33824",
+			labelKey:       "foo",
+			labelValue:     "bar",
+			ptsKeyName:     "zone33824",
+			ptsPolicy:      "DoNotSchedule",
+			skewNum:        1,
+			affinityMethod: "podAffinity",
+			keyName:        "security",
+			valueName:      "S1",
+			operatorName:   "In",
+			template:       podAffinityRequiredPtsT,
+		}
+
+		pod338245 := podAffinityRequiredPts{
+			name:           "mypod5-33824",
+			namespace:      "test-pts-33824",
+			labelKey:       "foo",
+			labelValue:     "bar",
+			ptsKeyName:     "zone33824",
+			ptsPolicy:      "DoNotSchedule",
+			skewNum:        1,
+			affinityMethod: "podAffinity",
+			keyName:        "security",
+			valueName:      "S1",
+			operatorName:   "In",
+			template:       podAffinityRequiredPtsT,
+		}
+
+		g.By("Trying to launch a pod with a label to the frist node")
+		pod338241.createPodNodeSelector(oc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		pod338241nodename := pod338241.getPodNodeName(oc)
+		e2e.ExpectEqual(nodeList.Items[0].Name, pod338241nodename)
+
+		g.By("Trying to launch a pod with a label to the third node")
+		pod338242.createPodNodeSelector(oc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		pod338242nodename := pod338242.getPodNodeName(oc)
+		e2e.ExpectEqual(nodeList.Items[2].Name, pod338242nodename)
+
+		g.By("Trying to launch a pod with podAntiAffinity to the second node")
+		pod338243.createPodAffinityPreferredPts(oc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		pod338243nodename := pod338243.getPodNodeName(oc)
+		e2e.ExpectEqual(nodeList.Items[1].Name, pod338243nodename)
+
+		g.By("Trying to launch a pod with podAffinity to the third node")
+		pod338244.createPodAffinityRequiredPts(oc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		pod338244nodename := pod338244.getPodNodeName(oc)
+		e2e.ExpectEqual(nodeList.Items[2].Name, pod338244nodename)
+
+		g.By("Trying to launch a pod with podAffinity to the third node again, but will failed to scheduler")
+		pod338245.createPodAffinityRequiredPts(oc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		pod338245describestatus := describePod(oc, pod338245.namespace, pod338245.name)
+		o.Expect(pod338245describestatus).Should(o.ContainSubstring("FailedScheduling"))
 	})
 })

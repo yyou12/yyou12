@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Template
 metadata:
-  name: deploy-single-pts-template
+  name: deploy-nodeselect-template
 objects:
 - kind: Deployment
   apiVersion: apps/v1
