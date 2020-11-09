@@ -23,6 +23,7 @@ import (
 	_ "github.com/openshift/openshift-tests-private/test/extended/opm"
 	_ "github.com/openshift/openshift-tests-private/test/extended/winc"
 	_ "github.com/openshift/openshift-tests-private/test/extended/workloads"
+	_ "github.com/openshift/openshift-tests-private/test/extended/apiserver_and_auth"
 	_ "github.com/openshift/openshift-tests/test/extended/apiserver"
 	_ "github.com/openshift/openshift-tests/test/extended/authentication"
 	_ "github.com/openshift/openshift-tests/test/extended/authorization"
