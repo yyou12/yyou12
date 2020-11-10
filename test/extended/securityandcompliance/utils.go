@@ -195,8 +195,38 @@ func (fi1 *fileintegrity) createConfigmapFromFile(oc *exutil.CLI, itName string,
 func (fi1 *fileintegrity) checkConfigmapCreated(oc *exutil.CLI) {
 	err := wait.Poll(5*time.Second, 30*time.Second, func() (bool, error) {
 		output, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("configmap", fi1.configname, "-n", fi1.namespace).Output()
-		e2e.Logf("the result of checkFileintegrityStatus:%v", output)
+		e2e.Logf("the result of checkConfigmapCreated:%v", output)
 		if strings.Contains(output, fi1.configname) {
+			return true, nil
+		}
+		return false, nil
+	})
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+func (fi1 *fileintegrity) checkFileintegritynodestatus(oc *exutil.CLI, nodeName string, expected string) {
+	err := wait.Poll(5*time.Second, 150*time.Second, func() (bool, error) {
+		output, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("fileintegritynodestatuses", "-n", fi1.namespace, fi1.name+"-"+nodeName,
+			"-o=jsonpath={.results[-1].condition}").Output()
+		e2e.Logf("the result of checkFileintegritynodestatus:%v", output)
+		if strings.Contains(output, expected) {
+			return true, nil
+		}
+		return false, nil
+	})
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+func (fi1 *fileintegrity) checkOnlyOneDaemonset(oc *exutil.CLI) {
+	err := wait.Poll(5*time.Second, 20*time.Second, func() (bool, error) {
+		daemonsetPodNumber, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("daemonset", "-n", fi1.namespace, "-o=jsonpath={.items[].status.numberReady}").Output()
+		e2e.Logf("the result of daemonsetPodNumber:%v", daemonsetPodNumber)
+		podNameString, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-l file-integrity.openshift.io/pod=", "-n", fi1.namespace, "-o=jsonpath={.items[*].metadata.name}").Output()
+		e2e.Logf("the result of podNameString:%v", podNameString)
+		intDaemonsetPodNumber, _ := strconv.Atoi(daemonsetPodNumber)
+		intPodNumber := len(strings.Fields(podNameString))
+		e2e.Logf("the result of intPodNumber:%v", intPodNumber)
+		if intPodNumber == intDaemonsetPodNumber {
 			return true, nil
 		}
 		return false, nil

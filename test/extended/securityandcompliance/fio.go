@@ -21,6 +21,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 		fioTemplate         = filepath.Join(buildPruningBaseDir, "fileintegrity.yaml")
 		podModifyTemplate   = filepath.Join(buildPruningBaseDir, "pod_modify.yaml")
 		configFile          = filepath.Join(buildPruningBaseDir, "aide.conf.rhel8")
+		configErrFile       = filepath.Join(buildPruningBaseDir, "aide.conf.rhel8.err")
 
 		catsrc = catalogSourceDescription{
 			name:        "file-integrity-operator",
@@ -259,4 +260,84 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 		fi1.checkArgsInPod(oc, "interval=10")
 	})
 
+	g.It("Medium-28524-adding invalid configuration should report failure", func() {
+		var itName = g.CurrentGinkgoTestDescription().TestText
+		oc.SetupProject()
+		catsrc.namespace = oc.Namespace()
+		og.namespace = oc.Namespace()
+		sub.namespace = oc.Namespace()
+		sub.catalogSourceName = catsrc.name
+		sub.catalogSourceNamespace = catsrc.namespace
+		fi1.namespace = oc.Namespace()
+		fi1.debug = false
+
+		g.By("Create catsrc")
+		catsrc.create(oc, itName, dr)
+		catsrc.checkPackagemanifest(oc, catsrc.displayName)
+		g.By("Create og")
+		og.create(oc, itName, dr)
+		og.checkOperatorgroup(oc, og.name)
+		g.By("Create subscription")
+		sub.create(oc, itName, dr)
+		g.By("check csv")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+		sub.checkPodFioStatus(oc, "running")
+
+		g.By("Create fileintegrity")
+		fi1.createFIOWithoutConfig(oc, itName, dr)
+		fi1.checkFileintegrityStatus(oc, "running")
+		nodeName := getOneWorkerNodeName(oc)
+		time.Sleep(time.Second * 30)
+		fi1.checkFileintegritynodestatus(oc, nodeName, "Succeeded")
+
+		g.By("Check fileintegritynodestatus becomes Errored")
+		fi1.configname = "errfile"
+		fi1.configkey = "aideerrconf"
+		fi1.createConfigmapFromFile(oc, itName, dr, fi1.configname, fi1.configkey, configErrFile, "created")
+		fi1.checkConfigmapCreated(oc)
+		fi1.createFIOWithConfig(oc, itName, dr)
+		fi1.checkFileintegrityStatus(oc, "running")
+		time.Sleep(time.Second * 30)
+		fi1.checkFileintegritynodestatus(oc, nodeName, "Errored")
+		var podName = fi1.getOneFioPodName(oc)
+		fi1.checkKeywordExistInLog(oc, podName, "exit status 17")
+	})
+
+	g.It("Medium-33177-only one long-running daemonset should be created by FIO", func() {
+		var itName = g.CurrentGinkgoTestDescription().TestText
+		oc.SetupProject()
+		catsrc.namespace = oc.Namespace()
+		og.namespace = oc.Namespace()
+		sub.namespace = oc.Namespace()
+		sub.catalogSourceName = catsrc.name
+		sub.catalogSourceNamespace = catsrc.namespace
+		fi1.namespace = oc.Namespace()
+		fi1.debug = false
+
+		g.By("Create catsrc")
+		catsrc.create(oc, itName, dr)
+		catsrc.checkPackagemanifest(oc, catsrc.displayName)
+		g.By("Create og")
+		og.create(oc, itName, dr)
+		og.checkOperatorgroup(oc, og.name)
+		g.By("Create subscription")
+		sub.create(oc, itName, dr)
+		g.By("check csv")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+		sub.checkPodFioStatus(oc, "running")
+
+		g.By("Create fileintegrity without aide config")
+		fi1.createFIOWithoutKeyword(oc, itName, dr, "gracePeriod")
+		fi1.checkFileintegrityStatus(oc, "running")
+		fi1.checkOnlyOneDaemonset(oc)
+
+		g.By("Create fileintegrity with aide config")
+		fi1.configname = "myconf"
+		fi1.configkey = "aide-conf"
+		fi1.createConfigmapFromFile(oc, itName, dr, fi1.configname, fi1.configkey, configFile, "created")
+		fi1.checkConfigmapCreated(oc)
+		fi1.createFIOWithConfig(oc, itName, dr)
+		fi1.checkFileintegrityStatus(oc, "running")
+		fi1.checkOnlyOneDaemonset(oc)
+	})
 })
