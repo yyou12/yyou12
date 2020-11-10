@@ -121,9 +121,9 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		g.By("Check Compliance Operator & profileParser pods are created !!!")
 		newCheck("expect", asAdmin, withoutNamespace, contain, "compliance-operator", ok, []string{"pod", "--selector=name=compliance-operator",
 			"-n", subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
-		newCheck("expect", asAdmin, withoutNamespace, contain, "ocp4-pp", ok, []string{"pod", "--selector=profile-bundle=ocp4", "-n",
+		newCheck("expect", asAdmin, withoutNamespace, contain, "ocp4-e2e-test-compliance", ok, []string{"pod", "--selector=profile-bundle=ocp4", "-n",
 			subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
-		newCheck("expect", asAdmin, withoutNamespace, contain, "rhcos4-pp", ok, []string{"pod", "--selector=profile-bundle=rhcos4", "-n",
+		newCheck("expect", asAdmin, withoutNamespace, contain, "rhcos4-e2e-test-compliance", ok, []string{"pod", "--selector=profile-bundle=rhcos4", "-n",
 			subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
 
 		g.By("Check Compliance Operator & profileParser pods are in running state !!!")
@@ -219,9 +219,9 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		g.By("Check Compliance Operator & profileParser pods are created !!!")
 		newCheck("expect", asAdmin, withoutNamespace, contain, "compliance-operator", ok, []string{"pod", "--selector=name=compliance-operator",
 			"-n", subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
-		newCheck("expect", asAdmin, withoutNamespace, contain, "ocp4-pp", ok, []string{"pod", "--selector=profile-bundle=ocp4", "-n",
+		newCheck("expect", asAdmin, withoutNamespace, contain, "ocp4-e2e-test-compliance", ok, []string{"pod", "--selector=profile-bundle=ocp4", "-n",
 			subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
-		newCheck("expect", asAdmin, withoutNamespace, contain, "rhcos4-pp", ok, []string{"pod", "--selector=profile-bundle=rhcos4", "-n",
+		newCheck("expect", asAdmin, withoutNamespace, contain, "rhcos4-e2e-test-compliance", ok, []string{"pod", "--selector=profile-bundle=rhcos4", "-n",
 			subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
 
 		g.By("Check Compliance Operator & profileParser pods are in running state !!!")
@@ -252,12 +252,6 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			subD.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
 		newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", csuiteMD.name, "-n",
 			subD.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
-
-		g.By("Check worker scan pods !!!\n")
-		subD.scanPodName(oc, "worker-scan")
-
-		g.By("Check master scan pods !!!\n")
-		subD.scanPodName(oc, "master-scan")
 
 		g.By("Check worker & master scan pods status !!! \n")
 		subD.scanPodStatus(oc, "Succeeded")
@@ -349,9 +343,9 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		g.By("Check Compliance Operator & profileParser pods are created !!!")
 		newCheck("expect", asAdmin, withoutNamespace, contain, "compliance-operator", ok, []string{"pod", "--selector=name=compliance-operator",
 			"-n", subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
-		newCheck("expect", asAdmin, withoutNamespace, contain, "ocp4-pp", ok, []string{"pod", "--selector=profile-bundle=ocp4", "-n",
+		newCheck("expect", asAdmin, withoutNamespace, contain, "ocp4-e2e-test-compliance", ok, []string{"pod", "--selector=profile-bundle=ocp4", "-n",
 			subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
-		newCheck("expect", asAdmin, withoutNamespace, contain, "rhcos4-pp", ok, []string{"pod", "--selector=profile-bundle=rhcos4", "-n",
+		newCheck("expect", asAdmin, withoutNamespace, contain, "rhcos4-e2e-test-compliance", ok, []string{"pod", "--selector=profile-bundle=rhcos4", "-n",
 			subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
 
 		g.By("Check Compliance Operator & profileParser pods are in running state !!!")
@@ -375,9 +369,6 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 
 		g.By("Check complianceSuitec Status !!!\n")
 		csuite.checkComplianceSuiteStatus(oc, "DONE")
-
-		g.By("Check worker scan pods !!!\n")
-		subD.scanPodName(oc, "worker-scan")
 
 		g.By("Check worker scan pods status !!! \n")
 		subD.scanPodStatus(oc, "Succeeded")
@@ -580,9 +571,9 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		g.By("Check Compliance Operator & profileParser pods are created !!!")
 		newCheck("expect", asAdmin, withoutNamespace, contain, "compliance-operator", ok, []string{"pod", "--selector=name=compliance-operator",
 			"-n", subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
-		newCheck("expect", asAdmin, withoutNamespace, contain, "ocp4-pp", ok, []string{"pod", "--selector=profile-bundle=ocp4", "-n",
+		newCheck("expect", asAdmin, withoutNamespace, contain, "ocp4-e2e-test-compliance", ok, []string{"pod", "--selector=profile-bundle=ocp4", "-n",
 			subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
-		newCheck("expect", asAdmin, withoutNamespace, contain, "rhcos4-pp", ok, []string{"pod", "--selector=profile-bundle=rhcos4", "-n",
+		newCheck("expect", asAdmin, withoutNamespace, contain, "rhcos4-e2e-test-compliance", ok, []string{"pod", "--selector=profile-bundle=rhcos4", "-n",
 			subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
 
 		g.By("Check Compliance Operator & profileParser pods are in running state !!!")
@@ -698,9 +689,9 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		g.By("Check Compliance Operator & profileParser pods are created !!!")
 		newCheck("expect", asAdmin, withoutNamespace, contain, "compliance-operator", ok, []string{"pod", "--selector=name=compliance-operator",
 			"-n", subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
-		newCheck("expect", asAdmin, withoutNamespace, contain, "ocp4-pp", ok, []string{"pod", "--selector=profile-bundle=ocp4", "-n",
+		newCheck("expect", asAdmin, withoutNamespace, contain, "ocp4-e2e-test-compliance", ok, []string{"pod", "--selector=profile-bundle=ocp4", "-n",
 			subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
-		newCheck("expect", asAdmin, withoutNamespace, contain, "rhcos4-pp", ok, []string{"pod", "--selector=profile-bundle=rhcos4", "-n",
+		newCheck("expect", asAdmin, withoutNamespace, contain, "rhcos4-e2e-test-compliance", ok, []string{"pod", "--selector=profile-bundle=rhcos4", "-n",
 			subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
 
 		g.By("Check Compliance Operator & profileParser pods are in running state !!!")
@@ -723,9 +714,6 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		csuiteD.create(oc, itName, dr)
 		newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", csuiteD.name, "-n",
 			subD.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
-
-		g.By("Check worker scan pods !!!\n")
-		subD.scanPodName(oc, "worker-scan")
 
 		g.By("Check worker scan pods status !!! \n")
 		subD.scanPodStatus(oc, "Succeeded")
@@ -822,9 +810,9 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		g.By("Check Compliance Operator & profileParser pods are created !!!")
 		newCheck("expect", asAdmin, withoutNamespace, contain, "compliance-operator", ok, []string{"pod", "--selector=name=compliance-operator",
 			"-n", subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
-		newCheck("expect", asAdmin, withoutNamespace, contain, "ocp4-pp", ok, []string{"pod", "--selector=profile-bundle=ocp4", "-n",
+		newCheck("expect", asAdmin, withoutNamespace, contain, "ocp4-e2e-test-compliance", ok, []string{"pod", "--selector=profile-bundle=ocp4", "-n",
 			subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
-		newCheck("expect", asAdmin, withoutNamespace, contain, "rhcos4-pp", ok, []string{"pod", "--selector=profile-bundle=rhcos4", "-n",
+		newCheck("expect", asAdmin, withoutNamespace, contain, "rhcos4-e2e-test-compliance", ok, []string{"pod", "--selector=profile-bundle=rhcos4", "-n",
 			subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
 
 		g.By("Check Compliance Operator & profileParser pods are in running state !!!")
@@ -853,12 +841,6 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			subD.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
 		newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancescan", cscanMD.name, "-n",
 			subD.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
-
-		g.By("Check worker scan pods !!!\n")
-		subD.scanPodName(oc, "worker-scan")
-
-		g.By("Check master scan pods !!!\n")
-		subD.scanPodName(oc, "master-scan")
 
 		g.By("Check worker & master scan pods status !!! \n")
 		subD.scanPodStatus(oc, "Succeeded")
@@ -948,9 +930,9 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		g.By("Check Compliance Operator & profileParser pods are created !!!")
 		newCheck("expect", asAdmin, withoutNamespace, contain, "compliance-operator", ok, []string{"pod", "--selector=name=compliance-operator",
 			"-n", subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
-		newCheck("expect", asAdmin, withoutNamespace, contain, "ocp4-pp", ok, []string{"pod", "--selector=profile-bundle=ocp4", "-n",
+		newCheck("expect", asAdmin, withoutNamespace, contain, "ocp4-e2e-test-compliance", ok, []string{"pod", "--selector=profile-bundle=ocp4", "-n",
 			subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
-		newCheck("expect", asAdmin, withoutNamespace, contain, "rhcos4-pp", ok, []string{"pod", "--selector=profile-bundle=rhcos4", "-n",
+		newCheck("expect", asAdmin, withoutNamespace, contain, "rhcos4-e2e-test-compliance", ok, []string{"pod", "--selector=profile-bundle=rhcos4", "-n",
 			subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
 
 		g.By("Check Compliance Operator & profileParser pods are in running state !!!")
@@ -973,9 +955,6 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		cscanD.create(oc, itName, dr)
 		newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancescan", cscanD.name, "-n",
 			subD.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
-
-		g.By("Check worker scan pods !!!\n")
-		subD.scanPodName(oc, "worker-scan")
 
 		g.By("Check worker scan pods status !!! \n")
 		subD.scanPodStatus(oc, "Succeeded")
@@ -1059,9 +1038,9 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		g.By("Check Compliance Operator & profileParser pods are created !!!")
 		newCheck("expect", asAdmin, withoutNamespace, contain, "compliance-operator", ok, []string{"pod", "--selector=name=compliance-operator",
 			"-n", subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
-		newCheck("expect", asAdmin, withoutNamespace, contain, "ocp4-pp", ok, []string{"pod", "--selector=profile-bundle=ocp4", "-n",
+		newCheck("expect", asAdmin, withoutNamespace, contain, "ocp4-e2e-test-compliance", ok, []string{"pod", "--selector=profile-bundle=ocp4", "-n",
 			subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
-		newCheck("expect", asAdmin, withoutNamespace, contain, "rhcos4-pp", ok, []string{"pod", "--selector=profile-bundle=rhcos4", "-n",
+		newCheck("expect", asAdmin, withoutNamespace, contain, "rhcos4-e2e-test-compliance", ok, []string{"pod", "--selector=profile-bundle=rhcos4", "-n",
 			subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
 
 		g.By("Check Compliance Operator & profileParser pods are in running state !!!")
@@ -1080,9 +1059,6 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 
 		newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancescan", cscanMD.name, "-n",
 			subD.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
-
-		g.By("Check master scan pods !!!\n")
-		subD.scanPodName(oc, "master-scan")
 
 		g.By("Check master scan pods status !!! \n")
 		subD.scanPodStatus(oc, "Succeeded")
@@ -1181,9 +1157,9 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		g.By("Check Compliance Operator & profileParser pods are created.. !!!")
 		newCheck("expect", asAdmin, withoutNamespace, contain, "compliance-operator", ok, []string{"pod", "--selector=name=compliance-operator",
 			"-n", subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
-		newCheck("expect", asAdmin, withoutNamespace, contain, "ocp4-pp", ok, []string{"pod", "--selector=profile-bundle=ocp4", "-n",
+		newCheck("expect", asAdmin, withoutNamespace, contain, "ocp4-e2e-test-compliance", ok, []string{"pod", "--selector=profile-bundle=ocp4", "-n",
 			subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
-		newCheck("expect", asAdmin, withoutNamespace, contain, "rhcos4-pp", ok, []string{"pod", "--selector=profile-bundle=rhcos4", "-n",
+		newCheck("expect", asAdmin, withoutNamespace, contain, "rhcos4-e2e-test-compliance", ok, []string{"pod", "--selector=profile-bundle=rhcos4", "-n",
 			subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
 
 		g.By("Check Compliance Operator & profileParser pods are in running state.. !!!")
@@ -1213,12 +1189,6 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			subD.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
 		newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancescan", cscanMD.name, "-n",
 			subD.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
-
-		g.By("Check worker scan pods.. !!!\n")
-		subD.scanPodName(oc, "worker-scan")
-
-		g.By("Check master scan pods.. !!!\n")
-		subD.scanPodName(oc, "master-scan")
 
 		g.By("Check worker & master scan pods status.. !!! \n")
 		subD.scanPodStatus(oc, "Succeeded")
@@ -1327,9 +1297,9 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		g.By("Check Compliance Operator & profileParser pods are created.. !!!")
 		newCheck("expect", asAdmin, withoutNamespace, contain, "compliance-operator", ok, []string{"pod", "--selector=name=compliance-operator",
 			"-n", subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
-		newCheck("expect", asAdmin, withoutNamespace, contain, "ocp4-pp", ok, []string{"pod", "--selector=profile-bundle=ocp4", "-n",
+		newCheck("expect", asAdmin, withoutNamespace, contain, "ocp4-e2e-test-compliance", ok, []string{"pod", "--selector=profile-bundle=ocp4", "-n",
 			subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
-		newCheck("expect", asAdmin, withoutNamespace, contain, "rhcos4-pp", ok, []string{"pod", "--selector=profile-bundle=rhcos4", "-n",
+		newCheck("expect", asAdmin, withoutNamespace, contain, "rhcos4-e2e-test-compliance", ok, []string{"pod", "--selector=profile-bundle=rhcos4", "-n",
 			subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
 
 		g.By("Check Compliance Operator & profileParser pods are in running state.. !!!")
@@ -1439,9 +1409,9 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		g.By("Check Compliance Operator & profileParser pods are created.. !!!")
 		newCheck("expect", asAdmin, withoutNamespace, contain, "compliance-operator", ok, []string{"pod", "--selector=name=compliance-operator",
 			"-n", subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
-		newCheck("expect", asAdmin, withoutNamespace, contain, "ocp4-pp", ok, []string{"pod", "--selector=profile-bundle=ocp4", "-n",
+		newCheck("expect", asAdmin, withoutNamespace, contain, "ocp4-e2e-test-compliance", ok, []string{"pod", "--selector=profile-bundle=ocp4", "-n",
 			subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
-		newCheck("expect", asAdmin, withoutNamespace, contain, "rhcos4-pp", ok, []string{"pod", "--selector=profile-bundle=rhcos4", "-n",
+		newCheck("expect", asAdmin, withoutNamespace, contain, "rhcos4-e2e-test-compliance", ok, []string{"pod", "--selector=profile-bundle=rhcos4", "-n",
 			subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
 
 		g.By("Check Compliance Operator & profileParser pods are in running state.. !!!")
@@ -1541,9 +1511,9 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		g.By("Check Compliance Operator & profileParser pods are created !!!")
 		newCheck("expect", asAdmin, withoutNamespace, contain, "compliance-operator", ok, []string{"pod", "--selector=name=compliance-operator",
 			"-n", subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
-		newCheck("expect", asAdmin, withoutNamespace, contain, "ocp4-pp", ok, []string{"pod", "--selector=profile-bundle=ocp4", "-n",
+		newCheck("expect", asAdmin, withoutNamespace, contain, "ocp4-e2e-test-compliance", ok, []string{"pod", "--selector=profile-bundle=ocp4", "-n",
 			subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
-		newCheck("expect", asAdmin, withoutNamespace, contain, "rhcos4-pp", ok, []string{"pod", "--selector=profile-bundle=rhcos4", "-n",
+		newCheck("expect", asAdmin, withoutNamespace, contain, "rhcos4-e2e-test-compliance", ok, []string{"pod", "--selector=profile-bundle=rhcos4", "-n",
 			subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
 
 		g.By("Check Compliance Operator & profileParser pods are in running state !!!")
@@ -1561,9 +1531,6 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		csuiteD.create(oc, itName, dr)
 		newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", csuiteD.name, "-n",
 			subD.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
-
-		g.By("Check worker scan pods !!!\n")
-		subD.scanPodName(oc, "worker-scan")
 
 		g.By("Check worker scan pods status !!! \n")
 		subD.scanPodStatus(oc, "Succeeded")
