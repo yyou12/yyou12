@@ -273,19 +273,23 @@ func (subD *subscriptionDescription) getProfileBundleNameandStatus(oc *exutil.CL
 }
 
 func (subD *subscriptionDescription) getTailoredProfileNameandStatus(oc *exutil.CLI, expected string) {
-	tpName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", subD.namespace, "tailoredprofile", "-o=jsonpath={.items[*].metadata.name}").Output()
-	lines := strings.Fields(tpName)
-	for _, line := range lines {
-		if strings.Compare(line, expected) == 0 {
-			e2e.Logf("\n%v\n\n", line)
-			// verify tailoredprofile status
-			tpStatus, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", subD.namespace, "tailoredprofile", line, "-o=jsonpath={.status.state}").Output()
-			e2e.Logf("\n%v\n\n", tpStatus)
-			o.Expect(tpStatus).To(o.ContainSubstring("READY"))
-			o.Expect(err).NotTo(o.HaveOccurred())
-			return
+	err := wait.Poll(5*time.Second, 30*time.Second, func() (bool, error) {
+		tpName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", subD.namespace, "tailoredprofile", "-o=jsonpath={.items[*].metadata.name}").Output()
+		lines := strings.Fields(tpName)
+		for _, line := range lines {
+			if strings.Compare(line, expected) == 0 {
+				e2e.Logf("\n%v\n\n", line)
+				// verify tailoredprofile status
+				tpStatus, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", subD.namespace, "tailoredprofile", line, "-o=jsonpath={.status.state}").Output()
+				e2e.Logf("\n%v\n\n", tpStatus)
+				o.Expect(tpStatus).To(o.ContainSubstring("READY"))
+				o.Expect(err).NotTo(o.HaveOccurred())
+				return true, nil
+			}
 		}
-	}
+		o.Expect(err).NotTo(o.HaveOccurred())
+		return false, nil
+	})
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
