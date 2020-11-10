@@ -433,4 +433,99 @@ var _ = g.Describe("[sig-scheduling] Workloads", func() {
 		pod338245describestatus := describePod(oc, pod338245.namespace, pod338245.name)
 		o.Expect(pod338245describestatus).Should(o.ContainSubstring("FailedScheduling"))
 	})
+
+        // author: knarra@redhat.com
+	g.It("High-34017-TopologySpreadConstraints do not work on cross namespaced pods", func() {
+		buildPruningBaseDir := exutil.FixturePath("testdata", "workloads")
+		podSelectorT := filepath.Join(buildPruningBaseDir, "pod_nodeselect.yaml")
+		podNodeAffinityRequiredPtsT := filepath.Join(buildPruningBaseDir, "pod_pts_nodeaffinity_required.yaml")
+
+		var kz = "zone34017"
+		var kn = "node34017"
+
+		nodeList, err := e2enode.GetReadySchedulableNodes(oc.KubeFramework().ClientSet)
+		if err != nil {
+			e2e.Logf("Unexpected error occurred: %v", err)
+		}
+		g.By("Apply dedicated Key for this test on the 3 nodes.")
+		e2e.AddOrUpdateLabelOnNode(oc.KubeFramework().ClientSet, nodeList.Items[0].Name, kz, "zone34017A")
+		e2e.AddOrUpdateLabelOnNode(oc.KubeFramework().ClientSet, nodeList.Items[0].Name, kn, "node340171")
+		e2e.AddOrUpdateLabelOnNode(oc.KubeFramework().ClientSet, nodeList.Items[1].Name, kz, "zone34017A")
+		e2e.AddOrUpdateLabelOnNode(oc.KubeFramework().ClientSet, nodeList.Items[1].Name, kn, "node340172")
+		e2e.AddOrUpdateLabelOnNode(oc.KubeFramework().ClientSet, nodeList.Items[2].Name, kz, "zone34017B")
+		e2e.AddOrUpdateLabelOnNode(oc.KubeFramework().ClientSet, nodeList.Items[2].Name, kn, "node340173")
+
+		g.By("Remove dedicated Key for this test on the 3 nodes.")
+		defer e2e.RemoveLabelOffNode(oc.KubeFramework().ClientSet, nodeList.Items[0].Name, kz)
+		defer e2e.RemoveLabelOffNode(oc.KubeFramework().ClientSet, nodeList.Items[0].Name, kn)
+		defer e2e.RemoveLabelOffNode(oc.KubeFramework().ClientSet, nodeList.Items[1].Name, kz)
+		defer e2e.RemoveLabelOffNode(oc.KubeFramework().ClientSet, nodeList.Items[1].Name, kn)
+		defer e2e.RemoveLabelOffNode(oc.KubeFramework().ClientSet, nodeList.Items[2].Name, kz)
+		defer e2e.RemoveLabelOffNode(oc.KubeFramework().ClientSet, nodeList.Items[2].Name, kn)
+
+		g.By("Test for case OCP-34017")
+		g.By("create new namespace")
+		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("ns", "test-pts-34017").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("ns", "test-pts-34017").Execute()
+
+		g.By("create second namespace")
+		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("ns", "test-pts-340171").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("ns", "test-pts-340171").Execute()
+
+		pod1 := podNodeSelector{
+			name:       "pod1-34017",
+			namespace:  "test-pts-34017",
+			nodeKey:    "node34017",
+			nodeValue:  "node340171",
+			labelKey:   "foo",
+			labelValue: "bar",
+			template:   podSelectorT,
+		}
+		pod2 := podNodeSelector{
+			name:       "pod2-34017",
+			namespace:  "test-pts-34017",
+			nodeKey:    "node34017",
+			nodeValue:  "node340172",
+			labelKey:   "foo",
+			labelValue: "bar",
+			template:   podSelectorT,
+		}
+		pod3 := podNodeAffinityRequiredPts{
+			name:           "pod3-34017",
+			namespace:      "test-pts-340171",
+			labelKey:       "foo",
+			labelValue:     "bar",
+			ptsKeyName:     "zone34017",
+			ptsPolicy:      "DoNotSchedule",
+			skewNum:        1,
+			ptsKey2Name:    "node34017",
+			ptsPolicy2:     "DoNotSchedule",
+			skewNum2:       1,
+			affinityMethod: "nodeAffinity",
+			keyName:        "zone34017",
+			operatorName:   "NotIn",
+			valueName:      "zone34017B",
+			template:       podNodeAffinityRequiredPtsT,
+		}
+
+		g.By("Trying to launch a pod with a label to node1")
+		pod1.createPodNodeSelector(oc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		pod1nodename := pod1.getPodNodeName(oc)
+		e2e.ExpectEqual(nodeList.Items[0].Name, pod1nodename)
+
+		g.By("Trying to launch a pod with a label to node2")
+		pod2.createPodNodeSelector(oc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		pod2nodename := pod2.getPodNodeName(oc)
+		e2e.ExpectEqual(nodeList.Items[1].Name, pod2nodename)
+
+		g.By("Trying to launch a pod with nodeAffinity not to second node")
+		pod3.createpodNodeAffinityRequiredPts(oc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		pod3nodename := pod3.getPodNodeName(oc)
+		e2e.ExpectNotEqual(nodeList.Items[2].Name, pod3nodename)
+	})
 })

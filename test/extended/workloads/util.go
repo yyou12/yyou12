@@ -101,6 +101,24 @@ type podAffinityPreferredPts struct {
 	template       string
 }
 
+type podNodeAffinityRequiredPts struct {
+	name           string
+	namespace      string
+	labelKey       string
+	labelValue     string
+	ptsKeyName     string
+	ptsPolicy      string
+	skewNum        int
+	ptsKey2Name    string
+	ptsPolicy2     string
+	skewNum2       int
+	affinityMethod string
+	keyName        string
+	valueName      string
+	operatorName   string
+	template       string
+}
+
 func (pod *podNodeSelector) createPodNodeSelector(oc *exutil.CLI) {
 	err := wait.Poll(5*time.Second, 20*time.Second, func() (bool, error) {
 		err1 := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", pod.template, "-p", "NAME="+pod.name, "NAMESPACE="+pod.namespace,
@@ -263,4 +281,23 @@ func getRandomString() string {
 		buffer[index] = chars[seed.Intn(len(chars))]
 	}
 	return string(buffer)
+}
+
+func (pod *podNodeAffinityRequiredPts) createpodNodeAffinityRequiredPts(oc *exutil.CLI) {
+	err := wait.Poll(5*time.Second, 20*time.Second, func() (bool, error) {
+		err1 := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", pod.template, "-p", "NAME="+pod.name, "NAMESPACE="+pod.namespace, "LABELKEY="+pod.labelKey, "LABELVALUE="+pod.labelValue, "PTSKEYNAME="+pod.ptsKeyName, "PTSPOLICY="+pod.ptsPolicy, "SKEWNUM="+strconv.Itoa(pod.skewNum), "PTSKEY2NAME="+pod.ptsKey2Name, "PTSPOLICY2="+pod.ptsPolicy2, "SKEWNUM2="+strconv.Itoa(pod.skewNum2), "AFFINITYMETHOD="+pod.affinityMethod, "KEYNAME="+pod.keyName, "VALUENAME="+pod.valueName, "OPERATORNAME="+pod.operatorName)
+		if err1 != nil {
+			e2e.Logf("the err:%v, and try next round", err1)
+			return false, nil
+		}
+		return true, nil
+	})
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+func (pod *podNodeAffinityRequiredPts) getPodNodeName(oc *exutil.CLI) string {
+	nodeName, err := oc.WithoutNamespace().Run("get").Args("pod", "-n", pod.namespace, pod.name, "-o=jsonpath={.spec.nodeName}").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	e2e.Logf("The pod %s lands on node %q", pod.name, nodeName)
+	return nodeName
 }
