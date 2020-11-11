@@ -105,6 +105,7 @@ func contains(s []string, searchterm string) bool {
 	return i < len(s) && s[i] == searchterm
 }
 
+//the method is to get the flag for each supportted model and return it with struct Packagemanifest
 func checkOperatorInstallModes(p Packagemanifest, oc *exutil.CLI) Packagemanifest {
 	supportsAllNamespaces, err := oc.WithoutNamespace().AsAdmin().Run("get").Args("packagemanifest", p.Name, "-o=jsonpath={.status.channels[?(.name=='"+p.DefaultChannel+"')].currentCSVDesc.installModes[?(.type=='AllNamespaces')].supported}").Output()
 	o.Expect(err).NotTo(o.HaveOccurred())
@@ -124,6 +125,7 @@ func checkOperatorInstallModes(p Packagemanifest, oc *exutil.CLI) Packagemanifes
 	return p
 }
 
+//the method is to construct the Packagemanifest object with operator name.
 func CreatePackageManifest(operator string, oc *exutil.CLI) Packagemanifest {
 	msg, err := oc.WithoutNamespace().AsAdmin().Run("get").Args("packagemanifest", operator, "-o=jsonpath={.status.catalogSource}:{.status.catalogSourceNamespace}:{.status.defaultChannel}").Output()
 	o.Expect(err).NotTo(o.HaveOccurred())
@@ -137,6 +139,13 @@ func CreatePackageManifest(operator string, oc *exutil.CLI) Packagemanifest {
 	p = checkOperatorInstallModes(p, oc)
 	return p
 }
+
+//the method is to create sub, but do not check the sub status and if csv is installed.
+//if the operator support singlenamespace or ownnamespace, it will take priority to create ns with test-operators- prefix
+//and then create og in that ns.
+//if the operator does not support both singlenamespace and ownnamespace, it will create it with allnamepsace if it is supported.
+//it is created in ns openshift-operators
+//or else, it is skipped to create sub.
 func CreateSubscription(operator string, oc *exutil.CLI, installPlanApprovalMode string) Packagemanifest {
 	p := CreatePackageManifest(operator, oc)
 	if p.SupportsSingleNamespace || p.SupportsOwnNamespace {
@@ -155,6 +164,8 @@ func CreateSubscription(operator string, oc *exutil.CLI, installPlanApprovalMode
 	return p
 }
 
+//the method is to create sub with singlenamespace or ownnamespace in ns namespace parameter
+//it will create ns or og depending on namespaceCreate or operatorGroupCreate
 func CreateSubscriptionSpecificNamespace(operator string, oc *exutil.CLI, namespaceCreate bool, operatorGroupCreate bool, namespace string, installPlanApprovalMode string) Packagemanifest {
 	p := CreatePackageManifest(operator, oc)
 	p.Namespace = namespace
@@ -170,6 +181,7 @@ func CreateSubscriptionSpecificNamespace(operator string, oc *exutil.CLI, namesp
 	return p
 }
 
+//the method is to create ns with prefix test-operators-
 func CreateNamespace(p Packagemanifest, oc *exutil.CLI) Packagemanifest {
 	if p.Namespace == "" {
 		p.Namespace = names.SimpleNameGenerator.GenerateName("test-operators-")
@@ -179,6 +191,7 @@ func CreateNamespace(p Packagemanifest, oc *exutil.CLI) Packagemanifest {
 	return p
 }
 
+//the method is to delete ns with namespace parameter if it exists
 func RemoveNamespace(namespace string, oc *exutil.CLI) {
 	_, err := oc.WithoutNamespace().AsAdmin().Run("get").Args("ns", namespace).Output()
 
@@ -188,6 +201,7 @@ func RemoveNamespace(namespace string, oc *exutil.CLI) {
 	}
 }
 
+//the method is to create og with name test-operators in ns identified by p.
 func CreateOperatorGroup(p Packagemanifest, oc *exutil.CLI) {
 
 	templateOperatorGroupYAML := writeOperatorGroup(p.Namespace)
@@ -195,6 +209,7 @@ func CreateOperatorGroup(p Packagemanifest, oc *exutil.CLI) {
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
+//the method is to generate operator_group_<namespace>_.yaml used to create og.
 func writeOperatorGroup(namespace string) (templateOperatorYAML string) {
 	operatorBaseDir := exutil.FixturePath("testdata", "operators")
 	operatorGroupYAML := filepath.Join(operatorBaseDir, "operator_group.yaml")
@@ -207,6 +222,7 @@ func writeOperatorGroup(namespace string) (templateOperatorYAML string) {
 	return
 }
 
+//the method is to generate subscription_<CsvVersion>_.yaml used to create sub.
 func writeSubscription(p Packagemanifest, installPlanApprovalMode string) (templateSubscriptionYAML string) {
 	operatorBaseDir := exutil.FixturePath("testdata", "operators")
 	subscriptionYAML := filepath.Join(operatorBaseDir, "subscription.yaml")
@@ -226,6 +242,10 @@ func writeSubscription(p Packagemanifest, installPlanApprovalMode string) (templ
 	e2e.Logf("Subscription: %s", operatorSubscription)
 	return
 }
+
+//the method is to check if the csv is installed successfully
+//if ok, nothing happen
+//if nok, it will delete sub, csv. and it also delete ns if it is singlenamespace or ownnamespace.
 func CheckDeployment(p Packagemanifest, oc *exutil.CLI) {
 	poolErr := wait.Poll(10*time.Second, 300*time.Second, func() (bool, error) {
 		msg, _ := oc.WithoutNamespace().AsAdmin().Run("get").Args("csv", p.CsvVersion, "-o=jsonpath={.status.phase}", "-n", p.Namespace).Output()
@@ -240,6 +260,9 @@ func CheckDeployment(p Packagemanifest, oc *exutil.CLI) {
 	}
 }
 
+//the method is to delete all related resource of operator: sub, csv, ns.
+//if checkDeletion is true, it will check the result of deletion.
+//if checkDeletion is false, it will not check the result of deletion.
 func RemoveOperatorDependencies(p Packagemanifest, oc *exutil.CLI, checkDeletion bool) {
 	ip, _ := oc.WithoutNamespace().AsAdmin().Run("get").Args("sub", p.Name, "-o=jsonpath={.status.installplan.name}", "-n", p.Namespace).Output()
 	e2e.Logf("IP: %s", ip)

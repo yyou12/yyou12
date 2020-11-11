@@ -180,18 +180,25 @@ var _ = g.Describe("[Suite:openshift/isv] ISV_Operators", func() {
 
 })
 
+//the method is to create CR with yaml file in the namespace of the installed operator
 func CreateFromYAML(p Packagemanifest, filename string, oc *exutil.CLI) {
 	buildPruningBaseDir := exutil.FixturePath("testdata", "operators")
 	cr := filepath.Join(buildPruningBaseDir, filename)
 	err := oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", cr, "-n", p.Namespace).Execute()
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
+
+//the method is to delete CR of kind CRName with name instanceName in the namespace of the installed operator
 func RemoveCR(p Packagemanifest, CRName string, instanceName string, oc *exutil.CLI) {
 	msg, err := oc.WithoutNamespace().AsAdmin().Run("delete").Args(CRName, instanceName, "-n", p.Namespace).Output()
 	o.Expect(err).NotTo(o.HaveOccurred())
 	o.Expect(msg).To(o.ContainSubstring("deleted"))
 }
 
+//the method is to check if the CR is expected.
+//the content is got by jsonpath.
+//if it is expected, nothing happen
+//if it is not expected, it will delete CR and the resource of the installed operator, for example sub, csv and possible ns
 func CheckCR(p Packagemanifest, CRName string, instanceName string, jsonPath string, expectedMessage string, oc *exutil.CLI) {
 
 	poolErr := wait.Poll(10*time.Second, 600*time.Second, func() (bool, error) {

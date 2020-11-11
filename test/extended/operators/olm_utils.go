@@ -40,6 +40,7 @@ type csvDescription struct {
 	namespace string
 }
 
+// the method is to delete csv.
 func (csv csvDescription) delete(itName string, dr describerResrouce) {
 	dr.getIr(itName).remove(csv.name, "csv", csv.namespace)
 }
@@ -60,6 +61,9 @@ type subscriptionDescription struct {
 	ipCsv                  string
 }
 
+//the method is to create sub, and save the sub resrouce into dr. and more create csv possible depending on sub.ipApproval
+//if sub.ipApproval is Automatic, it will wait the sub's state become AtLatestKnown and get installed csv as sub.installedCSV, and save csv into dr
+//if sub.ipApproval is not Automatic, it will just wait sub's state become UpgradePending
 func (sub *subscriptionDescription) create(oc *exutil.CLI, itName string, dr describerResrouce) {
 	sub.createWithoutCheck(oc, itName, dr)
 	if strings.Compare(sub.ipApproval, "Automatic") == 0 {
@@ -69,6 +73,7 @@ func (sub *subscriptionDescription) create(oc *exutil.CLI, itName string, dr des
 	}
 }
 
+//the method is to just create sub, and save it to dr, do not check its state.
 func (sub *subscriptionDescription) createWithoutCheck(oc *exutil.CLI, itName string, dr describerResrouce) {
 	//isAutomatic := strings.Compare(sub.ipApproval, "Automatic") == 0
 
@@ -91,6 +96,9 @@ func (sub *subscriptionDescription) createWithoutCheck(oc *exutil.CLI, itName st
 	dr.getIr(itName).add(newResource(oc, "sub", sub.subName, requireNS, sub.namespace))
 }
 
+//the method is to check if the sub's state is AtLatestKnown.
+//if it is AtLatestKnown, get installed csv from sub and save it to dr.
+//if it is not AtLatestKnown, raise error.
 func (sub *subscriptionDescription) findInstalledCSV(oc *exutil.CLI, itName string, dr describerResrouce) {
 	newCheck("expect", asAdmin, withoutNamespace, compare, "AtLatestKnown", ok, []string{"sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.state}"}).check(oc)
 	installedCSV := getResource(oc, asAdmin, withoutNamespace, "sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.installedCSV}")
@@ -102,6 +110,9 @@ func (sub *subscriptionDescription) findInstalledCSV(oc *exutil.CLI, itName stri
 	e2e.Logf("the installed CSV name is %s", sub.installedCSV)
 }
 
+//the method is to check if the cv parameter is same to the installed csv.
+//if not same, raise error.
+//if same, nothong happen.
 func (sub *subscriptionDescription) expectCSV(oc *exutil.CLI, itName string, dr describerResrouce, cv string) {
 	err := wait.Poll(3*time.Second, 180*time.Second, func() (bool, error) {
 		sub.findInstalledCSV(oc, itName, dr)
@@ -113,6 +124,8 @@ func (sub *subscriptionDescription) expectCSV(oc *exutil.CLI, itName string, dr 
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
+//the method is to approve the install plan when you create sub with sub.ipApproval != Automatic
+//normally firstly call sub.create(), then call this method sub.approve. it is used to operator upgrade case.
 func (sub *subscriptionDescription) approve(oc *exutil.CLI, itName string, dr describerResrouce) {
 	err := wait.Poll(1*time.Second, 60*time.Second, func() (bool, error) {
 		for strings.Compare(sub.installedCSV, "") == 0 {
@@ -145,10 +158,12 @@ func (sub *subscriptionDescription) approve(oc *exutil.CLI, itName string, dr de
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
+//the method is to construct one csv object.
 func (sub *subscriptionDescription) getCSV() csvDescription {
 	return csvDescription{sub.installedCSV, sub.namespace}
 }
 
+//the method is to get the CR version from alm-examples of csv if it exists
 func (sub *subscriptionDescription) getInstanceVersion(oc *exutil.CLI) string {
 	version := ""
 	output := strings.Split(getResource(oc, asUser, withoutNamespace, "csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={.metadata.annotations.alm-examples}"), "\n")
@@ -162,6 +177,7 @@ func (sub *subscriptionDescription) getInstanceVersion(oc *exutil.CLI) string {
 	return version
 }
 
+//the method is obsolete
 func (sub *subscriptionDescription) createInstance(oc *exutil.CLI, instance string) {
 	path := filepath.Join(e2e.TestContext.OutputDir, sub.namespace+"-"+"instance.json")
 	err := ioutil.WriteFile(path, []byte(instance), 0644)
@@ -170,10 +186,12 @@ func (sub *subscriptionDescription) createInstance(oc *exutil.CLI, instance stri
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
+//the method is to delete sub which is saved when calling sub.create() or sub.createWithoutCheck()
 func (sub *subscriptionDescription) delete(itName string, dr describerResrouce) {
 	dr.getIr(itName).remove(sub.subName, "sub", sub.namespace)
 }
 
+//the method is to patch sub object
 func (sub *subscriptionDescription) patch(oc *exutil.CLI, patch string) {
 	patchResource(oc, asAdmin, withoutNamespace, "sub", sub.subName, "-n", sub.namespace, "--type", "merge", "-p", patch)
 }
@@ -183,12 +201,14 @@ type crdDescription struct {
 	template string
 }
 
+//the method is to create CRD with template and save it to dr.
 func (crd *crdDescription) create(oc *exutil.CLI, itName string, dr describerResrouce) {
 	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", crd.template, "-p", "NAME="+crd.name)
 	o.Expect(err).NotTo(o.HaveOccurred())
 	dr.getIr(itName).add(newResource(oc, "crd", crd.name, notRequireNS, ""))
 }
 
+//the method is to delete CRD.
 func (crd *crdDescription) delete(oc *exutil.CLI) {
 	removeResource(oc, asAdmin, withoutNamespace, "crd", crd.name)
 }
@@ -199,11 +219,14 @@ type configMapDescription struct {
 	template  string
 }
 
+//the method is to create cm with template and save it to dr
 func (cm *configMapDescription) create(oc *exutil.CLI, itName string, dr describerResrouce) {
 	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", cm.template, "-p", "NAME="+cm.name, "NAMESPACE="+cm.namespace)
 	o.Expect(err).NotTo(o.HaveOccurred())
 	dr.getIr(itName).add(newResource(oc, "cm", cm.name, requireNS, cm.namespace))
 }
+
+//the method is to patch cm.
 func (cm *configMapDescription) patch(oc *exutil.CLI, patch string) {
 	patchResource(oc, asAdmin, withoutNamespace, "cm", cm.name, "-n", cm.namespace, "--type", "merge", "-p", patch)
 }
@@ -219,6 +242,7 @@ type catalogSourceDescription struct {
 	priority    int
 }
 
+//the method is to create catalogsource with template, and save it to dr.
 func (catsrc *catalogSourceDescription) create(oc *exutil.CLI, itName string, dr describerResrouce) {
 	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", catsrc.template,
 		"-p", "NAME="+catsrc.name, "NAMESPACE="+catsrc.namespace, "ADDRESS="+catsrc.address,
@@ -226,6 +250,8 @@ func (catsrc *catalogSourceDescription) create(oc *exutil.CLI, itName string, dr
 	o.Expect(err).NotTo(o.HaveOccurred())
 	dr.getIr(itName).add(newResource(oc, "catsrc", catsrc.name, requireNS, catsrc.namespace))
 }
+
+//the method is to delete catalogsource.
 func (catsrc *catalogSourceDescription) delete(itName string, dr describerResrouce) {
 	dr.getIr(itName).remove(catsrc.name, "catsrc", catsrc.namespace)
 }
@@ -237,12 +263,15 @@ type customResourceDescription struct {
 	template  string
 }
 
+//the method is to create CR with template, and save it to dr.
 func (crinstance *customResourceDescription) create(oc *exutil.CLI, itName string, dr describerResrouce) {
 	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", crinstance.template,
 		"-p", "NAME="+crinstance.name, "NAMESPACE="+crinstance.namespace)
 	o.Expect(err).NotTo(o.HaveOccurred())
 	dr.getIr(itName).add(newResource(oc, crinstance.typename, crinstance.name, requireNS, crinstance.namespace))
 }
+
+//the method is to delete CR
 func (crinstance *customResourceDescription) delete(itName string, dr describerResrouce) {
 	dr.getIr(itName).remove(crinstance.name, crinstance.typename, crinstance.namespace)
 }
@@ -254,6 +283,8 @@ type operatorGroupDescription struct {
 	template     string
 }
 
+//the method is to check if og exist. if not existing, create it with template and save it to dr.
+//if existing, nothing happen.
 func (og *operatorGroupDescription) createwithCheck(oc *exutil.CLI, itName string, dr describerResrouce) {
 	output, err := doAction(oc, "get", asAdmin, false, "operatorgroup")
 	o.Expect(err).NotTo(o.HaveOccurred())
@@ -265,6 +296,10 @@ func (og *operatorGroupDescription) createwithCheck(oc *exutil.CLI, itName strin
 	}
 
 }
+
+//the method is to create og and save it to dr
+//if og.multinslabel is not set, it will create og with ownnamespace or allnamespace depending on template
+//if og.multinslabel is set, it will create og with multinamespace.
 func (og *operatorGroupDescription) create(oc *exutil.CLI, itName string, dr describerResrouce) {
 	var err error
 	if strings.Compare(og.multinslabel, "") == 0 {
@@ -275,10 +310,13 @@ func (og *operatorGroupDescription) create(oc *exutil.CLI, itName string, dr des
 	o.Expect(err).NotTo(o.HaveOccurred())
 	dr.getIr(itName).add(newResource(oc, "og", og.name, requireNS, og.namespace))
 }
+
+//the method is to delete og
 func (og *operatorGroupDescription) delete(itName string, dr describerResrouce) {
 	dr.getIr(itName).remove(og.name, "og", og.namespace)
 }
 
+//the struct and its method are obsolete because no operatorSource anymore.
 type operatorSourceDescription struct {
 	name              string
 	namespace         string
@@ -331,6 +369,7 @@ func (osrc *operatorSourceDescription) getTolerations(oc *exutil.CLI) string {
 	return tolerations
 }
 
+////the struct and its method are obsolete because no csc anymore.
 type catalogSourceConfigDescription struct {
 	name            string
 	namespace       string
@@ -356,6 +395,8 @@ type projectDescription struct {
 	targetNamespace string
 }
 
+//the method is to check if the project exists. if not, create it with name, and go to it.
+//if existing, nothing happen.
 func (p *projectDescription) createwithCheck(oc *exutil.CLI, itName string, dr describerResrouce) {
 	output, err := doAction(oc, "get", asAdmin, withoutNamespace, "project", p.name)
 	if err != nil {
@@ -370,6 +411,8 @@ func (p *projectDescription) createwithCheck(oc *exutil.CLI, itName string, dr d
 		e2e.Logf(fmt.Sprintf("project: %s already exist!", p.name))
 	}
 }
+
+//the method is to delete project with name if exist. and then create it with name, and back to project with targetNamespace
 func (p *projectDescription) create(oc *exutil.CLI, itName string, dr describerResrouce) {
 	removeResource(oc, asAdmin, withoutNamespace, "project", p.name)
 	_, err := doAction(oc, "new-project", asAdmin, withoutNamespace, p.name)
@@ -379,11 +422,13 @@ func (p *projectDescription) create(oc *exutil.CLI, itName string, dr describerR
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
+//the method is to label project
 func (p *projectDescription) label(oc *exutil.CLI, label string) {
 	_, err := doAction(oc, "label", asAdmin, withoutNamespace, "ns", p.name, "env="+label)
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
+//the method is to delete project
 func (p *projectDescription) delete(oc *exutil.CLI) {
 	_, err := doAction(oc, "delete", asAdmin, withoutNamespace, "project", p.name)
 	o.Expect(err).NotTo(o.HaveOccurred())
@@ -395,6 +440,7 @@ type serviceAccountDescription struct {
 	definitionfile string
 }
 
+//the method is to construct one sa.
 func newSa(name, namespace string) *serviceAccountDescription {
 	return &serviceAccountDescription{
 		name:           name,
@@ -402,20 +448,28 @@ func newSa(name, namespace string) *serviceAccountDescription {
 		definitionfile: "",
 	}
 }
+
+//the method is to get sa definition.
 func (sa *serviceAccountDescription) getDefinition(oc *exutil.CLI) {
 	parameters := []string{"sa", sa.name, "-n", sa.namespace, "-o=json"}
 	definitionfile, err := oc.AsAdmin().WithoutNamespace().Run("get").Args(parameters...).OutputToFile("sa-config.json")
 	o.Expect(err).NotTo(o.HaveOccurred())
 	sa.definitionfile = definitionfile
 }
+
+//the method is to delete sa
 func (sa *serviceAccountDescription) delete(oc *exutil.CLI) {
 	_, err := doAction(oc, "delete", asAdmin, withoutNamespace, "sa", sa.name, "-n", sa.namespace)
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
+
+//the method is to apply sa with its member definitionfile
 func (sa *serviceAccountDescription) reapply(oc *exutil.CLI) {
 	err := oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", sa.definitionfile).Execute()
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
+
+//the method is to check if what sa can do is expected with expected paramter.
 func (sa *serviceAccountDescription) checkAuth(oc *exutil.CLI, expected string, cr string) {
 	err := wait.Poll(3*time.Second, 150*time.Second, func() (bool, error) {
 		output, _ := doAction(oc, "auth", asAdmin, withNamespace, "--as", fmt.Sprintf("system:serviceaccount:%s:%s", sa.namespace, sa.name), "can-i", "create", cr)
@@ -433,18 +487,25 @@ type roleDescription struct {
 	namespace string
 }
 
+//the method is to construct one Role object.
 func newRole(name string, namespace string) *roleDescription {
 	return &roleDescription{
 		name:      name,
 		namespace: namespace,
 	}
 }
+
+//the method is to patch Role object.
 func (role *roleDescription) patch(oc *exutil.CLI, patch string) {
 	patchResource(oc, asAdmin, withoutNamespace, "role", role.name, "-n", role.namespace, "--type", "merge", "-p", patch)
 }
+
+//the method is to get rules from Role object.
 func (role *roleDescription) getRules(oc *exutil.CLI) string {
 	return role.getRulesWithDelete(oc, "nodelete")
 }
+
+//the method is to get new rule without delete parameter based on current role.
 func (role *roleDescription) getRulesWithDelete(oc *exutil.CLI, delete string) string {
 	var roleboday map[string]interface{}
 	output := getResource(oc, asAdmin, withoutNamespace, "role", role.name, "-n", role.namespace, "-o=json")
@@ -498,6 +559,20 @@ type checkDescription struct {
 	resource        []string
 }
 
+//the method is to make newCheck object.
+//the method paramter is expect, it will check something is expceted or not
+//the method paramter is present, it will check something exists or not
+//the executor is asAdmin, it will exectue oc with Admin
+//the executor is asUser, it will exectue oc with User
+//the inlineNamespace is withoutNamespace, it will execute oc with WithoutNamespace()
+//the inlineNamespace is withNamespace, it will execute oc with WithNamespace()
+//the expectAction take effective when method is expect, if it is contain, it will check if the strings contain substring with expectContent parameter
+//                                                       if it is compare, it will check the strings is samme with expectContent parameter
+//the expectContent is the content we expected
+//the expect is ok, contain or compare result is OK for method == expect, no error raise. if not OK, error raise
+//the expect is nok, contain or compare result is NOK for method == expect, no error raise. if OK, error raise
+//the expect is ok, resource existing is OK for method == present, no error raise. if resource not existing, error raise
+//the expect is nok, resource not existing is OK for method == present, no error raise. if resource existing, error raise
 func newCheck(method string, executor bool, inlineNamespace bool, expectAction bool,
 	expectContent string, expect bool, resource []string) checkDescription {
 	return checkDescription{
@@ -510,6 +585,8 @@ func newCheck(method string, executor bool, inlineNamespace bool, expectAction b
 		resource:        resource,
 	}
 }
+
+//the method is to check the resource per definition of the above described newCheck.
 func (ck checkDescription) check(oc *exutil.CLI) {
 	switch ck.method {
 	case "present":
@@ -523,6 +600,8 @@ func (ck checkDescription) check(oc *exutil.CLI) {
 		o.Expect(err).NotTo(o.HaveOccurred())
 	}
 }
+
+//the method is to check the resource, but not assert it which is diffrence with the method check().
 func (ck checkDescription) checkWithoutAssert(oc *exutil.CLI) error {
 	switch ck.method {
 	case "present":
@@ -538,14 +617,20 @@ func (ck checkDescription) checkWithoutAssert(oc *exutil.CLI) error {
 	}
 }
 
+//it is the check list so that all the check are done in parallel.
 type checkList []checkDescription
 
+//the method is to add one check
 func (cl checkList) add(ck checkDescription) {
 	cl = append(cl, ck)
 }
+
+//the method is to make check list empty.
 func (cl checkList) empty() {
 	cl = cl[0:0]
 }
+
+//the method is to execute all the check in parallel.
 func (cl checkList) check(oc *exutil.CLI) {
 	var wg sync.WaitGroup
 	for _, ck := range cl {
@@ -569,6 +654,15 @@ type resourceDescription struct {
 	namespace        string
 }
 
+//the method is to construc one resource so that it can be deleted with itResource and describerResrouce
+//oc is the oc client
+//asAdmin means when deleting resource, we take admin role
+//withoutNamespace means when deleting resource, we take WithoutNamespace
+//kind is the kind of resource
+//name is the name of resource
+//namespace is the namesapce of resoruce. it is "" for cluster level resource
+//if requireNS is requireNS, need to add "-n" parameter. used for project level resource
+//if requireNS is notRequireNS, no need to add "-n". used for cluster level resource
 func newResource(oc *exutil.CLI, kind string, name string, nsflag bool, namespace string) resourceDescription {
 	return resourceDescription{
 		oc:               oc,
@@ -580,6 +674,8 @@ func newResource(oc *exutil.CLI, kind string, name string, nsflag bool, namespac
 		namespace:        namespace,
 	}
 }
+
+//the method is to delete resource.
 func (r resourceDescription) delete() {
 	if r.withoutNamespace && r.requireNS {
 		removeResource(r.oc, r.asAdmin, r.withoutNamespace, r.kind, r.name, "-n", r.namespace)
@@ -588,6 +684,7 @@ func (r resourceDescription) delete() {
 	}
 }
 
+//the struct to save the resource created in g.It, and it take name+kind+namespace as key to save resoruce of g.It.
 type itResource map[string]resourceDescription
 
 func (ir itResource) add(r resourceDescription) {
@@ -612,6 +709,7 @@ func (ir itResource) cleanup() {
 	}
 }
 
+//the struct is to save g.It in g.Describe, and map the g.It name to itResource so that it can get all resource of g.Describe per g.It.
 type describerResrouce map[string]itResource
 
 func (dr describerResrouce) addIr(itName string) {
@@ -626,6 +724,7 @@ func (dr describerResrouce) rmIr(itName string) {
 	delete(dr, itName)
 }
 
+//the method is to convert to json format from one map sting got with -jsonpath
 func convertLMtoJSON(content string) string {
 	var jb strings.Builder
 	jb.WriteString("[")
@@ -649,6 +748,7 @@ func convertLMtoJSON(content string) string {
 	return strings.TrimSuffix(jb.String(), ",") + "]"
 }
 
+//the method is to get random string with length 8.
 func getRandomString() string {
 	chars := "abcdefghijklmnopqrstuvwxyz0123456789"
 	seed := rand.New(rand.NewSource(time.Now().UnixNano()))
@@ -659,6 +759,7 @@ func getRandomString() string {
 	return string(buffer)
 }
 
+//the method is to update z version of kube version of platform.
 func generateUpdatedKubernatesVersion(oc *exutil.CLI) string {
 	subKubeVersions := strings.Split(getKubernetesVersion(oc), ".")
 	zVersion, _ := strconv.Atoi(subKubeVersions[1])
@@ -666,6 +767,7 @@ func generateUpdatedKubernatesVersion(oc *exutil.CLI) string {
 	return strings.Join(subKubeVersions[0:2], ".") + ".0"
 }
 
+//the method is to get kube versoin of the platform.
 func getKubernetesVersion(oc *exutil.CLI) string {
 	output, err := doAction(oc, "version", asAdmin, withoutNamespace, "-o=json")
 	o.Expect(err).NotTo(o.HaveOccurred())
@@ -679,6 +781,7 @@ func getKubernetesVersion(oc *exutil.CLI) string {
 	return strings.TrimPrefix(gitVersion.(string), "v")
 }
 
+//the method is to create one resource with template
 func applyResourceFromTemplate(oc *exutil.CLI, parameters ...string) error {
 	var configFile string
 	err := wait.Poll(3*time.Second, 15*time.Second, func() (bool, error) {
@@ -696,6 +799,10 @@ func applyResourceFromTemplate(oc *exutil.CLI, parameters ...string) error {
 	return oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", configFile).Execute()
 }
 
+//the method is to check the presence of the resource
+//asAdmin means if taking admin to check it
+//withoutNamespace means if take WithoutNamespace() to check it.
+//present means if you expect the resource presence or not. if it is ok, expect presence. if it is nok, expect not present.
 func isPresentResource(oc *exutil.CLI, asAdmin bool, withoutNamespace bool, present bool, parameters ...string) bool {
 	parameters = append(parameters, "--ignore-not-found")
 	err := wait.Poll(3*time.Second, 60*time.Second, func() (bool, error) {
@@ -718,11 +825,17 @@ func isPresentResource(oc *exutil.CLI, asAdmin bool, withoutNamespace bool, pres
 	return true
 }
 
+//the method is to patch one resource
+//asAdmin means if taking admin to patch it
+//withoutNamespace means if take WithoutNamespace() to patch it.
 func patchResource(oc *exutil.CLI, asAdmin bool, withoutNamespace bool, parameters ...string) {
 	_, err := doAction(oc, "patch", asAdmin, withoutNamespace, parameters...)
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
+//the method is to execute something in pod to get output
+//asAdmin means if taking admin to execute it
+//withoutNamespace means if take WithoutNamespace() to execute it.
 func execResource(oc *exutil.CLI, asAdmin bool, withoutNamespace bool, parameters ...string) string {
 	var result string
 	err := wait.Poll(3*time.Second, 6*time.Second, func() (bool, error) {
@@ -739,6 +852,9 @@ func execResource(oc *exutil.CLI, asAdmin bool, withoutNamespace bool, parameter
 	return result
 }
 
+//the method is to get something from resource. it is "oc get xxx" actaully
+//asAdmin means if taking admin to get it
+//withoutNamespace means if take WithoutNamespace() to get it.
 func getResource(oc *exutil.CLI, asAdmin bool, withoutNamespace bool, parameters ...string) string {
 	var result string
 	err := wait.Poll(3*time.Second, 120*time.Second, func() (bool, error) {
@@ -755,6 +871,13 @@ func getResource(oc *exutil.CLI, asAdmin bool, withoutNamespace bool, parameters
 	return result
 }
 
+//the method is to check one resource's attribution is expected or not.
+//asAdmin means if taking admin to check it
+//withoutNamespace means if take WithoutNamespace() to check it.
+//isCompare means if containing or exactly comparing. if it is contain, it check result contain content. if it is compare, it compare the result with content exactly.
+//content is the substing to be expected
+//the expect is ok, contain or compare result is OK for method == expect, no error raise. if not OK, error raise
+//the expect is nok, contain or compare result is NOK for method == expect, no error raise. if OK, error raise
 func expectedResource(oc *exutil.CLI, asAdmin bool, withoutNamespace bool, isCompare bool, content string, expect bool, parameters ...string) error {
 	cc := func(a, b string, ic bool) bool {
 		bs := strings.Split(b, "+2+")
@@ -793,6 +916,9 @@ func expectedResource(oc *exutil.CLI, asAdmin bool, withoutNamespace bool, isCom
 	})
 }
 
+//the method is to remove resource
+//asAdmin means if taking admin to remove it
+//withoutNamespace means if take WithoutNamespace() to remove it.
 func removeResource(oc *exutil.CLI, asAdmin bool, withoutNamespace bool, parameters ...string) {
 	output, err := doAction(oc, "delete", asAdmin, withoutNamespace, parameters...)
 	if err != nil && (strings.Contains(output, "NotFound") || strings.Contains(output, "No resources found")) {
@@ -812,6 +938,9 @@ func removeResource(oc *exutil.CLI, asAdmin bool, withoutNamespace bool, paramet
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
+//the method is to do something with oc.
+//asAdmin means if taking admin to do it
+//withoutNamespace means if take WithoutNamespace() to do it.
 func doAction(oc *exutil.CLI, action string, asAdmin bool, withoutNamespace bool, parameters ...string) (string, error) {
 	if asAdmin && withoutNamespace {
 		return oc.AsAdmin().WithoutNamespace().Run(action).Args(parameters...).Output()
