@@ -9,6 +9,9 @@ build:
 	mkdir -p "${OUT_DIR}"
 	export GOFLAGS="" && go get ./... && go build -o "${OUT_DIR}" "./cmd/extended-platform-tests"
 
+nightly-test: 
+	./hack/nightly_test.sh
+
 # Include the library makefile
 include $(addprefix ./vendor/github.com/openshift/library-go/alpha-build-machinery/make/, \
 	targets/openshift/bindata.mk)
