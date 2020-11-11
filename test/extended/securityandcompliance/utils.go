@@ -40,8 +40,6 @@ func (fi1 *fileintegrity) checkFileintegrityStatus(oc *exutil.CLI, expected stri
 		return false, nil
 	})
 	o.Expect(err).NotTo(o.HaveOccurred())
-	fileintegrityYamle := oc.AsAdmin().WithoutNamespace().Run("get").Args("fileintegrity", "-n", fi1.namespace, "-o yaml")
-	e2e.Logf("the result of fileintegrityYamle:%v", fileintegrityYamle)
 }
 
 func (fi1 *fileintegrity) getConfigmapFromFileintegritynodestatus(oc *exutil.CLI, nodeName string) string {
@@ -65,7 +63,6 @@ func (fi1 *fileintegrity) getDataFromConfigmap(oc *exutil.CLI, cmName string, ex
 	e2e.Logf("the result of cmName:%v", cmName)
 	err := wait.Poll(5*time.Second, 150*time.Second, func() (bool, error) {
 		aideResult, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("configmap/"+cmName, "-n", fi1.namespace, "-o=jsonpath={.data}").Output()
-		e2e.Logf("the result of aideResult:%v", aideResult)
 		if strings.Contains(aideResult, expected) {
 			return true, nil
 		}
@@ -232,4 +229,104 @@ func (fi1 *fileintegrity) checkOnlyOneDaemonset(oc *exutil.CLI) {
 		return false, nil
 	})
 	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+func (fi1 *fileintegrity) removeFileintegrity(oc *exutil.CLI, expected string) {
+	err := wait.Poll(5*time.Second, 20*time.Second, func() (bool, error) {
+		output, _ := oc.AsAdmin().WithoutNamespace().Run("delete").Args("fileintegrity", fi1.name, "-n", fi1.namespace).Output()
+		e2e.Logf("the result of removeFileintegrity:%v", output)
+		if strings.Contains(output, expected) {
+			return true, nil
+		}
+		return false, nil
+	})
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+func (fi1 *fileintegrity) reinitFileintegrity(oc *exutil.CLI, expected string) {
+	err := wait.Poll(5*time.Second, 20*time.Second, func() (bool, error) {
+		output, _ := oc.AsAdmin().WithoutNamespace().Run("annotate").Args("fileintegrity", fi1.name, "-n", fi1.namespace, "file-integrity.openshift.io/re-init=").Output()
+		e2e.Logf("the result of reinitFileintegrity:%v", output)
+		if strings.Contains(output, expected) {
+			return true, nil
+		}
+		return false, nil
+	})
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+func (fi1 *fileintegrity) getDetailedDataFromFileintegritynodestatus(oc *exutil.CLI, nodeName string) (int, int, int) {
+	var intFilesAdded, intFilesChanged, intFilesRemoved int
+	err := wait.Poll(5*time.Second, 150*time.Second, func() (bool, error) {
+		filesAdded, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("fileintegritynodestatuses", "-n", fi1.namespace, fi1.name+"-"+nodeName,
+			"-o=jsonpath={.results[-1].filesAdded}").Output()
+		e2e.Logf("the result of aideResult:%v", filesAdded)
+		filesChanged, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("fileintegritynodestatuses", "-n", fi1.namespace, fi1.name+"-"+nodeName,
+			"-o=jsonpath={.results[-1].filesChanged}").Output()
+		e2e.Logf("the result of aideResult:%v", filesChanged)
+		filesRemoved, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("fileintegritynodestatuses", "-n", fi1.namespace, fi1.name+"-"+nodeName,
+			"-o=jsonpath={.results[-1].filesRemoved}").Output()
+		e2e.Logf("the result of aideResult:%v", filesChanged)
+
+		if filesAdded == "" {
+			intFilesAdded = 0
+		} else {
+			intFilesAdded, _ = strconv.Atoi(filesAdded)
+		}
+		if filesChanged == "" {
+			intFilesChanged = 0
+		} else {
+			intFilesChanged, _ = strconv.Atoi(filesChanged)
+		}
+		if filesRemoved == "" {
+			intFilesRemoved = 0
+		} else {
+			intFilesRemoved, _ = strconv.Atoi(filesRemoved)
+		}
+		return true, nil
+	})
+	o.Expect(err).NotTo(o.HaveOccurred())
+	return intFilesAdded, intFilesChanged, intFilesRemoved
+}
+
+func (fi1 *fileintegrity) getDetailedDataFromConfigmap(oc *exutil.CLI, cmName string) (int, int, int) {
+	var intFilesAdded, intFilesChanged, intFilesRemoved int
+	e2e.Logf("the result of cmName:%v", cmName)
+	err := wait.Poll(5*time.Second, 150*time.Second, func() (bool, error) {
+		filesAdded, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("configmap/"+cmName, "-n", fi1.namespace,
+			"-o=jsonpath={.'metadata'.'annotations'.'file-integrity.openshift.io/files-added'}").Output()
+		e2e.Logf("the result of aideResult:%v", filesAdded)
+		filesChanged, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("configmap/"+cmName, "-n", fi1.namespace,
+			"-o=jsonpath={.metadata.annotations.file-integrity.openshift.io/files-changed}").Output()
+		e2e.Logf("the result of aideResult:%v", filesChanged)
+		filesRemoved, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("configmap/"+cmName, "-n", fi1.namespace,
+			"-o=jsonpath={.metadata.annotations.file-integrity.openshift.io/files-removed}").Output()
+		e2e.Logf("the result of aideResult:%v", filesChanged)
+
+		if filesAdded == "" {
+			intFilesAdded = 0
+		} else {
+			intFilesAdded, _ = strconv.Atoi(filesAdded)
+		}
+		if filesChanged == "" {
+			intFilesChanged = 0
+		} else {
+			intFilesChanged, _ = strconv.Atoi(filesChanged)
+		}
+		if filesRemoved == "" {
+			intFilesRemoved = 0
+		} else {
+			intFilesRemoved, _ = strconv.Atoi(filesRemoved)
+		}
+		return true, nil
+	})
+	o.Expect(err).NotTo(o.HaveOccurred())
+	return intFilesAdded, intFilesChanged, intFilesRemoved
+}
+
+func checkDataDetailsEqual(intFileAddedCM int, intFileChangedCM int, intFileRemovedCM int, intFileAddedFins int, intFileChangedFins int, intFileRemovedFins int) bool {
+	if intFileAddedCM == intFileAddedFins && intFileChangedCM == intFileChangedFins && intFileRemovedCM == intFileRemovedFins {
+		return true
+	}
+	return false
 }
