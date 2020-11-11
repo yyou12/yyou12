@@ -1,0 +1,17 @@
+apiVersion: compliance.openshift.io/v1alpha1
+kind: ScanSettingBinding
+metadata:
+  name: co-requirement
+profiles:
+  # Node checks
+  - name: rhcos-tp
+    kind: TailoredProfile
+    apiGroup: compliance.openshift.io/v1alpha1
+  # Cluster checks
+  - name: ocp4-moderate
+    kind: Profile
+    apiGroup: compliance.openshift.io/v1alpha1
+settingsRef:
+  name: co-setting
+  kind: ScanSetting
+  apiGroup: compliance.openshift.io/v1alpha1
