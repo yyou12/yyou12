@@ -912,6 +912,75 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 			o.Expect(err).NotTo(o.HaveOccurred())
 		}
 	})
+
+
+	// author: yhui@redhat.com
+	g.It("High-34181-can add conversion webhooks for singleton operators", func() {
+		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
+		catsrcImage := filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
+		cockroachdbSub := filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+		crwebhook := filepath.Join(buildPruningBaseDir, "cr-webhookTest.yaml")
+
+		g.By("create new catalogsource")
+		configFile, err := oc.AsAdmin().WithoutNamespace().Run("process").Args("--ignore-unknown-parameters=true", "-f", catsrcImage, "-p", "NAME=webhook-operator-catalog-34181", "NAMESPACE=openshift-marketplace", "ADDRESS=quay.io/olmtest/webhook-operator-index:0.0.3", "DISPLAYNAME=WebhookOperatorCatalog-34181", "PUBLISHER=QE", "SOURCETYPE=grpc").OutputToFile("config-34181.json")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", configFile).Execute()
+		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("catalogsource", "webhook-operator-catalog-34181", "-n", "openshift-marketplace").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("check catalogsource pods status")
+		podName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", "openshift-marketplace", "pods", "-l", "olm.catalogSource=webhook-operator-catalog-34181", "-o=jsonpath={.items[0].metadata.name}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf("get pod name %s", podName)
+		g.By("check packagemanifests")
+		err = wait.Poll(10*time.Second, 150*time.Second, func() (bool, error) {
+			output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("packagemanifests").Output()
+			if err != nil {
+				e2e.Logf("Failed to get packagemanifests, error:%v", err)
+				return false, err
+			}
+			if strings.Contains(output, "WebhookOperatorCatalog-34181") {
+				return true, nil
+			}
+			return false, nil
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("create subscription")
+		configFile, err = oc.AsAdmin().WithoutNamespace().Run("process").Args("--ignore-unknown-parameters=true", "-f", cockroachdbSub, "-p", "SUBNAME=test-operator-34181", "SUBNAMESPACE=openshift-operators", "CHANNEL=alpha", "APPROVAL=Automatic", "OPERATORNAME=webhook-operator", "SOURCENAME=webhook-operator-catalog-34181", "SOURCENAMESPACE=openshift-marketplace").OutputToFile("config-34181.json")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", configFile).Execute()
+		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("sub", "test-operator-34181", "-n", "openshift-operators").Execute()
+		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("csv", "webhook-operator.v0.0.1", "-n", "openshift-operators").Execute()
+		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("crd", "webhooktests.webhook.operators.coreos.io", "-n", "openshift-operators").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		err = wait.Poll(10*time.Second, 100*time.Second, func() (bool, error) {
+			output, err := oc.AsAdmin().WithoutNamespace().Run("api-resources").Args("-o", "name").Output()
+                        if err != nil {
+                                e2e.Logf("There is no WebhookTest, err:%v", err)
+                                return false, err
+                        }
+                        if strings.Contains(output, "webhooktests.webhook.operators.coreos.io") {
+                                return true, nil
+                        }
+                        return false, nil
+                })
+                o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("check invalid CR")
+		configFile, err = oc.AsAdmin().WithoutNamespace().Run("process").Args("--ignore-unknown-parameters=true", "-f", crwebhook, "-p", "NAME=webhooktest-34181", "NAMESPACE=openshift-operators", "VALID=false").OutputToFile("config-34181.json")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", configFile).Execute()
+		o.Expect(err).To(o.HaveOccurred())
+
+		g.By("check valid CR")
+		configFile, err = oc.AsAdmin().WithoutNamespace().Run("process").Args("--ignore-unknown-parameters=true", "-f", crwebhook, "-p", "NAME=webhooktest-34181", "NAMESPACE=openshift-operators", "VALID=true").OutputToFile("config-34181.json")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", configFile).Execute()
+		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("WebhookTest", "webhooktest-34181", "-n", "openshift-operators").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+	})
 })
 
 var _ = g.Describe("[sig-operators] OLM for an end user use", func() {
