@@ -24,6 +24,8 @@ objects:
           node-role.kubernetes.io/${NODESELECTOR}: ""
         rawResultStorage:
           size: "${SIZE}"
+        tailoringConfigMap:
+          name: "${TAILORCONFIGMAPNAME}"
 
 parameters:
 - name: NAME
@@ -37,3 +39,5 @@ parameters:
 - name: NOEXTERNALRESOURCES
 - name: NODESELECTOR
 - name: SIZE
+- name: TAILORCONFIGMAPNAME
+  
