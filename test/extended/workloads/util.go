@@ -119,6 +119,22 @@ type podNodeAffinityRequiredPts struct {
 	template       string
 }
 
+type podSingleNodeAffinityRequiredPts struct {
+        name           string
+        namespace      string
+        labelKey       string
+        labelValue     string
+        ptsKeyName     string
+        ptsPolicy      string
+        skewNum        int
+        affinityMethod string
+        keyName        string
+        valueName      string
+        operatorName   string
+        template       string
+}
+
+
 func (pod *podNodeSelector) createPodNodeSelector(oc *exutil.CLI) {
 	err := wait.Poll(5*time.Second, 20*time.Second, func() (bool, error) {
 		err1 := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", pod.template, "-p", "NAME="+pod.name, "NAMESPACE="+pod.namespace,
@@ -300,4 +316,23 @@ func (pod *podNodeAffinityRequiredPts) getPodNodeName(oc *exutil.CLI) string {
 	o.Expect(err).NotTo(o.HaveOccurred())
 	e2e.Logf("The pod %s lands on node %q", pod.name, nodeName)
 	return nodeName
+}
+
+func (pod *podSingleNodeAffinityRequiredPts) createpodSingleNodeAffinityRequiredPts(oc *exutil.CLI) {
+        err := wait.Poll(5*time.Second, 20*time.Second, func() (bool, error) {
+                err1 := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", pod.template, "-p", "NAME="+pod.name, "NAMESPACE="+pod.namespace, "LABELKEY="+pod.labelKey, "LABELVALUE="+pod.labelValue, "PTSKEYNAME="+pod.ptsKeyName, "PTSPOLICY="+pod.ptsPolicy, "SKEWNUM="+strconv.Itoa(pod.skewNum), "AFFINITYMETHOD="+pod.affinityMethod, "KEYNAME="+pod.keyName, "VALUENAME="+pod.valueName, "OPERATORNAME="+pod.operatorName)
+                if err1 != nil {
+                        e2e.Logf("the err:%v, and try next round", err1)
+                        return false, nil
+                }
+                return true, nil
+        })
+        o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+func (pod *podSingleNodeAffinityRequiredPts) getPodNodeName(oc *exutil.CLI) string {
+        nodeName, err := oc.WithoutNamespace().Run("get").Args("pod", "-n", pod.namespace, pod.name, "-o=jsonpath={.spec.nodeName}").Output()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        e2e.Logf("The pod %s lands on node %q", pod.name, nodeName)
+        return nodeName
 }
