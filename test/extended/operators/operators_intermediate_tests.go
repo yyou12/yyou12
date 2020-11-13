@@ -178,6 +178,72 @@ var _ = g.Describe("[Suite:openshift/isv] ISV_Operators", func() {
 
 	})
 
+	g.It(TestCaseName("resource-locker-operator", intermediateTestsSufix), func() {
+
+		packageName := "resource-locker-operator"
+		crdName := "ResourceLocker"
+		crName := "resourcelocker-example"
+		crFile := "resourcelocker-cr.yaml"
+		namespace := "resourcelocker"
+		jsonPath := "-o=json"
+		expectedMsg := "resourcelocker-example"
+
+		defer RemoveNamespace(namespace, oc)
+		g.By("install operator")
+		currentPackage := CreateSubscriptionSpecificNamespace(packageName, oc, true, true, namespace, INSTALLPLAN_AUTOMATIC_MODE)
+		g.By("check deployment of operator")
+		CheckDeployment(currentPackage, oc)
+		g.By("create CR")
+		CreateFromYAML(currentPackage, crFile, oc)
+		g.By("check CR")
+		CheckCR(currentPackage, crdName, crName, jsonPath, expectedMsg, oc)
+		g.By("remvoe operator")
+		RemoveCR(currentPackage, crdName, crName, oc)
+		RemoveOperatorDependencies(currentPackage, oc, false)
+
+	})
+
+	g.It(TestCaseName("storageos-operator", intermediateTestsSufix), func() {
+
+		packageName := "storageos2"
+		crdName1 := "StorageOSCluster"
+		crdName2 := "storageosupgrade"
+		crName1 := "storageoscluster-example"
+		crName2 := "storageosupgrade-example"
+		crFile1 := "storageoscluster-cr.yaml"
+		crFile2 := "storageosupgrade-cr.yaml"
+		secretFile := "storageos-secret.yaml"
+		namespace := "storageos"
+		jsonPath := "-o=json"
+		expectedMsg1 := "storageoscluster-example"
+		expectedMsg2 := "storageosupgrade-example"
+
+		defer RemoveNamespace(namespace, oc)
+		g.By("create secret")
+		buildPruningBaseDirsecret := exutil.FixturePath("testdata", "operators")
+		secret := filepath.Join(buildPruningBaseDirsecret, secretFile)
+		err := oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", secret).Execute()
+		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("secret", "storageos-api-isv", "-n", "openshift-operators").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("install operator")
+		currentPackage := CreateSubscriptionSpecificNamespace(packageName, oc, true, true, namespace, INSTALLPLAN_AUTOMATIC_MODE)
+		g.By("check deployment of operator")
+		CheckDeployment(currentPackage, oc)
+		g.By("create CR1")
+		CreateFromYAML(currentPackage, crFile1, oc)
+		g.By("create CR2")
+		CreateFromYAML(currentPackage, crFile2, oc)
+		g.By("check CR1")
+		CheckCR(currentPackage, crdName1, crName1, jsonPath, expectedMsg1, oc)
+		g.By("check CR2")
+		CheckCR(currentPackage, crdName2, crName2, jsonPath, expectedMsg2, oc)
+		g.By("remvoe operator")
+		RemoveCR(currentPackage, crdName1, crName1, oc)
+		RemoveCR(currentPackage, crdName2, crName2, oc)
+		RemoveOperatorDependencies(currentPackage, oc, false)
+
+	})
 })
 
 //the method is to create CR with yaml file in the namespace of the installed operator
