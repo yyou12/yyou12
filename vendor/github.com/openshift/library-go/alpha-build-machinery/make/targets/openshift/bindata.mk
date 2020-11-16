@@ -16,6 +16,7 @@ define run-bindata
 		-pkg "$(3)" \
 		-o "$(5)$(4)" \
 		-ignore "OWNERS" \
+		-ignore "test/extended/testdata/bindata.go" \
 		$(1) && \
 	gofmt -s -w "$(5)$(4)"
 endef
