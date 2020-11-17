@@ -913,7 +913,6 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		}
 	})
 
-
 	// author: yhui@redhat.com
 	g.It("High-34181-can add conversion webhooks for singleton operators", func() {
 		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
@@ -957,16 +956,16 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 
 		err = wait.Poll(10*time.Second, 100*time.Second, func() (bool, error) {
 			output, err := oc.AsAdmin().WithoutNamespace().Run("api-resources").Args("-o", "name").Output()
-                        if err != nil {
-                                e2e.Logf("There is no WebhookTest, err:%v", err)
-                                return false, err
-                        }
-                        if strings.Contains(output, "webhooktests.webhook.operators.coreos.io") {
-                                return true, nil
-                        }
-                        return false, nil
-                })
-                o.Expect(err).NotTo(o.HaveOccurred())
+			if err != nil {
+				e2e.Logf("There is no WebhookTest, err:%v", err)
+				return false, err
+			}
+			if strings.Contains(output, "webhooktests.webhook.operators.coreos.io") {
+				return true, nil
+			}
+			return false, nil
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
 
 		g.By("check invalid CR")
 		configFile, err = oc.AsAdmin().WithoutNamespace().Run("process").Args("--ignore-unknown-parameters=true", "-f", crwebhook, "-p", "NAME=webhooktest-34181", "NAMESPACE=openshift-operators", "VALID=false").OutputToFile("config-34181.json")
@@ -981,6 +980,70 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("WebhookTest", "webhooktest-34181", "-n", "openshift-operators").Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
 	})
+
+	// author: yhui@redhat.com
+	g.It("High-29809-can complete automatical updates based on replaces", func() {
+		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
+		operatorGroup := filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+		catsrcImage := filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
+		cockroachdbSub := filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+
+		g.By("create new catalogsource")
+		configFile, err := oc.AsAdmin().WithoutNamespace().Run("process").Args("--ignore-unknown-parameters=true", "-f", catsrcImage, "-p", "NAME=cockroachdb-catalog-29809",
+			"NAMESPACE=openshift-marketplace", "ADDRESS=quay.io/olmqe/cockroachdb-index:2.1.11", "DISPLAYNAME=OLMCOCKROACHDB-REPLACE", "PUBLISHER=QE", "SOURCETYPE=grpc").OutputToFile("config-29809.json")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", configFile).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("catalogsource", "cockroachdb-catalog-29809", "-n", "openshift-marketplace").Execute()
+		g.By("check packagemanifests")
+		err = wait.Poll(10*time.Second, 150*time.Second, func() (bool, error) {
+			output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("packagemanifests").Output()
+			if err != nil {
+				e2e.Logf("Failed to get packagemanifests, error:%v", err)
+				return false, err
+			}
+			if strings.Contains(output, "OLMCOCKROACHDB-REPLACE") {
+				return true, nil
+			}
+			return false, nil
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("create new namespace")
+		newNamespace := "test-operators-29809"
+		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("ns", newNamespace).Execute()
+		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("ns", newNamespace).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("create operatorGroup")
+		configFile, err = oc.AsAdmin().WithoutNamespace().Run("process").Args("--ignore-unknown-parameters=true", "-f", operatorGroup, "-p",
+			"NAME=test-operator", "NAMESPACE="+newNamespace).OutputToFile("config-29809.json")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", configFile).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("create subscription")
+		configFile, err = oc.AsAdmin().WithoutNamespace().Run("process").Args("--ignore-unknown-parameters=true", "-f", cockroachdbSub, "-p", "SUBNAME=test-operator", "SUBNAMESPACE="+newNamespace,
+			"CHANNEL=alpha", "APPROVAL=Automatic", "OPERATORNAME=cockroachdb", "SOURCENAME=cockroachdb-catalog-29809", "SOURCENAMESPACE=openshift-marketplace", "STARTINGCSV=cockroachdb.v2.0.9").OutputToFile("config-29809.json")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", configFile).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		err = wait.Poll(10*time.Second, 180*time.Second, func() (bool, error) {
+			output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", newNamespace, "csv", "cockroachdb.v2.1.11", "-o=jsonpath={.spec.replaces}").Output()
+			e2e.Logf(output)
+			if err != nil {
+				e2e.Logf("The csv is not created, error:%v", err)
+				return false, nil
+			}
+			if strings.Contains(output, "cockroachdb.v2.1.1") {
+				return true, nil
+			}
+			return false, nil
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
+	})
+
 })
 
 var _ = g.Describe("[sig-operators] OLM for an end user use", func() {
