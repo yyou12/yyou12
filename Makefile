@@ -3,7 +3,7 @@ all: update update-public build
 OUT_DIR=bin
 
 update-public:
-	go get github.com/openshift/openshift-tests@master
+	export GOFLAGS="" && go get github.com/openshift/openshift-tests@master
 
 build:
 	mkdir -p "${OUT_DIR}"
