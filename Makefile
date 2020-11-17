@@ -12,6 +12,9 @@ build:
 nightly-test: 
 	./hack/nightly_test.sh
 
+name-check:
+	python ./hack/rule.py 
+
 # Include the library makefile
 include $(addprefix ./vendor/github.com/openshift/library-go/alpha-build-machinery/make/, \
 	targets/openshift/bindata.mk)
