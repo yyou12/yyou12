@@ -134,6 +134,15 @@ type podSingleNodeAffinityRequiredPts struct {
         template       string
 }
 
+type podTolerate struct {
+        namespace      string
+        keyName        string
+        operatorPolicy string
+        valueName      string
+        effectPolicy   string
+        tolerateTime   int
+        template       string
+}
 
 func (pod *podNodeSelector) createPodNodeSelector(oc *exutil.CLI) {
 	err := wait.Poll(5*time.Second, 20*time.Second, func() (bool, error) {
@@ -334,5 +343,25 @@ func (pod *podSingleNodeAffinityRequiredPts) getPodNodeName(oc *exutil.CLI) stri
         nodeName, err := oc.WithoutNamespace().Run("get").Args("pod", "-n", pod.namespace, pod.name, "-o=jsonpath={.spec.nodeName}").Output()
         o.Expect(err).NotTo(o.HaveOccurred())
         e2e.Logf("The pod %s lands on node %q", pod.name, nodeName)
+        return nodeName
+}
+
+func (pod *podTolerate) createPodTolerate(oc *exutil.CLI) {
+        err := wait.Poll(5*time.Second, 20*time.Second, func() (bool, error) {
+                err1 := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", pod.template, "-p", "NAMESPACE="+pod.namespace,"KEYNAME="+pod.keyName,
+                "OPERATORPOLICY="+pod.operatorPolicy, "VALUENAME="+pod.valueName, "EFFECTPOLICY="+pod.effectPolicy, "TOLERATETIME="+strconv.Itoa(pod.tolerateTime))
+                if err1 != nil {
+                        e2e.Logf("the err:%v, and try next round", err1)
+                        return false, nil
+                }
+                return true, nil
+        })
+        o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+func getPodNodeName(oc *exutil.CLI, namespace string, podName string) string {
+        nodeName, err := oc.WithoutNamespace().Run("get").Args("pod", "-n", namespace, podName, "-o=jsonpath={.spec.nodeName}").Output()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        e2e.Logf("The pod %s lands on node %q", podName, nodeName)
         return nodeName
 }

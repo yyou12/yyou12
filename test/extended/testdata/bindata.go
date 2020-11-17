@@ -76,6 +76,7 @@
 // test/extended/testdata/workloads/pod_singlepts_nodeselect.yaml
 // test/extended/testdata/workloads/pod_singlepts_prefer.yaml
 // test/extended/testdata/workloads/pod_singlepts_required.yaml
+// test/extended/testdata/workloads/pod_tolerationseconds.yaml
 // DO NOT EDIT!
 
 package testdata
@@ -6998,6 +6999,53 @@ func testExtendedTestdataWorkloadsPod_singlepts_requiredYaml() (*asset, error) {
 	return a, nil
 }
 
+var _testExtendedTestdataWorkloadsPod_tolerationsecondsYaml = []byte(`apiVersion: v1
+kind: Template
+metadata:
+  name: pod-toleration-template
+objects:
+- kind: Pod
+  apiVersion: v1
+  metadata:
+    labels:
+      name: tolerationseconds-1
+    name: tolerationseconds-1
+    namespace: "${NAMESPACE}"
+  spec:
+    containers:
+      - image: "quay.io/openshifttest/hello-pod@sha256:04b6af86b03c1836211be2589db870dba09b7811c197c47c07fbbe33c7f80ef7"
+        name: tolerationseconds-1
+    tolerations:
+      - key: "${KEYNAME}"
+        operator: "${OPERATORPOLICY}"
+        value: "${VALUENAME}"
+        effect: "${EFFECTPOLICY}"
+        tolerationSeconds: ${{TOLERATETIME}}
+parameters:
+- name: NAMESPACE
+- name: KEYNAME
+- name: OPERATORPOLICY
+- name: VALUENAME
+- name: EFFECTPOLICY
+- name: TOLERATETIME
+
+`)
+
+func testExtendedTestdataWorkloadsPod_tolerationsecondsYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataWorkloadsPod_tolerationsecondsYaml, nil
+}
+
+func testExtendedTestdataWorkloadsPod_tolerationsecondsYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataWorkloadsPod_tolerationsecondsYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/workloads/pod_tolerationseconds.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
 // Asset loads and returns the asset for the given name.
 // It returns an error if the asset could not be found or
 // could not be loaded.
@@ -7126,6 +7174,7 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/workloads/pod_singlepts_nodeselect.yaml":             testExtendedTestdataWorkloadsPod_singlepts_nodeselectYaml,
 	"test/extended/testdata/workloads/pod_singlepts_prefer.yaml":                 testExtendedTestdataWorkloadsPod_singlepts_preferYaml,
 	"test/extended/testdata/workloads/pod_singlepts_required.yaml":               testExtendedTestdataWorkloadsPod_singlepts_requiredYaml,
+	"test/extended/testdata/workloads/pod_tolerationseconds.yaml":                testExtendedTestdataWorkloadsPod_tolerationsecondsYaml,
 }
 
 // AssetDir returns the file names below a certain
@@ -7259,6 +7308,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 					"pod_singlepts_nodeselect.yaml":         {testExtendedTestdataWorkloadsPod_singlepts_nodeselectYaml, map[string]*bintree{}},
 					"pod_singlepts_prefer.yaml":             {testExtendedTestdataWorkloadsPod_singlepts_preferYaml, map[string]*bintree{}},
 					"pod_singlepts_required.yaml":           {testExtendedTestdataWorkloadsPod_singlepts_requiredYaml, map[string]*bintree{}},
+					"pod_tolerationseconds.yaml":            {testExtendedTestdataWorkloadsPod_tolerationsecondsYaml, map[string]*bintree{}},
 				}},
 			}},
 		}},
