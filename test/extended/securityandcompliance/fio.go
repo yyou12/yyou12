@@ -1,12 +1,13 @@
 package securityandcompliance
 
 import (
+	"fmt"
 	"path/filepath"
+	"strings"
 	"time"
 
 	g "github.com/onsi/ginkgo"
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
-	e2e "k8s.io/kubernetes/test/e2e/framework"
 )
 
 var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO within a namespace", func() {
@@ -53,13 +54,15 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 			singleNamespace:        true,
 		}
 		fi1 = fileintegrity{
-			name:        "example-fileintegrity",
-			namespace:   "",
-			configname:  "",
-			configkey:   "",
-			graceperiod: 15,
-			debug:       false,
-			template:    fioTemplate,
+			name:              "example-fileintegrity",
+			namespace:         "",
+			configname:        "",
+			configkey:         "",
+			graceperiod:       15,
+			debug:             false,
+			nodeselectorkey:   "kubernetes.io/os",
+			nodeselectorvalue: "linux",
+			template:          fioTemplate,
 		}
 		podModifyD = podModify{
 			name:      "",
@@ -437,28 +440,132 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 		fi1.checkConfigmapCreated(oc)
 		fi1.createFIOWithConfig(oc, itName, dr)
 		fi1.checkFileintegrityStatus(oc, "running")
+		time.Sleep(time.Second * 60)
 
-		var pod = podModifyD
-		pod.namespace = oc.Namespace()
+		g.By("Check Data Details in CM and Fileintegritynodestatus Equal or not")
 		nodeName := getOneWorkerNodeName(oc)
-		pod.name = "pod-modify"
-		pod.nodeName = nodeName
-		pod.args = "mkdir -p /hostroot/root/test1; touch /hostroot/root/test1/test"
-		defer func() {
-			pod.name = "pod-recover"
-			pod.nodeName = nodeName
-			pod.args = "rm -rf /hostroot/root/test1"
-			pod.doActionsOnNode(oc, "Succeeded", dr)
-		}()
-		pod.doActionsOnNode(oc, "Succeeded", dr)
-		time.Sleep(time.Second * 30)
 		fi1.checkFileintegritynodestatus(oc, nodeName, "Failed")
 		cmName := fi1.getConfigmapFromFileintegritynodestatus(oc, nodeName)
-		fi1.getDataFromConfigmap(oc, cmName, "/hostroot/root/test")
-
 		intFileAddedCM, intFileChangedCM, intFileRemovedCM := fi1.getDetailedDataFromConfigmap(oc, cmName)
 		intFileAddedFins, intFileChangedFins, intFileRemovedFins := fi1.getDetailedDataFromFileintegritynodestatus(oc, nodeName)
-		boolEqual := checkDataDetailsEqual(intFileAddedCM, intFileChangedCM, intFileRemovedCM, intFileAddedFins, intFileChangedFins, intFileRemovedFins)
-		e2e.Logf("the result of boolEqual:%v", boolEqual)
+		checkDataDetailsEqual(intFileAddedCM, intFileChangedCM, intFileRemovedCM, intFileAddedFins, intFileChangedFins, intFileRemovedFins)
+	})
+
+	//author: xiyuan@redhat.com
+	g.It("High-33226-enable configuring tolerations in FileIntegrities [Serial]", func() {
+		var itName = g.CurrentGinkgoTestDescription().TestText
+		oc.SetupProject()
+		catsrc.namespace = oc.Namespace()
+		og.namespace = oc.Namespace()
+		sub.namespace = oc.Namespace()
+		sub.catalogSourceName = catsrc.name
+		sub.catalogSourceNamespace = catsrc.namespace
+		fi1.namespace = oc.Namespace()
+		fi1.debug = false
+		fi1.nodeselectorkey = "node-role.kubernetes.io/worker"
+		fi1.nodeselectorvalue = ""
+
+		g.By("Create catsrc")
+		catsrc.create(oc, itName, dr)
+		catsrc.checkPackagemanifest(oc, catsrc.displayName)
+		g.By("Create og")
+		og.create(oc, itName, dr)
+		og.checkOperatorgroup(oc, og.name)
+		g.By("Create subscription")
+		sub.create(oc, itName, dr)
+		g.By("check csv")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+		sub.checkPodFioStatus(oc, "running")
+
+		g.By("Create taint")
+		nodeName := getOneWorkerNodeName(oc)
+		defer func() {
+			output, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("node", nodeName, "-o=jsonpath={.spec.taints}").Output()
+			if strings.Contains(output, "value1") {
+				taintNode(oc, "taint", "node", nodeName, "key1=value1:NoSchedule-")
+			}
+		}()
+		taintNode(oc, "taint", "node", nodeName, "key1=value1:NoSchedule")
+
+		g.By("Create fileintegrity with aide config and compare Aide-scan pod number and Node number")
+		fi1.configname = "myconf"
+		fi1.configkey = "aide-conf"
+		fi1.createConfigmapFromFile(oc, itName, dr, fi1.configname, fi1.configkey, configFile, "created")
+		fi1.checkConfigmapCreated(oc)
+		fi1.createFIOWithConfig(oc, itName, dr)
+		fi1.checkFileintegrityStatus(oc, "running")
+		fi1.checkPodNumerLessThanNodeNumber(oc, "worker")
+
+		g.By("patch the tolerations and compare again")
+		patch := fmt.Sprintf("{\"spec\":{\"tolerations\":[{\"effect\":\"NoSchedule\",\"key\":\"key1\",\"operator\":\"Equal\",\"value\":\"value1\"}]}}")
+		patchResource(oc, asAdmin, withoutNamespace, "fileintegrity", fi1.name, "-n", fi1.namespace, "--type", "merge", "-p", patch)
+		fi1.recreateFileintegrity(oc)
+		fi1.checkFileintegrityStatus(oc, "running")
+		fi1.checkPodNumerEqualNodeNumber(oc, "worker")
+
+		taintNode(oc, "taint", "node", nodeName, "key1=value1:NoSchedule-")
+		defer taintNode(oc, "taint", "node", nodeName, "key1=:NoSchedule-")
+		taintNode(oc, "taint", "node", nodeName, "key1=:NoSchedule")
+
+		g.By("Create fileintegrity with aide config and compare Aide-scan pod number and Node number")
+		fi1.removeFileintegrity(oc, "deleted")
+		fi1.createFIOWithConfig(oc, itName, dr)
+		fi1.checkFileintegrityStatus(oc, "running")
+		fi1.checkPodNumerLessThanNodeNumber(oc, "worker")
+
+		g.By("patch the tolerations and compare again")
+		patch = fmt.Sprintf("{\"spec\":{\"tolerations\":[{\"effect\":\"NoSchedule\",\"key\":\"key1\",\"operator\":\"Exists\"}]}}")
+		patchResource(oc, asAdmin, withoutNamespace, "fileintegrity", fi1.name, "-n", fi1.namespace, "--type", "merge", "-p", patch)
+		fi1.recreateFileintegrity(oc)
+		fi1.checkFileintegrityStatus(oc, "running")
+		fi1.checkPodNumerEqualNodeNumber(oc, "worker")
+	})
+
+	//author: xiyuan@redhat.com
+	g.It("Medium-33254-enable configuring tolerations in FileIntegrities when there is more than one taint on one node [Serial]", func() {
+		var itName = g.CurrentGinkgoTestDescription().TestText
+		oc.SetupProject()
+		catsrc.namespace = oc.Namespace()
+		og.namespace = oc.Namespace()
+		sub.namespace = oc.Namespace()
+		sub.catalogSourceName = catsrc.name
+		sub.catalogSourceNamespace = catsrc.namespace
+		fi1.namespace = oc.Namespace()
+		fi1.debug = false
+		fi1.nodeselectorkey = "node-role.kubernetes.io/worker"
+		fi1.nodeselectorvalue = ""
+
+		g.By("Create catsrc")
+		catsrc.create(oc, itName, dr)
+		catsrc.checkPackagemanifest(oc, catsrc.displayName)
+		g.By("Create og")
+		og.create(oc, itName, dr)
+		og.checkOperatorgroup(oc, og.name)
+		g.By("Create subscription")
+		sub.create(oc, itName, dr)
+		g.By("check csv")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+		sub.checkPodFioStatus(oc, "running")
+
+		g.By("Create taint")
+		nodeName := getOneWorkerNodeName(oc)
+		defer taintNode(oc, "taint", "node", nodeName, "key1=value1:NoSchedule-", "key2=value2:NoExecute-")
+		taintNode(oc, "taint", "node", nodeName, "key1=value1:NoSchedule", "key2=value2:NoExecute")
+
+		g.By("Create fileintegrity with aide config and compare Aide-scan pod number and Node number")
+		fi1.configname = "myconf"
+		fi1.configkey = "aide-conf"
+		fi1.createConfigmapFromFile(oc, itName, dr, fi1.configname, fi1.configkey, configFile, "created")
+		fi1.checkConfigmapCreated(oc)
+		fi1.createFIOWithConfig(oc, itName, dr)
+		fi1.checkFileintegrityStatus(oc, "running")
+		fi1.checkPodNumerLessThanNodeNumber(oc, "worker")
+
+		g.By("patch the tolerations and compare again")
+		patch := fmt.Sprintf("{\"spec\":{\"tolerations\":[{\"effect\":\"NoSchedule\",\"key\":\"key1\",\"operator\":\"Equal\",\"value\":\"value1\"},{\"effect\":\"NoExecute\",\"key\":\"key2\",\"operator\":\"Equal\",\"value\":\"value2\"}]}}")
+		patchResource(oc, asAdmin, withoutNamespace, "fileintegrity", fi1.name, "-n", fi1.namespace, "--type", "merge", "-p", patch)
+		fi1.recreateFileintegrity(oc)
+		fi1.checkFileintegrityStatus(oc, "running")
+		fi1.checkPodNumerEqualNodeNumber(oc, "worker")
 	})
 })

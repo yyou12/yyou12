@@ -68,11 +68,12 @@ const (
 	nok              = false
 )
 
-func getWorkerNumber(oc *exutil.CLI) string {
-	workerNumber, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("node", "-l node-role.kubernetes.io/worker=", "| wc -l").Output()
+func getNodeNumberPerRule(oc *exutil.CLI, mcpRule string) string {
+	nodeNumber, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("mcp", "-l pools.operator.machineconfiguration.openshift.io/"+mcpRule,
+		"-o=jsonpath={.items[].status.readyMachineCount}").Output()
 	o.Expect(err).NotTo(o.HaveOccurred())
-	e2e.Logf("the result of workerNumber:%v", workerNumber)
-	return workerNumber
+	e2e.Logf("the result of nodeNumber:%v", nodeNumber)
+	return nodeNumber
 }
 
 func (sub *subscriptionDescription) create(oc *exutil.CLI, itName string, dr describerResrouce) {
@@ -444,4 +445,14 @@ func (og *operatorGroupDescription) create(oc *exutil.CLI, itName string, dr des
 	}
 	o.Expect(err).NotTo(o.HaveOccurred())
 	dr.getIr(itName).add(newResource(oc, "og", og.name, requireNS, og.namespace))
+}
+
+func patchResource(oc *exutil.CLI, asAdmin bool, withoutNamespace bool, parameters ...string) {
+	_, err := doAction(oc, "patch", asAdmin, withoutNamespace, parameters...)
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+func taintNode(oc *exutil.CLI, parameters ...string) {
+	_, err := doAction(oc, "adm", asAdmin, withoutNamespace, parameters...)
+	o.Expect(err).NotTo(o.HaveOccurred())
 }

@@ -12,13 +12,15 @@ import (
 )
 
 type fileintegrity struct {
-	name        string
-	namespace   string
-	configname  string
-	configkey   string
-	graceperiod int
-	debug       bool
-	template    string
+	name              string
+	namespace         string
+	configname        string
+	configkey         string
+	graceperiod       int
+	debug             bool
+	nodeselectorkey   string
+	nodeselectorvalue string
+	template          string
 }
 
 type podModify struct {
@@ -147,7 +149,7 @@ func (pod *podModify) doActionsOnNode(oc *exutil.CLI, expected string, dr descri
 
 func (fi1 *fileintegrity) createFIOWithoutConfig(oc *exutil.CLI, itName string, dr describerResrouce) {
 	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", fi1.template, "-p", "NAME="+fi1.name, "NAMESPACE="+fi1.namespace,
-		"GRACEPERIOD="+strconv.Itoa(fi1.graceperiod), "DEBUG="+strconv.FormatBool(fi1.debug))
+		"GRACEPERIOD="+strconv.Itoa(fi1.graceperiod), "DEBUG="+strconv.FormatBool(fi1.debug), "NODESELECTORKEY="+fi1.nodeselectorkey, "NODESELECTORVALUE="+fi1.nodeselectorvalue)
 	o.Expect(err).NotTo(o.HaveOccurred())
 	dr.getIr(itName).add(newResource(oc, "fileintegrity", fi1.name, requireNS, fi1.namespace))
 }
@@ -161,7 +163,8 @@ func (fi1 *fileintegrity) createFIOWithoutKeyword(oc *exutil.CLI, itName string,
 
 func (fi1 *fileintegrity) createFIOWithConfig(oc *exutil.CLI, itName string, dr describerResrouce) {
 	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", fi1.template, "-p", "NAME="+fi1.name, "NAMESPACE="+fi1.namespace,
-		"GRACEPERIOD="+strconv.Itoa(fi1.graceperiod), "DEBUG="+strconv.FormatBool(fi1.debug), "CONFNAME="+fi1.configname, "CONFKEY="+fi1.configkey)
+		"GRACEPERIOD="+strconv.Itoa(fi1.graceperiod), "DEBUG="+strconv.FormatBool(fi1.debug), "CONFNAME="+fi1.configname, "CONFKEY="+fi1.configkey,
+		"NODESELECTORKEY="+fi1.nodeselectorkey, "NODESELECTORVALUE="+fi1.nodeselectorvalue)
 	o.Expect(err).NotTo(o.HaveOccurred())
 	dr.getIr(itName).add(newResource(oc, "fileintegrity", fi1.name, requireNS, fi1.namespace))
 }
@@ -238,6 +241,7 @@ func (fi1 *fileintegrity) removeFileintegrity(oc *exutil.CLI, expected string) {
 		if strings.Contains(output, expected) {
 			return true, nil
 		}
+
 		return false, nil
 	})
 	o.Expect(err).NotTo(o.HaveOccurred())
@@ -260,14 +264,16 @@ func (fi1 *fileintegrity) getDetailedDataFromFileintegritynodestatus(oc *exutil.
 	err := wait.Poll(5*time.Second, 150*time.Second, func() (bool, error) {
 		filesAdded, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("fileintegritynodestatuses", "-n", fi1.namespace, fi1.name+"-"+nodeName,
 			"-o=jsonpath={.results[-1].filesAdded}").Output()
-		e2e.Logf("the result of aideResult:%v", filesAdded)
+		e2e.Logf("the result of filesAdded in Fileintegritynodestatus:%v", filesAdded)
 		filesChanged, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("fileintegritynodestatuses", "-n", fi1.namespace, fi1.name+"-"+nodeName,
 			"-o=jsonpath={.results[-1].filesChanged}").Output()
-		e2e.Logf("the result of aideResult:%v", filesChanged)
+		e2e.Logf("the result of filesChanged in Fileintegritynodestatus:%v", filesChanged)
 		filesRemoved, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("fileintegritynodestatuses", "-n", fi1.namespace, fi1.name+"-"+nodeName,
 			"-o=jsonpath={.results[-1].filesRemoved}").Output()
-		e2e.Logf("the result of aideResult:%v", filesChanged)
-
+		e2e.Logf("the result of filesRemoved in Fileintegritynodestatus:%v", filesRemoved)
+		if filesAdded == "" && filesChanged == "" && filesRemoved == "" {
+			return false, nil
+		}
 		if filesAdded == "" {
 			intFilesAdded = 0
 		} else {
@@ -293,16 +299,21 @@ func (fi1 *fileintegrity) getDetailedDataFromConfigmap(oc *exutil.CLI, cmName st
 	var intFilesAdded, intFilesChanged, intFilesRemoved int
 	e2e.Logf("the result of cmName:%v", cmName)
 	err := wait.Poll(5*time.Second, 150*time.Second, func() (bool, error) {
-		filesAdded, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("configmap/"+cmName, "-n", fi1.namespace,
-			"-o=jsonpath={.'metadata'.'annotations'.'file-integrity.openshift.io/files-added'}").Output()
-		e2e.Logf("the result of aideResult:%v", filesAdded)
-		filesChanged, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("configmap/"+cmName, "-n", fi1.namespace,
-			"-o=jsonpath={.metadata.annotations.file-integrity.openshift.io/files-changed}").Output()
-		e2e.Logf("the result of aideResult:%v", filesChanged)
-		filesRemoved, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("configmap/"+cmName, "-n", fi1.namespace,
-			"-o=jsonpath={.metadata.annotations.file-integrity.openshift.io/files-removed}").Output()
-		e2e.Logf("the result of aideResult:%v", filesChanged)
-
+		annotations, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("configmap", cmName, "-n", fi1.namespace,
+			"-o=jsonpath={.metadata.annotations}").Output()
+		e2e.Logf("the result of annotations in configmap:%v", annotations)
+		filesAdded, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("configmap", cmName, "-n", fi1.namespace,
+			"-o=jsonpath={.metadata.annotations.file-integrity\\.openshift\\.io/files-added}").Output()
+		e2e.Logf("the result of filesAdded in configmap:%v", filesAdded)
+		filesChanged, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("configmap", cmName, "-n", fi1.namespace,
+			"-o=jsonpath={.metadata.annotations.file-integrity\\.openshift\\.io/files-changed}").Output()
+		e2e.Logf("the result of filesChanged in configmap:%v", filesChanged)
+		filesRemoved, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("configmap", cmName, "-n", fi1.namespace,
+			"-o=jsonpath={.metadata.annotations.file-integrity\\.openshift\\.io/files-removed}").Output()
+		e2e.Logf("the result of filesRemoved in configmap:%v", filesRemoved)
+		if (filesAdded == "" && filesChanged == "" && filesRemoved == "") || (filesAdded == "0" && filesChanged == "0" && filesRemoved == "0") {
+			return false, nil
+		}
 		if filesAdded == "" {
 			intFilesAdded = 0
 		} else {
@@ -324,9 +335,58 @@ func (fi1 *fileintegrity) getDetailedDataFromConfigmap(oc *exutil.CLI, cmName st
 	return intFilesAdded, intFilesChanged, intFilesRemoved
 }
 
-func checkDataDetailsEqual(intFileAddedCM int, intFileChangedCM int, intFileRemovedCM int, intFileAddedFins int, intFileChangedFins int, intFileRemovedFins int) bool {
-	if intFileAddedCM == intFileAddedFins && intFileChangedCM == intFileChangedFins && intFileRemovedCM == intFileRemovedFins {
-		return true
+func checkDataDetailsEqual(intFileAddedCM int, intFileChangedCM int, intFileRemovedCM int, intFileAddedFins int, intFileChangedFins int, intFileRemovedFins int) {
+	if intFileAddedCM != intFileAddedFins || intFileChangedCM != intFileChangedFins || intFileRemovedCM != intFileRemovedFins {
+		e2e.Failf("the data datails in configmap and fileintegrity not equal!")
 	}
-	return false
+}
+
+func (fi1 *fileintegrity) checkPodNumerLessThanNodeNumber(oc *exutil.CLI, mcpRule string) {
+	err := wait.Poll(5*time.Second, 100*time.Second, func() (bool, error) {
+		nodeNumber := getNodeNumberPerRule(oc, mcpRule)
+		daemonsetPodNumber, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("daemonset", "-n", fi1.namespace, "-o=jsonpath={.items[].status.numberReady}").Output()
+		e2e.Logf("the result of nodeNumber:%v", nodeNumber)
+		e2e.Logf("the result of daemonsetPodNumber:%v", daemonsetPodNumber)
+		intNodeNumber, _ := strconv.Atoi(nodeNumber)
+		intDaemonsetPodNumber, _ := strconv.Atoi(daemonsetPodNumber)
+		if intNodeNumber != intDaemonsetPodNumber+1 {
+			return false, nil
+		}
+		return true, nil
+	})
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+func (fi1 *fileintegrity) checkPodNumerEqualNodeNumber(oc *exutil.CLI, mcpRule string) {
+	err := wait.Poll(5*time.Second, 100*time.Second, func() (bool, error) {
+		nodeNumber := getNodeNumberPerRule(oc, mcpRule)
+		daemonsetPodNumber, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("daemonset", "-n", fi1.namespace, "-o=jsonpath={.items[].status.numberReady}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf("the result of nodeNumber:%v", nodeNumber)
+		e2e.Logf("the result of daemonsetPodNumber:%v", daemonsetPodNumber)
+		intNodeNumber, _ := strconv.Atoi(nodeNumber)
+		intDaemonsetPodNumber, _ := strconv.Atoi(daemonsetPodNumber)
+		if intNodeNumber != intDaemonsetPodNumber {
+			return false, nil
+		}
+		return true, nil
+	})
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+func (fi1 *fileintegrity) recreateFileintegrity(oc *exutil.CLI) error {
+	var configFile string
+	err := wait.Poll(3*time.Second, 15*time.Second, func() (bool, error) {
+		output, err1 := oc.AsAdmin().WithoutNamespace().Run("get").Args("fileintegrity", fi1.name, "-n", fi1.namespace, "-ojson").OutputToFile(getRandomString() + "isc-config.json")
+		if err1 != nil {
+			e2e.Logf("the err:%v, and try next round", err1)
+			return false, nil
+		}
+		configFile = output
+		return true, nil
+	})
+	o.Expect(err).NotTo(o.HaveOccurred())
+	e2e.Logf("the file of resource is %s", configFile)
+	fi1.removeFileintegrity(oc, "deleted")
+	return oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", configFile).Execute()
 }
