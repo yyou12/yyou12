@@ -501,7 +501,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 		patchResource(oc, asAdmin, withoutNamespace, "fileintegrity", fi1.name, "-n", fi1.namespace, "--type", "merge", "-p", patch)
 		fi1.recreateFileintegrity(oc)
 		fi1.checkFileintegrityStatus(oc, "running")
-		fi1.checkPodNumerEqualNodeNumber(oc, "worker")
+		fi1.checkPodNumerEqualNodeNumber(oc, "node-role.kubernetes.io/worker=")
 
 		taintNode(oc, "taint", "node", nodeName, "key1=value1:NoSchedule-")
 		defer taintNode(oc, "taint", "node", nodeName, "key1=:NoSchedule-")
@@ -518,7 +518,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 		patchResource(oc, asAdmin, withoutNamespace, "fileintegrity", fi1.name, "-n", fi1.namespace, "--type", "merge", "-p", patch)
 		fi1.recreateFileintegrity(oc)
 		fi1.checkFileintegrityStatus(oc, "running")
-		fi1.checkPodNumerEqualNodeNumber(oc, "worker")
+		fi1.checkPodNumerEqualNodeNumber(oc, "node-role.kubernetes.io/worker=")
 	})
 
 	//author: xiyuan@redhat.com
@@ -566,6 +566,73 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 		patchResource(oc, asAdmin, withoutNamespace, "fileintegrity", fi1.name, "-n", fi1.namespace, "--type", "merge", "-p", patch)
 		fi1.recreateFileintegrity(oc)
 		fi1.checkFileintegrityStatus(oc, "running")
-		fi1.checkPodNumerEqualNodeNumber(oc, "worker")
+		fi1.checkPodNumerEqualNodeNumber(oc, "node-role.kubernetes.io/worker=")
+	})
+
+	//author: xiyuan@redhat.com
+	g.It("Medium-27755-check nodeSelector works for operator file-integrity-operator", func() {
+		var itName = g.CurrentGinkgoTestDescription().TestText
+		oc.SetupProject()
+		catsrc.namespace = oc.Namespace()
+		og.namespace = oc.Namespace()
+		sub.namespace = oc.Namespace()
+		sub.catalogSourceName = catsrc.name
+		sub.catalogSourceNamespace = catsrc.namespace
+		fi1.namespace = oc.Namespace()
+		fi1.debug = false
+		fi1.nodeselectorkey = "node-role.kubernetes.io/worker"
+		fi1.nodeselectorvalue = ""
+
+		g.By("Create catsrc")
+		catsrc.create(oc, itName, dr)
+		catsrc.checkPackagemanifest(oc, catsrc.displayName)
+		g.By("Create og")
+		og.create(oc, itName, dr)
+		og.checkOperatorgroup(oc, og.name)
+		g.By("Create subscription")
+		sub.create(oc, itName, dr)
+		g.By("check csv")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+		sub.checkPodFioStatus(oc, "running")
+
+		g.By("Create fileintegrity with aide config and compare Aide-scan pod number and Node number")
+		fi1.configname = "myconf"
+		fi1.configkey = "aide-conf"
+		fi1.createConfigmapFromFile(oc, itName, dr, fi1.configname, fi1.configkey, configFile, "created")
+		fi1.checkConfigmapCreated(oc)
+		fi1.createFIOWithConfig(oc, itName, dr)
+		fi1.checkFileintegrityStatus(oc, "running")
+		fi1.checkPodNumerEqualNodeNumber(oc, "node-role.kubernetes.io/worker=")
+
+		g.By("Rereate fileintegrity with a new nodeselector and compare Aide-scan pod number and Node number")
+		fi1.removeFileintegrity(oc, "deleted")
+		fi1.nodeselectorkey = "node-role.kubernetes.io/worker"
+		fi1.nodeselectorvalue = ""
+		g.By("Create fileintegrity with aide config and compare Aide-scan pod number and Node number")
+		fi1.createFIOWithConfig(oc, itName, dr)
+		fi1.checkFileintegrityStatus(oc, "running")
+		fi1.checkPodNumerEqualNodeNumber(oc, "node-role.kubernetes.io/master=")
+
+		g.By("Rereate fileintegrity with a new nodeselector and compare Aide-scan pod number and Node number")
+		fi1.removeFileintegrity(oc, "deleted")
+		fi1.nodeselectorkey = "node.openshift.io/os_id"
+		fi1.nodeselectorvalue = "rhel"
+		fi1.createFIOWithConfig(oc, itName, dr)
+		if getNodeNumberPerLabel(oc, "node.openshift.io/os_id=rhel") != 0 {
+			fi1.checkFileintegrityStatus(oc, "running")
+			fi1.checkPodNumerEqualNodeNumber(oc, "node.openshift.io/os_id=rhel")
+		}
+
+		g.By("Label specific nodeName to node-role.kubernetes.io/test1= !!!\n")
+		nodeName := getOneWorkerNodeName(oc)
+		defer setLabelToSpecificNode(oc, nodeName, "node-role.kubernetes.io/test1-")
+		setLabelToSpecificNode(oc, nodeName, "node-role.kubernetes.io/test1=")
+		fi1.removeFileintegrity(oc, "deleted")
+		g.By("Rereate fileintegrity with a new nodeselector and compare Aide-scan pod number and Node number")
+		fi1.nodeselectorkey = "node-role.kubernetes.io/test1"
+		fi1.nodeselectorvalue = ""
+		fi1.createFIOWithConfig(oc, itName, dr)
+		fi1.checkFileintegrityStatus(oc, "running")
+		fi1.checkPodNumerEqualNodeNumber(oc, "node-role.kubernetes.io/test1=")
 	})
 })

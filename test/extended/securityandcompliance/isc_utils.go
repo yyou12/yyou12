@@ -68,9 +68,9 @@ const (
 	nok              = false
 )
 
-func getNodeNumberPerRule(oc *exutil.CLI, mcpRule string) string {
-	nodeNumber, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("mcp", "-l pools.operator.machineconfiguration.openshift.io/"+mcpRule,
-		"-o=jsonpath={.items[].status.readyMachineCount}").Output()
+func getNodeNumberPerLabel(oc *exutil.CLI, label string) int {
+	nodeNameString, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("node", "-l", label, "-o=jsonpath={.items[*].metadata.name}").Output()
+	nodeNumber := len(strings.Fields(nodeNameString))
 	o.Expect(err).NotTo(o.HaveOccurred())
 	e2e.Logf("the result of nodeNumber:%v", nodeNumber)
 	return nodeNumber

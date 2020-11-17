@@ -343,11 +343,10 @@ func checkDataDetailsEqual(intFileAddedCM int, intFileChangedCM int, intFileRemo
 
 func (fi1 *fileintegrity) checkPodNumerLessThanNodeNumber(oc *exutil.CLI, mcpRule string) {
 	err := wait.Poll(5*time.Second, 100*time.Second, func() (bool, error) {
-		nodeNumber := getNodeNumberPerRule(oc, mcpRule)
+		intNodeNumber := getNodeNumberPerLabel(oc, mcpRule)
 		daemonsetPodNumber, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("daemonset", "-n", fi1.namespace, "-o=jsonpath={.items[].status.numberReady}").Output()
-		e2e.Logf("the result of nodeNumber:%v", nodeNumber)
+		e2e.Logf("the result of intNodeNumber:%v", intNodeNumber)
 		e2e.Logf("the result of daemonsetPodNumber:%v", daemonsetPodNumber)
-		intNodeNumber, _ := strconv.Atoi(nodeNumber)
 		intDaemonsetPodNumber, _ := strconv.Atoi(daemonsetPodNumber)
 		if intNodeNumber != intDaemonsetPodNumber+1 {
 			return false, nil
@@ -357,14 +356,13 @@ func (fi1 *fileintegrity) checkPodNumerLessThanNodeNumber(oc *exutil.CLI, mcpRul
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
-func (fi1 *fileintegrity) checkPodNumerEqualNodeNumber(oc *exutil.CLI, mcpRule string) {
+func (fi1 *fileintegrity) checkPodNumerEqualNodeNumber(oc *exutil.CLI, label string) {
 	err := wait.Poll(5*time.Second, 100*time.Second, func() (bool, error) {
-		nodeNumber := getNodeNumberPerRule(oc, mcpRule)
+		intNodeNumber := getNodeNumberPerLabel(oc, label)
 		daemonsetPodNumber, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("daemonset", "-n", fi1.namespace, "-o=jsonpath={.items[].status.numberReady}").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
-		e2e.Logf("the result of nodeNumber:%v", nodeNumber)
+		e2e.Logf("the result of intNodeNumber:%v", intNodeNumber)
 		e2e.Logf("the result of daemonsetPodNumber:%v", daemonsetPodNumber)
-		intNodeNumber, _ := strconv.Atoi(nodeNumber)
 		intDaemonsetPodNumber, _ := strconv.Atoi(daemonsetPodNumber)
 		if intNodeNumber != intDaemonsetPodNumber {
 			return false, nil
@@ -389,4 +387,9 @@ func (fi1 *fileintegrity) recreateFileintegrity(oc *exutil.CLI) error {
 	e2e.Logf("the file of resource is %s", configFile)
 	fi1.removeFileintegrity(oc, "deleted")
 	return oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", configFile).Execute()
+}
+
+func setLabelToSpecificNode(oc *exutil.CLI, nodeName string, label string) {
+	_, err := oc.AsAdmin().WithoutNamespace().Run("label").Args("node", nodeName, label).Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
 }

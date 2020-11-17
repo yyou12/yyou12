@@ -5807,6 +5807,8 @@ objects:
       key: "${CONFKEY}"
       gracePeriod: ${{GRACEPERIOD}}
     debug: ${{DEBUG}}
+    nodeSelector:
+      "${NODESELECTORKEY}": "${NODESELECTORVALUE}"
 parameters:
 - name: NAME
 - name: NAMESPACE
@@ -5814,6 +5816,8 @@ parameters:
 - name: CONFKEY
 - name: DEBUG
 - name: GRACEPERIOD
+- name: NODESELECTORKEY
+- name: NODESELECTORVALUE
 
 `)
 
