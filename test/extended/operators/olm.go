@@ -2132,6 +2132,151 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
 		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", dependentOperator, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
 	})
+
+	// It will cover test case: OCP-24917, author: tbuskey@redhat.com
+	g.It("Medium-24917-Operators in SingleNamespace should not be granted namespace list [Disruptive]", func() {
+		var (
+			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
+			ogSingleTemplate    = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+			subTemplate         = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")	
+		)
+
+		oc.SetupProject()
+
+		var (
+			next       = false
+			podName    = ""
+			s          = ""
+			secretName = ""
+			token      = ""
+			kToken     = ""
+			og = operatorGroupDescription {
+				name:                  oc.Namespace(),
+				namespace:             oc.Namespace(),
+				template:              ogSingleTemplate,
+			}
+			sub = subscriptionDescription {
+				subName:                "amq-streams",
+				namespace:              oc.Namespace(),
+				catalogSourceName:      "redhat-operators",
+				catalogSourceNamespace: "openshift-marketplace",
+				startingCSV:            "amqstreams.v1.5.3",
+				currentCSV:             "amqstreams.v1.5.3",
+				installedCSV:           "amqstreams.v1.5.3",
+				singleNamespace:        true,
+				channel:                "stable",
+				ipApproval:             "Automatic",
+				operatorPackage:        "amq-streams",
+				template:               subTemplate,
+			}
+		)
+
+		dr := make(describerResrouce)
+		itName := g.CurrentGinkgoTestDescription().TestText
+		dr.addIr(itName)
+		nameSpace := oc.Namespace()			
+		
+		g.By("Create og")
+		msg, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("ns", nameSpace).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(msg).NotTo(o.BeEmpty())
+
+		og.createwithCheck(oc, itName, dr)
+
+		g.By("Create sub")
+		sub.create(oc, itName, dr)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "AtLatestKnown", ok, []string{"sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.state}"}).check(oc)
+		
+		g.By("Wait for pod")	
+		waitErr := wait.Poll(3*time.Second, 180*time.Second, func() (bool, error) {
+			msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-n", sub.namespace).Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			o.Expect(msg).NotTo(o.BeEmpty())
+			if strings.Contains(msg, "amq-streams-cluster-operator") {
+				return true, nil
+			}
+			return false, nil
+		})
+		o.Expect(waitErr).NotTo(o.HaveOccurred())
+
+		g.By("Get pod name")	
+		podName, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "--selector=name=amq-streams-cluster-operator", "-n", sub.namespace, "-o=jsonpath={...metadata.name}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(podName).NotTo(o.BeEmpty())
+
+		newCheck("expect", asAdmin, withoutNamespace, contain, "Running,true", ok, []string{"pod", "-n", nameSpace, podName, "-o=jsonpath={.status.phase}{\",\"}{.status..ready}"}).check(oc)
+		
+		g.By("Pod is up")
+		msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-n", sub.namespace, podName).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(strings.Contains(msg, "amq")).To(o.BeTrue())
+
+		g.By("check that policy does not give strimzi-cluster-operator access ")		
+		msg, err = oc.AsAdmin().WithoutNamespace().Run("policy").Args("who-can", "list", "namespaces").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(strings.Contains(msg, "strimzi-cluster-operator")).To(o.BeFalse())
+
+		g.By("Find secret name in SA")
+		msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("sa", "strimzi-cluster-operator", "-n", nameSpace, "-o=jsonpath={.secrets..name}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(strings.Contains(msg, "strimzi-cluster-operator-token")).To(o.BeTrue())
+		
+		for _, s = range strings.Fields(msg) {
+			if strings.Contains(s, "strimzi-cluster-operator-token") {
+				secretName = s
+			}
+		}
+		o.Expect(strings.Contains(secretName, "strimzi-cluster-operator-token")).To(o.BeTrue())
+
+		g.By("Get the tokens")
+		kToken, err = oc.AsAdmin().WithoutNamespace().Run("whoami").Args("--show-token", "-n", "default").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(kToken).NotTo(o.BeEmpty())
+
+		msg, err = oc.AsAdmin().WithoutNamespace().Run("describe").Args("secret", secretName, "-n", nameSpace).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(msg).NotTo(o.BeEmpty())
+	
+		for _, s = range strings.Fields(msg) {
+			if next {
+				token = s
+				break
+			}
+			if s == "token:" {
+				next = true
+			}
+		}
+		o.Expect(token).NotTo(o.BeEmpty())
+
+		
+		g.By("login as strimzi-cluster-operator with token")
+		msg, err = oc.AsAdmin().WithoutNamespace().Run("login").Args(fmt.Sprintf("--token=%v", token)).Output()
+		/*
+		Logged into "https://...:6443" as "system:serviceaccount:test-operators:strimzi-cluster-operator" using the token provided.
+
+		You don't have any projects. Contact your system administrator to request a project.
+		*/
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		// make sure to relogin as admin after strimzi login
+		defer func () {
+			g.By("login as kubeadmin")
+			msg, err = oc.AsAdmin().WithoutNamespace().Run("login").Args(fmt.Sprintf("--token=%v", kToken)).Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			o.Expect(msg).NotTo(o.BeEmpty())
+			e2e.Logf("kubeadmin message:", msg)
+			o.Expect(strings.Contains(msg, "You can list all projects")).To(o.BeTrue())
+			e2e.Logf("SUCCESS - logged in as kubeadmin")
+
+		}()
+
+		o.Expect(msg).NotTo(o.BeEmpty())
+		e2e.Logf("login message:", msg)
+		o.Expect(strings.Contains(msg, "You don't have any projects")).To(o.BeTrue())
+		e2e.Logf("pass - logged in as strimzi-cluster-operator")
+
+	})
+
 })
 
 var _ = g.Describe("[sig-operators] OLM for an end user handle to support", func() {
