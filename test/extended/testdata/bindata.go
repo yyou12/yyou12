@@ -31,6 +31,7 @@
 // test/extended/testdata/olm/opsrc.yaml
 // test/extended/testdata/olm/validatingwebhook-csv.yaml
 // test/extended/testdata/olm/vpa-crd.yaml
+// test/extended/testdata/operators/argocd-cr.yaml
 // test/extended/testdata/operators/couchbase-enterprise-cr.yaml
 // test/extended/testdata/operators/jaeger.yaml
 // test/extended/testdata/operators/kafka.yaml
@@ -4358,6 +4359,29 @@ func testExtendedTestdataOlmVpaCrdYaml() (*asset, error) {
 	return a, nil
 }
 
+var _testExtendedTestdataOperatorsArgocdCrYaml = []byte(`apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  namespace: argocd
+spec: {}
+`)
+
+func testExtendedTestdataOperatorsArgocdCrYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataOperatorsArgocdCrYaml, nil
+}
+
+func testExtendedTestdataOperatorsArgocdCrYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataOperatorsArgocdCrYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/operators/argocd-cr.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
 var _testExtendedTestdataOperatorsCouchbaseEnterpriseCrYaml = []byte(`apiVersion: v1
 kind: Secret
 metadata:
@@ -7129,6 +7153,7 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/olm/opsrc.yaml":                                      testExtendedTestdataOlmOpsrcYaml,
 	"test/extended/testdata/olm/validatingwebhook-csv.yaml":                      testExtendedTestdataOlmValidatingwebhookCsvYaml,
 	"test/extended/testdata/olm/vpa-crd.yaml":                                    testExtendedTestdataOlmVpaCrdYaml,
+	"test/extended/testdata/operators/argocd-cr.yaml":                            testExtendedTestdataOperatorsArgocdCrYaml,
 	"test/extended/testdata/operators/couchbase-enterprise-cr.yaml":              testExtendedTestdataOperatorsCouchbaseEnterpriseCrYaml,
 	"test/extended/testdata/operators/jaeger.yaml":                               testExtendedTestdataOperatorsJaegerYaml,
 	"test/extended/testdata/operators/kafka.yaml":                                testExtendedTestdataOperatorsKafkaYaml,
@@ -7255,6 +7280,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 					"vpa-crd.yaml":                          {testExtendedTestdataOlmVpaCrdYaml, map[string]*bintree{}},
 				}},
 				"operators": {nil, map[string]*bintree{
+					"argocd-cr.yaml":                     {testExtendedTestdataOperatorsArgocdCrYaml, map[string]*bintree{}},
 					"couchbase-enterprise-cr.yaml":       {testExtendedTestdataOperatorsCouchbaseEnterpriseCrYaml, map[string]*bintree{}},
 					"jaeger.yaml":                        {testExtendedTestdataOperatorsJaegerYaml, map[string]*bintree{}},
 					"kafka.yaml":                         {testExtendedTestdataOperatorsKafkaYaml, map[string]*bintree{}},

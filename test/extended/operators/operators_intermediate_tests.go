@@ -244,6 +244,23 @@ var _ = g.Describe("[Suite:openshift/isv] ISV_Operators", func() {
 		RemoveOperatorDependencies(currentPackage, oc, false)
 
 	})
+
+	g.It(TestCaseName("argocd-operator", intermediateTestsSufix), func() {
+
+		argoCR := "ArgoCD"
+		argoCRName := "example-argocd"
+		argoPackageName := "argocd-operator"
+		argoFile := "argocd-cr.yaml"
+		namespace := "argocd"
+		defer RemoveNamespace(namespace, oc)
+		currentPackage := CreateSubscriptionSpecificNamespace(argoPackageName, oc, true, true, namespace, INSTALLPLAN_AUTOMATIC_MODE)
+		CheckDeployment(currentPackage, oc)
+		CreateFromYAML(currentPackage, argoFile, oc)
+		CheckCR(currentPackage, argoCR, argoCRName, "-o=jsonpath={.status.phase}", "Available", oc)
+		RemoveCR(currentPackage, argoCR, argoCRName, oc)
+		RemoveOperatorDependencies(currentPackage, oc, false)
+
+	})
 })
 
 //the method is to create CR with yaml file in the namespace of the installed operator
