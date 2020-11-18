@@ -21,7 +21,7 @@ var _ = g.Describe("[Suite:openshift/isv] ISV_Operators", func() {
 		intermediateTestsSufix = "[Intermediate]"
 	)
 
-	g.It(TestCaseName("amq-streams", intermediateTestsSufix), func() {
+	g.It(TestCaseName("amq-streams", "Medium-"+CaseIDCertifiedOperators["amq-streams"]+"-"+intermediateTestsSufix), func() {
 
 		kafkaCR := "Kafka"
 		kafkaClusterName := "my-cluster"
@@ -38,7 +38,7 @@ var _ = g.Describe("[Suite:openshift/isv] ISV_Operators", func() {
 
 	})
 
-	g.It(TestCaseName("mongodb-enterprise", intermediateTestsSufix), func() {
+	g.It(TestCaseName("mongodb-enterprise", "Medium-"+CaseIDCertifiedOperators["mongodb-enterprise"]+"-"+intermediateTestsSufix), func() {
 
 		mongodbPackageName := "mongodb-enterprise"
 		mongodbOpsManagerCR := "opsmanagers"
@@ -59,7 +59,7 @@ var _ = g.Describe("[Suite:openshift/isv] ISV_Operators", func() {
 
 	})
 
-	g.It(TestCaseName("portworx-certified", intermediateTestsSufix), func() {
+	g.It(TestCaseName("portworx-certified", "Medium-"+CaseIDCertifiedOperators["portworx-certified"]+"-"+intermediateTestsSufix), func() {
 
 		packageName := "portworx-certified"
 		crdName := "storagenode"
@@ -84,7 +84,7 @@ var _ = g.Describe("[Suite:openshift/isv] ISV_Operators", func() {
 
 	})
 
-	g.It(TestCaseName("couchbase-enterprise-certified", intermediateTestsSufix), func() {
+	g.It(TestCaseName("couchbase-enterprise-certified", "Medium-"+CaseIDCertifiedOperators["couchbase-enterprise-certified"]+"-"+intermediateTestsSufix), func() {
 
 		packageName := "couchbase-enterprise-certified"
 		crdName := "CouchbaseCluster"
@@ -104,7 +104,7 @@ var _ = g.Describe("[Suite:openshift/isv] ISV_Operators", func() {
 
 	})
 
-	g.It(TestCaseName("jaeger-product", intermediateTestsSufix), func() {
+	g.It(TestCaseName("jaeger-product", "Medium-"+CaseIDCertifiedOperators["jaeger-product"]+"-"+intermediateTestsSufix), func() {
 
 		jaegerPackageName := "jaeger-product"
 		jaegerCR := "Jaeger"
@@ -121,7 +121,7 @@ var _ = g.Describe("[Suite:openshift/isv] ISV_Operators", func() {
 
 	})
 
-	g.It(TestCaseName("keycloak-operator", intermediateTestsSufix), func() {
+	g.It(TestCaseName("keycloak-operator", "Medium-"+CaseIDCertifiedOperators["keycloak-operator"]+"-"+intermediateTestsSufix), func() {
 
 		keycloakCR := "Keycloak"
 		keycloakCRName := "example-keycloak"
@@ -138,7 +138,7 @@ var _ = g.Describe("[Suite:openshift/isv] ISV_Operators", func() {
 
 	})
 
-	g.It(TestCaseName("spark-gcp", intermediateTestsSufix), func() {
+	g.It(TestCaseName("spark-gcp", "Medium-"+CaseIDCertifiedOperators["spark-gcp"]+"-"+intermediateTestsSufix), func() {
 		packageName := "spark-gcp" // spark-operator in OperatorHub
 		namespace := "spark-gcp"
 		crFile := "spark-gcp-sparkapplication-cr.yaml"
@@ -161,7 +161,7 @@ var _ = g.Describe("[Suite:openshift/isv] ISV_Operators", func() {
 		RemoveOperatorDependencies(currentPackage, oc, false)
 	})
 
-	g.It(TestCaseName("strimzi-kafka-operator", intermediateTestsSufix), func() {
+	g.It(TestCaseName("strimzi-kafka-operator", "Medium-"+CaseIDCertifiedOperators["strimzi-kafka-operator"]+"-"+intermediateTestsSufix), func() {
 
 		strimziCR := "Kafka"
 		strimziClusterName := "my-cluster"
@@ -178,7 +178,7 @@ var _ = g.Describe("[Suite:openshift/isv] ISV_Operators", func() {
 
 	})
 
-	g.It(TestCaseName("resource-locker-operator", intermediateTestsSufix), func() {
+	g.It(TestCaseName("resource-locker-operator", "Medium-"+CaseIDCertifiedOperators["resource-locker-operator"]+"-"+intermediateTestsSufix), func() {
 
 		packageName := "resource-locker-operator"
 		crdName := "ResourceLocker"
@@ -203,7 +203,7 @@ var _ = g.Describe("[Suite:openshift/isv] ISV_Operators", func() {
 
 	})
 
-	g.It(TestCaseName("storageos-operator", intermediateTestsSufix), func() {
+	g.It(TestCaseName("storageos2", "Medium-"+CaseIDCertifiedOperators["storageos2"]+"-"+intermediateTestsSufix), func() {
 
 		packageName := "storageos2"
 		crdName1 := "StorageOSCluster"

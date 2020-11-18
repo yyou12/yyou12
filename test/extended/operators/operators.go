@@ -32,13 +32,41 @@ type Packagemanifest struct {
 
 var SkippedOperators = []string{"quay-bridge-operator", "kubevirt-hyperconverged", "cost-mgmt-operator", "ptp-operator"}
 
-var CertifiedOperators = []string{"3scale-community-operator", "amq-streams", "appdynamics-operator",
+var CertifiedOperators = []string{"3scale-community-operator", "amq-streams",
 	"argocd-operator", "cert-utils-operator", "couchbase-enterprise-certified", "dotscience-operator",
 	"federatorai-certified", "jaeger-product", "keycloak-operator", "kiali", "mongodb-enterprise", "must-gather-operator",
 	"percona-server-mongodb-operator", "percona-xtradb-cluster-operator", "planetscale",
 	"portworx-certified", "postgresql", "presto-operator", "prometheus", "radanalytics-spark",
-	"resource-locker-operator", "spark-gcp", "storageos", "strimzi-kafka-operator",
+	"resource-locker-operator", "spark-gcp", "storageos2", "strimzi-kafka-operator",
 	"syndesis", "tidb-operator-certified"}
+var CaseIDCertifiedOperators = map[string]string{
+	"3scale-community-operator":       "26931",
+	"amq-streams":                     "23955",
+	"argocd-operator":                 "27312",
+	"cert-utils-operator":             "26058",
+	"couchbase-enterprise-certified":  "25414",
+	"dotscience-operator":             "28694",
+	"federatorai-certified":           "25444",
+	"jaeger-product":                  "26057",
+	"keycloak-operator":               "26945",
+	"kiali":                           "27301",
+	"mongodb-enterprise":              "24064",
+	"must-gather-operator":            "28699",
+	"percona-server-mongodb-operator": "26052",
+	"percona-xtradb-cluster-operator": "26053",
+	"planetscale":                     "25413",
+	"portworx-certified":              "25880",
+	"postgresql":                      "27782",
+	"presto-operator":                 "26947",
+	"prometheus":                      "36889",
+	"radanalytics-spark":              "27313",
+	"resource-locker-operator":        "27311",
+	"spark-gcp":                       "26944",
+	"storageos2":                      "25885",
+	"strimzi-kafka-operator":          "26056",
+	"syndesis":                        "26055",
+	"tidb-operator-certified":         "25412",
+}
 var CatalogLabels = []string{"certified-operators", "redhat-operators", "community-operators"}
 var BasicPrefix = "[Basic]"
 
