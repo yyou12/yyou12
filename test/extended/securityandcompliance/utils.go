@@ -46,17 +46,18 @@ func (fi1 *fileintegrity) checkFileintegrityStatus(oc *exutil.CLI, expected stri
 
 func (fi1 *fileintegrity) getConfigmapFromFileintegritynodestatus(oc *exutil.CLI, nodeName string) string {
 	var cmName string
-	var i int
-	if i < 40 {
-		cmName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("fileintegritynodestatuses", "-n", fi1.namespace, fi1.name+"-"+nodeName,
+	err := wait.Poll(5*time.Second, 150*time.Second, func() (bool, error) {
+		cmName, _ = oc.AsAdmin().WithoutNamespace().Run("get").Args("fileintegritynodestatuses", "-n", fi1.namespace, fi1.name+"-"+nodeName,
 			"-o=jsonpath={.results[-1].resultConfigMapName}").Output()
 		e2e.Logf("the result of cmName:%v", cmName)
-		o.Expect(err).NotTo(o.HaveOccurred())
 		if strings.Contains(cmName, "failed") {
-			return cmName
+			return true, nil
 		}
-		time.Sleep(time.Duration(5) * time.Second)
-		i++
+		return false, nil
+	})
+	o.Expect(err).NotTo(o.HaveOccurred())
+	if strings.Compare(cmName, "") == 0 {
+		e2e.Failf("Failed to get configmap name!")
 	}
 	return cmName
 }
@@ -206,7 +207,13 @@ func (fi1 *fileintegrity) checkConfigmapCreated(oc *exutil.CLI) {
 
 func (fi1 *fileintegrity) checkFileintegritynodestatus(oc *exutil.CLI, nodeName string, expected string) {
 	err := wait.Poll(5*time.Second, 150*time.Second, func() (bool, error) {
-		output, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("fileintegritynodestatuses", "-n", fi1.namespace, fi1.name+"-"+nodeName,
+		fileintegrityName := fi1.name + "-" + nodeName
+		fileintegritynodestatusOut, err1 := oc.AsAdmin().WithoutNamespace().Run("get").Args("fileintegritynodestatuses", fileintegrityName, "-n", fi1.namespace).Output()
+		e2e.Logf("the result of fileintegritynodestatusOut:%v", fileintegritynodestatusOut)
+		if !strings.Contains(fileintegritynodestatusOut, fileintegrityName) || err1 != nil {
+			return false, nil
+		}
+		output, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("fileintegritynodestatuses", "-n", fi1.namespace, fileintegrityName,
 			"-o=jsonpath={.results[-1].condition}").Output()
 		e2e.Logf("the result of checkFileintegritynodestatus:%v", output)
 		if strings.Contains(output, expected) {
@@ -391,5 +398,17 @@ func (fi1 *fileintegrity) recreateFileintegrity(oc *exutil.CLI) error {
 
 func setLabelToSpecificNode(oc *exutil.CLI, nodeName string, label string) {
 	_, err := oc.AsAdmin().WithoutNamespace().Run("label").Args("node", nodeName, label).Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+func (fi1 *fileintegrity) expectedStringNotExistInConfigmap(oc *exutil.CLI, cmName string, expected string) {
+	e2e.Logf("the result of cmName:%v", cmName)
+	err := wait.Poll(5*time.Second, 150*time.Second, func() (bool, error) {
+		aideResult, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("configmap/"+cmName, "-n", fi1.namespace, "-o=jsonpath={.data}").Output()
+		if !strings.Contains(aideResult, expected) {
+			return true, nil
+		}
+		return false, nil
+	})
 	o.Expect(err).NotTo(o.HaveOccurred())
 }

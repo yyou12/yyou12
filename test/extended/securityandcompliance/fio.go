@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
-	"time"
 
 	g "github.com/onsi/ginkgo"
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
@@ -24,6 +23,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 		podModifyTemplate   = filepath.Join(buildPruningBaseDir, "pod_modify.yaml")
 		configFile          = filepath.Join(buildPruningBaseDir, "aide.conf.rhel8")
 		configErrFile       = filepath.Join(buildPruningBaseDir, "aide.conf.rhel8.err")
+		configFile1         = filepath.Join(buildPruningBaseDir, "aide.conf.rhel8.1")
 
 		catsrc = catalogSourceDescription{
 			name:        "file-integrity-operator",
@@ -125,7 +125,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 			pod.doActionsOnNode(oc, "Succeeded", dr)
 		}()
 		pod.doActionsOnNode(oc, "Succeeded", dr)
-		time.Sleep(time.Second * 30)
+		fi1.checkFileintegritynodestatus(oc, nodeName, "Failed")
 		cmName := fi1.getConfigmapFromFileintegritynodestatus(oc, nodeName)
 		fi1.getDataFromConfigmap(oc, cmName, "/hostroot/root/test")
 	})
@@ -295,7 +295,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 		fi1.createFIOWithoutConfig(oc, itName, dr)
 		fi1.checkFileintegrityStatus(oc, "running")
 		nodeName := getOneWorkerNodeName(oc)
-		time.Sleep(time.Second * 30)
+		fi1.reinitFileintegrity(oc, "annotated")
 		fi1.checkFileintegritynodestatus(oc, nodeName, "Succeeded")
 
 		g.By("Check fileintegritynodestatus becomes Errored")
@@ -307,7 +307,6 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 		fi1.checkFileintegrityStatus(oc, "running")
 		var podName = fi1.getOneFioPodName(oc)
 		fi1.checkKeywordExistInLog(oc, podName, "exit status 17")
-		time.Sleep(time.Second * 30)
 		fi1.checkFileintegritynodestatus(oc, nodeName, "Errored")
 	})
 
@@ -390,7 +389,6 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 			pod.doActionsOnNode(oc, "Succeeded", dr)
 		}()
 		pod.doActionsOnNode(oc, "Succeeded", dr)
-		time.Sleep(time.Second * 30)
 		fi1.checkFileintegritynodestatus(oc, nodeName, "Failed")
 		cmName := fi1.getConfigmapFromFileintegritynodestatus(oc, nodeName)
 		fi1.getDataFromConfigmap(oc, cmName, "/hostroot/root/test")
@@ -399,7 +397,6 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 		fi1.removeFileintegrity(oc, "deleted")
 		fi1.createFIOWithoutConfig(oc, itName, dr)
 		fi1.checkFileintegrityStatus(oc, "running")
-		time.Sleep(time.Second * 30)
 		fi1.checkFileintegritynodestatus(oc, nodeName, "Failed")
 		fi1.getDataFromConfigmap(oc, cmName, "/hostroot/root/test")
 
@@ -440,7 +437,6 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 		fi1.checkConfigmapCreated(oc)
 		fi1.createFIOWithConfig(oc, itName, dr)
 		fi1.checkFileintegrityStatus(oc, "running")
-		time.Sleep(time.Second * 60)
 
 		g.By("Check Data Details in CM and Fileintegritynodestatus Equal or not")
 		nodeName := getOneWorkerNodeName(oc)
@@ -634,5 +630,110 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 		fi1.createFIOWithConfig(oc, itName, dr)
 		fi1.checkFileintegrityStatus(oc, "running")
 		fi1.checkPodNumerEqualNodeNumber(oc, "node-role.kubernetes.io/test1=")
+	})
+
+	//author: xiyuan@redhat.com
+	g.It("Medium-31862-check whether aide config change from non-empty to empty will trigger a re-initialization of the aide database or not", func() {
+		var itName = g.CurrentGinkgoTestDescription().TestText
+		oc.SetupProject()
+		catsrc.namespace = oc.Namespace()
+		og.namespace = oc.Namespace()
+		sub.namespace = oc.Namespace()
+		sub.catalogSourceName = catsrc.name
+		sub.catalogSourceNamespace = catsrc.namespace
+		fi1.namespace = oc.Namespace()
+		fi1.debug = false
+
+		g.By("Create catsrc")
+		catsrc.create(oc, itName, dr)
+		catsrc.checkPackagemanifest(oc, catsrc.displayName)
+		g.By("Create og")
+		og.create(oc, itName, dr)
+		og.checkOperatorgroup(oc, og.name)
+		g.By("Create subscription")
+		sub.create(oc, itName, dr)
+		g.By("check csv")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+		sub.checkPodFioStatus(oc, "running")
+
+		g.By("Create fileintegrity with aide config and compare Aide-scan pod number and Node number")
+		fi1.configname = "myconf"
+		fi1.configkey = "aide-conf"
+		fi1.createConfigmapFromFile(oc, itName, dr, fi1.configname, fi1.configkey, configFile, "created")
+		fi1.checkConfigmapCreated(oc)
+		fi1.createFIOWithConfig(oc, itName, dr)
+		fi1.checkFileintegrityStatus(oc, "running")
+		nodeName := getOneWorkerNodeName(oc)
+		fi1.checkFileintegritynodestatus(oc, nodeName, "Failed")
+
+		g.By("trigger reinit by changing aide config to empty")
+		fi1.createFIOWithoutConfig(oc, itName, dr)
+		fi1.checkFileintegrityStatus(oc, "running")
+		fi1.checkFileintegritynodestatus(oc, nodeName, "Succeeded")
+	})
+
+	//author: xiyuan@redhat.com
+	g.It("High-29782-aide config change will trigger a re-initialization of the aide database [Serial]", func() {
+		var itName = g.CurrentGinkgoTestDescription().TestText
+		oc.SetupProject()
+		catsrc.namespace = oc.Namespace()
+		og.namespace = oc.Namespace()
+		sub.namespace = oc.Namespace()
+		sub.catalogSourceName = catsrc.name
+		sub.catalogSourceNamespace = catsrc.namespace
+		fi1.namespace = oc.Namespace()
+		fi1.debug = false
+
+		g.By("Create catsrc")
+		catsrc.create(oc, itName, dr)
+		catsrc.checkPackagemanifest(oc, catsrc.displayName)
+		g.By("Create og")
+		og.create(oc, itName, dr)
+		og.checkOperatorgroup(oc, og.name)
+		g.By("Create subscription")
+		sub.create(oc, itName, dr)
+		g.By("check csv")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+		sub.checkPodFioStatus(oc, "running")
+
+		g.By("Create fileintegrity without aide config")
+		fi1.createFIOWithoutConfig(oc, itName, dr)
+		fi1.checkFileintegrityStatus(oc, "running")
+		fi1.reinitFileintegrity(oc, "annotated")
+		fi1.checkFileintegrityStatus(oc, "running")
+		nodeName := getOneWorkerNodeName(oc)
+		fi1.checkFileintegritynodestatus(oc, nodeName, "Succeeded")
+
+		g.By("trigger reinit by applying aide config")
+		fi1.configname = "myconf"
+		fi1.configkey = "aide-conf"
+		fi1.createConfigmapFromFile(oc, itName, dr, fi1.configname, fi1.configkey, configFile, "created")
+		fi1.checkConfigmapCreated(oc)
+		fi1.createFIOWithConfig(oc, itName, dr)
+		fi1.checkFileintegrityStatus(oc, "running")
+		var pod = podModifyD
+		pod.namespace = oc.Namespace()
+		pod.name = "pod-modify"
+		pod.nodeName = nodeName
+		pod.args = "mkdir -p /hostroot/root/test29782"
+		defer func() {
+			pod.name = "pod-recover"
+			pod.nodeName = nodeName
+			pod.args = "rm -rf /hostroot/root/test29782"
+			pod.doActionsOnNode(oc, "Succeeded", dr)
+		}()
+		pod.doActionsOnNode(oc, "Succeeded", dr)
+		fi1.checkFileintegritynodestatus(oc, nodeName, "Failed")
+		cmName := fi1.getConfigmapFromFileintegritynodestatus(oc, nodeName)
+		fi1.getDataFromConfigmap(oc, cmName, "/hostroot/root/test29782")
+		g.By("trigger reinit by applying aide config")
+		fi1.configname = "myconf1"
+		fi1.configkey = "aide-conf1"
+		fi1.createConfigmapFromFile(oc, itName, dr, fi1.configname, fi1.configkey, configFile1, "created")
+		fi1.checkConfigmapCreated(oc)
+		fi1.createFIOWithConfig(oc, itName, dr)
+		fi1.checkFileintegrityStatus(oc, "running")
+		fi1.checkFileintegritynodestatus(oc, nodeName, "Failed")
+		fi1.expectedStringNotExistInConfigmap(oc, cmName, "/hostroot/root/test29782")
 	})
 })
