@@ -1145,7 +1145,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle common object", f
 	})
 
 	// It will cover test case: OCP-29775 and OCP-29786, author: kuiwang@redhat.com
-	g.It("Medium-29775-Medium-29786-as oc user on linux to mirror catalog image", func() {
+	g.It("ConnectedOnly-Medium-29775-Medium-29786-as oc user on linux to mirror catalog image", func() {
 		var (
 			bundleIndex1         = "quay.io/kuiwang/operators-all:v1"
 			bundleIndex2         = "quay.io/kuiwang/operators-dockerio:v1"
@@ -1193,7 +1193,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle common object", f
 	})
 
 	// It will cover test case: OCP-21825, author: kuiwang@redhat.com
-	g.It("Medium-21825-Certs for packageserver can be rotated successfully", func() {
+	g.It("ConnectedOnly-Medium-21825-Certs for packageserver can be rotated successfully", func() {
 		var (
 			packageserverName = "packageserver"
 		)
@@ -1323,7 +1323,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 	})
 
 	// It will cover test case: OCP-23170, author: kuiwang@redhat.com
-	g.It("Medium-23170-API labels should be hash", func() {
+	g.It("ConnectedOnly-Medium-23170-API labels should be hash", func() {
 		var (
 			itName = g.CurrentGinkgoTestDescription().TestText
 			og     = ogD
@@ -1354,7 +1354,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 	})
 
 	// It will cover test case: OCP-20979, author: kuiwang@redhat.com
-	g.It("Medium-20979-only one IP is generated", func() {
+	g.It("ConnectedOnly-Medium-20979-only one IP is generated", func() {
 		var (
 			itName = g.CurrentGinkgoTestDescription().TestText
 			og     = ogD
@@ -1382,7 +1382,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 	})
 
 	// It will cover test case: OCP-25757 and 22656, author: kuiwang@redhat.com
-	g.It("Medium-25757-High-22656-manual approval strategy apply to subsequent releases", func() {
+	g.It("ConnectedOnly-Medium-25757-High-22656-manual approval strategy apply to subsequent releases", func() {
 		var (
 			itName = g.CurrentGinkgoTestDescription().TestText
 			og     = ogD
@@ -1415,7 +1415,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 	})
 
 	// It will cover test case: OCP-24438, author: kuiwang@redhat.com
-	g.It("Medium-24438-check subscription CatalogSource Status", func() {
+	g.It("ConnectedOnly-Medium-24438-check subscription CatalogSource Status", func() {
 		var (
 			itName = g.CurrentGinkgoTestDescription().TestText
 			catsrc = catalogSourceDescription{
@@ -1460,7 +1460,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 	})
 
 	// It will cover test case: OCP-24027, author: kuiwang@redhat.com
-	g.It("Medium-24027-can create and delete catalogsource and sub repeatedly", func() {
+	g.It("ConnectedOnly-Medium-24027-can create and delete catalogsource and sub repeatedly", func() {
 		var (
 			itName = g.CurrentGinkgoTestDescription().TestText
 			catsrc = catalogSourceDescription{
@@ -1512,7 +1512,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 	})
 
 	// It will cover part of test case: OCP-21404, author: kuiwang@redhat.com
-	g.It("Medium-21404-csv will be RequirementsNotMet after sa is delete", func() {
+	g.It("ConnectedOnly-Medium-21404-csv will be RequirementsNotMet after sa is delete", func() {
 		var (
 			itName = g.CurrentGinkgoTestDescription().TestText
 			og     = ogD
@@ -1543,7 +1543,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 	})
 
 	// It will cover part of test case: OCP-21404, author: kuiwang@redhat.com
-	g.It("Medium-21404-csv will be RequirementsNotMet after role rule is delete", func() {
+	g.It("ConnectedOnly-Medium-21404-csv will be RequirementsNotMet after role rule is delete", func() {
 		var (
 			itName = g.CurrentGinkgoTestDescription().TestText
 			og     = ogD
@@ -1579,7 +1579,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 	})
 
 	// It will cover test case: OCP-29723, author: kuiwang@redhat.com
-	g.It("Medium-29723-As cluster admin find abnormal status condition via components of operator resource", func() {
+	g.It("ConnectedOnly-Medium-29723-As cluster admin find abnormal status condition via components of operator resource", func() {
 		var (
 			itName = g.CurrentGinkgoTestDescription().TestText
 			og     = operatorGroupDescription{
@@ -1645,7 +1645,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 	})
 
 	// It will cover test case: OCP-30762, author: kuiwang@redhat.com
-	g.It("Medium-30762-installs bundles with v1 CRDs", func() {
+	g.It("ConnectedOnly-Medium-30762-installs bundles with v1 CRDs", func() {
 		var (
 			itName = g.CurrentGinkgoTestDescription().TestText
 			og     = operatorGroupDescription{
@@ -1697,7 +1697,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 	})
 
 	// It will cover test case: OCP-27683, author: kuiwang@redhat.com
-	g.It("Medium-27683-InstallPlans can install from extracted bundles", func() {
+	g.It("ConnectedOnly-Medium-27683-InstallPlans can install from extracted bundles", func() {
 		var (
 			itName = g.CurrentGinkgoTestDescription().TestText
 			og     = operatorGroupDescription{
@@ -1762,7 +1762,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 	})
 
 	// It will cover test case: OCP-24513, author: kuiwang@redhat.com
-	g.It("Medium-24513-Operator config support env only", func() {
+	g.It("ConnectedOnly-Medium-24513-Operator config support env only", func() {
 		var (
 			itName = g.CurrentGinkgoTestDescription().TestText
 			og     = operatorGroupDescription{
@@ -1825,7 +1825,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 	})
 
 	// It will cover test case: OCP-24382, author: kuiwang@redhat.com
-	g.It("Medium-24382-Should restrict CRD update if schema changes [Serial]", func() {
+	g.It("ConnectedOnly-Medium-24382-Should restrict CRD update if schema changes [Serial]", func() {
 		var (
 			etcdCluster = filepath.Join(buildPruningBaseDir, "etcd-cluster.yaml")
 			itName      = g.CurrentGinkgoTestDescription().TestText
@@ -1898,7 +1898,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 	})
 
 	// It will cover test case: OCP-25760, author: kuiwang@redhat.com
-	g.It("Medium-25760-Operator upgrades does not fail after change the channel", func() {
+	g.It("ConnectedOnly-Medium-25760-Operator upgrades does not fail after change the channel", func() {
 		var (
 			itName = g.CurrentGinkgoTestDescription().TestText
 			og     = operatorGroupDescription{
@@ -1957,7 +1957,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 	})
 
 	// It will cover test case: OCP-35895, author: kuiwang@redhat.com
-	g.It("Medium-35895-can't install a CSV with duplicate roles", func() {
+	g.It("ConnectedOnly-Medium-35895-can't install a CSV with duplicate roles", func() {
 		var (
 			itName = g.CurrentGinkgoTestDescription().TestText
 			og     = operatorGroupDescription{
@@ -2012,7 +2012,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 	})
 
 	// It will cover test case: OCP-32863, author: kuiwang@redhat.com
-	g.It("Medium-32863-Support resources required for SAP Gardener Control Plane Operator", func() {
+	g.It("ConnectedOnly-Medium-32863-Support resources required for SAP Gardener Control Plane Operator", func() {
 		var (
 			itName      = g.CurrentGinkgoTestDescription().TestText
 			vpaTemplate = filepath.Join(buildPruningBaseDir, "vpa-crd.yaml")
@@ -2080,7 +2080,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 	})
 
 	// It will cover test case: OCP-34472, author: kuiwang@redhat.com
-	g.It("Medium-34472-OLM label dependency", func() {
+	g.It("ConnectedOnly-Medium-34472-OLM label dependency", func() {
 		var (
 			itName = g.CurrentGinkgoTestDescription().TestText
 			og     = operatorGroupDescription{
@@ -2138,7 +2138,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		var (
 			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
 			ogSingleTemplate    = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
-			subTemplate         = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")	
+			subTemplate         = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
 		)
 
 		oc.SetupProject()
@@ -2150,12 +2150,12 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 			secretName = ""
 			token      = ""
 			kToken     = ""
-			og = operatorGroupDescription {
-				name:                  oc.Namespace(),
-				namespace:             oc.Namespace(),
-				template:              ogSingleTemplate,
+			og         = operatorGroupDescription{
+				name:      oc.Namespace(),
+				namespace: oc.Namespace(),
+				template:  ogSingleTemplate,
 			}
-			sub = subscriptionDescription {
+			sub = subscriptionDescription{
 				subName:                "amq-streams",
 				namespace:              oc.Namespace(),
 				catalogSourceName:      "redhat-operators",
@@ -2174,8 +2174,8 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		dr := make(describerResrouce)
 		itName := g.CurrentGinkgoTestDescription().TestText
 		dr.addIr(itName)
-		nameSpace := oc.Namespace()			
-		
+		nameSpace := oc.Namespace()
+
 		g.By("Create og")
 		msg, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("ns", nameSpace).Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -2186,8 +2186,8 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		g.By("Create sub")
 		sub.create(oc, itName, dr)
 		newCheck("expect", asAdmin, withoutNamespace, compare, "AtLatestKnown", ok, []string{"sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.state}"}).check(oc)
-		
-		g.By("Wait for pod")	
+
+		g.By("Wait for pod")
 		waitErr := wait.Poll(3*time.Second, 180*time.Second, func() (bool, error) {
 			msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-n", sub.namespace).Output()
 			o.Expect(err).NotTo(o.HaveOccurred())
@@ -2199,19 +2199,19 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		})
 		o.Expect(waitErr).NotTo(o.HaveOccurred())
 
-		g.By("Get pod name")	
+		g.By("Get pod name")
 		podName, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "--selector=name=amq-streams-cluster-operator", "-n", sub.namespace, "-o=jsonpath={...metadata.name}").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(podName).NotTo(o.BeEmpty())
 
 		newCheck("expect", asAdmin, withoutNamespace, contain, "Running,true", ok, []string{"pod", "-n", nameSpace, podName, "-o=jsonpath={.status.phase}{\",\"}{.status..ready}"}).check(oc)
-		
+
 		g.By("Pod is up")
 		msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-n", sub.namespace, podName).Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(strings.Contains(msg, "amq")).To(o.BeTrue())
 
-		g.By("check that policy does not give strimzi-cluster-operator access ")		
+		g.By("check that policy does not give strimzi-cluster-operator access ")
 		msg, err = oc.AsAdmin().WithoutNamespace().Run("policy").Args("who-can", "list", "namespaces").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(strings.Contains(msg, "strimzi-cluster-operator")).To(o.BeFalse())
@@ -2220,7 +2220,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("sa", "strimzi-cluster-operator", "-n", nameSpace, "-o=jsonpath={.secrets..name}").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(strings.Contains(msg, "strimzi-cluster-operator-token")).To(o.BeTrue())
-		
+
 		for _, s = range strings.Fields(msg) {
 			if strings.Contains(s, "strimzi-cluster-operator-token") {
 				secretName = s
@@ -2236,7 +2236,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		msg, err = oc.AsAdmin().WithoutNamespace().Run("describe").Args("secret", secretName, "-n", nameSpace).Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(msg).NotTo(o.BeEmpty())
-	
+
 		for _, s = range strings.Fields(msg) {
 			if next {
 				token = s
@@ -2248,18 +2248,17 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		}
 		o.Expect(token).NotTo(o.BeEmpty())
 
-		
 		g.By("login as strimzi-cluster-operator with token")
 		msg, err = oc.AsAdmin().WithoutNamespace().Run("login").Args(fmt.Sprintf("--token=%v", token)).Output()
 		/*
-		Logged into "https://...:6443" as "system:serviceaccount:test-operators:strimzi-cluster-operator" using the token provided.
+			Logged into "https://...:6443" as "system:serviceaccount:test-operators:strimzi-cluster-operator" using the token provided.
 
-		You don't have any projects. Contact your system administrator to request a project.
+			You don't have any projects. Contact your system administrator to request a project.
 		*/
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		// make sure to relogin as admin after strimzi login
-		defer func () {
+		defer func() {
 			g.By("login as kubeadmin")
 			msg, err = oc.AsAdmin().WithoutNamespace().Run("login").Args(fmt.Sprintf("--token=%v", kToken)).Output()
 			o.Expect(err).NotTo(o.HaveOccurred())
@@ -2392,7 +2391,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle to support", func
 	g.AfterEach(func() {})
 
 	// It will cover part of test case: OCP-29275, author: kuiwang@redhat.com
-	g.It("Medium-29275-label to target namespace of operator group with multi namespace", func() {
+	g.It("ConnectedOnly-Medium-29275-label to target namespace of operator group with multi namespace", func() {
 		var (
 			itName = g.CurrentGinkgoTestDescription().TestText
 			og     = operatorGroupDescription{
@@ -2450,7 +2449,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle to support", func
 	})
 
 	// It will cover test case: OCP-22200, author: kuiwang@redhat.com
-	g.It("Medium-22200-add minimum kube version to CSV", func() {
+	g.It("ConnectedOnly-Medium-22200-add minimum kube version to CSV", func() {
 		var (
 			itName = g.CurrentGinkgoTestDescription().TestText
 			og     = operatorGroupDescription{
@@ -2506,7 +2505,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle to support", func
 	})
 
 	// It will cover test case: OCP-23473, author: kuiwang@redhat.com
-	g.It("Medium-23473-permit z-stream releases skipping during operator updates", func() {
+	g.It("ConnectedOnly-Medium-23473-permit z-stream releases skipping during operator updates", func() {
 		var (
 			itName = g.CurrentGinkgoTestDescription().TestText
 			og     = operatorGroupDescription{
@@ -2550,7 +2549,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle to support", func
 	})
 
 	// It will cover test case: OCP-24664, author: kuiwang@redhat.com
-	g.It("Medium-24664-CRD updates if new schemas are backwards compatible", func() {
+	g.It("ConnectedOnly-Medium-24664-CRD updates if new schemas are backwards compatible", func() {
 		var (
 			itName = g.CurrentGinkgoTestDescription().TestText
 			og     = operatorGroupDescription{
@@ -2604,7 +2603,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle to support", func
 	})
 
 	// It will cover test case: OCP-21824, author: kuiwang@redhat.com
-	g.It("Medium-21824-verify CRD should be ready before installing the operator", func() {
+	g.It("ConnectedOnly-Medium-21824-verify CRD should be ready before installing the operator", func() {
 		var (
 			itName = g.CurrentGinkgoTestDescription().TestText
 			og     = operatorGroupDescription{
@@ -2683,7 +2682,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within all namesp
 	})
 
 	// It will cover test case: OCP-21484, OCP-21532(acutally it covers OCP-21484), author: kuiwang@redhat.com
-	g.It("Medium-21484-High-21532-watch special or all namespace by operator group", func() {
+	g.It("ConnectedOnly-Medium-21484-High-21532-watch special or all namespace by operator group", func() {
 		var (
 			itName = g.CurrentGinkgoTestDescription().TestText
 			sub    = subscriptionDescription{
@@ -2733,7 +2732,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within all namesp
 	})
 
 	// It will cover test case: OCP-24906, author: kuiwang@redhat.com
-	g.It("Medium-24906-Operators requesting cluster-scoped permission can trigger kube GC bug", func() {
+	g.It("ConnectedOnly-Medium-24906-Operators requesting cluster-scoped permission can trigger kube GC bug", func() {
 		var (
 			itName = g.CurrentGinkgoTestDescription().TestText
 			sub    = subscriptionDescription{
