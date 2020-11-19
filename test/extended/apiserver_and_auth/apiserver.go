@@ -2,8 +2,8 @@ package apiserver_and_auth
 
 import (
 	"time"
-	"regexp"
 	"strconv"
+	"strings"
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	g "github.com/onsi/ginkgo"
@@ -121,26 +121,11 @@ spec:
 			o.Expect(err).NotTo(o.HaveOccurred())
 
 			g.By("Waiting for the force encryption completion")
-			rePattern := regexp.MustCompile(`migrated-resources: .*configmaps.*secrets.*`)
 			// Only need to check kubeapiserver because kubeapiserver takes more time.
-			// In observation, the waiting time can take 25 mins in max, so the Poll parameters are larger.
-			err = wait.Poll(1*time.Minute, 30*time.Minute, func() (bool, error) {
-				output, err := oc.WithoutNamespace().Run("get").Args("secrets", newKASEncSecretName, "-n", "openshift-config-managed", "-o=yaml").Output()
-				if err != nil {
-					e2e.Logf("Fail to get new encryption key secret %s, error: %s. Trying again", newKASEncSecretName, err)
-					return false, nil
-				}
-
-				if matchedStr := rePattern.FindString(output); matchedStr == "" {
-					e2e.Logf("Not yet see migrated-resources. Trying again")
-					return false, nil
-				} else {
-					e2e.Logf("Saw all migrated-resources:\n%s", matchedStr)
-					return true, nil
-				}
-			})
-
+			var completed bool
+			completed, err = WaitEncryptionKeyMigration(oc, newKASEncSecretName)
 			o.Expect(err).NotTo(o.HaveOccurred())
+			o.Expect(completed).Should(o.Equal(true))
 
 			var oasEncValPrefix2, kasEncValPrefix2 string
 			g.By("Get encryption prefix after force encryption completed")
@@ -156,6 +141,91 @@ spec:
 			o.Expect(kasEncValPrefix2).Should(o.ContainSubstring("k8s:enc:aescbc:v1"))
 			o.Expect(oasEncValPrefix2).NotTo(o.Equal(oasEncValPrefix1))
 			o.Expect(kasEncValPrefix2).NotTo(o.Equal(kasEncValPrefix1))
+		} else {
+			g.By("cluster is Etcd Encryption Off, this case intentionally runs nothing")
+		}
+	})
+
+	// author: xxia@redhat.com
+	// It is destructive case, will make kube-apiserver roll out, so adding [Disruptive]. One rollout costs about 25mins, so adding [Slow]
+	g.It("Medium-25811-Etcd encrypted cluster could self-recover when related encryption configuration is deleted [Slow][Disruptive]", func() {
+		// only run this case in Etcd Encryption On cluster
+		g.By("Check if cluster is Etcd Encryption On")
+		output, err := oc.WithoutNamespace().Run("get").Args("apiserver/cluster", "-o=jsonpath={.spec.encryption.type}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		if "aescbc" == output {
+			uidsOld, err := oc.WithoutNamespace().Run("get").Args("secret", "encryption-config-openshift-apiserver", "encryption-config-openshift-kube-apiserver", "-n", "openshift-config-managed", `-o=jsonpath={.items[*].metadata.uid}`).Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			g.By("Delete secrets encryption-config-* in openshift-config-managed")
+			for _, item := range []string{"encryption-config-openshift-apiserver", "encryption-config-openshift-kube-apiserver"} {
+				e2e.Logf("Remove finalizers from secret %s in openshift-config-managed", item)
+				err := oc.WithoutNamespace().Run("patch").Args("secret", item, "-n", "openshift-config-managed", `-p={"metadata":{"finalizers":null}}`).Execute()
+				o.Expect(err).NotTo(o.HaveOccurred())
+
+				e2e.Logf("Delete secret %s in openshift-config-managed", item)
+				err = oc.WithoutNamespace().Run("delete").Args("secret", item, "-n", "openshift-config-managed").Execute()
+				o.Expect(err).NotTo(o.HaveOccurred())
+			}
+
+			uidsOldSlice := strings.Split(uidsOld, " ")
+			e2e.Logf("uidsOldSlice = %s", uidsOldSlice)
+			err = wait.Poll(2*time.Second, 60*time.Second, func() (bool, error) {
+				uidsNew, err := oc.WithoutNamespace().Run("get").Args("secret", "encryption-config-openshift-apiserver", "encryption-config-openshift-kube-apiserver", "-n", "openshift-config-managed", `-o=jsonpath={.items[*].metadata.uid}`).Output()
+				if err != nil {
+					e2e.Logf("Fail to get new encryption-config-* secrets, error: %s. Trying again", err)
+					return false, nil
+				}
+				uidsNewSlice := strings.Split(uidsNew, " ")
+				e2e.Logf("uidsNewSlice = %s", uidsNewSlice)
+				if uidsNewSlice[0] != uidsOldSlice[0] && uidsNewSlice[1] != uidsOldSlice[1] {
+					e2e.Logf("Saw recreated secrets encryption-config-* in openshift-config-managed")
+					return true, nil
+				}
+				return false, nil
+			})
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			var oasEncNumber, kasEncNumber int
+			oasEncNumber, err = GetEncryptionKeyNumber(oc, `encryption-key-openshift-apiserver-[^ ]*`)
+			o.Expect(err).NotTo(o.HaveOccurred())
+			kasEncNumber, err = GetEncryptionKeyNumber(oc, `encryption-key-openshift-kube-apiserver-[^ ]*`)
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			oldOASEncSecretName := "encryption-key-openshift-apiserver-" + strconv.Itoa(oasEncNumber)
+			oldKASEncSecretName := "encryption-key-openshift-kube-apiserver-" + strconv.Itoa(kasEncNumber)
+			g.By("Delete secrets encryption-key-* in openshift-config-managed")
+			for _, item := range []string{oldOASEncSecretName, oldKASEncSecretName} {
+				e2e.Logf("Remove finalizers from key %s in openshift-config-managed", item)
+				err := oc.WithoutNamespace().Run("patch").Args("secret", item, "-n", "openshift-config-managed", `-p={"metadata":{"finalizers":null}}`).Execute()
+				o.Expect(err).NotTo(o.HaveOccurred())
+
+				e2e.Logf("Delete secret %s in openshift-config-managed", item)
+				err = oc.WithoutNamespace().Run("delete").Args("secret", item, "-n", "openshift-config-managed").Execute()
+				o.Expect(err).NotTo(o.HaveOccurred())
+			}
+
+			newOASEncSecretName := "encryption-key-openshift-apiserver-" + strconv.Itoa(oasEncNumber+1)
+			newKASEncSecretName := "encryption-key-openshift-kube-apiserver-" + strconv.Itoa(kasEncNumber+1)
+			g.By("Check the new encryption key secrets appear")
+			err = wait.Poll(5*time.Second, 60*time.Second, func() (bool, error) {
+				output, err := oc.WithoutNamespace().Run("get").Args("secrets", newOASEncSecretName, newKASEncSecretName, "-n", "openshift-config-managed").Output()
+				if err != nil {
+					e2e.Logf("Fail to get new encryption-key-* secrets, error: %s. Trying again", err)
+					return false, nil
+				}
+				e2e.Logf("Got new encryption-key-* secrets:\n%s", output)
+				return true, nil
+			})
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			var completed bool
+			completed, err = WaitEncryptionKeyMigration(oc, newOASEncSecretName)
+			o.Expect(err).NotTo(o.HaveOccurred())
+			o.Expect(completed).Should(o.Equal(true))
+			completed, err = WaitEncryptionKeyMigration(oc, newKASEncSecretName)
+			o.Expect(err).NotTo(o.HaveOccurred())
+			o.Expect(completed).Should(o.Equal(true))
+
 		} else {
 			g.By("cluster is Etcd Encryption Off, this case intentionally runs nothing")
 		}
