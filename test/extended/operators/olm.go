@@ -648,7 +648,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	})
 
 	// author: yhui@redhat.com
-	g.It("High-30206-Medium-30242-can include secrets and configmaps in the bundle", func() {
+	g.It("ConnectedOnly-High-30206-Medium-30242-can include secrets and configmaps in the bundle", func() {
 		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
 		operatorGroup := filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
 		catsrcImage := filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
@@ -747,7 +747,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	})
 
 	// author: yhui@redhat.com
-	g.It("Medium-30312-can allow admission webhook definitions in CSV", func() {
+	g.It("ConnectedOnly-Medium-30312-can allow admission webhook definitions in CSV", func() {
 		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
 		operatorGroup := filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
 		validatingCsv := filepath.Join(buildPruningBaseDir, "validatingwebhook-csv.yaml")
@@ -803,7 +803,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	})
 
 	// author: yhui@redhat.com
-	g.It("Medium-30317-can allow mutating admission webhook definitions in CSV", func() {
+	g.It("ConnectedOnly-Medium-30317-can allow mutating admission webhook definitions in CSV", func() {
 		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
 		operatorGroup := filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
 		mutatingCsv := filepath.Join(buildPruningBaseDir, "mutatingwebhook-csv.yaml")
@@ -860,7 +860,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	})
 
 	// author: yhui@redhat.com
-	g.It("Medium-30319-Admission Webhook Configuration names should be unique", func() {
+	g.It("ConnectedOnly-Medium-30319-Admission Webhook Configuration names should be unique", func() {
 		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
 		operatorGroup := filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
 		validatingCsv := filepath.Join(buildPruningBaseDir, "validatingwebhook-csv.yaml")
@@ -914,7 +914,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	})
 
 	// author: yhui@redhat.com
-	g.It("High-34181-can add conversion webhooks for singleton operators", func() {
+	g.It("ConnectedOnly-High-34181-can add conversion webhooks for singleton operators", func() {
 		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
 		catsrcImage := filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
 		cockroachdbSub := filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
@@ -982,7 +982,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	})
 
 	// author: yhui@redhat.com
-	g.It("High-29809-can complete automatical updates based on replaces", func() {
+	g.It("ConnectedOnly-High-29809-can complete automatical updates based on replaces", func() {
 		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
 		operatorGroup := filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
 		catsrcImage := filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
