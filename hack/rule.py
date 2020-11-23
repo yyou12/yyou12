@@ -9,6 +9,8 @@ sigNameList = sigName.replace(' ', '').split(",")
 subTeam = "SDN,Storage,Developer_Experience,User_Interface,PerfScale,Service_Development_B,Node,Logging,Apiserver_and_Auth,Workloads,Metering,Cluster_Observability,Quay/Quay.io,Cluster_Infrastructure,Multi-Cluster,Cluster_Operator,Azure,Network_Edge,Etcd,Installer,Portfolio_Integration,Service_Development_A,OLM,Operator_SDK,App_Migration,Windows_Containers,Security_and_Compliance,KNI,Openshift_Jenkins,RHV,ISV_Operators,PSAP,Multi-Cluster-Networking,OTA"
 subTeamList = subTeam.replace(' ', '').split(",")
 
+importance = ["Critical","High","Medium","Low"]
+
 patternDescribe = re.compile('\+.*g.Describe\(\"(\[(.*)\]\s(.*)\")')
 patternIt = re.compile('\+\s+g.It\(\".*\"')
 
@@ -42,10 +44,14 @@ for des in desContent:
 		raise Exception("please check the sig or team name above")
 
 if len(itContent) > 0:
-	mod = re.compile('g.It\((.*)-(\d+)-(.*)')
+	mod = re.compile('g.It\((\"\D*)*(((?:Critical|High|Medium|Low)-\d+-)+)(.*)')
 	for it in itContent:
 		itMode = mod.findall(it)
 		if len(itMode) > 0:
+			for imp in importance:
+				if imp.lower() in itMode[0][0].lower():
+					print "FAIL! please follow the naming rule: %s" % (it)
+					raise Exception("please check g.It title name above") 
 			print "PASS! title name looks good!", it
 		else:
 			print "FAIL! please follow the naming rule: %s" % (it)
