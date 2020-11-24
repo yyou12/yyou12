@@ -42,6 +42,20 @@ func (csuite *complianceSuiteDescription) delete(itName string, dr describerResr
 	dr.getIr(itName).remove(csuite.name, "compliancesuite", csuite.namespace)
 }
 
+type objectTableRef struct {
+	kind      string
+	namespace string
+	name      string
+}
+
+func cleanupObjects(oc *exutil.CLI, objs ...objectTableRef) {
+	for _, v := range objs {
+		e2e.Logf("Start to remove: %v", v)
+		_, err := oc.AsAdmin().WithoutNamespace().Run("delete").Args(v.kind, "-n", v.namespace, v.name).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+	}
+}
+
 type complianceScanDescription struct {
 	name         string
 	namespace    string
