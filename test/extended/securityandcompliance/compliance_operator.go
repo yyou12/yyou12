@@ -370,7 +370,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		e2e.Logf("Here namespace : %v\n", catSrc.namespace)
 		csuite.create(oc, itName, dr)
 
-		g.By("Check complianceSuitec Status !!!\n")
+		g.By("Check complianceSuite Status !!!\n")
 		csuite.checkComplianceSuiteStatus(oc, "DONE")
 
 		g.By("Check worker scan pods status !!! \n")
@@ -881,7 +881,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 				template:     cscanTemplate,
 			}
 
-			cscanMD = complianceSuiteDescription{
+			cscanMD = complianceScanDescription{
 				name:         "master-scan",
 				namespace:    "",
 				profile:      "xccdf_org.ssgproject.content_profile_moderate",
@@ -1110,7 +1110,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 	g.It("Medium-27968-Perform scan only on a subset of nodes using ComplianceScan object", func() {
 
 		var (
-			cscanMD = complianceSuiteDescription{
+			cscanMD = complianceScanDescription{
 				name:         "master-scan",
 				namespace:    "",
 				profile:      "xccdf_org.ssgproject.content_profile_moderate",
