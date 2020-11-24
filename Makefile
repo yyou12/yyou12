@@ -13,7 +13,7 @@ nightly-test:
 	./hack/nightly_test.sh
 
 name-check:
-	python ./hack/rule.py 
+	./hack/rule.py 
 
 # Include the library makefile
 include $(addprefix ./vendor/github.com/openshift/library-go/alpha-build-machinery/make/, \

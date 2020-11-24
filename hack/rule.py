@@ -1,9 +1,10 @@
+#!/usr/bin/env python3
 import re, os
 
 log = os.popen('git log', 'r').read()
-print log
+print(log)
 content = os.popen('git show -m', 'r').read()
-print content
+print(content)
 
 sigName = "sig-arch,sig-isc,sig-api-machinery,sig-auth,sig-apps,sig-cli,sig-scheduling,sig-etcd,sig-network,sig-network-edge,sig-storage,sig-openshift-logging,sig-devex, sig-builds,sig-ui,sig-instrumentation,sig-service-catalog,sig-operators,sig-imageregistry,sig-service-catalog,sig-hive,sig-windows,sig-testing,sig-scalability,sig-node,sig-node,sig-cluster-lifecycle,sig-node"
 sigNameList = sigName.replace(' ', '').split(",")
@@ -19,8 +20,8 @@ patternIt = re.compile('\+\s+g.It\(\".*\"')
 itContent = patternIt.findall(content)
 desContent = patternDescribe.findall(content)
 
-print "Des:", desContent
-print "it:", itContent
+print("Des:", desContent)
+print("it:", itContent)
 
 findSig = False
 findTeam = False
@@ -30,19 +31,19 @@ for des in desContent:
 	for sig in sigNameList:
 		if sig in des[1]:
 			findSig = True
-			print "Description: %s, sigName: %s" % (des, sig)
+			print("Description: %s, sigName: %s" % (des, sig))
 			break
 	# des[2] stores the sub team
 	for team in subTeamList:
 		if team in des[2]:
 			findTeam = True
-			print "Description: %s, teamNamee: %s" % (des, team)
+			print("Description: %s, teamNamee: %s" % (des, team))
 			break
 	
 	if findSig and findTeam:
-		print "PASS! sig name: %s | sub team: %s" % (des[1], des[2])
+		print("PASS! sig name: %s | sub team: %s" % (des[1], des[2]))
 	else:
-		print "FAIL! sig or team name doesn't exist: %s" % (des[0],)
+		print("FAIL! sig or team name doesn't exist: %s" % (des[0],))
 		raise Exception("please check the sig or team name above")
 
 if len(itContent) > 0:
@@ -52,9 +53,9 @@ if len(itContent) > 0:
 		if len(itMode) > 0:
 			for imp in importance:
 				if imp.lower() in itMode[0][0].lower():
-					print "FAIL! please follow the naming rule: %s" % (it)
+					print("FAIL! please follow the naming rule: %s" % (it))
 					raise Exception("please check g.It title name above") 
-			print "PASS! title name looks good!", it
+			print("PASS! title name looks good!", it)
 		else:
-			print "FAIL! please follow the naming rule: %s" % (it)
+			print("FAIL! please follow the naming rule: %s" % (it))
 			raise Exception("please check g.It title name above") 
