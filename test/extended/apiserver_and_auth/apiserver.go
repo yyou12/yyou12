@@ -4,6 +4,7 @@ import (
 	"time"
 	"strconv"
 	"strings"
+	"regexp"
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	g "github.com/onsi/ginkgo"
@@ -225,6 +226,138 @@ spec:
 			completed, err = WaitEncryptionKeyMigration(oc, newKASEncSecretName)
 			o.Expect(err).NotTo(o.HaveOccurred())
 			o.Expect(completed).Should(o.Equal(true))
+
+		} else {
+			g.By("cluster is Etcd Encryption Off, this case intentionally runs nothing")
+		}
+	})
+
+	// author: xxia@redhat.com
+	// It is destructive case, will make openshift-kube-apiserver and openshift-apiserver namespaces deleted, so adding [Disruptive].
+	// In test the recovery costs about 22mins in max, so adding [Slow]
+	g.It("Medium-36801-Etcd encrypted cluster could self-recover when related encryption namespaces are deleted [Slow][Disruptive]", func() {
+		// only run this case in Etcd Encryption On cluster
+		g.By("Check if cluster is Etcd Encryption On")
+		encryptionType, err := oc.WithoutNamespace().Run("get").Args("apiserver/cluster", "-o=jsonpath={.spec.encryption.type}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		if "aescbc" == encryptionType {
+			jsonPath := `{.items[?(@.metadata.finalizers[0]=="encryption.apiserver.operator.openshift.io/deletion-protection")].metadata.name}`
+
+			secretNames, err := oc.WithoutNamespace().Run("get").Args("secret", "-n", "openshift-apiserver", "-o=jsonpath=" + jsonPath).Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			// These secrets have deletion-protection finalizers by design. Remove finalizers, otherwise deleting the namespaces will be stuck
+			e2e.Logf("Remove finalizers from secret %s in openshift-apiserver", secretNames)
+			for _, item := range strings.Split(secretNames, " ") {
+				err := oc.WithoutNamespace().Run("patch").Args("secret", item, "-n", "openshift-apiserver", `-p={"metadata":{"finalizers":null}}`).Execute()
+				o.Expect(err).NotTo(o.HaveOccurred())
+			}
+
+			e2e.Logf("Remove finalizers from secret %s in openshift-kube-apiserver", secretNames)
+			secretNames, err = oc.WithoutNamespace().Run("get").Args("secret", "-n", "openshift-kube-apiserver", "-o=jsonpath=" + jsonPath).Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			for _, item := range strings.Split(secretNames, " ") {
+				err := oc.WithoutNamespace().Run("patch").Args("secret", item, "-n", "openshift-kube-apiserver", `-p={"metadata":{"finalizers":null}}`).Execute()
+				o.Expect(err).NotTo(o.HaveOccurred())
+			}
+
+			var uidsOld string
+			uidsOld, err = oc.WithoutNamespace().Run("get").Args("ns", "openshift-kube-apiserver", "openshift-apiserver", `-o=jsonpath={.items[*].metadata.uid}`).Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			uidOldKasNs, uidOldOasNs := strings.Split(uidsOld, " ")[0], strings.Split(uidsOld, " ")[1]
+
+			e2e.Logf("Check openshift-kube-apiserver pods' revisions before deleting namespace")
+			oc.WithoutNamespace().Run("get").Args("po", "-n", "openshift-kube-apiserver", "-l=apiserver", "-L=revision").Execute()
+			g.By("Delete namespaces: openshift-kube-apiserver, openshift-apiserver in the background")
+			oc.WithoutNamespace().Run("delete").Args("ns", "openshift-kube-apiserver", "openshift-apiserver").Background()
+			// Deleting openshift-kube-apiserver may usually need to hang 1+ minutes and then exit.
+			// But sometimes (not always, though) if race happens, it will hang forever. We need to handle this as below code
+			isKasNsNew, isOasNsNew := false, false
+			// In test, observed the max wait time can be 4m, so the parameter is larger
+			err = wait.Poll(5*time.Second, 6*time.Minute, func() (bool, error) {
+				if ! isKasNsNew {
+					uidNewKasNs, err := oc.WithoutNamespace().Run("get").Args("ns", "openshift-kube-apiserver", `-o=jsonpath={.metadata.uid}`).Output()
+					if err == nil {
+						if uidNewKasNs != uidOldKasNs {
+							isKasNsNew = true
+							oc.WithoutNamespace().Run("get").Args("ns", "openshift-kube-apiserver").Execute()
+							e2e.Logf("New ns/openshift-kube-apiserver is seen")
+
+						} else {
+							stuckTerminating, _ := oc.WithoutNamespace().Run("get").Args("ns", "openshift-kube-apiserver", `-o=jsonpath={.status.conditions[?(@.type=="NamespaceFinalizersRemaining")].status}`).Output()
+							if stuckTerminating == "True" {
+								// We need to handle the race (not always happening) by removing new secrets' finazliers to make namepace not stuck in Terminating
+								e2e.Logf("Hit race: when ns/openshift-kube-apiserver is Terminating, new encryption-config secrets are seen")
+								secretNames, _, _ := oc.WithoutNamespace().Run("get").Args("secret", "-n", "openshift-kube-apiserver", "-o=jsonpath=" + jsonPath).Outputs()
+								for _, item := range strings.Split(secretNames, " ") {
+									oc.WithoutNamespace().Run("patch").Args("secret", item, "-n", "openshift-kube-apiserver", `-p={"metadata":{"finalizers":null}}`).Execute()
+								}
+							}
+						}
+					}
+				}
+				if ! isOasNsNew {
+					uidNewOasNs, err := oc.WithoutNamespace().Run("get").Args("ns", "openshift-apiserver", `-o=jsonpath={.metadata.uid}`).Output()
+					if err == nil {
+						if uidNewOasNs != uidOldOasNs {
+							isOasNsNew = true
+							oc.WithoutNamespace().Run("get").Args("ns", "openshift-apiserver").Execute()
+							e2e.Logf("New ns/openshift-apiserver is seen")
+						}
+					}
+				}
+				if isKasNsNew && isOasNsNew {
+					e2e.Logf("Now new openshift-apiserver and openshift-kube-apiserver namespaces are both seen")
+					return true, nil
+				}
+
+				return false, nil
+			})
+
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			// After new namespaces are seen, it goes to self recovery
+			err = wait.Poll(2*time.Second, 2*time.Minute, func() (bool, error) {
+				output, err := oc.WithoutNamespace().Run("get").Args("co/kube-apiserver").Output()
+				if err == nil {
+					matched, _ := regexp.MatchString("True.*True.*(True|False)", output)
+					if matched {
+						e2e.Logf("Detected self recovery is in progress\n%s", output)
+						return true, nil
+					}
+				}
+				return false, nil
+			})
+			o.Expect(err).NotTo(o.HaveOccurred())
+			e2e.Logf("Check openshift-kube-apiserver pods' revisions when self recovery is in progress")
+			oc.WithoutNamespace().Run("get").Args("po", "-n", "openshift-kube-apiserver", "-l=apiserver", "-L=revision").Execute()
+
+			// In test the recovery costs about 22mins in max, so the parameter is larger
+			err = wait.Poll(10*time.Second, 25*time.Minute, func() (bool, error) {
+				output, err := oc.WithoutNamespace().Run("get").Args("co/kube-apiserver").Output()
+				if err == nil {
+					matched, _ := regexp.MatchString("True.*False.*False", output)
+					if matched {
+						time.Sleep(100 * time.Second)
+						output, err := oc.WithoutNamespace().Run("get").Args("co/kube-apiserver").Output()
+						if err == nil {
+							if matched, _ := regexp.MatchString("True.*False.*False", output); matched {
+								e2e.Logf("co/kubeapiserver True False False already lasts 100s. Means status is stable enough. Recovery completed\n%s", output)
+								e2e.Logf("Check openshift-kube-apiserver pods' revisions when recovery completed")
+								oc.WithoutNamespace().Run("get").Args("po", "-n", "openshift-kube-apiserver", "-l=apiserver", "-L=revision").Execute()
+								return true, nil
+							}
+						}
+					}
+				}
+				return false, nil
+			})
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			var output string
+			output, err = oc.WithoutNamespace().Run("get").Args("co/openshift-apiserver").Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			matched, _ := regexp.MatchString("True.*False.*False", output)
+			o.Expect(matched).Should(o.Equal(true))
 
 		} else {
 			g.By("cluster is Etcd Encryption Off, this case intentionally runs nothing")
