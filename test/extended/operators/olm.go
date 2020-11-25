@@ -2274,6 +2274,77 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 
 	})
 
+        // author: tbuskey@redhat.com
+        g.It("Medium-25782-CatalogSource Status should have information on last observed state", func() {
+			var err error
+			var (
+				catName             = "installed-community-25782-global-operators"
+				msg                 = ""
+				buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
+				// the namespace and catName are hardcoded in the files
+				cmTemplate          = filepath.Join(buildPruningBaseDir, "cm-csv-etcd.yaml")
+				catsrcCmTemplate    = filepath.Join(buildPruningBaseDir, "catalogsource-configmap.yaml")
+			)
+
+			oc.SetupProject()
+			itName           := g.CurrentGinkgoTestDescription().TestText
+
+			var (
+				cm = configMapDescription{
+					name:        catName,
+					namespace:   oc.Namespace(),
+					template:    cmTemplate,
+				}
+				catsrc = catalogSourceDescription{
+					name:        catName,
+					namespace:   oc.Namespace(),
+					displayName: "Community bad Operators",
+					publisher:   "QE",
+					sourceType:  "configmap",
+					address:     catName,
+					template:    catsrcCmTemplate,
+				}
+			)
+			
+			g.By("Create ConfigMap with bad operator manifest")
+			cm.create(oc, itName, dr)
+
+			// Make sure bad configmap was created
+			g.By("Check configmap")
+			msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("cm", "-n", oc.Namespace()).Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			o.Expect(strings.Contains(msg, catName)).To(o.BeTrue())
+
+			g.By("Create catalog source")
+			catsrc.create(oc, itName, dr)
+			
+			g.By("Wait for pod to fail")
+			waitErr := wait.Poll(3*time.Second, 180*time.Second, func() (bool, error) {
+					msg, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-n", oc.Namespace()).Output()
+					e2e.Logf("\n%v", msg)
+					o.Expect(err).NotTo(o.HaveOccurred())
+					if strings.Contains(msg, "CrashLoopBackOff") {
+							e2e.Logf("STEP pod is in  CrashLoopBackOff as expected")
+							return true, nil
+					}
+					return false, nil
+			})
+			o.Expect(waitErr).NotTo(o.HaveOccurred())
+
+			g.By("Check catsrc state for TRANSIENT_FAILURE in lastObservedState")
+			waitErr = wait.Poll(3*time.Second, 180*time.Second, func() (bool, error) {
+					msg, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("catalogsource", catName, "-n", oc.Namespace(), "-o=jsonpath={.status}").Output()
+					o.Expect(err).NotTo(o.HaveOccurred())
+					if strings.Contains(msg, "TRANSIENT_FAILURE") && strings.Contains(msg, "lastObservedState"){
+							msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("catalogsource", catName, "-n", oc.Namespace(), "-o=jsonpath={.status.connectionState.lastObservedState}").Output()
+							e2e.Logf("catalogsource had lastObservedState =  %v as expected ", msg)
+							return true, nil
+					}
+				   return false, nil
+			})
+			o.Expect(waitErr).NotTo(o.HaveOccurred())
+			e2e.Logf("cleaning up")
+	})
 })
 
 var _ = g.Describe("[sig-operators] OLM for an end user handle to support", func() {
