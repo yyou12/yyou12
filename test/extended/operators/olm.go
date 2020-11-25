@@ -2171,9 +2171,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 			}
 		)
 
-		dr := make(describerResrouce)
 		itName := g.CurrentGinkgoTestDescription().TestText
-		dr.addIr(itName)
 		nameSpace := oc.Namespace()
 
 		g.By("Create og")
@@ -2263,14 +2261,14 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 			msg, err = oc.AsAdmin().WithoutNamespace().Run("login").Args(fmt.Sprintf("--token=%v", kToken)).Output()
 			o.Expect(err).NotTo(o.HaveOccurred())
 			o.Expect(msg).NotTo(o.BeEmpty())
-			e2e.Logf("kubeadmin message:", msg)
+			e2e.Logf("kubeadmin message: %v", msg)
 			o.Expect(strings.Contains(msg, "You can list all projects")).To(o.BeTrue())
 			e2e.Logf("SUCCESS - logged in as kubeadmin")
 
 		}()
 
 		o.Expect(msg).NotTo(o.BeEmpty())
-		e2e.Logf("login message:", msg)
+		e2e.Logf("login message: %v", msg)
 		o.Expect(strings.Contains(msg, "You don't have any projects")).To(o.BeTrue())
 		e2e.Logf("pass - logged in as strimzi-cluster-operator")
 
