@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 import re, os
 
-content = os.popen('git show $(git rev-parse HEAD)', 'r').read()
+log = os.popen('git log -p -3', 'r').read()
+print(log)
+content = os.popen('git show -m', 'r').read()
 print(content)
 
 sigName = "sig-arch,sig-isc,sig-api-machinery,sig-auth,sig-apps,sig-cli,sig-scheduling,sig-etcd,sig-network,sig-network-edge,sig-storage,sig-openshift-logging,sig-devex, sig-builds,sig-ui,sig-instrumentation,sig-service-catalog,sig-operators,sig-imageregistry,sig-service-catalog,sig-hive,sig-windows,sig-testing,sig-scalability,sig-node,sig-node,sig-cluster-lifecycle,sig-node"
