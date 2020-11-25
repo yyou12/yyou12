@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import re, os
 
-log = os.popen('git log', 'r').read()
+log = os.popen('git log -p -3', 'r').read()
 print(log)
 content = os.popen('git show -m', 'r').read()
 print(content)
