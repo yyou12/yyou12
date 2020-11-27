@@ -1,6 +1,8 @@
 package securityandcompliance
 
 import (
+	"strings"
+
 	g "github.com/onsi/ginkgo"
 	o "github.com/onsi/gomega"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
@@ -777,6 +779,239 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			subD.getPVCSize(oc, "3Gi")
 
 			g.By("The ocp-33230 complianceScan has performed successfully and storage size verified ..!!!\n")
+		})
+
+		// author: pdhamdhe@redhat.com
+		g.It("High-33609-Verify the tolerations could work for compliancesuite [Serial]", func() {
+
+			var (
+				csuiteD = complianceSuiteDescription{
+					name:         "worker-compliancesuite",
+					namespace:    "",
+					scanname:     "worker-scan",
+					profile:      "xccdf_org.ssgproject.content_profile_moderate",
+					content:      "ssg-rhcos4-ds.xml",
+					contentImage: "quay.io/complianceascode/ocp4:latest",
+					rule:         "xccdf_org.ssgproject.content_rule_no_netrc_files",
+					key:          "key1",
+					value:        "value1",
+					operator:     "Equal",
+					nodeSelector: "wscan",
+					template:     csuiteTemplate,
+				}
+				csuite = complianceSuiteDescription{
+					name:         "worker-compliancesuite",
+					namespace:    "",
+					scanname:     "worker-scan",
+					profile:      "xccdf_org.ssgproject.content_profile_moderate",
+					content:      "ssg-rhcos4-ds.xml",
+					contentImage: "quay.io/complianceascode/ocp4:latest",
+					rule:         "xccdf_org.ssgproject.content_rule_no_netrc_files",
+					key:          "key1",
+					value:        "",
+					operator:     "Exists",
+					nodeSelector: "wscan",
+					template:     csuiteTemplate,
+				}
+				itName = g.CurrentGinkgoTestDescription().TestText
+			)
+
+			// adding label to rhcos worker node to skip rhel worker node if any
+			g.By("Label all rhcos worker nodes as wscan.. !!!\n")
+			setLabelToNode(oc)
+
+			g.By("Label and set taint to one worker node.. !!!\n")
+			//	setTaintLabelToWorkerNode(oc)
+			//	setTaintToWorkerNodeWithValue(oc)
+			nodeName := getOneWorkerNodeName(oc)
+			defer func() {
+				output, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("node", nodeName, "-o=jsonpath={.spec.taints}").Output()
+				if strings.Contains(output, "value1") {
+					taintNode(oc, "taint", "node", nodeName, "key1=value1:NoSchedule-")
+				}
+				output1, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("node", nodeName, "-o=jsonpath={.spec.taints[0].key}").Output()
+				if strings.Contains(output1, "key1") {
+					taintNode(oc, "taint", "node", nodeName, "key1=:NoSchedule-")
+				}
+				output2, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("node", nodeName, "-o=jsonpath={.metadata.labels.taint}").Output()
+				if strings.Contains(output2, "true") {
+					labelTaintNode(oc, "node", nodeName, "taint-")
+				}
+			}()
+			taintNode(oc, "taint", "node", nodeName, "key1=value1:NoSchedule")
+			labelTaintNode(oc, "node", nodeName, "taint=true")
+
+			csuiteD.namespace = subD.namespace
+			g.By("Create compliancesuite.. !!!\n")
+			csuiteD.create(oc, itName, dr)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", csuiteD.name, "-n",
+				subD.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+
+			g.By("Check worker scan pods status.. !!! \n")
+			subD.scanPodStatus(oc, "Succeeded")
+
+			g.By("Check complianceSuite name and result.. !!!\n")
+			subD.complianceSuiteName(oc, "worker-compliancesuite")
+			subD.complianceSuiteResult(oc, "COMPLIANT")
+
+			g.By("Check complianceScan result exit-code through configmap.. !!!\n")
+			subD.getScanExitCodeFromConfigmap(oc, "0")
+
+			g.By("Verify if pod generated for tainted node.. !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, nodeName, ok, []string{"pods", "-n", subD.namespace, "--selector=workload=scanner",
+				"-o=jsonpath={.items[*].metadata.name}"}).check(oc)
+
+			g.By("Remove csuite and taint label from worker node.. !!!\n")
+			csuiteD.delete(itName, dr)
+			taintNode(oc, "taint", "node", nodeName, "key1=value1:NoSchedule-")
+
+			g.By("Taint worker node without value.. !!!\n")
+			/*	defer func() {
+				taintNode(oc, "taint", "node", nodeName, "key1=:NoSchedule-")
+			}()*/
+			taintNode(oc, "taint", "node", nodeName, "key1=:NoSchedule")
+
+			csuite.namespace = subD.namespace
+			g.By("Create compliancesuite.. !!!\n")
+			csuite.create(oc, itName, dr)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", csuite.name, "-n",
+				subD.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+
+			g.By("Check worker scan pods status.. !!! \n")
+			subD.scanPodStatus(oc, "Succeeded")
+
+			g.By("Check complianceSuite name and result.. !!!\n")
+			subD.complianceSuiteName(oc, "worker-compliancesuite")
+			subD.complianceSuiteResult(oc, "COMPLIANT")
+
+			g.By("Check complianceScan result exit-code through configmap...!!!\n")
+			subD.getScanExitCodeFromConfigmap(oc, "0")
+
+			g.By("Verify if the pod generated for tainted node...!!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, nodeName, ok, []string{"pods", "-n", subD.namespace, "--selector=workload=scanner",
+				"-o=jsonpath={.items[*].metadata.name}"}).check(oc)
+
+			g.By("Remove csuite, taint label and key from worker node.. !!!\n")
+			csuite.delete(itName, dr)
+			taintNode(oc, "taint", "node", nodeName, "key1=:NoSchedule-")
+			labelTaintNode(oc, "node", nodeName, "taint-")
+			//	removeTaintKeyFromWorkerNode(oc)
+			//	removeTaintLabelFromWorkerNode(oc)
+
+			g.By("ocp-33609 The compliance scan performed on tained node successfully.. !!!\n")
+
+		})
+
+		// author: pdhamdhe@redhat.com
+		g.It("High-33610-Verify the tolerations could work for compliancescan [Serial]", func() {
+
+			var (
+				cscanD = complianceScanDescription{
+					name:         "worker-scan",
+					namespace:    "",
+					profile:      "xccdf_org.ssgproject.content_profile_moderate",
+					content:      "ssg-rhcos4-ds.xml",
+					contentImage: "quay.io/complianceascode/ocp4:latest",
+					rule:         "xccdf_org.ssgproject.content_rule_no_netrc_files",
+					key:          "key1",
+					value:        "value1",
+					operator:     "Equal",
+					nodeSelector: "wscan",
+					template:     cscanTemplate,
+				}
+				cscan = complianceSuiteDescription{
+					name:         "worker-scan",
+					namespace:    "",
+					profile:      "xccdf_org.ssgproject.content_profile_moderate",
+					content:      "ssg-rhcos4-ds.xml",
+					contentImage: "quay.io/complianceascode/ocp4:latest",
+					rule:         "xccdf_org.ssgproject.content_rule_no_netrc_files",
+					key:          "key1",
+					value:        "",
+					operator:     "Exists",
+					nodeSelector: "wscan",
+					template:     cscanTemplate,
+				}
+				itName = g.CurrentGinkgoTestDescription().TestText
+			)
+
+			// adding label to rhcos worker node to skip rhel worker node if any
+			g.By("Label all rhcos worker nodes as wscan.. !!!\n")
+			setLabelToNode(oc)
+
+			g.By("Label and set taint value to one worker node.. !!!\n")
+			nodeName := getOneWorkerNodeName(oc)
+			defer func() {
+				output, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("node", nodeName, "-o=jsonpath={.spec.taints}").Output()
+				if strings.Contains(output, "value1") {
+					taintNode(oc, "taint", "node", nodeName, "key1=value1:NoSchedule-")
+				}
+				output1, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("node", nodeName, "-o=jsonpath={.spec.taints[0].key}").Output()
+				if strings.Contains(output1, "key1") {
+					taintNode(oc, "taint", "node", nodeName, "key1=:NoSchedule-")
+				}
+				output2, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("node", nodeName, "-o=jsonpath={.metadata.labels.taint}").Output()
+				if strings.Contains(output2, "true") {
+					labelTaintNode(oc, "node", nodeName, "taint-")
+				}
+			}()
+			taintNode(oc, "taint", "node", nodeName, "key1=value1:NoSchedule")
+			labelTaintNode(oc, "node", nodeName, "taint=true")
+
+			cscanD.namespace = subD.namespace
+			g.By("Create compliancescan.. !!!\n")
+			cscanD.create(oc, itName, dr)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancescan", cscanD.name, "-n",
+				subD.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+
+			g.By("Check worker scan pods status.. !!! \n")
+			subD.scanPodStatus(oc, "Succeeded")
+
+			g.By("Check complianceScan name and result.. !!!\n")
+			subD.complianceScanName(oc, "worker-scan")
+			subD.complianceScanResult(oc, "COMPLIANT")
+
+			g.By("Check complianceScan result exit-code through configmap.. !!!\n")
+			subD.getScanExitCodeFromConfigmap(oc, "0")
+
+			g.By("Verify if scan pod generated for tainted node.. !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, nodeName, ok, []string{"pods", "-n", subD.namespace, "--selector=workload=scanner",
+				"-o=jsonpath={.items[*].metadata.name}"}).check(oc)
+
+			g.By("Remove compliancescan object and recover tainted worker node.. !!!\n")
+			cscanD.delete(itName, dr)
+			taintNode(oc, "taint", "node", nodeName, "key1=value1:NoSchedule-")
+
+			g.By("Set taint to worker node without value.. !!!\n")
+			taintNode(oc, "taint", "node", nodeName, "key1=:NoSchedule")
+
+			cscan.namespace = subD.namespace
+			g.By("Create compliancescan.. !!!\n")
+			cscan.create(oc, itName, dr)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancescan", cscan.name, "-n",
+				subD.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+
+			g.By("Check worker scan pods status.. !!! \n")
+			subD.scanPodStatus(oc, "Succeeded")
+
+			g.By("Check complianceScan name and result.. !!!\n")
+			subD.complianceScanName(oc, "worker-compliancescan")
+			subD.complianceScanResult(oc, "COMPLIANT")
+
+			g.By("Check complianceScan result exit-code through configmap...!!!\n")
+			subD.getScanExitCodeFromConfigmap(oc, "0")
+
+			g.By("Verify if the scan pod generated for tainted node...!!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, nodeName, ok, []string{"pods", "-n", subD.namespace, "--selector=workload=scanner",
+				"-o=jsonpath={.items[*].metadata.name}"}).check(oc)
+
+			g.By("Remove compliancescan object and taint label and key from worker node.. !!!\n")
+			cscan.delete(itName, dr)
+			taintNode(oc, "taint", "node", nodeName, "key1=:NoSchedule-")
+			labelTaintNode(oc, "node", nodeName, "taint-")
+
+			g.By("ocp-33610 The compliance scan performed on tained node successfully.. !!!\n")
+
 		})
 
 		// author: pdhamdhe@redhat.com

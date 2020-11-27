@@ -23,6 +23,9 @@ type complianceSuiteDescription struct {
 	rule                string
 	debug               bool
 	noExternalResources bool
+	key                 string
+	value               string
+	operator            string
 	nodeSelector        string
 	size                string
 	tailoringConfigMap  string
@@ -32,8 +35,8 @@ type complianceSuiteDescription struct {
 func (csuite *complianceSuiteDescription) create(oc *exutil.CLI, itName string, dr describerResrouce) {
 	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", csuite.template, "-p", "NAME="+csuite.name, "NAMESPACE="+csuite.namespace,
 		"SCANNAME="+csuite.scanname, "SCANTYPE="+csuite.scanType, "PROFILE="+csuite.profile, "CONTENT="+csuite.content, "CONTENTIMAGE="+csuite.contentImage,
-		"RULE="+csuite.rule, "NOEXTERNALRESOURCES="+strconv.FormatBool(csuite.noExternalResources), "NODESELECTOR="+csuite.nodeSelector, "SIZE="+csuite.size,
-		"TAILORCONFIGMAPNAME="+csuite.tailoringConfigMap)
+		"RULE="+csuite.rule, "NOEXTERNALRESOURCES="+strconv.FormatBool(csuite.noExternalResources), "KEY="+csuite.key, "VALUE="+csuite.value,
+		"OPERATOR="+csuite.operator, "NODESELECTOR="+csuite.nodeSelector, "SIZE="+csuite.size, "TAILORCONFIGMAPNAME="+csuite.tailoringConfigMap)
 	o.Expect(err).NotTo(o.HaveOccurred())
 	dr.getIr(itName).add(newResource(oc, "compliancesuite", csuite.name, requireNS, csuite.namespace))
 }
@@ -65,6 +68,9 @@ type complianceScanDescription struct {
 	contentImage string
 	rule         string
 	debug        bool
+	key          string
+	value        string
+	operator     string
 	nodeSelector string
 	size         string
 	template     string
@@ -73,7 +79,8 @@ type complianceScanDescription struct {
 func (cscan *complianceScanDescription) create(oc *exutil.CLI, itName string, dr describerResrouce) {
 	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", cscan.template, "-p", "NAME="+cscan.name,
 		"NAMESPACE="+cscan.namespace, "SCANTYPE="+cscan.scanType, "PROFILE="+cscan.profile, "CONTENT="+cscan.content,
-		"CONTENTIMAGE="+cscan.contentImage, "RULE="+cscan.rule, "NODESELECTOR="+cscan.nodeSelector, "SIZE="+cscan.size)
+		"CONTENTIMAGE="+cscan.contentImage, "RULE="+cscan.rule, "KEY="+cscan.key, "VALUE="+cscan.value, "OPERATOR="+cscan.operator,
+		"NODESELECTOR="+cscan.nodeSelector, "SIZE="+cscan.size)
 	o.Expect(err).NotTo(o.HaveOccurred())
 	dr.getIr(itName).add(newResource(oc, "compliancescan", cscan.name, requireNS, cscan.namespace))
 }

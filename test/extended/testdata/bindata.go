@@ -6883,6 +6883,11 @@ objects:
     contentImage: "${CONTENTIMAGE}"
     rule: "${RULE}"
     debug: true
+    scanTolerations:
+    - effect: NoSchedule
+      key: "${KEY}"
+      value: "${VALUE}"
+      operator: "${OPERATOR}"
     nodeSelector:
       node-role.kubernetes.io/${NODESELECTOR}: ""
     rawResultStorage:
@@ -6896,6 +6901,9 @@ parameters:
 - name: CONTENT
 - name: CONTENTIMAGE
 - name: RULE
+- name: KEY
+- name: VALUE
+- name: OPERATOR
 - name: NODESELECTOR
 - name: SIZE
 `)
@@ -6937,6 +6945,11 @@ objects:
         rule: "${RULE}"
         debug: true
         noExternalResources: ${{NOEXTERNALRESOURCES}}
+        scanTolerations:
+        - effect: NoSchedule
+          key: "${KEY}"
+          value: "${VALUE}"
+          operator: "${OPERATOR}"
         nodeSelector: 
           node-role.kubernetes.io/${NODESELECTOR}: ""
         rawResultStorage:
@@ -6952,6 +6965,9 @@ parameters:
 - name: CONTENTIMAGE
 - name: RULE
 - name: NOEXTERNALRESOURCES
+- name: KEY
+- name: VALUE
+- name: OPERATOR
 - name: NODESELECTOR
 - name: SIZE
 `)

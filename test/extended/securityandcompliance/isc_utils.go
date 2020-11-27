@@ -456,3 +456,8 @@ func taintNode(oc *exutil.CLI, parameters ...string) {
 	_, err := doAction(oc, "adm", asAdmin, withoutNamespace, parameters...)
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
+
+func labelTaintNode(oc *exutil.CLI, parameters ...string) {
+	_, err := doAction(oc, "label", asAdmin, withoutNamespace, parameters...)
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
