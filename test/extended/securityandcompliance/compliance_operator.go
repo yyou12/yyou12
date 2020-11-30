@@ -23,7 +23,9 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		subCoTemplate          = filepath.Join(buildPruningBaseDir, "subscription.yaml")
 		csuiteTemplate         = filepath.Join(buildPruningBaseDir, "compliancesuite.yaml")
 		csuitetpcmTemplate     = filepath.Join(buildPruningBaseDir, "compliancesuitetpconfmap.yaml")
+		csuitetaintTemplate    = filepath.Join(buildPruningBaseDir, "compliancesuitetaint.yaml")
 		cscanTemplate          = filepath.Join(buildPruningBaseDir, "compliancescan.yaml")
+		cscantaintTemplate     = filepath.Join(buildPruningBaseDir, "compliancescantaint.yaml")
 		tprofileTemplate       = filepath.Join(buildPruningBaseDir, "tailoredprofile.yaml")
 		scansettingYAML        = filepath.Join(buildPruningBaseDir, "scansetting.yaml")
 		scansettingbindingYAML = filepath.Join(buildPruningBaseDir, "scansettingbinding.yaml")
@@ -797,7 +799,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 					value:        "value1",
 					operator:     "Equal",
 					nodeSelector: "wscan",
-					template:     csuiteTemplate,
+					template:     csuitetaintTemplate,
 				}
 				csuite = complianceSuiteDescription{
 					name:         "worker-compliancesuite",
@@ -811,7 +813,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 					value:        "",
 					operator:     "Exists",
 					nodeSelector: "wscan",
-					template:     csuiteTemplate,
+					template:     csuitetaintTemplate,
 				}
 				itName = g.CurrentGinkgoTestDescription().TestText
 			)
@@ -917,9 +919,9 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 					value:        "value1",
 					operator:     "Equal",
 					nodeSelector: "wscan",
-					template:     cscanTemplate,
+					template:     cscantaintTemplate,
 				}
-				cscan = complianceSuiteDescription{
+				cscan = complianceScanDescription{
 					name:         "worker-scan",
 					namespace:    "",
 					profile:      "xccdf_org.ssgproject.content_profile_moderate",
@@ -930,7 +932,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 					value:        "",
 					operator:     "Exists",
 					nodeSelector: "wscan",
-					template:     cscanTemplate,
+					template:     cscantaintTemplate,
 				}
 				itName = g.CurrentGinkgoTestDescription().TestText
 			)
@@ -995,7 +997,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			subD.scanPodStatus(oc, "Succeeded")
 
 			g.By("Check complianceScan name and result.. !!!\n")
-			subD.complianceScanName(oc, "worker-compliancescan")
+			subD.complianceScanName(oc, "worker-scan")
 			subD.complianceScanResult(oc, "COMPLIANT")
 
 			g.By("Check complianceScan result exit-code through configmap...!!!\n")

@@ -54,7 +54,9 @@
 // test/extended/testdata/securityandcompliance/aide.conf.rhel8.err
 // test/extended/testdata/securityandcompliance/catalogsource-image.yaml
 // test/extended/testdata/securityandcompliance/compliancescan.yaml
+// test/extended/testdata/securityandcompliance/compliancescantaint.yaml
 // test/extended/testdata/securityandcompliance/compliancesuite.yaml
+// test/extended/testdata/securityandcompliance/compliancesuitetaint.yaml
 // test/extended/testdata/securityandcompliance/compliancesuitetpconfmap.yaml
 // test/extended/testdata/securityandcompliance/fileintegrity.yaml
 // test/extended/testdata/securityandcompliance/operator-group.yaml
@@ -6883,6 +6885,55 @@ objects:
     contentImage: "${CONTENTIMAGE}"
     rule: "${RULE}"
     debug: true
+    nodeSelector:
+      node-role.kubernetes.io/${NODESELECTOR}: ""
+    rawResultStorage:
+      size: "${SIZE}"
+
+parameters:
+- name: NAME
+- name: NAMESPACE
+- name: PROFILE
+- name: SCANTYPE
+- name: CONTENT
+- name: CONTENTIMAGE
+- name: RULE
+- name: NODESELECTOR
+- name: SIZE
+`)
+
+func testExtendedTestdataSecurityandcomplianceCompliancescanYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataSecurityandcomplianceCompliancescanYaml, nil
+}
+
+func testExtendedTestdataSecurityandcomplianceCompliancescanYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataSecurityandcomplianceCompliancescanYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/securityandcompliance/compliancescan.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataSecurityandcomplianceCompliancescantaintYaml = []byte(`apiVersion: v1
+kind: Template
+metadata:
+  name: compliancescan-template
+objects:
+- apiVersion: compliance.openshift.io/v1alpha1
+  kind: ComplianceScan
+  metadata:
+    name: "${NAME}"
+    namespace: "${NAMESPACE}"
+  spec:
+    profile: "${PROFILE}"
+    scanType: "${SCANTYPE}"
+    content: "${CONTENT}"
+    contentImage: "${CONTENTIMAGE}"
+    rule: "${RULE}"
+    debug: true
     scanTolerations:
     - effect: NoSchedule
       key: "${KEY}"
@@ -6908,22 +6959,78 @@ parameters:
 - name: SIZE
 `)
 
-func testExtendedTestdataSecurityandcomplianceCompliancescanYamlBytes() ([]byte, error) {
-	return _testExtendedTestdataSecurityandcomplianceCompliancescanYaml, nil
+func testExtendedTestdataSecurityandcomplianceCompliancescantaintYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataSecurityandcomplianceCompliancescantaintYaml, nil
 }
 
-func testExtendedTestdataSecurityandcomplianceCompliancescanYaml() (*asset, error) {
-	bytes, err := testExtendedTestdataSecurityandcomplianceCompliancescanYamlBytes()
+func testExtendedTestdataSecurityandcomplianceCompliancescantaintYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataSecurityandcomplianceCompliancescantaintYamlBytes()
 	if err != nil {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "test/extended/testdata/securityandcompliance/compliancescan.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	info := bindataFileInfo{name: "test/extended/testdata/securityandcompliance/compliancescantaint.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
 
 var _testExtendedTestdataSecurityandcomplianceCompliancesuiteYaml = []byte(`apiVersion: v1
+kind: Template
+metadata:
+  name: compliancesuite-template
+objects:
+- apiVersion: compliance.openshift.io/v1alpha1
+  kind: ComplianceSuite
+  metadata:
+    name: "${NAME}"
+    namespace: "${NAMESPACE}"
+  spec:
+    autoApplyRemediations: false
+    schedule: "0 1 * * *"
+    scans:
+      - name: "${SCANNAME}" 
+        profile: "${PROFILE}"
+        scanType: "${SCANTYPE}"  
+        content: "${CONTENT}"
+        contentImage: "${CONTENTIMAGE}"
+        rule: "${RULE}"
+        debug: true
+        noExternalResources: ${{NOEXTERNALRESOURCES}}
+        nodeSelector: 
+          node-role.kubernetes.io/${NODESELECTOR}: ""
+        rawResultStorage:
+          size: "${SIZE}"
+
+parameters:
+- name: NAME
+- name: NAMESPACE
+- name: SCANNAME
+- name: PROFILE
+- name: SCANTYPE  
+- name: CONTENT
+- name: CONTENTIMAGE
+- name: RULE
+- name: NOEXTERNALRESOURCES
+- name: NODESELECTOR
+- name: SIZE
+`)
+
+func testExtendedTestdataSecurityandcomplianceCompliancesuiteYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataSecurityandcomplianceCompliancesuiteYaml, nil
+}
+
+func testExtendedTestdataSecurityandcomplianceCompliancesuiteYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataSecurityandcomplianceCompliancesuiteYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/securityandcompliance/compliancesuite.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataSecurityandcomplianceCompliancesuitetaintYaml = []byte(`apiVersion: v1
 kind: Template
 metadata:
   name: compliancesuite-template
@@ -6972,17 +7079,17 @@ parameters:
 - name: SIZE
 `)
 
-func testExtendedTestdataSecurityandcomplianceCompliancesuiteYamlBytes() ([]byte, error) {
-	return _testExtendedTestdataSecurityandcomplianceCompliancesuiteYaml, nil
+func testExtendedTestdataSecurityandcomplianceCompliancesuitetaintYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataSecurityandcomplianceCompliancesuitetaintYaml, nil
 }
 
-func testExtendedTestdataSecurityandcomplianceCompliancesuiteYaml() (*asset, error) {
-	bytes, err := testExtendedTestdataSecurityandcomplianceCompliancesuiteYamlBytes()
+func testExtendedTestdataSecurityandcomplianceCompliancesuitetaintYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataSecurityandcomplianceCompliancesuitetaintYamlBytes()
 	if err != nil {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "test/extended/testdata/securityandcompliance/compliancesuite.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	info := bindataFileInfo{name: "test/extended/testdata/securityandcompliance/compliancesuitetaint.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -8408,7 +8515,9 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/securityandcompliance/aide.conf.rhel8.err":           testExtendedTestdataSecurityandcomplianceAideConfRhel8Err,
 	"test/extended/testdata/securityandcompliance/catalogsource-image.yaml":      testExtendedTestdataSecurityandcomplianceCatalogsourceImageYaml,
 	"test/extended/testdata/securityandcompliance/compliancescan.yaml":           testExtendedTestdataSecurityandcomplianceCompliancescanYaml,
+	"test/extended/testdata/securityandcompliance/compliancescantaint.yaml":      testExtendedTestdataSecurityandcomplianceCompliancescantaintYaml,
 	"test/extended/testdata/securityandcompliance/compliancesuite.yaml":          testExtendedTestdataSecurityandcomplianceCompliancesuiteYaml,
+	"test/extended/testdata/securityandcompliance/compliancesuitetaint.yaml":     testExtendedTestdataSecurityandcomplianceCompliancesuitetaintYaml,
 	"test/extended/testdata/securityandcompliance/compliancesuitetpconfmap.yaml": testExtendedTestdataSecurityandcomplianceCompliancesuitetpconfmapYaml,
 	"test/extended/testdata/securityandcompliance/fileintegrity.yaml":            testExtendedTestdataSecurityandcomplianceFileintegrityYaml,
 	"test/extended/testdata/securityandcompliance/operator-group.yaml":           testExtendedTestdataSecurityandcomplianceOperatorGroupYaml,
@@ -8541,7 +8650,9 @@ var _bintree = &bintree{nil, map[string]*bintree{
 					"aide.conf.rhel8.err":           {testExtendedTestdataSecurityandcomplianceAideConfRhel8Err, map[string]*bintree{}},
 					"catalogsource-image.yaml":      {testExtendedTestdataSecurityandcomplianceCatalogsourceImageYaml, map[string]*bintree{}},
 					"compliancescan.yaml":           {testExtendedTestdataSecurityandcomplianceCompliancescanYaml, map[string]*bintree{}},
+					"compliancescantaint.yaml":      {testExtendedTestdataSecurityandcomplianceCompliancescantaintYaml, map[string]*bintree{}},
 					"compliancesuite.yaml":          {testExtendedTestdataSecurityandcomplianceCompliancesuiteYaml, map[string]*bintree{}},
+					"compliancesuitetaint.yaml":     {testExtendedTestdataSecurityandcomplianceCompliancesuitetaintYaml, map[string]*bintree{}},
 					"compliancesuitetpconfmap.yaml": {testExtendedTestdataSecurityandcomplianceCompliancesuitetpconfmapYaml, map[string]*bintree{}},
 					"fileintegrity.yaml":            {testExtendedTestdataSecurityandcomplianceFileintegrityYaml, map[string]*bintree{}},
 					"operator-group.yaml":           {testExtendedTestdataSecurityandcomplianceOperatorGroupYaml, map[string]*bintree{}},
