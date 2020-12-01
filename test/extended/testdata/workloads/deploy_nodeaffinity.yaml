@@ -1,0 +1,46 @@
+apiVersion: v1
+kind: Template
+metadata:
+  name: deploy-nodeaffinity-template
+objects:
+- kind: Deployment
+  apiVersion: apps/v1
+  metadata:
+    labels:
+      app: "${DNAME}"
+    name: "${DNAME}"
+    namespace: "${NAMESPACE}"
+  spec:
+    replicas: ${{REPLICASNUM}}
+    selector:
+      matchLabels:
+        app: "${DNAME}"
+    template:
+      metadata:
+        labels:
+          app: "${DNAME}"
+          "${LABELKEY}": "${LABELVALUE}"
+      spec:
+        affinity:
+          nodeAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              nodeSelectorTerms:
+              - matchExpressions:
+                - key: "${AFFINITYKEY}"
+                  operator: "${OPERATORPOLICY}"
+                  values:
+                  - "${AFFINITYVALUE1}"
+                  - "${AFFINITYVALUE2}"
+        containers:
+        - image: "quay.io/openshifttest/hello-openshift@sha256:424e57db1f2e8e8ac9087d2f5e8faea6d73811f0b6f96301bc94293680897073"
+          name: hello-openshift
+parameters:
+- name: DNAME
+- name: NAMESPACE
+- name: REPLICASNUM
+- name: LABELKEY
+- name: LABELVALUE
+- name: AFFINITYKEY
+- name: OPERATORPOLICY
+- name: AFFINITYVALUE1
+- name: AFFINITYVALUE2

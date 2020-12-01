@@ -71,8 +71,11 @@
 // test/extended/testdata/winc/linux_web_server.yaml
 // test/extended/testdata/winc/windows_web_server.yaml
 // test/extended/testdata/winc/windows_web_server_no_taint.yaml
+// test/extended/testdata/workloads/deploy_nodeaffinity.yaml
 // test/extended/testdata/workloads/deploy_nodeselect.yaml
 // test/extended/testdata/workloads/deploy_single_pts.yaml
+// test/extended/testdata/workloads/kubedescheduler.yaml
+// test/extended/testdata/workloads/operatorgroup.yaml
 // test/extended/testdata/workloads/pod_multipts.yaml
 // test/extended/testdata/workloads/pod_nodeselect.yaml
 // test/extended/testdata/workloads/pod_pts_nodeaffinity_required.yaml
@@ -82,6 +85,8 @@
 // test/extended/testdata/workloads/pod_singlepts_prefer.yaml
 // test/extended/testdata/workloads/pod_singlepts_required.yaml
 // test/extended/testdata/workloads/pod_tolerationseconds.yaml
+// test/extended/testdata/workloads/policy.cfg
+// test/extended/testdata/workloads/subscription.yaml
 // DO NOT EDIT!
 
 package testdata
@@ -7791,6 +7796,69 @@ func testExtendedTestdataWincWindows_web_server_no_taintYaml() (*asset, error) {
 	return a, nil
 }
 
+var _testExtendedTestdataWorkloadsDeploy_nodeaffinityYaml = []byte(`apiVersion: v1
+kind: Template
+metadata:
+  name: deploy-nodeaffinity-template
+objects:
+- kind: Deployment
+  apiVersion: apps/v1
+  metadata:
+    labels:
+      app: "${DNAME}"
+    name: "${DNAME}"
+    namespace: "${NAMESPACE}"
+  spec:
+    replicas: ${{REPLICASNUM}}
+    selector:
+      matchLabels:
+        app: "${DNAME}"
+    template:
+      metadata:
+        labels:
+          app: "${DNAME}"
+          "${LABELKEY}": "${LABELVALUE}"
+      spec:
+        affinity:
+          nodeAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              nodeSelectorTerms:
+              - matchExpressions:
+                - key: "${AFFINITYKEY}"
+                  operator: "${OPERATORPOLICY}"
+                  values:
+                  - "${AFFINITYVALUE1}"
+                  - "${AFFINITYVALUE2}"
+        containers:
+        - image: "quay.io/openshifttest/hello-openshift@sha256:424e57db1f2e8e8ac9087d2f5e8faea6d73811f0b6f96301bc94293680897073"
+          name: hello-openshift
+parameters:
+- name: DNAME
+- name: NAMESPACE
+- name: REPLICASNUM
+- name: LABELKEY
+- name: LABELVALUE
+- name: AFFINITYKEY
+- name: OPERATORPOLICY
+- name: AFFINITYVALUE1
+- name: AFFINITYVALUE2
+`)
+
+func testExtendedTestdataWorkloadsDeploy_nodeaffinityYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataWorkloadsDeploy_nodeaffinityYaml, nil
+}
+
+func testExtendedTestdataWorkloadsDeploy_nodeaffinityYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataWorkloadsDeploy_nodeaffinityYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/workloads/deploy_nodeaffinity.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
 var _testExtendedTestdataWorkloadsDeploy_nodeselectYaml = []byte(`apiVersion: v1
 kind: Template
 metadata:
@@ -7900,6 +7968,90 @@ func testExtendedTestdataWorkloadsDeploy_single_ptsYaml() (*asset, error) {
 	}
 
 	info := bindataFileInfo{name: "test/extended/testdata/workloads/deploy_single_pts.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataWorkloadsKubedeschedulerYaml = []byte(`apiVersion: v1
+kind: Template
+metadata:
+  name: descheduler-template
+objects:
+- kind: KubeDescheduler
+  apiVersion: operator.openshift.io/v1beta1
+  metadata:
+    name: cluster
+    namespace: "${NAMESPACE}"
+  spec:
+    deschedulingIntervalSeconds: ${{INTERSECONDS}}
+    image: "${IMAGEINFO}"
+    logLevel: "${LOGLEVEL}"
+    managementState: Managed
+    observedConfig:
+      apiVersion: "${APIVERSIONINFO}"
+    operatorLogLevel: "${OPERATORLOGLEVEL}"
+    policy:
+      name: "${POLICYNAME}"
+    unsupportedConfigOverrides: null
+parameters:
+- name: NAMESPACE
+- name: INTERSECONDS
+- name: IMAGEINFO
+- name: LOGLEVEL
+- name: APIVERSIONINFO
+- name: OPERATORLOGLEVEL
+- name: POLICYNAME
+`)
+
+func testExtendedTestdataWorkloadsKubedeschedulerYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataWorkloadsKubedeschedulerYaml, nil
+}
+
+func testExtendedTestdataWorkloadsKubedeschedulerYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataWorkloadsKubedeschedulerYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/workloads/kubedescheduler.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataWorkloadsOperatorgroupYaml = []byte(`apiVersion: v1
+kind: Template
+metadata:
+  name: operatorgroup-template
+objects:
+- kind: OperatorGroup
+  apiVersion: operators.coreos.com/v1
+  metadata:
+    annotations:
+      olm.providedAPIs: "${PROVIDEDAPI}"
+    generateName: "${NAME}"
+    namespace: "${NAMESPACE}"
+  spec:
+    targetNamespaces:
+    - "${NAMESPACE}"
+
+parameters:
+- name: NAME
+- name: NAMESPACE
+- name: PROVIDEDAPI
+
+`)
+
+func testExtendedTestdataWorkloadsOperatorgroupYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataWorkloadsOperatorgroupYaml, nil
+}
+
+func testExtendedTestdataWorkloadsOperatorgroupYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataWorkloadsOperatorgroupYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/workloads/operatorgroup.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -8410,6 +8562,72 @@ func testExtendedTestdataWorkloadsPod_tolerationsecondsYaml() (*asset, error) {
 	return a, nil
 }
 
+var _testExtendedTestdataWorkloadsPolicyCfg = []byte(`apiVersion: "descheduler/v1alpha1"
+kind: "DeschedulerPolicy"
+strategies:
+  "RemovePodsViolatingNodeAffinity":
+    enabled: true
+    params:
+      nodeAffinityType:
+      - "requiredDuringSchedulingIgnoredDuringExecution"
+`)
+
+func testExtendedTestdataWorkloadsPolicyCfgBytes() ([]byte, error) {
+	return _testExtendedTestdataWorkloadsPolicyCfg, nil
+}
+
+func testExtendedTestdataWorkloadsPolicyCfg() (*asset, error) {
+	bytes, err := testExtendedTestdataWorkloadsPolicyCfgBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/workloads/policy.cfg", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataWorkloadsSubscriptionYaml = []byte(`apiVersion: v1
+kind: Template
+metadata:
+  name: subscription-template
+objects:
+- kind: Subscription
+  apiVersion: operators.coreos.com/v1alpha1
+  kind: Subscription
+  metadata:
+    name: "${NAME}"
+    namespace: "${NAMESPACE}"
+  spec:
+    channel: "${CHANNELNAME}"
+    installPlanApproval: Automatic
+    name: "${NAME}"
+    source: "${OPSRCNAME}"
+    sourceNamespace: "${SOURCENAME}"
+parameters:
+- name: NAME
+- name: NAMESPACE
+- name: CHANNELNAME
+- name: OPSRCNAME
+- name: SOURCENAME
+
+`)
+
+func testExtendedTestdataWorkloadsSubscriptionYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataWorkloadsSubscriptionYaml, nil
+}
+
+func testExtendedTestdataWorkloadsSubscriptionYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataWorkloadsSubscriptionYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/workloads/subscription.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
 // Asset loads and returns the asset for the given name.
 // It returns an error if the asset could not be found or
 // could not be loaded.
@@ -8533,8 +8751,11 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/winc/linux_web_server.yaml":                          testExtendedTestdataWincLinux_web_serverYaml,
 	"test/extended/testdata/winc/windows_web_server.yaml":                        testExtendedTestdataWincWindows_web_serverYaml,
 	"test/extended/testdata/winc/windows_web_server_no_taint.yaml":               testExtendedTestdataWincWindows_web_server_no_taintYaml,
+	"test/extended/testdata/workloads/deploy_nodeaffinity.yaml":                  testExtendedTestdataWorkloadsDeploy_nodeaffinityYaml,
 	"test/extended/testdata/workloads/deploy_nodeselect.yaml":                    testExtendedTestdataWorkloadsDeploy_nodeselectYaml,
 	"test/extended/testdata/workloads/deploy_single_pts.yaml":                    testExtendedTestdataWorkloadsDeploy_single_ptsYaml,
+	"test/extended/testdata/workloads/kubedescheduler.yaml":                      testExtendedTestdataWorkloadsKubedeschedulerYaml,
+	"test/extended/testdata/workloads/operatorgroup.yaml":                        testExtendedTestdataWorkloadsOperatorgroupYaml,
 	"test/extended/testdata/workloads/pod_multipts.yaml":                         testExtendedTestdataWorkloadsPod_multiptsYaml,
 	"test/extended/testdata/workloads/pod_nodeselect.yaml":                       testExtendedTestdataWorkloadsPod_nodeselectYaml,
 	"test/extended/testdata/workloads/pod_pts_nodeaffinity_required.yaml":        testExtendedTestdataWorkloadsPod_pts_nodeaffinity_requiredYaml,
@@ -8544,6 +8765,8 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/workloads/pod_singlepts_prefer.yaml":                 testExtendedTestdataWorkloadsPod_singlepts_preferYaml,
 	"test/extended/testdata/workloads/pod_singlepts_required.yaml":               testExtendedTestdataWorkloadsPod_singlepts_requiredYaml,
 	"test/extended/testdata/workloads/pod_tolerationseconds.yaml":                testExtendedTestdataWorkloadsPod_tolerationsecondsYaml,
+	"test/extended/testdata/workloads/policy.cfg":                                testExtendedTestdataWorkloadsPolicyCfg,
+	"test/extended/testdata/workloads/subscription.yaml":                         testExtendedTestdataWorkloadsSubscriptionYaml,
 }
 
 // AssetDir returns the file names below a certain
@@ -8672,8 +8895,11 @@ var _bintree = &bintree{nil, map[string]*bintree{
 					"windows_web_server_no_taint.yaml":       {testExtendedTestdataWincWindows_web_server_no_taintYaml, map[string]*bintree{}},
 				}},
 				"workloads": {nil, map[string]*bintree{
+					"deploy_nodeaffinity.yaml":              {testExtendedTestdataWorkloadsDeploy_nodeaffinityYaml, map[string]*bintree{}},
 					"deploy_nodeselect.yaml":                {testExtendedTestdataWorkloadsDeploy_nodeselectYaml, map[string]*bintree{}},
 					"deploy_single_pts.yaml":                {testExtendedTestdataWorkloadsDeploy_single_ptsYaml, map[string]*bintree{}},
+					"kubedescheduler.yaml":                  {testExtendedTestdataWorkloadsKubedeschedulerYaml, map[string]*bintree{}},
+					"operatorgroup.yaml":                    {testExtendedTestdataWorkloadsOperatorgroupYaml, map[string]*bintree{}},
 					"pod_multipts.yaml":                     {testExtendedTestdataWorkloadsPod_multiptsYaml, map[string]*bintree{}},
 					"pod_nodeselect.yaml":                   {testExtendedTestdataWorkloadsPod_nodeselectYaml, map[string]*bintree{}},
 					"pod_pts_nodeaffinity_required.yaml":    {testExtendedTestdataWorkloadsPod_pts_nodeaffinity_requiredYaml, map[string]*bintree{}},
@@ -8683,6 +8909,8 @@ var _bintree = &bintree{nil, map[string]*bintree{
 					"pod_singlepts_prefer.yaml":             {testExtendedTestdataWorkloadsPod_singlepts_preferYaml, map[string]*bintree{}},
 					"pod_singlepts_required.yaml":           {testExtendedTestdataWorkloadsPod_singlepts_requiredYaml, map[string]*bintree{}},
 					"pod_tolerationseconds.yaml":            {testExtendedTestdataWorkloadsPod_tolerationsecondsYaml, map[string]*bintree{}},
+					"policy.cfg":                            {testExtendedTestdataWorkloadsPolicyCfg, map[string]*bintree{}},
+					"subscription.yaml":                     {testExtendedTestdataWorkloadsSubscriptionYaml, map[string]*bintree{}},
 				}},
 			}},
 		}},
