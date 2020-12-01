@@ -1086,6 +1086,134 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		})
 
 		// author: pdhamdhe@redhat.com
+		g.It("High-32120-The ComplianceSuite performs schedule scan for Platform scan type", func() {
+
+			var (
+				csuiteD = complianceSuiteDescription{
+					name:         "platform-compliancesuite",
+					namespace:    "",
+					schedule:     "*/3 * * * *",
+					scanType:     "platform",
+					scanname:     "platform-scan",
+					profile:      "xccdf_org.ssgproject.content_profile_moderate",
+					content:      "ssg-ocp4-ds.xml",
+					contentImage: "quay.io/complianceascode/ocp4:latest",
+					template:     csuiteTemplate,
+				}
+			)
+
+			defer cleanupObjects(oc,
+				objectTableRef{"compliancesuite", subD.namespace, "platform-compliancesuite"},
+			)
+
+			csuiteD.namespace = subD.namespace
+			g.By("Create platform-compliancesuite.. !!!\n")
+			e2e.Logf("Here namespace : %v\n", catSrc.namespace)
+			csuiteD.create(oc, itName, dr)
+
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", csuiteD.name, "-n",
+				subD.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+
+			g.By("Check platform-scan pod.. !!!\n")
+			subD.scanPodName(oc, "platform-scan-api-checks-pod")
+
+			g.By("Check platform scan pods status.. !!! \n")
+			subD.scanPodStatus(oc, "Succeeded")
+
+			g.By("Check platform-compliancesuite name and result.. !!!\n")
+			subD.complianceSuiteName(oc, "platform-compliancesuite")
+			subD.complianceSuiteResult(oc, "NON-COMPLIANT")
+
+			g.By("Check platform-compliancesuite result through exit-code.. !!!\n")
+			subD.getScanExitCodeFromConfigmap(oc, "2")
+
+			newCheck("expect", asAdmin, withoutNamespace, contain, "platform-compliancesuite-rerunner", ok, []string{"cronjob", "-n",
+				subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "*/3 * * * *", ok, []string{"cronjob", "platform-compliancesuite-rerunner",
+				"-n", subD.namespace, "-o=jsonpath={.spec.schedule}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "Succeeded", ok, []string{"pod", "-l=workload=suitererunner", "-n",
+				subD.namespace, "-o=jsonpath={.items[0].status.phase}"}).check(oc)
+
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", csuiteD.name, "-n",
+				subD.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+
+			g.By("Check worker scan pods status.. !!! \n")
+			subD.scanPodStatus(oc, "Succeeded")
+
+			g.By("Check platform-compliancesuite name and result.. !!!\n")
+			subD.complianceSuiteName(oc, "platform-compliancesuite")
+			subD.complianceSuiteResult(oc, "NON-COMPLIANT")
+
+			g.By("Check worker-compliancesuite result through exit-code.. !!!\n")
+			subD.getScanExitCodeFromConfigmap(oc, "2")
+
+			g.By("The ocp-32120 The complianceScan object performed Platform schedule scan successfully.. !!!\n")
+		})
+
+		// author: pdhamdhe@redhat.com
+		g.It("High-33418-The ComplianceSuite performs the schedule scan through cron job", func() {
+
+			var (
+				csuiteD = complianceSuiteDescription{
+					name:         "worker-compliancesuite",
+					namespace:    "",
+					schedule:     "*/3 * * * *",
+					scanname:     "worker-scan",
+					profile:      "xccdf_org.ssgproject.content_profile_moderate",
+					content:      "ssg-rhcos4-ds.xml",
+					contentImage: "quay.io/complianceascode/ocp4:latest",
+					rule:         "xccdf_org.ssgproject.content_rule_no_netrc_files",
+					nodeSelector: "wscan",
+					template:     csuiteTemplate,
+				}
+			)
+
+			defer cleanupObjects(oc,
+				objectTableRef{"compliancesuite", subD.namespace, "worker-compliancesuite"},
+			)
+
+			csuiteD.namespace = subD.namespace
+			g.By("Create worker-compliancesuite.. !!!\n")
+			e2e.Logf("Here namespace : %v\n", catSrc.namespace)
+			csuiteD.create(oc, itName, dr)
+
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", csuiteD.name, "-n",
+				subD.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+
+			g.By("Check worker scan pods status.. !!! \n")
+			subD.scanPodStatus(oc, "Succeeded")
+
+			g.By("Check worker-compliancesuite name and result.. !!!\n")
+			subD.complianceSuiteName(oc, "worker-compliancesuite")
+			subD.complianceSuiteResult(oc, "COMPLIANT")
+
+			g.By("Check worker-compliancesuite result through exit-code.. !!!\n")
+			subD.getScanExitCodeFromConfigmap(oc, "0")
+
+			newCheck("expect", asAdmin, withoutNamespace, contain, "worker-compliancesuite-rerunner", ok, []string{"cronjob", "-n",
+				subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "*/3 * * * *", ok, []string{"cronjob", "worker-compliancesuite-rerunner",
+				"-n", subD.namespace, "-o=jsonpath={.spec.schedule}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "Succeeded", ok, []string{"pod", "-l=workload=suitererunner", "-n",
+				subD.namespace, "-o=jsonpath={.items[0].status.phase}"}).check(oc)
+
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", csuiteD.name, "-n",
+				subD.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+
+			g.By("Check worker scan pods status.. !!! \n")
+			subD.scanPodStatus(oc, "Succeeded")
+
+			g.By("Check worker-compliancesuite name and result.. !!!\n")
+			subD.complianceSuiteName(oc, "worker-compliancesuite")
+			subD.complianceSuiteResult(oc, "COMPLIANT")
+
+			g.By("Check worker-compliancesuite result through exit-code.. !!!\n")
+			subD.getScanExitCodeFromConfigmap(oc, "0")
+
+			g.By("The ocp-33418 The ComplianceSuite object performed schedule scan successfully.. !!!\n")
+		})
+
+		// author: pdhamdhe@redhat.com
 		g.It("Medium-32814-The compliance operator by default creates ProfileBundles", func() {
 			g.By("Check default profilebundles name and status.. !!!\n")
 			subD.getProfileBundleNameandStatus(oc, "ocp4")

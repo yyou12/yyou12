@@ -6986,7 +6986,7 @@ objects:
     namespace: "${NAMESPACE}"
   spec:
     autoApplyRemediations: false
-    schedule: "0 1 * * *"
+    schedule: "${SCHEDULE}"  
     scans:
       - name: "${SCANNAME}" 
         profile: "${PROFILE}"
@@ -7004,6 +7004,7 @@ objects:
 parameters:
 - name: NAME
 - name: NAMESPACE
+- name: SCHEDULE  
 - name: SCANNAME
 - name: PROFILE
 - name: SCANTYPE  

@@ -15,6 +15,7 @@ import (
 type complianceSuiteDescription struct {
 	name                string
 	namespace           string
+	schedule            string
 	scanname            string
 	scanType            string
 	profile             string
@@ -34,9 +35,9 @@ type complianceSuiteDescription struct {
 
 func (csuite *complianceSuiteDescription) create(oc *exutil.CLI, itName string, dr describerResrouce) {
 	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", csuite.template, "-p", "NAME="+csuite.name, "NAMESPACE="+csuite.namespace,
-		"SCANNAME="+csuite.scanname, "SCANTYPE="+csuite.scanType, "PROFILE="+csuite.profile, "CONTENT="+csuite.content, "CONTENTIMAGE="+csuite.contentImage,
-		"RULE="+csuite.rule, "NOEXTERNALRESOURCES="+strconv.FormatBool(csuite.noExternalResources), "KEY="+csuite.key, "VALUE="+csuite.value,
-		"OPERATOR="+csuite.operator, "NODESELECTOR="+csuite.nodeSelector, "SIZE="+csuite.size, "TAILORCONFIGMAPNAME="+csuite.tailoringConfigMap)
+		"SCHEDULE="+csuite.schedule, "SCANNAME="+csuite.scanname, "SCANTYPE="+csuite.scanType, "PROFILE="+csuite.profile, "CONTENT="+csuite.content,
+		"CONTENTIMAGE="+csuite.contentImage, "RULE="+csuite.rule, "NOEXTERNALRESOURCES="+strconv.FormatBool(csuite.noExternalResources), "KEY="+csuite.key,
+		"VALUE="+csuite.value, "OPERATOR="+csuite.operator, "NODESELECTOR="+csuite.nodeSelector, "SIZE="+csuite.size, "TAILORCONFIGMAPNAME="+csuite.tailoringConfigMap)
 	o.Expect(err).NotTo(o.HaveOccurred())
 	dr.getIr(itName).add(newResource(oc, "compliancesuite", csuite.name, requireNS, csuite.namespace))
 }
