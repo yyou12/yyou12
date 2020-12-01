@@ -2133,6 +2133,119 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", dependentOperator, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
 	})
 
+	// It will cover test case: OCP-37263, author: kuiwang@redhat.com
+	g.It("ConnectedOnly-Medium-37263-Subscription stays in UpgradePending but InstallPlan not installing [Slow]", func() {
+		var (
+			itName = g.CurrentGinkgoTestDescription().TestText
+			og     = operatorGroupDescription{
+				name:      "og-singlenamespace",
+				namespace: "",
+				template:  ogSingleTemplate,
+			}
+			catsrc = catalogSourceDescription{
+				name:        "olm-1860185-catalog",
+				namespace:   "",
+				displayName: "OLM 1860185 Catalog",
+				publisher:   "QE",
+				sourceType:  "grpc",
+				address:     "quay.io/olmqe/olm-dep:v1860185",
+				template:    catsrcImageTemplate,
+			}
+			subStrimzi = subscriptionDescription{
+				subName:                "strimzi",
+				namespace:              "",
+				channel:                "strimzi-0.19.x",
+				ipApproval:             "Automatic",
+				operatorPackage:        "strimzi-kafka-operator",
+				catalogSourceName:      catsrc.name,
+				catalogSourceNamespace: "",
+				startingCSV:            "strimzi-cluster-operator.v0.19.0",
+				currentCSV:             "",
+				installedCSV:           "",
+				template:               subTemplate,
+				singleNamespace:        true,
+			}
+			subCouchbase = subscriptionDescription{
+				subName:                "couchbase",
+				namespace:              "",
+				channel:                "stable",
+				ipApproval:             "Automatic",
+				operatorPackage:        "couchbase-enterprise-certified",
+				catalogSourceName:      catsrc.name,
+				catalogSourceNamespace: "",
+				startingCSV:            "couchbase-operator.v1.2.2",
+				currentCSV:             "",
+				installedCSV:           "",
+				template:               subTemplate,
+				singleNamespace:        true,
+			}
+			subPortworx = subscriptionDescription{
+				subName:                "portworx",
+				namespace:              "",
+				channel:                "stable",
+				ipApproval:             "Automatic",
+				operatorPackage:        "portworx-certified",
+				catalogSourceName:      catsrc.name,
+				catalogSourceNamespace: "",
+				startingCSV:            "portworx-operator.v1.4.2",
+				currentCSV:             "",
+				installedCSV:           "",
+				template:               subTemplate,
+				singleNamespace:        true,
+			}
+		)
+		oc.SetupProject() //project and its resource are deleted automatically when out of It, so no need derfer or AfterEach
+		og.namespace = oc.Namespace()
+		catsrc.namespace = oc.Namespace()
+		subStrimzi.namespace = oc.Namespace()
+		subStrimzi.catalogSourceNamespace = catsrc.namespace
+		subCouchbase.namespace = oc.Namespace()
+		subCouchbase.catalogSourceNamespace = catsrc.namespace
+		subPortworx.namespace = oc.Namespace()
+		subPortworx.catalogSourceNamespace = catsrc.namespace
+
+		g.By("create catalog source")
+		catsrc.create(oc, itName, dr)
+
+		g.By("Create og")
+		og.create(oc, itName, dr)
+
+		g.By("install Strimzi")
+		subStrimzi.create(oc, itName, dr)
+
+		g.By("check if Strimzi is installed")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", subStrimzi.installedCSV, "-n", subStrimzi.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+
+		g.By("install Portworx")
+		subPortworx.create(oc, itName, dr)
+
+		g.By("check if Portworx is installed")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", subPortworx.installedCSV, "-n", subPortworx.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+
+		g.By("Delete Portworx sub")
+		subPortworx.delete(itName, dr)
+
+		g.By("check if Portworx sub is Deleted")
+		newCheck("present", asAdmin, withoutNamespace, notPresent, "", ok, []string{"sub", subPortworx.subName, "-n", subPortworx.namespace}).check(oc)
+
+		g.By("Delete Portworx csv")
+		csvPortworx := csvDescription{
+			name:      subPortworx.installedCSV,
+			namespace: subPortworx.namespace,
+		}
+		csvPortworx.delete(itName, dr)
+
+		g.By("check if Portworx csv is Deleted")
+		newCheck("present", asAdmin, withoutNamespace, notPresent, "", ok, []string{"csv", subPortworx.installedCSV, "-n", subPortworx.namespace}).check(oc)
+
+		g.By("install Couchbase")
+		subCouchbase.create(oc, itName, dr)
+
+		g.By("check if Couchbase is installed")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", subCouchbase.installedCSV, "-n", subCouchbase.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+
+	})
+
 	// It will cover test case: OCP-24917, author: tbuskey@redhat.com
 	g.It("Medium-24917-Operators in SingleNamespace should not be granted namespace list [Disruptive]", func() {
 		var (
@@ -2274,76 +2387,76 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 
 	})
 
-        // author: tbuskey@redhat.com
-        g.It("Medium-25782-CatalogSource Status should have information on last observed state", func() {
-			var err error
-			var (
-				catName             = "installed-community-25782-global-operators"
-				msg                 = ""
-				buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
-				// the namespace and catName are hardcoded in the files
-				cmTemplate          = filepath.Join(buildPruningBaseDir, "cm-csv-etcd.yaml")
-				catsrcCmTemplate    = filepath.Join(buildPruningBaseDir, "catalogsource-configmap.yaml")
-			)
+	// author: tbuskey@redhat.com
+	g.It("Medium-25782-CatalogSource Status should have information on last observed state", func() {
+		var err error
+		var (
+			catName             = "installed-community-25782-global-operators"
+			msg                 = ""
+			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
+			// the namespace and catName are hardcoded in the files
+			cmTemplate       = filepath.Join(buildPruningBaseDir, "cm-csv-etcd.yaml")
+			catsrcCmTemplate = filepath.Join(buildPruningBaseDir, "catalogsource-configmap.yaml")
+		)
 
-			oc.SetupProject()
-			itName           := g.CurrentGinkgoTestDescription().TestText
+		oc.SetupProject()
+		itName := g.CurrentGinkgoTestDescription().TestText
 
-			var (
-				cm = configMapDescription{
-					name:        catName,
-					namespace:   oc.Namespace(),
-					template:    cmTemplate,
-				}
-				catsrc = catalogSourceDescription{
-					name:        catName,
-					namespace:   oc.Namespace(),
-					displayName: "Community bad Operators",
-					publisher:   "QE",
-					sourceType:  "configmap",
-					address:     catName,
-					template:    catsrcCmTemplate,
-				}
-			)
-			
-			g.By("Create ConfigMap with bad operator manifest")
-			cm.create(oc, itName, dr)
+		var (
+			cm = configMapDescription{
+				name:      catName,
+				namespace: oc.Namespace(),
+				template:  cmTemplate,
+			}
+			catsrc = catalogSourceDescription{
+				name:        catName,
+				namespace:   oc.Namespace(),
+				displayName: "Community bad Operators",
+				publisher:   "QE",
+				sourceType:  "configmap",
+				address:     catName,
+				template:    catsrcCmTemplate,
+			}
+		)
 
-			// Make sure bad configmap was created
-			g.By("Check configmap")
-			msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("cm", "-n", oc.Namespace()).Output()
+		g.By("Create ConfigMap with bad operator manifest")
+		cm.create(oc, itName, dr)
+
+		// Make sure bad configmap was created
+		g.By("Check configmap")
+		msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("cm", "-n", oc.Namespace()).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(strings.Contains(msg, catName)).To(o.BeTrue())
+
+		g.By("Create catalog source")
+		catsrc.create(oc, itName, dr)
+
+		g.By("Wait for pod to fail")
+		waitErr := wait.Poll(3*time.Second, 180*time.Second, func() (bool, error) {
+			msg, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-n", oc.Namespace()).Output()
+			e2e.Logf("\n%v", msg)
 			o.Expect(err).NotTo(o.HaveOccurred())
-			o.Expect(strings.Contains(msg, catName)).To(o.BeTrue())
+			if strings.Contains(msg, "CrashLoopBackOff") {
+				e2e.Logf("STEP pod is in  CrashLoopBackOff as expected")
+				return true, nil
+			}
+			return false, nil
+		})
+		o.Expect(waitErr).NotTo(o.HaveOccurred())
 
-			g.By("Create catalog source")
-			catsrc.create(oc, itName, dr)
-			
-			g.By("Wait for pod to fail")
-			waitErr := wait.Poll(3*time.Second, 180*time.Second, func() (bool, error) {
-					msg, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-n", oc.Namespace()).Output()
-					e2e.Logf("\n%v", msg)
-					o.Expect(err).NotTo(o.HaveOccurred())
-					if strings.Contains(msg, "CrashLoopBackOff") {
-							e2e.Logf("STEP pod is in  CrashLoopBackOff as expected")
-							return true, nil
-					}
-					return false, nil
-			})
-			o.Expect(waitErr).NotTo(o.HaveOccurred())
-
-			g.By("Check catsrc state for TRANSIENT_FAILURE in lastObservedState")
-			waitErr = wait.Poll(3*time.Second, 180*time.Second, func() (bool, error) {
-					msg, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("catalogsource", catName, "-n", oc.Namespace(), "-o=jsonpath={.status}").Output()
-					o.Expect(err).NotTo(o.HaveOccurred())
-					if strings.Contains(msg, "TRANSIENT_FAILURE") && strings.Contains(msg, "lastObservedState"){
-							msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("catalogsource", catName, "-n", oc.Namespace(), "-o=jsonpath={.status.connectionState.lastObservedState}").Output()
-							e2e.Logf("catalogsource had lastObservedState =  %v as expected ", msg)
-							return true, nil
-					}
-				   return false, nil
-			})
-			o.Expect(waitErr).NotTo(o.HaveOccurred())
-			e2e.Logf("cleaning up")
+		g.By("Check catsrc state for TRANSIENT_FAILURE in lastObservedState")
+		waitErr = wait.Poll(3*time.Second, 180*time.Second, func() (bool, error) {
+			msg, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("catalogsource", catName, "-n", oc.Namespace(), "-o=jsonpath={.status}").Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			if strings.Contains(msg, "TRANSIENT_FAILURE") && strings.Contains(msg, "lastObservedState") {
+				msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("catalogsource", catName, "-n", oc.Namespace(), "-o=jsonpath={.status.connectionState.lastObservedState}").Output()
+				e2e.Logf("catalogsource had lastObservedState =  %v as expected ", msg)
+				return true, nil
+			}
+			return false, nil
+		})
+		o.Expect(waitErr).NotTo(o.HaveOccurred())
+		e2e.Logf("cleaning up")
 	})
 })
 
