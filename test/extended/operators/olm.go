@@ -2246,6 +2246,177 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 
 	})
 
+	// It will cover test case: OCP-33176, author: kuiwang@redhat.com
+	g.It("ConnectedOnly-Medium-33176-Enable generated operator component adoption for operators with single ns mode [Slow]", func() {
+		var (
+			itName                  = g.CurrentGinkgoTestDescription().TestText
+			catsrcImageTemplate     = filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
+			apiserviceImageTemplate = filepath.Join(buildPruningBaseDir, "apiservice.yaml")
+			apiserviceVersion       = "v33176"
+			apiserviceName          = apiserviceVersion + ".foos.bar.com"
+			og                      = operatorGroupDescription{
+				name:      "og-singlenamespace",
+				namespace: "",
+				template:  ogSingleTemplate,
+			}
+			catsrc = catalogSourceDescription{
+				name:        "catsrc-33176-operator",
+				namespace:   "",
+				displayName: "Test Catsrc 33176 Operators",
+				publisher:   "Red Hat",
+				sourceType:  "grpc",
+				address:     "quay.io/olmqe/olm-api:v1",
+				template:    catsrcImageTemplate,
+			}
+			subEtcd = subscriptionDescription{
+				subName:                "etcd33176",
+				namespace:              "",
+				channel:                "singlenamespace-alpha",
+				ipApproval:             "Automatic",
+				operatorPackage:        "etcd",
+				catalogSourceName:      catsrc.name,
+				catalogSourceNamespace: "",
+				startingCSV:            "etcdoperator.v0.9.4", //get it from package based on currentCSV if ipApproval is Automatic
+				currentCSV:             "",
+				installedCSV:           "",
+				template:               subTemplate,
+				singleNamespace:        false,
+			}
+			subCockroachdb = subscriptionDescription{
+				subName:                "cockroachdb33176",
+				namespace:              "",
+				channel:                "stable",
+				ipApproval:             "Automatic",
+				operatorPackage:        "cockroachdb",
+				catalogSourceName:      catsrc.name,
+				catalogSourceNamespace: "",
+				startingCSV:            "cockroachdb.v2.1.11", //get it from package based on currentCSV if ipApproval is Automatic
+				currentCSV:             "",
+				installedCSV:           "",
+				template:               subTemplate,
+				singleNamespace:        false,
+			}
+		)
+
+		oc.SetupProject() //project and its resource are deleted automatically when out of It, so no need derfer or AfterEach
+		og.namespace = oc.Namespace()
+		catsrc.namespace = oc.Namespace()
+		subEtcd.namespace = oc.Namespace()
+		subEtcd.catalogSourceNamespace = catsrc.namespace
+		subCockroachdb.namespace = oc.Namespace()
+		subCockroachdb.catalogSourceNamespace = catsrc.namespace
+
+		g.By("create catalog source")
+		catsrc.create(oc, itName, dr)
+
+		g.By("Create og")
+		og.create(oc, itName, dr)
+
+		g.By("install Etcd")
+		subEtcd.create(oc, itName, dr)
+		defer doAction(oc, "delete", asAdmin, withoutNamespace, "operator", subEtcd.operatorPackage+"."+subEtcd.namespace)
+
+		g.By("Check all resources via operators")
+		resourceKind := getResource(oc, asAdmin, withoutNamespace, "operator", subEtcd.operatorPackage+"."+subEtcd.namespace, "-o=jsonpath={.status.components.refs[*].kind}")
+		o.Expect(resourceKind).To(o.ContainSubstring("Deployment"))
+		o.Expect(resourceKind).To(o.ContainSubstring("ServiceAccount"))
+		o.Expect(resourceKind).To(o.ContainSubstring("Role"))
+		o.Expect(resourceKind).To(o.ContainSubstring("RoleBinding"))
+		o.Expect(resourceKind).To(o.ContainSubstring("CustomResourceDefinition"))
+		o.Expect(resourceKind).To(o.ContainSubstring("Subscription"))
+		o.Expect(resourceKind).To(o.ContainSubstring("InstallPlan"))
+		o.Expect(resourceKind).To(o.ContainSubstring("ClusterServiceVersion"))
+		newCheck("expect", asAdmin, withoutNamespace, contain, subEtcd.namespace, ok, []string{"operator", subEtcd.operatorPackage + "." + subEtcd.namespace, "-o=jsonpath={.status.components.refs[?(.kind=='ClusterServiceVersion')].namespace}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, contain, "InstallSucceeded", ok, []string{"operator", subEtcd.operatorPackage + "." + subEtcd.namespace, "-o=jsonpath={.status.components.refs[?(.kind=='ClusterServiceVersion')].conditions[*].reason}"}).check(oc)
+
+		g.By("delete operator and Operator still exists because of crd")
+		subEtcd.delete(itName, dr)
+		_, err := doAction(oc, "delete", asAdmin, withoutNamespace, "csv", subEtcd.installedCSV, "-n", subEtcd.namespace)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		newCheck("expect", asAdmin, withoutNamespace, contain, "CustomResourceDefinition", ok, []string{"operator", subEtcd.operatorPackage + "." + subEtcd.namespace, "-o=jsonpath={.status.components.refs[*].kind}"}).check(oc)
+
+		g.By("reinstall etcd and check Operator")
+		subEtcd.create(oc, itName, dr)
+		newCheck("expect", asAdmin, withoutNamespace, contain, "InstallSucceeded", ok, []string{"operator", subEtcd.operatorPackage + "." + subEtcd.namespace, "-o=jsonpath={.status.components.refs[?(.kind=='ClusterServiceVersion')].conditions[*].reason}"}).check(oc)
+
+		g.By("delete etcd and the Operator")
+		_, err = doAction(oc, "delete", asAdmin, withoutNamespace, "sub", subEtcd.subName, "-n", subEtcd.namespace)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		_, err = doAction(oc, "delete", asAdmin, withoutNamespace, "csv", subEtcd.installedCSV, "-n", subEtcd.namespace)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		_, err = doAction(oc, "delete", asAdmin, withoutNamespace, "operator", subEtcd.operatorPackage+"."+subEtcd.namespace)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("install etcd manually")
+		subEtcd.ipApproval = "Manual"
+		subEtcd.startingCSV = "etcdoperator.v0.9.4"
+		subEtcd.installedCSV = ""
+		subEtcd.create(oc, itName, dr)
+		newCheck("expect", asAdmin, withoutNamespace, contain, "InstallPlan", ok, []string{"operator", subEtcd.operatorPackage + "." + subEtcd.namespace, "-o=jsonpath={.status.components.refs[*].kind}"}).check(oc)
+
+		g.By("approve etcd")
+		subEtcd.approve(oc, itName, dr)
+		newCheck("expect", asAdmin, withoutNamespace, contain, "ClusterServiceVersion", ok, []string{"operator", subEtcd.operatorPackage + "." + subEtcd.namespace, "-o=jsonpath={.status.components.refs[*].kind}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, contain, subEtcd.namespace, ok, []string{"operator", subEtcd.operatorPackage + "." + subEtcd.namespace, "-o=jsonpath={.status.components.refs[?(.kind=='ClusterServiceVersion')].namespace}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, contain, "InstallSucceeded", ok, []string{"operator", subEtcd.operatorPackage + "." + subEtcd.namespace, "-o=jsonpath={.status.components.refs[?(.kind=='ClusterServiceVersion')].conditions[*].reason}"}).check(oc)
+
+		g.By("unlabel resource and it is relabeled automatically")
+		roleName := getResource(oc, asAdmin, withoutNamespace, "operator", subEtcd.operatorPackage+"."+subEtcd.namespace, "-o=jsonpath={.status.components.refs[?(.kind=='Role')].name}")
+		o.Expect(roleName).NotTo(o.BeEmpty())
+		_, err = doAction(oc, "label", asAdmin, withoutNamespace, "Role", roleName, "operators.coreos.com/"+subEtcd.operatorPackage+"."+subEtcd.namespace+"-", "-n", subEtcd.namespace)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		newCheck("expect", asAdmin, withoutNamespace, contain, "Role", ok, []string{"operator", subEtcd.operatorPackage + "." + subEtcd.namespace, "-o=jsonpath={.status.components.refs[*].kind}"}).check(oc)
+
+		g.By("delete etcd and the Operator again and Operator should recreated because of crd")
+		_, err = doAction(oc, "delete", asAdmin, withoutNamespace, "sub", subEtcd.subName, "-n", subEtcd.namespace)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		_, err = doAction(oc, "delete", asAdmin, withoutNamespace, "csv", subEtcd.installedCSV, "-n", subEtcd.namespace)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		_, err = doAction(oc, "delete", asAdmin, withoutNamespace, "operator", subEtcd.operatorPackage+"."+subEtcd.namespace)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		// here there is issue and take WA
+		_, err = doAction(oc, "label", asAdmin, withoutNamespace, "crd", "etcdbackups.etcd.database.coreos.com", "operators.coreos.com/"+subEtcd.operatorPackage+"."+subEtcd.namespace+"-")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		_, err = doAction(oc, "label", asAdmin, withoutNamespace, "crd", "etcdbackups.etcd.database.coreos.com", "operators.coreos.com/"+subEtcd.operatorPackage+"."+subEtcd.namespace+"=")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		//done for WA
+		newCheck("expect", asAdmin, withoutNamespace, contain, "CustomResourceDefinition", ok, []string{"operator", subEtcd.operatorPackage + "." + subEtcd.namespace, "-o=jsonpath={.status.components.refs[*].kind}"}).check(oc)
+
+		g.By("install Cockroachdb")
+		subCockroachdb.create(oc, itName, dr)
+		defer doAction(oc, "delete", asAdmin, withoutNamespace, "operator", subCockroachdb.operatorPackage+"."+subCockroachdb.namespace)
+
+		g.By("Check all resources of Cockroachdb via operators")
+		resourceKind = getResource(oc, asAdmin, withoutNamespace, "operator", subCockroachdb.operatorPackage+"."+subCockroachdb.namespace, "-o=jsonpath={.status.components.refs[*].kind}")
+		o.Expect(resourceKind).To(o.ContainSubstring("Deployment"))
+		o.Expect(resourceKind).To(o.ContainSubstring("ServiceAccount"))
+		o.Expect(resourceKind).To(o.ContainSubstring("Role"))
+		o.Expect(resourceKind).To(o.ContainSubstring("RoleBinding"))
+		o.Expect(resourceKind).To(o.ContainSubstring("CustomResourceDefinition"))
+		o.Expect(resourceKind).To(o.ContainSubstring("Subscription"))
+		o.Expect(resourceKind).To(o.ContainSubstring("InstallPlan"))
+		o.Expect(resourceKind).To(o.ContainSubstring("ClusterServiceVersion"))
+		newCheck("expect", asAdmin, withoutNamespace, contain, subCockroachdb.namespace, ok, []string{"operator", subCockroachdb.operatorPackage + "." + subCockroachdb.namespace, "-o=jsonpath={.status.components.refs[?(.kind=='ClusterServiceVersion')].namespace}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, contain, "InstallSucceeded", ok, []string{"operator", subCockroachdb.operatorPackage + "." + subCockroachdb.namespace, "-o=jsonpath={.status.components.refs[?(.kind=='ClusterServiceVersion')].conditions[*].reason}"}).check(oc)
+
+		g.By("create ns test-33176 and label it")
+		_, err = doAction(oc, "create", asAdmin, withoutNamespace, "ns", "test-33176")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		defer doAction(oc, "delete", asAdmin, withoutNamespace, "ns", "test-33176")
+		_, err = doAction(oc, "label", asAdmin, withoutNamespace, "ns", "test-33176", "operators.coreos.com/"+subCockroachdb.operatorPackage+"."+subCockroachdb.namespace+"=")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		newCheck("expect", asAdmin, withoutNamespace, contain, "Namespace", ok, []string{"operator", subCockroachdb.operatorPackage + "." + subCockroachdb.namespace, "-o=jsonpath={.status.components.refs[*].kind}"}).check(oc)
+
+		g.By("create apiservice and label it")
+		err = applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", apiserviceImageTemplate, "-p", "NAME="+apiserviceName, "VERSION="+apiserviceVersion)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		defer doAction(oc, "delete", asAdmin, withoutNamespace, "apiservice", apiserviceName)
+		_, err = doAction(oc, "label", asAdmin, withoutNamespace, "apiservice", apiserviceName, "operators.coreos.com/"+subCockroachdb.operatorPackage+"."+subCockroachdb.namespace+"=")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		newCheck("expect", asAdmin, withoutNamespace, contain, "APIService", ok, []string{"operator", subCockroachdb.operatorPackage + "." + subCockroachdb.namespace, "-o=jsonpath={.status.components.refs[*].kind}"}).check(oc)
+
+	})
+
 	// It will cover test case: OCP-24917, author: tbuskey@redhat.com
 	g.It("Medium-24917-Operators in SingleNamespace should not be granted namespace list [Disruptive]", func() {
 		var (
@@ -2975,7 +3146,6 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within all namesp
 				template:               subTemplate,
 				singleNamespace:        false,
 			}
-			cl = checkList{}
 		)
 
 		g.By("check if cockroachdb is already installed with all ns.")
@@ -2999,20 +3169,19 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within all namesp
 			defer doAction(oc, "delete", asAdmin, withoutNamespace, "operator", subCockroachdb.operatorPackage+"."+subCockroachdb.namespace)
 
 			g.By("Check all resources via operators")
-			cl.add(newCheck("expect", asAdmin, withoutNamespace, contain, "Deployment", ok, []string{"operator", subCockroachdb.operatorPackage + "." + subCockroachdb.namespace, "-o=jsonpath={.status.components.refs[*].kind}"}))
-			cl.add(newCheck("expect", asAdmin, withoutNamespace, contain, "ServiceAccount", ok, []string{"operator", subCockroachdb.operatorPackage + "." + subCockroachdb.namespace, "-o=jsonpath={.status.components.refs[*].kind}"}))
-			cl.add(newCheck("expect", asAdmin, withoutNamespace, contain, "Role", ok, []string{"operator", subCockroachdb.operatorPackage + "." + subCockroachdb.namespace, "-o=jsonpath={.status.components.refs[*].kind}"}))
-			cl.add(newCheck("expect", asAdmin, withoutNamespace, contain, "RoleBinding", ok, []string{"operator", subCockroachdb.operatorPackage + "." + subCockroachdb.namespace, "-o=jsonpath={.status.components.refs[*].kind}"}))
-			cl.add(newCheck("expect", asAdmin, withoutNamespace, contain, "ClusterRole", ok, []string{"operator", subCockroachdb.operatorPackage + "." + subCockroachdb.namespace, "-o=jsonpath={.status.components.refs[*].kind}"}))
-			cl.add(newCheck("expect", asAdmin, withoutNamespace, contain, "ClusterRoleBinding", ok, []string{"operator", subCockroachdb.operatorPackage + "." + subCockroachdb.namespace, "-o=jsonpath={.status.components.refs[*].kind}"}))
-			cl.add(newCheck("expect", asAdmin, withoutNamespace, contain, "CustomResourceDefinition", ok, []string{"operator", subCockroachdb.operatorPackage + "." + subCockroachdb.namespace, "-o=jsonpath={.status.components.refs[*].kind}"}))
-			cl.add(newCheck("expect", asAdmin, withoutNamespace, contain, "Subscription", ok, []string{"operator", subCockroachdb.operatorPackage + "." + subCockroachdb.namespace, "-o=jsonpath={.status.components.refs[*].kind}"}))
-			cl.add(newCheck("expect", asAdmin, withoutNamespace, contain, "InstallPlan", ok, []string{"operator", subCockroachdb.operatorPackage + "." + subCockroachdb.namespace, "-o=jsonpath={.status.components.refs[*].kind}"}))
-			cl.add(newCheck("expect", asAdmin, withoutNamespace, contain, "ClusterServiceVersion", ok, []string{"operator", subCockroachdb.operatorPackage + "." + subCockroachdb.namespace, "-o=jsonpath={.status.components.refs[*].kind}"}))
-			cl.add(newCheck("expect", asAdmin, withoutNamespace, contain, subCockroachdb.namespace, ok, []string{"operator", subCockroachdb.operatorPackage + "." + subCockroachdb.namespace, "-o=jsonpath={.status.components.refs[?(.kind=='ClusterServiceVersion')].namespace}"}))
-			cl.add(newCheck("expect", asAdmin, withoutNamespace, contain, "InstallSucceeded", ok, []string{"operator", subCockroachdb.operatorPackage + "." + subCockroachdb.namespace, "-o=jsonpath={.status.components.refs[?(.kind=='ClusterServiceVersion')].conditions[*].reason}"}))
-			//do check parallelly
-			cl.check(oc)
+			resourceKind := getResource(oc, asAdmin, withoutNamespace, "operator", subCockroachdb.operatorPackage+"."+subCockroachdb.namespace, "-o=jsonpath={.status.components.refs[*].kind}")
+			o.Expect(resourceKind).To(o.ContainSubstring("Deployment"))
+			o.Expect(resourceKind).To(o.ContainSubstring("ServiceAccount"))
+			o.Expect(resourceKind).To(o.ContainSubstring("Role"))
+			o.Expect(resourceKind).To(o.ContainSubstring("RoleBinding"))
+			o.Expect(resourceKind).To(o.ContainSubstring("ClusterRole"))
+			o.Expect(resourceKind).To(o.ContainSubstring("ClusterRoleBinding"))
+			o.Expect(resourceKind).To(o.ContainSubstring("CustomResourceDefinition"))
+			o.Expect(resourceKind).To(o.ContainSubstring("Subscription"))
+			o.Expect(resourceKind).To(o.ContainSubstring("InstallPlan"))
+			o.Expect(resourceKind).To(o.ContainSubstring("ClusterServiceVersion"))
+			newCheck("expect", asAdmin, withoutNamespace, contain, subCockroachdb.namespace, ok, []string{"operator", subCockroachdb.operatorPackage + "." + subCockroachdb.namespace, "-o=jsonpath={.status.components.refs[?(.kind=='ClusterServiceVersion')].namespace}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "InstallSucceeded", ok, []string{"operator", subCockroachdb.operatorPackage + "." + subCockroachdb.namespace, "-o=jsonpath={.status.components.refs[?(.kind=='ClusterServiceVersion')].conditions[*].reason}"}).check(oc)
 
 			g.By("unlabel resource and it is relabeled automatically")
 			clusterRoleName := getResource(oc, asAdmin, withoutNamespace, "operator", subCockroachdb.operatorPackage+"."+subCockroachdb.namespace, "-o=jsonpath={.status.components.refs[?(.kind=='ClusterRole')].name}")
@@ -3031,12 +3200,9 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within all namesp
 			subCockroachdb1.create(oc, itName, dr)
 			defer subCockroachdb1.delete(itName, dr)
 			defer doAction(oc, "delete", asAdmin, withoutNamespace, "csv", subCockroachdb1.installedCSV, "-n", subCockroachdb1.namespace)
-			cl.empty()
-			cl.add(newCheck("expect", asAdmin, withoutNamespace, contain, "ClusterServiceVersion", ok, []string{"operator", subCockroachdb1.operatorPackage + "." + subCockroachdb1.namespace, "-o=jsonpath={.status.components.refs[*].kind}"}))
-			cl.add(newCheck("expect", asAdmin, withoutNamespace, contain, subCockroachdb1.namespace, ok, []string{"operator", subCockroachdb1.operatorPackage + "." + subCockroachdb1.namespace, "-o=jsonpath={.status.components.refs[?(.kind=='ClusterServiceVersion')].namespace}"}))
-			cl.add(newCheck("expect", asAdmin, withoutNamespace, contain, "InstallSucceeded", ok, []string{"operator", subCockroachdb1.operatorPackage + "." + subCockroachdb1.namespace, "-o=jsonpath={.status.components.refs[?(.kind=='ClusterServiceVersion')].conditions[*].reason}"}))
-			//do check parallelly
-			cl.check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "ClusterServiceVersion", ok, []string{"operator", subCockroachdb1.operatorPackage + "." + subCockroachdb1.namespace, "-o=jsonpath={.status.components.refs[*].kind}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, subCockroachdb1.namespace, ok, []string{"operator", subCockroachdb1.operatorPackage + "." + subCockroachdb1.namespace, "-o=jsonpath={.status.components.refs[?(.kind=='ClusterServiceVersion')].namespace}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "InstallSucceeded", ok, []string{"operator", subCockroachdb1.operatorPackage + "." + subCockroachdb1.namespace, "-o=jsonpath={.status.components.refs[?(.kind=='ClusterServiceVersion')].conditions[*].reason}"}).check(oc)
 
 			g.By("delete operator and delete Operator and it will be recreated because of crd")
 			subCockroachdb1.delete(itName, dr)
