@@ -1131,9 +1131,11 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 				subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
 			newCheck("expect", asAdmin, withoutNamespace, contain, "*/3 * * * *", ok, []string{"cronjob", "platform-compliancesuite-rerunner",
 				"-n", subD.namespace, "-o=jsonpath={.spec.schedule}"}).check(oc)
+
+			newCheck("expect", asAdmin, withoutNamespace, contain, "1", ok, []string{"compliancesuite", csuiteD.name, "-n",
+				subD.namespace, "-o=jsonpath={.status.scanStatuses[*].currentIndex}"}).check(oc)
 			newCheck("expect", asAdmin, withoutNamespace, contain, "Succeeded", ok, []string{"pod", "-l=workload=suitererunner", "-n",
 				subD.namespace, "-o=jsonpath={.items[0].status.phase}"}).check(oc)
-
 			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", csuiteD.name, "-n",
 				subD.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
 
@@ -1172,6 +1174,10 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 				objectTableRef{"compliancesuite", subD.namespace, "worker-compliancesuite"},
 			)
 
+			// adding label to rhcos worker node to skip rhel worker node if any
+			g.By("Label all rhcos worker nodes as wscan.. !!!\n")
+			setLabelToNode(oc)
+
 			csuiteD.namespace = subD.namespace
 			g.By("Create worker-compliancesuite.. !!!\n")
 			e2e.Logf("Here namespace : %v\n", catSrc.namespace)
@@ -1194,9 +1200,11 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 				subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
 			newCheck("expect", asAdmin, withoutNamespace, contain, "*/3 * * * *", ok, []string{"cronjob", "worker-compliancesuite-rerunner",
 				"-n", subD.namespace, "-o=jsonpath={.spec.schedule}"}).check(oc)
-			newCheck("expect", asAdmin, withoutNamespace, contain, "Succeeded", ok, []string{"pod", "-l=workload=suitererunner", "-n",
-				subD.namespace, "-o=jsonpath={.items[0].status.phase}"}).check(oc)
 
+			newCheck("expect", asAdmin, withoutNamespace, contain, "1", ok, []string{"compliancesuite", csuiteD.name, "-n",
+				subD.namespace, "-o=jsonpath={.status.scanStatuses[*].currentIndex}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "Succeeded", ok, []string{"pod", "-l workload=suitererunner", "-n",
+				subD.namespace, "-o=jsonpath={.items[0].status.phase}"}).check(oc)
 			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", csuiteD.name, "-n",
 				subD.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
 
@@ -1211,6 +1219,103 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			subD.getScanExitCodeFromConfigmap(oc, "0")
 
 			g.By("The ocp-33418 The ComplianceSuite object performed schedule scan successfully.. !!!\n")
+		})
+
+		// author: pdhamdhe@redhat.com
+		g.It("High-33453-The Compliance Operator rotates the raw scan results", func() {
+
+			var (
+				csuiteD = complianceSuiteDescription{
+					name:         "worker-compliancesuite",
+					namespace:    "",
+					schedule:     "*/3 * * * *",
+					scanname:     "worker-scan",
+					profile:      "xccdf_org.ssgproject.content_profile_moderate",
+					content:      "ssg-rhcos4-ds.xml",
+					contentImage: "quay.io/complianceascode/ocp4:latest",
+					rule:         "xccdf_org.ssgproject.content_rule_no_netrc_files",
+					nodeSelector: "wscan",
+					rotation:     2,
+					template:     csuiteTemplate,
+				}
+			)
+
+			defer cleanupObjects(oc,
+				objectTableRef{"compliancesuite", subD.namespace, "worker-compliancesuite"},
+				objectTableRef{"pod", subD.namespace, "pv-extract"})
+
+			// adding label to rhcos worker node to skip rhel worker node if any
+			g.By("Label all rhcos worker nodes as wscan.. !!!\n")
+			setLabelToNode(oc)
+
+			csuiteD.namespace = subD.namespace
+			g.By("Create worker-compliancesuite.. !!!\n")
+			e2e.Logf("Here namespace : %v\n", catSrc.namespace)
+			csuiteD.create(oc, itName, dr)
+
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", csuiteD.name, "-n",
+				subD.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+
+			g.By("Check worker scan pods status.. !!! \n")
+			subD.scanPodStatus(oc, "Succeeded")
+			g.By("Check worker-compliancesuite name and result.. !!!\n")
+			subD.complianceSuiteName(oc, "worker-compliancesuite")
+			subD.complianceSuiteResult(oc, "COMPLIANT")
+			g.By("Check worker-compliancesuite result through exit-code.. !!!\n")
+			subD.getScanExitCodeFromConfigmap(oc, "0")
+
+			//Verifying rotation policy and cronjob
+			newCheck("expect", asAdmin, withoutNamespace, contain, "2", ok, []string{"compliancesuite", csuiteD.name, "-n",
+				subD.namespace, "-o=jsonpath={.spec.scans[0].rawResultStorage.rotation}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "worker-compliancesuite-rerunner", ok, []string{"cronjob", "-n",
+				subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "*/3 * * * *", ok, []string{"cronjob", "worker-compliancesuite-rerunner",
+				"-n", subD.namespace, "-o=jsonpath={.spec.schedule}"}).check(oc)
+
+			//Second round of scan and check
+			newCheck("expect", asAdmin, withoutNamespace, contain, "1", ok, []string{"compliancesuite", csuiteD.name, "-n",
+				subD.namespace, "-o=jsonpath={.status.scanStatuses[*].currentIndex}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "Succeeded", ok, []string{"pod", "-l workload=suitererunner", "-n",
+				subD.namespace, "-o=jsonpath={.items[0].status.phase}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", csuiteD.name, "-n",
+				subD.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+
+			g.By("Check worker scan pods status.. !!! \n")
+			subD.scanPodStatus(oc, "Succeeded")
+			g.By("Check worker-compliancesuite name and result.. !!!\n")
+			subD.complianceSuiteName(oc, "worker-compliancesuite")
+			subD.complianceSuiteResult(oc, "COMPLIANT")
+			g.By("Check worker-compliancesuite result through exit-code.. !!!\n")
+			subD.getScanExitCodeFromConfigmap(oc, "0")
+
+			//Third round of scan and check
+			newCheck("expect", asAdmin, withoutNamespace, contain, "2", ok, []string{"compliancesuite", csuiteD.name, "-n",
+				subD.namespace, "-o=jsonpath={.status.scanStatuses[*].currentIndex}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "Succeeded", ok, []string{"pod", "-l workload=suitererunner", "-n",
+				subD.namespace, "-o=jsonpath={.items[1].status.phase}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", csuiteD.name, "-n",
+				subD.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+
+			g.By("Check worker scan pods status.. !!! \n")
+			subD.scanPodStatus(oc, "Succeeded")
+			g.By("Check worker-compliancesuite name and result.. !!!\n")
+			subD.complianceSuiteName(oc, "worker-compliancesuite")
+			subD.complianceSuiteResult(oc, "COMPLIANT")
+			g.By("Check worker-compliancesuite result through exit-code.. !!!\n")
+			subD.getScanExitCodeFromConfigmap(oc, "0")
+
+			g.By("Create pv-extract pod and verify arfReport result directories.. !!!\n")
+			_, err := oc.AsAdmin().WithoutNamespace().Run("create").Args("-n", subD.namespace, "-f", pvextractpodYAML).Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			newCheck("expect", asAdmin, withoutNamespace, contain, "Running", ok, []string{"pod", "pv-extract", "-n",
+				subD.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+			commands := []string{"exec", "pod/pv-extract", "--", "ls", "/workers-scan-results"}
+			arfReportDir, err := oc.AsAdmin().Run(commands...).Args().Output()
+			e2e.Logf("The arfReport result dir:\n%v", arfReportDir)
+			o.Expect(err).NotTo(o.HaveOccurred())
+			if !strings.Contains(arfReportDir, "0") && (strings.Contains(arfReportDir, "1") && strings.Contains(arfReportDir, "2")) {
+				g.By("The ocp-33453 The ComplianceSuite object performed schedule scan and rotates the raw scan results successfully.. !!!\n")
+			}
 		})
 
 		// author: pdhamdhe@redhat.com

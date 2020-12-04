@@ -29,6 +29,7 @@ type complianceSuiteDescription struct {
 	operator            string
 	nodeSelector        string
 	size                string
+	rotation            int
 	tailoringConfigMap  string
 	template            string
 }
@@ -37,7 +38,8 @@ func (csuite *complianceSuiteDescription) create(oc *exutil.CLI, itName string, 
 	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", csuite.template, "-p", "NAME="+csuite.name, "NAMESPACE="+csuite.namespace,
 		"SCHEDULE="+csuite.schedule, "SCANNAME="+csuite.scanname, "SCANTYPE="+csuite.scanType, "PROFILE="+csuite.profile, "CONTENT="+csuite.content,
 		"CONTENTIMAGE="+csuite.contentImage, "RULE="+csuite.rule, "NOEXTERNALRESOURCES="+strconv.FormatBool(csuite.noExternalResources), "KEY="+csuite.key,
-		"VALUE="+csuite.value, "OPERATOR="+csuite.operator, "NODESELECTOR="+csuite.nodeSelector, "SIZE="+csuite.size, "TAILORCONFIGMAPNAME="+csuite.tailoringConfigMap)
+		"VALUE="+csuite.value, "OPERATOR="+csuite.operator, "NODESELECTOR="+csuite.nodeSelector, "SIZE="+csuite.size, "ROTATION="+strconv.Itoa(csuite.rotation),
+		"TAILORCONFIGMAPNAME="+csuite.tailoringConfigMap)
 	o.Expect(err).NotTo(o.HaveOccurred())
 	dr.getIr(itName).add(newResource(oc, "compliancesuite", csuite.name, requireNS, csuite.namespace))
 }

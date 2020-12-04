@@ -7046,6 +7046,7 @@ objects:
           node-role.kubernetes.io/${NODESELECTOR}: ""
         rawResultStorage:
           size: "${SIZE}"
+          rotation: ${{ROTATION}}
 
 parameters:
 - name: NAME
@@ -7060,6 +7061,7 @@ parameters:
 - name: NOEXTERNALRESOURCES
 - name: NODESELECTOR
 - name: SIZE
+- name: ROTATION
 `)
 
 func testExtendedTestdataSecurityandcomplianceCompliancesuiteYamlBytes() ([]byte, error) {
