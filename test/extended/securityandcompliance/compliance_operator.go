@@ -30,6 +30,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		scansettingYAML        = filepath.Join(buildPruningBaseDir, "scansetting.yaml")
 		scansettingbindingYAML = filepath.Join(buildPruningBaseDir, "scansettingbinding.yaml")
 		pvextractpodYAML       = filepath.Join(buildPruningBaseDir, "pv-extract-pod.yaml")
+		podModifyTemplate      = filepath.Join(buildPruningBaseDir, "pod_modify.yaml")
 		dr                     = make(describerResrouce)
 
 		catSrc = catalogSourceDescription{
@@ -59,6 +60,13 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			installedCSV:           "",
 			template:               subCoTemplate,
 			singleNamespace:        true,
+		}
+		podModifyD = podModify{
+			name:      "",
+			namespace: "",
+			nodeName:  "",
+			args:      "",
+			template:  podModifyTemplate,
 		}
 	)
 
@@ -1316,6 +1324,66 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			if !strings.Contains(arfReportDir, "0") && (strings.Contains(arfReportDir, "1") && strings.Contains(arfReportDir, "2")) {
 				g.By("The ocp-33453 The ComplianceSuite object performed schedule scan and rotates the raw scan results successfully.. !!!\n")
 			}
+		})
+
+		// author: pdhamdhe@redhat.com
+		g.It("High-33660-Verify the differences in nodes from the same role could be handled [Serial]", func() {
+
+			var (
+				csuiteD = complianceSuiteDescription{
+					name:         "worker-compliancesuite",
+					namespace:    "",
+					scanname:     "worker-scan",
+					profile:      "xccdf_org.ssgproject.content_profile_moderate",
+					content:      "ssg-rhcos4-ds.xml",
+					contentImage: "quay.io/complianceascode/ocp4:latest",
+					rule:         "xccdf_org.ssgproject.content_rule_no_direct_root_logins",
+					nodeSelector: "wscan",
+					template:     csuiteTemplate,
+				}
+			)
+
+			defer cleanupObjects(oc, objectTableRef{"compliancesuite", subD.namespace, "worker-compliancesuite"})
+
+			// adding label to rhcos worker node to skip rhel worker node if any
+			g.By("Label all rhcos worker nodes as wscan !!!\n")
+			setLabelToNode(oc)
+
+			var pod = podModifyD
+			pod.namespace = oc.Namespace()
+			nodeName := getOneRhcosWorkerNodeName(oc)
+			pod.name = "pod-modify"
+			pod.nodeName = nodeName
+			pod.args = "touch /hostroot/etc/securetty"
+			defer func() {
+				pod.name = "pod-recover"
+				pod.nodeName = nodeName
+				pod.args = "rm -rf /hostroot/etc/securetty"
+				pod.doActionsOnNode(oc, "Succeeded", dr)
+			}()
+			pod.doActionsOnNode(oc, "Succeeded", dr)
+
+			csuiteD.namespace = subD.namespace
+			g.By("Create compliancesuite !!!\n")
+			csuiteD.create(oc, itName, dr)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", csuiteD.name, "-n",
+				subD.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+
+			g.By("Check worker scan pods status !!! \n")
+			subD.scanPodStatus(oc, "Succeeded")
+
+			g.By("Check complianceSuite name and result..!!!\n")
+			subD.complianceSuiteName(oc, "worker-compliancesuite")
+			subD.complianceSuiteResult(oc, "INCONSISTENT")
+
+			g.By("Verify compliance scan result compliancecheckresult through label ...!!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "worker-scan-no-direct-root-logins", ok, []string{"compliancecheckresult",
+				"--selector=compliance.openshift.io/inconsistent-check", "-n", subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "INCONSISTENT", ok, []string{"compliancecheckresult",
+				"worker-scan-no-direct-root-logins", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
+
+			g.By("ocp-33660 The compliance scan successfully handled the differences from the same role nodes ...!!!\n")
+
 		})
 
 		// author: pdhamdhe@redhat.com

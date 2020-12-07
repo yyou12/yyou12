@@ -136,14 +136,19 @@ func setLabelToNode(oc *exutil.CLI) string {
 	for _, v := range node {
 		nodeLabel, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("nodes", fmt.Sprintf("%s", v), "--show-labels").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
-		if strings.Contains(nodeLabel, "node-role.kubernetes.io/wscan=") {
-			continue
-		} else {
+		if !strings.Contains(nodeLabel, "node-role.kubernetes.io/wscan=") {
 			_, err := oc.AsAdmin().WithoutNamespace().Run("label").Args("node", fmt.Sprintf("%s", v), "node-role.kubernetes.io/wscan=").Output()
 			o.Expect(err).NotTo(o.HaveOccurred())
 		}
-		return nodeLabel
 	}
+	return nodeName
+}
+
+func getOneRhcosWorkerNodeName(oc *exutil.CLI) string {
+	nodeName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("node", "--selector=node-role.kubernetes.io/worker=,node.openshift.io/os_id=rhcos",
+		"-o=jsonpath={.items[0].metadata.name}").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	e2e.Logf("the result of nodename:%v", nodeName)
 	return nodeName
 }
 
