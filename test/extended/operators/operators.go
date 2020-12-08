@@ -34,7 +34,7 @@ var SkippedOperators = []string{"quay-bridge-operator", "kubevirt-hyperconverged
 
 var CertifiedOperators = []string{"3scale-community-operator", "amq-streams",
 	"argocd-operator", "cert-utils-operator", "couchbase-enterprise-certified", "dotscience-operator",
-	"federatorai-certified", "jaeger-product", "keycloak-operator", "kiali", "mongodb-enterprise", "must-gather-operator",
+	"federatorai-certified", "jaeger-product", "keycloak-operator", "kiali-ossm", "mongodb-enterprise", "must-gather-operator",
 	"percona-server-mongodb-operator", "percona-xtradb-cluster-operator", "planetscale",
 	"portworx-certified", "postgresql", "presto-operator", "prometheus", "radanalytics-spark",
 	"resource-locker-operator", "spark-gcp", "storageos2", "strimzi-kafka-operator",
@@ -49,7 +49,7 @@ var CaseIDCertifiedOperators = map[string]string{
 	"federatorai-certified":           "25444",
 	"jaeger-product":                  "26057",
 	"keycloak-operator":               "26945",
-	"kiali":                           "27301",
+	"kiali-ossm":                      "27301",
 	"mongodb-enterprise":              "24064",
 	"must-gather-operator":            "28699",
 	"percona-server-mongodb-operator": "26052",
@@ -207,6 +207,12 @@ func CreateSubscriptionSpecificNamespace(operator string, oc *exutil.CLI, namesp
 	_, err := oc.WithoutNamespace().AsAdmin().Run("create").Args("-f", templateSubscriptionYAML, "-n", p.Namespace).Output()
 	o.Expect(err).NotTo(o.HaveOccurred())
 	return p
+}
+
+//the method is to create ns without prefix
+func CreateNamespaceWithoutPrefix(namespace string, oc *exutil.CLI) {
+	_, err := oc.WithoutNamespace().AsAdmin().Run("create").Args("ns", namespace).Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
 //the method is to create ns with prefix test-operators-

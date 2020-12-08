@@ -38,6 +38,7 @@
 // test/extended/testdata/operators/jaeger.yaml
 // test/extended/testdata/operators/kafka.yaml
 // test/extended/testdata/operators/keycloak-cr.yaml
+// test/extended/testdata/operators/kiali-cr.yaml
 // test/extended/testdata/operators/mongodb-ops-manager-cr.yaml
 // test/extended/testdata/operators/mongodb-ops-manager-secret.yaml
 // test/extended/testdata/operators/operator_group.yaml
@@ -5513,6 +5514,44 @@ func testExtendedTestdataOperatorsKeycloakCrYaml() (*asset, error) {
 	return a, nil
 }
 
+var _testExtendedTestdataOperatorsKialiCrYaml = []byte(`apiVersion: kiali.io/v1alpha1
+kind: Kiali
+metadata:
+  name: kiali
+  namespace: openshift-operators
+spec:
+  installation_tag: My Kiali
+  istio_namespace: istio-system
+  deployment:
+    namespace: istio-system
+    verbose_mode: "4"
+    view_only_mode: false
+  external_services:
+    grafana:
+      url: ""
+    prometheus:
+      url: ""
+    tracing:
+      url: ""
+  server:
+    web_root: /mykiali
+`)
+
+func testExtendedTestdataOperatorsKialiCrYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataOperatorsKialiCrYaml, nil
+}
+
+func testExtendedTestdataOperatorsKialiCrYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataOperatorsKialiCrYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/operators/kiali-cr.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
 var _testExtendedTestdataOperatorsMongodbOpsManagerCrYaml = []byte(`apiVersion: mongodb.com/v1
 kind: MongoDBOpsManager
 metadata:
@@ -8761,6 +8800,7 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/operators/jaeger.yaml":                               testExtendedTestdataOperatorsJaegerYaml,
 	"test/extended/testdata/operators/kafka.yaml":                                testExtendedTestdataOperatorsKafkaYaml,
 	"test/extended/testdata/operators/keycloak-cr.yaml":                          testExtendedTestdataOperatorsKeycloakCrYaml,
+	"test/extended/testdata/operators/kiali-cr.yaml":                             testExtendedTestdataOperatorsKialiCrYaml,
 	"test/extended/testdata/operators/mongodb-ops-manager-cr.yaml":               testExtendedTestdataOperatorsMongodbOpsManagerCrYaml,
 	"test/extended/testdata/operators/mongodb-ops-manager-secret.yaml":           testExtendedTestdataOperatorsMongodbOpsManagerSecretYaml,
 	"test/extended/testdata/operators/operator_group.yaml":                       testExtendedTestdataOperatorsOperator_groupYaml,
@@ -8898,6 +8938,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 					"jaeger.yaml":                        {testExtendedTestdataOperatorsJaegerYaml, map[string]*bintree{}},
 					"kafka.yaml":                         {testExtendedTestdataOperatorsKafkaYaml, map[string]*bintree{}},
 					"keycloak-cr.yaml":                   {testExtendedTestdataOperatorsKeycloakCrYaml, map[string]*bintree{}},
+					"kiali-cr.yaml":                      {testExtendedTestdataOperatorsKialiCrYaml, map[string]*bintree{}},
 					"mongodb-ops-manager-cr.yaml":        {testExtendedTestdataOperatorsMongodbOpsManagerCrYaml, map[string]*bintree{}},
 					"mongodb-ops-manager-secret.yaml":    {testExtendedTestdataOperatorsMongodbOpsManagerSecretYaml, map[string]*bintree{}},
 					"operator_group.yaml":                {testExtendedTestdataOperatorsOperator_groupYaml, map[string]*bintree{}},

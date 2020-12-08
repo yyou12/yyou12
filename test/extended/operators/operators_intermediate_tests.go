@@ -15,7 +15,7 @@ import (
 const DEFAULT_STATUS_QUERY = "-o=jsonpath={.status.conditions[0].type}"
 const DEFAULT_EXPECTED_BEHAVIOR = "Ready"
 
-var _ = g.Describe("[Suite:openshift/isv] ISV_Operators", func() {
+var _ = g.Describe("[sig-operators] ISV_Operators [Suite:openshift/isv]", func() {
 	var (
 		oc                     = exutil.NewCLI("operators", exutil.KubeConfigPath())
 		intermediateTestsSufix = "[Intermediate]"
@@ -245,8 +245,7 @@ var _ = g.Describe("[Suite:openshift/isv] ISV_Operators", func() {
 
 	})
 
-	g.It(TestCaseName("argocd-operator", intermediateTestsSufix), func() {
-
+	g.It("Medium-27312-[Intermediate] Operator argocd-operator should work properly", func() {
 		argoCR := "ArgoCD"
 		argoCRName := "example-argocd"
 		argoPackageName := "argocd-operator"
@@ -258,6 +257,24 @@ var _ = g.Describe("[Suite:openshift/isv] ISV_Operators", func() {
 		CreateFromYAML(currentPackage, argoFile, oc)
 		CheckCR(currentPackage, argoCR, argoCRName, "-o=jsonpath={.status.phase}", "Available", oc)
 		RemoveCR(currentPackage, argoCR, argoCRName, oc)
+		RemoveOperatorDependencies(currentPackage, oc, false)
+
+	})
+
+	g.It("Medium-27301-[Intermediate] Operator kiali-ossm should work properly", func() {
+		kialiCR := "Kiali"
+		kialiCRName := "kiali-27301"
+		kialiPackageName := "kiali-ossm"
+		kialiFile := "kiali-cr.yaml"
+		namespace := "openshift-operators"
+		kialiNamespace := "istio-system"
+		CreateNamespaceWithoutPrefix(kialiNamespace, oc)
+		defer RemoveNamespace(kialiNamespace, oc)
+		currentPackage := CreateSubscriptionSpecificNamespace(kialiPackageName, oc, false, false, namespace, INSTALLPLAN_AUTOMATIC_MODE)
+		CheckDeployment(currentPackage, oc)
+		CreateFromYAML(currentPackage, kialiFile, oc)
+		CheckCR(currentPackage, kialiCR, kialiCRName, "-o=jsonpath={.status.conditions..reason}", "Running", oc)
+		RemoveCR(currentPackage, kialiCR, kialiCRName, oc)
 		RemoveOperatorDependencies(currentPackage, oc, false)
 
 	})
