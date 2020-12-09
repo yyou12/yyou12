@@ -1094,6 +1094,89 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		})
 
 		// author: pdhamdhe@redhat.com
+		g.It("Critical-36988-The ComplianceScan could be triggered for cis profile for platform scanType", func() {
+
+			var (
+				cscanMD = complianceScanDescription{
+					name:         "platform-new-scan",
+					namespace:    "",
+					scanType:     "platform",
+					profile:      "xccdf_org.ssgproject.content_profile_moderate",
+					content:      "ssg-ocp4-ds.xml",
+					contentImage: "quay.io/complianceascode/ocp4:latest",
+					template:     cscanTemplate,
+				}
+			)
+
+			defer cleanupObjects(oc, objectTableRef{"compliancescan", subD.namespace, "platform-new-scan"})
+
+			cscanMD.namespace = subD.namespace
+			g.By("Create platform-new-scan.. !!!\n")
+			cscanMD.create(oc, itName, dr)
+
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancescan", cscanMD.name, "-n",
+				subD.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+
+			g.By("Check platform-new-scan pod.. !!!\n")
+			subD.scanPodName(oc, "platform-new-scan-api-checks-pod")
+
+			g.By("Check platform scan pods status.. !!! \n")
+			subD.scanPodStatus(oc, "Succeeded")
+
+			g.By("Check platform-new-scan name and result..!!!\n")
+			subD.complianceScanName(oc, "platform-new-scan")
+			subD.complianceScanResult(oc, "NON-COMPLIANT")
+
+			g.By("Check platform-new-scan result through exit-code ..!!!\n")
+			subD.getScanExitCodeFromConfigmap(oc, "2")
+
+			g.By("The ocp-36988 complianceScan for platform has performed successfully ..!!!\n")
+		})
+
+		// author: pdhamdhe@redhat.com
+		g.It("Critical-36990-The ComplianceSuite could be triggered for cis profiles for platform scanType", func() {
+
+			var (
+				csuiteD = complianceSuiteDescription{
+					name:         "platform-compliancesuite",
+					namespace:    "",
+					scanType:     "platform",
+					scanname:     "platform-scan",
+					profile:      "xccdf_org.ssgproject.content_profile_cis",
+					content:      "ssg-ocp4-ds.xml",
+					contentImage: "quay.io/complianceascode/ocp4:latest",
+					template:     csuiteTemplate,
+				}
+			)
+
+			defer cleanupObjects(oc,
+				objectTableRef{"compliancesuite", subD.namespace, "platform-compliancesuite"},
+			)
+
+			csuiteD.namespace = subD.namespace
+			g.By("Create platform-compliancesuite.. !!!\n")
+			e2e.Logf("Here namespace : %v\n", catSrc.namespace)
+			csuiteD.create(oc, itName, dr)
+
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", csuiteD.name, "-n",
+				subD.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+
+			g.By("Check platform-scan pod.. !!!\n")
+			subD.scanPodName(oc, "platform-scan-api-checks-pod")
+			g.By("Check platform scan pods status.. !!! \n")
+			subD.scanPodStatus(oc, "Succeeded")
+
+			g.By("Check platform-compliancesuite name and result.. !!!\n")
+			subD.complianceSuiteName(oc, "platform-compliancesuite")
+			subD.complianceSuiteResult(oc, "NON-COMPLIANT")
+
+			g.By("Check platform-compliancesuite result through exit-code.. !!!\n")
+			subD.getScanExitCodeFromConfigmap(oc, "2")
+
+			g.By(" ocp-36990 The complianceSuite object successfully performed platform scan for cis profile ..!!!\n")
+		})
+
+		// author: pdhamdhe@redhat.com
 		g.It("High-32120-The ComplianceSuite performs schedule scan for Platform scan type", func() {
 
 			var (
