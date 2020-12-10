@@ -140,7 +140,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		g.By("Compliance Operator sucessfully installed !!! ")
 	})
 
-	g.Context("When the compliance-operator is installed through OLM", func() {
+	g.Context("When the compliance-operator is installed", func() {
 
 		var itName string
 
