@@ -9,15 +9,20 @@ objects:
     name: "${NAME}"
     namespace: "${NAMESPACE}"
   spec:
-    channel: singlenamespace-alpha
-    installPlanApproval: "${INSTALLPLAN}"
+    channel: "${CHANNEL}"
+    installPlanApproval: "${APPROVAL}"
     name: etcd
     source: "${SOURCENAME}"
     sourceNamespace: "${SOURCENAMESPACE}"
-    startingCSV: etcdoperator.v0.9.4
+    startingCSV: "${STARTINGCSV}"
 parameters:
 - name: NAME
 - name: NAMESPACE
-- name: INSTALLPLAN
 - name: SOURCENAME
 - name: SOURCENAMESPACE
+- name: CHANNEL
+  value: "singlenamespace-alpha"
+- name: STARTINGCSV
+  value: "etcdoperator.v0.9.4"
+- name: APPROVAL
+  value: "Manual"
