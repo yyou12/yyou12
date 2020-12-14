@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	g "github.com/onsi/ginkgo"
+	o "github.com/onsi/gomega"
 
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
@@ -37,5 +38,14 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
 				e2e.Failf(fmt.Sprintf("Failed to validating the %s, error: %v", b.image, err))
 			}
 		}
+	})
+	
+	// author: jfan@redhat.com
+	g.It("High-37465-SDK olm improve olm related sub commands", func() {
+
+		operatorsdkCLI.showInfo = true
+		g.By("check the olm status")
+		output, _ := operatorsdkCLI.Run("olm").Args("status", "--olm-namespace", "openshift-operator-lifecycle-manager").Output()
+		o.Expect(output).To(o.ContainSubstring("Successfully got OLM status for version"))
 	})
 })
