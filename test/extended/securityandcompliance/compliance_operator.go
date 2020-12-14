@@ -332,7 +332,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 				tprofileD = tailoredProfileDescription{
 					name:         "rhcos-tailoredprofile",
 					namespace:    "",
-					extends:      "rhcos4-ncp",
+					extends:      "rhcos4-moderate",
 					enrulename1:  "rhcos4-sshd-disable-root-login",
 					disrulename1: "rhcos4-audit-rules-dac-modification-chmod",
 					disrulename2: "rhcos4-audit-rules-etc-group-open",
@@ -1480,10 +1480,8 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			subD.getProfileName(oc, "ocp4-cis-node")
 			subD.getProfileName(oc, "ocp4-e8")
 			subD.getProfileName(oc, "ocp4-moderate")
-			subD.getProfileName(oc, "ocp4-ncp")
 			subD.getProfileName(oc, "rhcos4-e8")
 			subD.getProfileName(oc, "rhcos4-moderate")
-			subD.getProfileName(oc, "rhcos4-ncp")
 
 			g.By("ocp-32814 The Compliance Operator by default created ProfileBundles and profiles are verified successfully.. !!!\n")
 		})

@@ -5517,7 +5517,7 @@ func testExtendedTestdataOperatorsKeycloakCrYaml() (*asset, error) {
 var _testExtendedTestdataOperatorsKialiCrYaml = []byte(`apiVersion: kiali.io/v1alpha1
 kind: Kiali
 metadata:
-  name: kiali
+  name: kiali-27301
   namespace: openshift-operators
 spec:
   installation_tag: My Kiali
