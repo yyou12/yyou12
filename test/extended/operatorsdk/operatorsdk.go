@@ -2,7 +2,7 @@ package operatorsdk
 
 import (
 	"fmt"
-        "os/exec"
+ 	"os/exec"
 	"strings"
 
 	g "github.com/onsi/ginkgo"
