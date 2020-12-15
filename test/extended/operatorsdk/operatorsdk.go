@@ -2,6 +2,7 @@ package operatorsdk
 
 import (
 	"fmt"
+        "os/exec"
 	"strings"
 
 	g "github.com/onsi/ginkgo"
@@ -47,5 +48,16 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
 		g.By("check the olm status")
 		output, _ := operatorsdkCLI.Run("olm").Args("status", "--olm-namespace", "openshift-operator-lifecycle-manager").Output()
 		o.Expect(output).To(o.ContainSubstring("Successfully got OLM status for version"))
+	})
+
+	// author: jfan@redhat.com
+	g.It("High-37312-SDK olm improve manage operator bundles in new manifests metadata format", func() {
+
+		operatorsdkCLI.showInfo = true
+		exec.Command("bash", "-c", "mkdir /tmp/memcached-operator-37312 && cd /tmp/memcached-operator-37312 && operator-sdk init --project-version 3-alpha --plugins ansible.sdk.operatorframework.io/v1 --domain example.com --group cache --version v1alpha1 --kind Memcached --generate-playbook").Output()
+		defer exec.Command("bash", "-c", "rm -rf /tmp/memcached-operator-37312").Output()
+		result, err := exec.Command("bash", "-c", "cd /tmp/memcached-operator-37312 && operator-sdk generate bundle --deploy-dir=config --crds-dir=config/crds --version=0.0.1 | grep \"Bundle manifests generated successfully in bundle\"").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(result).To(o.ContainSubstring("Bundle manifests generated successfully in bundle"))
 	})
 })
