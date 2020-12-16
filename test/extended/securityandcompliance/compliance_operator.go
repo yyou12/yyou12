@@ -83,7 +83,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 	})
 
 	// author: pdhamdhe@redhat.com
-	g.It("Critical-34378-Install the Compliance Operator through OLM using CatalogSource and Subscription", func() {
+	g.It("Critical-34378-Install the Compliance Operator through olm using CatalogSource and Subscription", func() {
 
 		var itName = g.CurrentGinkgoTestDescription().TestText
 		oc.SetupProject()
