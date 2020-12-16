@@ -60,4 +60,18 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(result).To(o.ContainSubstring("Bundle manifests generated successfully in bundle"))
 	})
+
+	// author: jfan@redhat.com
+	g.It("High-37141-SDK Helm support simple structural schema generation for Helm CRDs", func() {
+
+ 		operatorsdkCLI.showInfo = true
+		exec.Command("bash", "-c", "mkdir /tmp/nginx-operator-37141 && cd /tmp/nginx-operator-37141 && operator-sdk init --project-name nginx-operator --plugins helm.sdk.operatorframework.io/v1").Output()
+		defer exec.Command("bash", "-c", "rm -rf /tmp/nginx-operator-37141").Output()
+		result, err := exec.Command("bash", "-c", "cd /tmp/nginx-operator-37141 && operator-sdk create api --group apps --version v1beta1 --kind Nginx").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(result).To(o.ContainSubstring("Created helm-charts/nginx"))
+		result, err = exec.Command("bash", "-c", "cat /tmp/nginx-operator-37141/config/crd/bases/apps.my.domain_nginxes.yaml | grep -E \"x-kubernetes-preserve-unknown-fields: true\"").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(result).To(o.ContainSubstring("x-kubernetes-preserve-unknown-fields: true"))
+	})
 })
