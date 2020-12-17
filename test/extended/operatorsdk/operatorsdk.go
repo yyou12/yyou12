@@ -74,4 +74,10 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(result).To(o.ContainSubstring("x-kubernetes-preserve-unknown-fields: true"))
 	})
+	// author: chuo@redhat.com
+	g.It("Critical-37655-run bundle upgrade connect to the Operator SDK CLI", func() {
+		operatorsdkCLI.showInfo = true
+		output, _ := operatorsdkCLI.Run("run").Args("bundle-upgrade", "-h").Output()
+		o.Expect(output).To(o.ContainSubstring("Upgrade an Operator previously installed in the bundle format with OLM"))		
+	})
 })
