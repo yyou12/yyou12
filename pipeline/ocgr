@@ -4,6 +4,26 @@ set +x
 
 WORKBUILDDIR=$1
 WORKSPACE=$2
+VERSION=$(echo $3 | tr -dc '0-9')
+VERSION=${VERSION: 0:1}"."${VERSION: 1:1}
+LAUNCHID=$4
+PROFILENAME=$5
+LAUNCHTRIAL=$6
+if [ "${LAUNCHID}" == "null" ]; then
+  LAUNCHID=""
+else
+  LAUNCHID=${LAUNCHID:4}
+fi
+if [ "${PROFILENAME}" == "null" ]; then
+  PROFILENAME=""
+else
+  PROFILENAME=${PROFILENAME:4}
+fi
+if [ "X${LAUNCHTRIAL}X" == "XnullyesX" ]; then
+  LAUNCHTRIAL="yes"
+else
+  LAUNCHTRIAL="no"
+fi
 
 cd ${WORKBUILDDIR}
 resultfile=`ls -rt -1 junit_e2e_* 2>&1 || true`
@@ -15,7 +35,56 @@ fi
 current_time=`date "+%Y-%m-%d-%H-%M-%S"`
 newresultfile="junit_e2e_"${current_time}".xml"
 rm -fr handleresult.py && eval cp -fr ${WORKSPACE}"/private/pipeline/handleresult.py" .
+rm -fr reportportal.py && eval cp -fr ${WORKSPACE}"/private/pipeline/reportportal.py" .
 python handleresult.py -a replace -i ${resultfile} -o ${newresultfile} && rm -fr ${resultfile}
+
+rpresult="SUCCESS"
+if [ "X${LAUNCHID}X" != "XX" ]; then
+  if echo ${LAUNCHID} | grep -E '^([0-9]{8})-([0-9]{4})$'; then
+    LAUNCHIDVALID=true
+  else
+    LAUNCHIDVALID=false
+  fi
+  existing=`ls ${WORKSPACE}"/misc/jenkins/ci/"${VERSION}"/"|grep "${PROFILENAME}"|grep "test_run.yaml"|wc -l|xargs`
+  if [ "X${existing}X" == "X1X" ]; then
+    PROFILENAMEVALID=true
+  else
+    PROFILENAMEVALID=false
+  fi
+
+  if [ "${LAUNCHIDVALID}" != true ] || [ "${PROFILENAMEVALID}" != true ]; then
+    VERSION="personalbuild"
+    PROFILENAME=""
+  fi
+
+  # rptoken=`cat ${WORKSPACE}"/internal/config/credentials/openshift-qe-reportportal.json" | jq  -r ".ginkgo_rp_token"`
+  rpmmtoken=`cat ${WORKSPACE}"/private/secrets/rp/openshift-qe-reportportal.json" | jq  -r ".ginkgo_rp_mmtoken"`
+  rppmtoken=`cat ${WORKSPACE}"/private/secrets/rp/openshift-qe-reportportal.json" | jq  -r ".ginkgo_rp_pmtoken"`
+  eval rm -fr "*.zip" "import-*.xml"
+  python handleresult.py -a split -i ${newresultfile}
+  for subteamfile in `ls import-*.xml`; do
+    subteam=${subteamfile:7:-4}
+    eval zip -r "${LAUNCHID}.zip" "${subteamfile}"
+    ret=`python3 reportportal.py -a import -f "${LAUNCHID}.zip" -s "${subteam}" -v "${VERSION}" -pn "${PROFILENAME}" -pp "../misc/jenkins/ci/" -t "${rpmmtoken}" -ta "${rppmtoken}" -trial "${LAUNCHTRIAL}" 2>&1 || true`
+    eval rm -fr  "${LAUNCHID}.zip"
+    result=`echo -e ${ret} | tail -1|xargs`
+    if ! [ "X${result}X" == "XSUCCESSX" ]; then
+      rpresult="FAIL"
+      echo -e "the subteam ${subteam} result import fails\n"
+      echo -e ${ret}
+    fi
+  done
+  eval rm -fr "import-*.xml"
+
+  # ret=`python reportportal.py -a merge -l "${LAUNCHID}" 2>&1 || true`
+  # result=`echo ${ret} | tail -1|xargs`
+  # if [ "X${result}X" == "XFAILX" ]; then
+  #   rpresult="FAIL"
+  #   echo -e "the result merge fails\n"
+  #   echo -e ${ret}
+  # fi
+fi
+
 resultsummary=`python handleresult.py -a get -i ${newresultfile} 2>&1 || true`
 if (echo $resultsummary | grep -q -E "FAIL") ; then
   finalresult="FAIL"
@@ -26,9 +95,16 @@ echo -e "\n\n\n"
 echo -e ${resultsummary}
 if [ "${finalresult}" == "SUCCESS" ] ; then
   echo "the build is SUCCESS"
+  if [ "${rpresult}" == "FAIL" ] ; then
+    echo "FAIL to send result to reportprotal"
+    exit 1
+  fi
   exit 0
 else
   echo "the build is FAIL"
+  if [ "${rpresult}" == "FAIL" ] ; then
+    echo "FAIL to send result to reportprotal"
+  fi
   exit 1
 fi
 set -x

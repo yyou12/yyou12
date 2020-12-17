@@ -1,9 +1,14 @@
 #!/bin/bash
 set -e
+env
 
 function run {
   if [ "${SCENARIO}" == "" ] ; then
     echo "please input value for SCENARIO"
+    exit 1
+  fi
+  if ! echo ${JENKINS_SLAVE} | grep -E '^goc([0-9]{2})$'; then
+    echo "wrong slave node ${JENKINS_SLAVE}"
     exit 1
   fi
   PIPELINESCRIPT_DIR=${WORKSPACE}"/private/pipeline" && export PATH=${PIPELINESCRIPT_DIR}:$PATH
@@ -15,6 +20,8 @@ function run {
   cd ${WORKBUILDDIR}
 
   config_env_for_cluster
+  id
+  date
   execute
   result_report
 }
@@ -33,7 +40,11 @@ function config_env_for_cluster {
 }
 function result_report {
   echo "get result and parse it"
-  ocgr ${WORKBUILDDIR} ${WORKSPACE}
+  #LAUNCHTRIAL="yes"
+  #if we do not set it, it means LAUNCHTRIAL is no and the launch is treated as official if LAUNCH_NAME and PROFILE_NAME are official
+  #if we do not set it as yes, it means LAUNCHTRIAL is yes and the launch is treated as trial although LAUNCH_NAME and PROFILE_NAME are official
+  #if LAUNCH_NAME or PROFILE_NAME are not official, the launch will be treated as personal launch.
+  ocgr ${WORKBUILDDIR} ${WORKSPACE} ${JENKINS_SLAVE} "null"${LAUNCH_NAME} "null""${PROFILE_NAME}" "null""${LAUNCHTRIAL}"
 }
 
 #execute cases

@@ -5,21 +5,33 @@ import re
 import codecs
 
 class TestResult:
+    subteam = [
+                "SDN","Storage","Developer_Experience","User_Interface","PerfScale", "Service_Development_B","Node","Logging",
+                "Apiserver_and_Auth","Workloads","Metering","Cluster_Observability","Quay/Quay.io","Cluster_Infrastructure",
+                "Multi-Cluster","Cluster_Operator","Azure","Network_Edge","Etcd","Installer","Portfolio_Integration",
+                "Service_Development_A","OLM","Operator_SDK","App_Migration","Windows_Containers","Security_and_Compliance",
+                "KNI","Edge","Openshift_Jenkins","RHV","ISV_Operators","PSAP","Multi-Cluster-Networking","OTA","Kata"
+            ]
 
     def removeMonitor(self, input, output):
         noderoot = xml.dom.minidom.parse(input)
 
         testsuites = noderoot.getElementsByTagName("testsuite")
         
-        totalcasenum = testsuites[0].getAttribute("tests")
-        failcasenum = testsuites[0].getAttribute("failures")
+        testedcasenum = testsuites[0].getAttribute("failures")
+        #here is the issue for xml. failures is the total executed cases, not include skip
+        failcasenum = testsuites[0].getAttribute("tests")
+        #here is the issue for xml. tests is the total failing and skip cases
+        #skip is the skip cases
+        #the expected is that tests is executed case, and skip is skipped cases, and failures is failing and skipped cases
+        #the total case is skipped + tests
         
         cases = noderoot.getElementsByTagName("testcase")
         toBeRemove = None
         for case in cases:
             value = case.getAttribute("name")
             if "Monitor cluster while tests execute" in value:
-                testsuites[0].setAttribute("tests", str(int(totalcasenum)-1))
+                testsuites[0].setAttribute("tests", str(int(testedcasenum)-1))
                 testsuites[0].setAttribute("failures", str(int(failcasenum)-1))
                 toBeRemove = case
                 break
@@ -41,10 +53,12 @@ class TestResult:
             if "Monitor cluster while tests execute" in name:
                 continue
             failure = case.getElementsByTagName("failure")
+            skipped = case.getElementsByTagName("skipped")
+            result = "PASS"
+            if skipped:
+                result="SKIP"
             if failure:
                 result="FAIL"
-            else:
-                result="PASS"
             caseids = re.findall(r'\d{5,}-', name)
             if len(caseids) == 0:
                 tmpname = name.replace("'","")
@@ -54,12 +68,17 @@ class TestResult:
                     testsummary["No-CASEID  so take title:"+tmpname] = {"result":result, "title":""}
             else:
                 casetitle = name.split(caseids[-1])[1]
-                if "[Suite:" in casetitle:
-                    casetitle = casetitle.split("[Suite:")[0]
+                if "[Suite:openshift/" in casetitle:
+                    casetitle = casetitle.split("[Suite:openshift/")[0]
                 for i in caseids:
                     id = "OCP-"+i[:-1]
-                    if id in testsummary and "FAIL" in testsummary[id]["result"]: #the case already execute with failure
-                        result = testsummary[id]["result"]
+                    if id in testsummary:
+                        if "FAIL" in testsummary[id]["result"]: #the case already execute with failure
+                            result = testsummary[id]["result"]
+                            casetitle = testsummary[id]["title"]
+                        if ("PASS" in testsummary[id]["result"]) and (result == "SKIP"):
+                            result = testsummary[id]["result"]
+                            casetitle = testsummary[id]["title"]
                     testsummary[id] = {"result":result, "title":casetitle.replace("'","")}
         print("The Case Execution Summary:\\n")
         output = ""
@@ -67,11 +86,161 @@ class TestResult:
             output += " "+testsummary[k]["result"]+"  "+k.replace("'","")+"  "+testsummary[k]["title"]+"\\n"
         print(output)
 
+    def generateRP(self, input, output, scenario):
+        noderoot = xml.dom.minidom.parse(input)
+        testsuites = noderoot.getElementsByTagName("testsuite")
+        testsuites[0].setAttribute("name", scenario)
+
+        cases = noderoot.getElementsByTagName("testcase")
+        toBeRemove = []
+        toBeAdd = []
+        #do not support multiple case implementation for one OCP case if we take only CASE ID as name.
+        for case in cases:
+            name = case.getAttribute("name")
+            caseids = re.findall(r'\d{5,}-', name)
+            if len(caseids) == 0:
+                # print("No Case ID")
+                tmpname = name.replace("'","")
+                if "[Suite:openshift/" in tmpname:
+                    case.setAttribute("name", "No-CASEID:" + tmpname.split("[Suite:openshift/")[-2])
+                else:
+                    case.setAttribute("name", "No-CASEID:" + tmpname)
+            else:
+                # print("Case ID exists")
+                casetitle = name.split(caseids[-1])[1].replace("'","")
+                if "[Suite:openshift/" in casetitle:
+                    casetitle = casetitle.split("[Suite:openshift/")[0]
+                if len(caseids) == 1:
+                    case.setAttribute("name", "OCP-"+caseids[0][:-1]+":"+casetitle)
+                else:
+                    toBeRemove.append(case)
+                    for i in caseids:
+                        casename = "OCP-"+i[:-1]+":"+casetitle
+                        dupcase = case.cloneNode(True)
+                        dupcase.setAttribute("name", casename)
+                        toBeAdd.append(dupcase)
+        # print(toBeRemove)
+        # print(toBeAdd)
+        #ReportPortal does not depeond on failures and tests to count the case number, so no need to update them
+        for case in toBeAdd:
+            noderoot.firstChild.appendChild(case)
+        for case in toBeRemove:
+            noderoot.firstChild.removeChild(case)
+
+        with open(output, 'w+') as f:
+            writer = codecs.lookup('utf-8')[3](f)
+            noderoot.writexml(writer, encoding='utf-8')
+            writer.close()
+
+    def splitRP(self, input):
+        noderoot = xml.dom.minidom.parse(input)
+        origintestsuite = noderoot.getElementsByTagName("testsuite")[0]
+        mods = {}
+
+        cases = noderoot.getElementsByTagName("testcase")
+        for case in cases:
+            failcount = 0
+            skippedcount = 0
+            if len(case.getElementsByTagName("failure")) != 0:
+                failcount = 1
+            if len(case.getElementsByTagName("skipped")) != 0:
+                skippedcount = 1
+            name = case.getAttribute("name")
+            subteam = name.split(" ")[1]
+            if not subteam in self.subteam:
+                subteam = "Unknown"
+            # print(subteam)
+            names = self.getNames(name)
+            # print(names)
+            casedesc = {"case": case, "names":names}
+            mod = mods.get(subteam)
+            if mod is not None:
+                mod["cases"].append(casedesc)
+                mod["tests"] = mod["tests"] + 1 - skippedcount
+                mod["skipped"] = mod["skipped"] + skippedcount
+                mod["failure"] = mod["failure"] + failcount + skippedcount
+            else:
+                mods[subteam] = {"cases": [casedesc], "tests": 1 - skippedcount, "skipped": skippedcount, "failure": failcount + skippedcount}
+
+        for k, v in mods.items():
+            impl = xml.dom.minidom.getDOMImplementation()
+            newdoc = impl.createDocument(None, None, None)
+            testsuite = newdoc.createElement("testsuite")
+            testscount = v["tests"]
+            failurescount = v["failure"]
+            skippedcount = v["skipped"]
+            testsuite.setAttribute("time", origintestsuite.getAttribute("time")) #RP does not depend on it
+            testsuite.setAttribute("name", k)
+
+            for case in v["cases"]:
+                testnum = 0
+                failnum = 0
+                skipnum = 0
+                result = "PASS"
+                if len(case["case"].getElementsByTagName("skipped")) != 0:
+                    result = "SKIP"
+                if len(case["case"].getElementsByTagName("failure")) != 0:
+                    result = "FAIL"
+
+                for name in case["names"]:
+                    if result == "PASS":
+                        testnum = testnum + 1
+                    if result == "FAIL":
+                        testnum = testnum + 1
+                        failnum = failnum + 1
+                    if result == "SKIP":
+                        skipnum = skipnum + 1
+                        failnum = failnum + 1
+                    dupcase = case["case"].cloneNode(True)
+                    dupcase.setAttribute("name", name)
+                    testsuite.appendChild(dupcase)
+
+                if testnum > 0:
+                    testnum = testnum -1
+                if failnum > 0:
+                    failnum = failnum -1
+                if skipnum > 0:
+                    skipnum = skipnum -1
+                testscount = testscount + testnum
+                failurescount = failurescount + failnum
+                skippedcount = skippedcount + skipnum
+
+            testsuite.setAttribute("tests", str(testscount))
+            testsuite.setAttribute("failures", str(failurescount))
+            testsuite.setAttribute("skipped", str(skippedcount))
+            newdoc.appendChild(testsuite)
+
+            with open("import-"+k+".xml", 'w+') as f:
+                writer = codecs.lookup('utf-8')[3](f)
+                newdoc.writexml(writer, encoding='utf-8')
+                writer.close()
+
+
+    def getNames(self, name):
+        names = []
+        caseids = re.findall(r'\d{5,}-', name)
+        if len(caseids) == 0:
+            # print("No Case ID")
+            tmpname = name.replace("'","")
+            if "[Suite:openshift/" in tmpname:
+                names.append("No-CASEID:" + tmpname.split("[Suite:openshift/")[-2])
+            else:
+                names.append("No-CASEID:" + tmpname)
+        else:
+            # print("Case ID exists")
+            casetitle = name.split(caseids[-1])[1].replace("'","")
+            if "[Suite:openshift/" in casetitle:
+                casetitle = casetitle.split("[Suite:openshift/")[0]
+            for i in caseids:
+                names.append("OCP-"+i[:-1]+":"+casetitle)
+        return names
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("handleresult.py")
-    parser.add_argument("-a","--action", default="get", choices={"replace", "get"}, required=True)
+    parser.add_argument("-a","--action", default="get", choices={"replace", "get", "generate", "split"}, required=True)
     parser.add_argument("-in","--input", default="", required=True)
     parser.add_argument("-o","--output", default="")
+    parser.add_argument("-s","--scenario", default="")
     args=parser.parse_args()
 
     
@@ -82,9 +251,16 @@ if __name__ == "__main__":
     if args.action == "get":
         testresult.pirntResult(args.input)
         exit(0)
+    if args.action == "split":
+        testresult.splitRP(args.input)
+        exit(0)
 
     if args.output == "":
         print("please provide output paramter")
         exit(1)
     if args.action == "replace":
         testresult.removeMonitor(args.input, args.output)
+
+    if args.action == "generate":
+        testresult.generateRP(args.input, args.output, args.scenario)
+        exit(0)
