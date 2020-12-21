@@ -52,7 +52,7 @@ class ReportPortalClient:
         if launchId is None:
             return "no Launch is found"
 
-        item_url = self.item_url + "?filter.eq.launchId={0}&filter.eq.status=FAILED&isLatest=false&launchesLimit=0".format(launchId)
+        item_url = self.item_url + "?filter.eq.launchId={0}&filter.eq.status=FAILED&isLatest=false&launchesLimit=0&page.size=150".format(launchId)
         # print(item_url)
         try:
             r = self.session.get(url=item_url)

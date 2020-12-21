@@ -9,6 +9,7 @@ VERSION=${VERSION: 0:1}"."${VERSION: 1:1}
 LAUNCHID=$4
 PROFILENAME=$5
 LAUNCHTRIAL=$6
+REPO_OWNER=$7
 if [ "${LAUNCHID}" == "null" ]; then
   LAUNCHID=""
 else
@@ -40,7 +41,7 @@ python handleresult.py -a replace -i ${resultfile} -o ${newresultfile} && rm -fr
 
 rpresult="SUCCESS"
 if [ "X${LAUNCHID}X" != "XX" ]; then
-  if echo ${LAUNCHID} | grep -E '^([0-9]{8})-([0-9]{4})$'; then
+  if (echo ${LAUNCHID} | grep -E '^([0-9]{8})-([0-9]{4})$') || (echo ${LAUNCHID} | grep -E '^([0-9]{8})-([0-9]{4})_([0-9]{1,2})$'); then
     LAUNCHIDVALID=true
   else
     LAUNCHIDVALID=false
@@ -52,7 +53,13 @@ if [ "X${LAUNCHID}X" != "XX" ]; then
     PROFILENAMEVALID=false
   fi
 
-  if [ "${LAUNCHIDVALID}" != true ] || [ "${PROFILENAMEVALID}" != true ]; then
+  if [ "X${REPO_OWNER}X" == "XopenshiftX" ]; then
+    REPOOWNERVALID=true
+  else
+    REPOOWNERVALID=false
+  fi
+
+  if [ "${LAUNCHIDVALID}" != true ] || [ "${PROFILENAMEVALID}" != true ]  || [ "${REPOOWNERVALID}" != true ]; then
     VERSION="personalbuild"
     PROFILENAME=""
   fi

@@ -1,0 +1,30 @@
+#!/bin/bash
+set +x
+#get fail case from existing launch for rerun
+
+WORKBUILDDIR=$1
+WORKSPACE=$2
+LAUNCHID=$3
+FLAGPERSCENARIO=$4
+ORIGSCENARIO="$5"
+
+cd ${WORKBUILDDIR}
+rm -fr reportportal.py && eval cp -fr ${WORKSPACE}"/private/pipeline/reportportal.py" .
+
+rpmmtoken=`cat ${WORKSPACE}"/private/secrets/rp/openshift-qe-reportportal.json" | jq  -r ".ginkgo_rp_mmtoken"`
+if [[ "${FLAGPERSCENARIO}" == "PerScenario" ]]; then
+  ret=`python3 reportportal.py -a getfcd -l "${LAUNCHID}" -ss "${ORIGSCENARIO}" -ta "${rppmtoken}" 2>&1 || true`
+else
+  ret=`python3 reportportal.py -a getfcd -l "${LAUNCHID}" -ss "" -ta "${rppmtoken}" 2>&1 || true`
+fi
+# echo -e "\\\n"${ret}"\\\n"
+
+result=`echo -e ${ret} | tail -1|xargs`
+if [[ "$result" == *"-NOREPLACE" ]]; then
+  failcaseid="NONE"
+else
+  failcaseid="${result}"
+fi
+echo -e "Start\\\n"${ret}"\\\nthe last line:\\\n"${failcaseid}
+
+set -x

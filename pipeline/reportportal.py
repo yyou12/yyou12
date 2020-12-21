@@ -9,8 +9,16 @@ from datetime import datetime, timedelta
 import os
 import yaml
 import xml.dom.minidom
+import re
 
 class ReportPortalClient:
+    subteam = [
+                "SDN","Storage","Developer_Experience","User_Interface","PerfScale", "Service_Development_B","Node","Logging",
+                "Apiserver_and_Auth","Workloads","Metering","Cluster_Observability","Quay/Quay.io","Cluster_Infrastructure",
+                "Multi-Cluster","Cluster_Operator","Azure","Network_Edge","Etcd","Installer","Portfolio_Integration",
+                "Service_Development_A","OLM","Operator_SDK","App_Migration","Windows_Containers","Security_and_Compliance",
+                "KNI","Edge","Openshift_Jenkins","RHV","ISV_Operators","PSAP","Multi-Cluster-Networking","OTA","Kata"
+            ]
     def __init__(self, args):
         urllib3.disable_warnings(category=InsecureRequestWarning)
         self.session = requests.Session()
@@ -508,6 +516,83 @@ class ReportPortalClient:
             print("\\n")
             return False
 
+    def getLaunchsByName(self, launchname):
+        filter_url = self.launch_url + "?filter.eq.name=" + launchname
+        # print(filter_url)
+        try:
+            r = self.session.get(url=filter_url)
+            # print(r.status_code)
+            # print(r.text)
+            if (r.status_code != 200):
+                raise Exception("get launch error: {0}".format(r.text))
+            retContent = r.json()["content"]
+            ids = []
+            if self.args.scenarios == "":
+                for ret in retContent:
+                    ids.append(ret["id"])
+            else:
+                subTeamList = self.parseScenarios(self.args.scenarios)
+                for st in subTeamList:
+                    for ret in retContent:
+                        for attr in ret["attributes"]:
+                            if attr["key"] == "team" and attr["value"] == st:
+                                ids.append(ret["id"])
+            return ids
+        except BaseException as e:
+            print(e)
+            print("\\n")
+            return None
+
+    def getFailCaseID(self):
+        launchId = self.getLaunchsByName(self.args.launchname)
+        if launchId is None:
+            return "\\nNOFOUND-NOREPLACE"
+        if len(launchId) == 0:
+            return "\\nNEWLAUNCHORSCENARIOSUBTEAMNOTCORRECT-NOREPLACE"
+
+        returnString = ""
+        try:
+            failCaseList = []
+            getFailReason = {}
+            for lid in launchId:
+                # print(lid)
+                item_url = self.item_url + "?filter.eq.launchId={0}&filter.eq.status=FAILED&isLatest=false&launchesLimit=0&page.size=150".format(lid)
+                # print(item_url)
+                r = self.session.get(url=item_url)
+                # print(r.status_code)
+                # print(r.text)
+                if (r.status_code != 200):
+                    getFailReason[lid] = "get launch id {0} item error: {1}".format(lid, r.text)
+                    continue
+
+                if len(r.json()["content"]) == 0:
+                    # no fail case for this launch instance
+                    # print("no fail case")
+                    continue
+
+                for ret in r.json()["content"]:
+                    # print(ret["type"])
+                    # print(ret["name"])
+                    if ret["type"] == "STEP":
+                        caseids = re.findall(r'OCP-\d{4,}', ret["name"])
+                        if len(caseids) > 0:
+                            failCaseList.append(caseids[0][4:])
+                # print(failCaseList)
+
+            for _, v in getFailReason.items():
+                returnString = returnString + "\\n"+v
+            if len(failCaseList) == 0:
+                return returnString + "\\nNOFAILCASEORNOTGETFAILCASE-NOREPLACE"
+
+            if returnString != "":
+                returnString = returnString + "\\nThere is error to get failcase althoug we already get some fails case. maybe need to rerun again"
+
+            separator = '|'
+            return returnString + "\\n" + separator.join(failCaseList)
+        except BaseException as e:
+            print(e)
+            return returnString + "\\nEXCEPTION-NOREPLACE"
+
     def getLaunchIdWithLaunchName(self, launchname, attrfilter=None):
         filter_url = self.launch_url + "?filter.eq.name=" + launchname
         # print(filter_url)
@@ -583,15 +668,23 @@ class ReportPortalClient:
             print("\\n")
             return None
 
+    def parseScenarios(self, scenarios):
+        valideSubTeam = []
+        scenarioList = scenarios.split("|")
+        for s in scenarioList:
+            sr = s.replace(" ", "")
+            if sr == "isv]":
+                valideSubTeam.append("ISV_Operators")
+            if sr in self.subteam:
+                valideSubTeam.append(sr)
+        return valideSubTeam
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("reportportal.py")
-    parser.add_argument("-a","--action", default="import", choices={"import", "merge", "get", "delete", "attr", "getprofile"}, required=True)
-    # parser.add_argument("-e","--endpoint", default="http://localhost:8080/api")
+    parser.add_argument("-a","--action", default="import", choices={"import", "merge", "get", "delete", "attr", "getprofile", "getfcd"}, required=True)
     parser.add_argument("-e","--endpoint", default="https://reportportal-openshift.apps.ocp4.prod.psi.redhat.com/api")
-    # parser.add_argument("-t","--token", default="cd753d70-7092-4061-8231-985d5af39f52")
     parser.add_argument("-t","--token", default="")
     parser.add_argument("-ta","--tatoken", default="")
-    # parser.add_argument("-p","--project", default="superadmin_personal")
     parser.add_argument("-p","--project", default="ocptrial")
     #import, getprofile
     parser.add_argument("-f","--file", default="")
@@ -599,8 +692,9 @@ if __name__ == "__main__":
     parser.add_argument("-v","--version", default="")
     parser.add_argument("-pn","--profilename", default="09_Disconnected UPI on Azure with RHCOS & Private Cluster")
     parser.add_argument("-pp","--profilepath", default="../misc/jenkins/ci/")
-    #merge, getwithlanuchname, delete
+    #merge, getwithlanuchname, delete, getfcd
     parser.add_argument("-l","--launchname", default="")
+    parser.add_argument("-ss","--scenarios", default="")
     #handle attr
     parser.add_argument("-id","--launchid", default="")
     parser.add_argument("-aa","--attract", default="")
@@ -632,6 +726,8 @@ if __name__ == "__main__":
         print(rpc.getLaunchIdWithLaunchName(args.launchname))
     if args.action == "getprofile":
         rpc.getProfileAttr()
+    if args.action == "getfcd":
+        print(rpc.getFailCaseID())
     if args.action == "attr":
         attDict = {args.attrkey: {"action":args.attract, "value":args.attrvalue}}
         if rpc.handleLaunchAttribution([args.launchid], attDict):
