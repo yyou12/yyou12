@@ -75,6 +75,18 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
         o.Expect(result).To(o.ContainSubstring("x-kubernetes-preserve-unknown-fields: true"))
     })
 
+    // author: jfan@redhat.com
+    g.It("High-37311-SDK ansible valid structural schemas for ansible based operators", func() {
+        operatorsdkCLI.showInfo = true
+        exec.Command("bash", "-c", "mkdir /tmp/ansible-operator-37311 && cd /tmp/ansible-operator-37311 && operator-sdk init --project-name nginx-operator --plugins ansible.sdk.operatorframework.io/v1").Output()
+        defer exec.Command("bash", "-c", "rm -rf /tmp/ansible-operator-37311").Output()
+        _, err := exec.Command("bash", "-c", "cd /tmp/ansible-operator-37311 && operator-sdk create api --group apps --version v1beta1 --kind Nginx").Output()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        output, err := exec.Command("bash", "-c", "cat /tmp/ansible-operator-37311/config/crd/bases/apps.my.domain_nginxes.yaml | grep -E \"x-kubernetes-preserve-unknown-fields: true\"").Output()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        o.Expect(output).To(o.ContainSubstring("x-kubernetes-preserve-unknown-fields: true"))
+    })
+
     // author: chuo@redhat.com
     g.It("Medium-27718-scorecard remove version flag", func() {
         operatorsdkCLI.showInfo = true
