@@ -24,6 +24,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		csuiteTemplate         = filepath.Join(buildPruningBaseDir, "compliancesuite.yaml")
 		csuitetpcmTemplate     = filepath.Join(buildPruningBaseDir, "compliancesuitetpconfmap.yaml")
 		csuitetaintTemplate    = filepath.Join(buildPruningBaseDir, "compliancesuitetaint.yaml")
+		csuitenodeTemplate     = filepath.Join(buildPruningBaseDir, "compliancesuitenodes.yaml")
 		cscanTemplate          = filepath.Join(buildPruningBaseDir, "compliancescan.yaml")
 		cscantaintTemplate     = filepath.Join(buildPruningBaseDir, "compliancescantaint.yaml")
 		tprofileTemplate       = filepath.Join(buildPruningBaseDir, "tailoredprofile.yaml")
@@ -1174,6 +1175,121 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			subD.getScanExitCodeFromConfigmap(oc, "2")
 
 			g.By(" ocp-36990 The complianceSuite object successfully performed platform scan for cis profile ..!!!\n")
+		})
+
+		// author: pdhamdhe@redhat.com
+		g.It("Critical-37063-The ComplianceSuite could be triggered for cis profiles for node scanType", func() {
+
+			var (
+				csuiteD = complianceSuiteDescription{
+					name:         "worker-compliancesuite",
+					namespace:    "",
+					scanname:     "worker-scan",
+					profile:      "xccdf_org.ssgproject.content_profile_cis-node",
+					content:      "ssg-ocp4-ds.xml",
+					contentImage: "quay.io/complianceascode/ocp4:latest",
+					nodeSelector: "wscan",
+					template:     csuiteTemplate,
+				}
+
+				csuiteMD = complianceSuiteDescription{
+					name:         "master-compliancesuite",
+					namespace:    "",
+					scanname:     "master-scan",
+					profile:      "xccdf_org.ssgproject.content_profile_cis-node",
+					content:      "ssg-ocp4-ds.xml",
+					contentImage: "quay.io/complianceascode/ocp4:latest",
+					nodeSelector: "master",
+					template:     csuiteTemplate,
+				}
+
+				csuiteRD = complianceSuiteDescription{
+					name:         "rhcos-compliancesuite",
+					namespace:    "",
+					scanname:     "rhcos-scan",
+					profile:      "xccdf_org.ssgproject.content_profile_cis-node",
+					content:      "ssg-ocp4-ds.xml",
+					contentImage: "quay.io/complianceascode/ocp4:latest",
+					template:     csuitenodeTemplate,
+				}
+			)
+
+			defer cleanupObjects(oc,
+				objectTableRef{"compliancesuite", subD.namespace, "rhcos-compliancesuite"},
+			)
+
+			// adding label to rhcos worker node to skip rhel worker node if any
+			g.By("Label all rhcos worker nodes as wscan.. !!!\n")
+			setLabelToNode(oc)
+
+			csuiteD.namespace = subD.namespace
+			g.By("Create worker-compliancesuite !!!\n")
+			csuiteD.create(oc, itName, dr)
+
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", csuiteD.name, "-n",
+				subD.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+
+			g.By("Check worker scan pods status !!! \n")
+			subD.scanPodStatus(oc, "Succeeded")
+
+			g.By("Check worker-compliancesuite name and result..!!!\n")
+			subD.complianceSuiteName(oc, "worker-compliancesuite")
+			subD.complianceSuiteResult(oc, "NON-COMPLIANT")
+
+			g.By("Check worker-compliancesuite result through exit-code ..!!!\n")
+			subD.getScanExitCodeFromConfigmap(oc, "2")
+
+			g.By("Verify compliance scan result compliancecheckresult through label ...!!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "worker-scan-etcd-unique-ca", ok, []string{"compliancecheckresult",
+				"--selector=compliance.openshift.io/check-status=SKIP", "-n", subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "SKIP", ok, []string{"compliancecheckresult",
+				"worker-scan-etcd-unique-ca", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
+
+			g.By("Remove worker-compliancesuite object.. !!!\n")
+			csuiteD.delete(itName, dr)
+
+			csuiteMD.namespace = subD.namespace
+			g.By("Create master-compliancesuite !!!\n")
+			csuiteMD.create(oc, itName, dr)
+
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", csuiteMD.name, "-n",
+				subD.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+
+			g.By("Check master-compliancesuite name and result..!!!\n")
+			subD.complianceSuiteName(oc, "master-compliancesuite")
+			subD.complianceSuiteResult(oc, "NON-COMPLIANT")
+
+			g.By("Check master-compliancesuite result through exit-code ..!!!\n")
+			subD.getScanExitCodeFromConfigmap(oc, "2")
+
+			g.By("Verify compliance scan result compliancecheckresult through label ...!!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "PASS", ok, []string{"compliancecheckresult",
+				"master-scan-etcd-unique-ca", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
+
+			g.By("Remove master-compliancesuite object.. !!!\n")
+			csuiteMD.delete(itName, dr)
+
+			csuiteRD.namespace = subD.namespace
+			g.By("Create rhcos-compliancesuite !!!\n")
+			csuiteRD.create(oc, itName, dr)
+
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", csuiteRD.name, "-n",
+				subD.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+
+			g.By("Check master-compliancesuite name and result..!!!\n")
+			subD.complianceSuiteName(oc, "rhcos-compliancesuite")
+			subD.complianceSuiteResult(oc, "INCONSISTENT")
+
+			g.By("Check master-compliancesuite result through exit-code ..!!!\n")
+			subD.getScanExitCodeFromConfigmap(oc, "2")
+
+			g.By("Verify compliance scan result compliancecheckresult through label ...!!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "rhcos-scan-etcd-unique-ca", ok, []string{"compliancecheckresult",
+				"--selector=compliance.openshift.io/check-status=INCONSISTENT", "-n", subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "INCONSISTENT", ok, []string{"compliancecheckresult",
+				"rhcos-scan-etcd-unique-ca", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
+
+			g.By(" ocp-37063 The complianceSuite object successfully triggered scan for cis node profile.. !!!\n")
 		})
 
 		// author: pdhamdhe@redhat.com

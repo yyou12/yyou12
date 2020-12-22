@@ -58,6 +58,7 @@
 // test/extended/testdata/securityandcompliance/compliancescan.yaml
 // test/extended/testdata/securityandcompliance/compliancescantaint.yaml
 // test/extended/testdata/securityandcompliance/compliancesuite.yaml
+// test/extended/testdata/securityandcompliance/compliancesuitenodes.yaml
 // test/extended/testdata/securityandcompliance/compliancesuitetaint.yaml
 // test/extended/testdata/securityandcompliance/compliancesuitetpconfmap.yaml
 // test/extended/testdata/securityandcompliance/fileintegrity.yaml
@@ -4651,18 +4652,23 @@ objects:
     name: "${NAME}"
     namespace: "${NAMESPACE}"
   spec:
-    channel: singlenamespace-alpha
-    installPlanApproval: "${INSTALLPLAN}"
+    channel: "${CHANNEL}"
+    installPlanApproval: "${APPROVAL}"
     name: etcd
     source: "${SOURCENAME}"
     sourceNamespace: "${SOURCENAMESPACE}"
-    startingCSV: etcdoperator.v0.9.4
+    startingCSV: "${STARTINGCSV}"
 parameters:
 - name: NAME
 - name: NAMESPACE
-- name: INSTALLPLAN
 - name: SOURCENAME
 - name: SOURCENAMESPACE
+- name: CHANNEL
+  value: "singlenamespace-alpha"
+- name: STARTINGCSV
+  value: "etcdoperator.v0.9.4"
+- name: APPROVAL
+  value: "Manual"
 `)
 
 func testExtendedTestdataOlmEtcdSubscriptionManualYamlBytes() ([]byte, error) {
@@ -4691,17 +4697,23 @@ objects:
     name: "${NAME}"
     namespace: "${NAMESPACE}"
   spec:
-    channel: singlenamespace-alpha
-    installPlanApproval: Automatic
+    channel: "${CHANNEL}"
+    installPlanApproval: "${APPROVAL}"
     name: etcd
     source: "${SOURCENAME}"
     sourceNamespace: "${SOURCENAMESPACE}"
-    startingCSV: etcdoperator.v0.9.4
+    startingCSV: "${STARTINGCSV}"
 parameters:
 - name: NAME
 - name: NAMESPACE
 - name: SOURCENAME
 - name: SOURCENAMESPACE
+- name: CHANNEL
+  value: "singlenamespace-alpha"
+- name: STARTINGCSV
+  value: "etcdoperator.v0.9.4"
+- name: APPROVAL
+  value: "Automatic"
 `)
 
 func testExtendedTestdataOlmEtcdSubscriptionYamlBytes() ([]byte, error) {
@@ -7118,6 +7130,53 @@ func testExtendedTestdataSecurityandcomplianceCompliancesuiteYaml() (*asset, err
 	return a, nil
 }
 
+var _testExtendedTestdataSecurityandcomplianceCompliancesuitenodesYaml = []byte(`apiVersion: v1
+kind: Template
+metadata:
+  name: compliancesuite-template
+objects:
+- apiVersion: compliance.openshift.io/v1alpha1
+  kind: ComplianceSuite
+  metadata:
+    name: "${NAME}"
+    namespace: "${NAMESPACE}"
+  spec:
+    autoApplyRemediations: false
+    schedule: "${SCHEDULE}"  
+    scans:
+      - name: "${SCANNAME}" 
+        profile: "${PROFILE}"
+        scanType: "${SCANTYPE}"  
+        content: "${CONTENT}"
+        contentImage: "${CONTENTIMAGE}"
+        debug: true
+
+parameters:
+- name: NAME
+- name: NAMESPACE
+- name: SCHEDULE  
+- name: SCANNAME
+- name: PROFILE
+- name: SCANTYPE  
+- name: CONTENT
+- name: CONTENTIMAGE
+`)
+
+func testExtendedTestdataSecurityandcomplianceCompliancesuitenodesYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataSecurityandcomplianceCompliancesuitenodesYaml, nil
+}
+
+func testExtendedTestdataSecurityandcomplianceCompliancesuitenodesYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataSecurityandcomplianceCompliancesuitenodesYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/securityandcompliance/compliancesuitenodes.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
 var _testExtendedTestdataSecurityandcomplianceCompliancesuitetaintYaml = []byte(`apiVersion: v1
 kind: Template
 metadata:
@@ -8820,6 +8879,7 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/securityandcompliance/compliancescan.yaml":           testExtendedTestdataSecurityandcomplianceCompliancescanYaml,
 	"test/extended/testdata/securityandcompliance/compliancescantaint.yaml":      testExtendedTestdataSecurityandcomplianceCompliancescantaintYaml,
 	"test/extended/testdata/securityandcompliance/compliancesuite.yaml":          testExtendedTestdataSecurityandcomplianceCompliancesuiteYaml,
+	"test/extended/testdata/securityandcompliance/compliancesuitenodes.yaml":     testExtendedTestdataSecurityandcomplianceCompliancesuitenodesYaml,
 	"test/extended/testdata/securityandcompliance/compliancesuitetaint.yaml":     testExtendedTestdataSecurityandcomplianceCompliancesuitetaintYaml,
 	"test/extended/testdata/securityandcompliance/compliancesuitetpconfmap.yaml": testExtendedTestdataSecurityandcomplianceCompliancesuitetpconfmapYaml,
 	"test/extended/testdata/securityandcompliance/fileintegrity.yaml":            testExtendedTestdataSecurityandcomplianceFileintegrityYaml,
@@ -8962,6 +9022,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 					"compliancescan.yaml":           {testExtendedTestdataSecurityandcomplianceCompliancescanYaml, map[string]*bintree{}},
 					"compliancescantaint.yaml":      {testExtendedTestdataSecurityandcomplianceCompliancescantaintYaml, map[string]*bintree{}},
 					"compliancesuite.yaml":          {testExtendedTestdataSecurityandcomplianceCompliancesuiteYaml, map[string]*bintree{}},
+					"compliancesuitenodes.yaml":     {testExtendedTestdataSecurityandcomplianceCompliancesuitenodesYaml, map[string]*bintree{}},
 					"compliancesuitetaint.yaml":     {testExtendedTestdataSecurityandcomplianceCompliancesuitetaintYaml, map[string]*bintree{}},
 					"compliancesuitetpconfmap.yaml": {testExtendedTestdataSecurityandcomplianceCompliancesuitetpconfmapYaml, map[string]*bintree{}},
 					"fileintegrity.yaml":            {testExtendedTestdataSecurityandcomplianceFileintegrityYaml, map[string]*bintree{}},
