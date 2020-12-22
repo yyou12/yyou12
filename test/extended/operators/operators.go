@@ -13,6 +13,7 @@ import (
 	g "github.com/onsi/ginkgo"
 	o "github.com/onsi/gomega"
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
+	"github.com/stretchr/stew/slice"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apiserver/pkg/storage/names"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
@@ -30,7 +31,9 @@ type Packagemanifest struct {
 	CatalogSourceNamespace  string
 }
 
-var SkippedOperators = []string{"quay-bridge-operator", "kubevirt-hyperconverged", "cost-mgmt-operator", "ptp-operator"}
+var SkippedOperators = []string{"quay-bridge-operator", "kubevirt-hyperconverged", "cost-mgmt-operator", "ptp-operator", "cass-operator", "openshift-sriov-network-operator",
+	"armory-operator", "cluster-logging", "k8s-triliovault", "quay-bridge-operator", "windows-machine-config-operator", "local-storage-operator", "prisma-cloud-compute-console-operator.v2.0.1",
+	"citrix-adc-istio-ingress-gateway-operator", "citrix-cpx-with-ingress-controller-operator", "kubemq-operator-marketplace"}
 
 var CertifiedOperators = []string{"3scale-community-operator", "amq-streams",
 	"argocd-operator", "cert-utils-operator", "couchbase-enterprise-certified", "dotscience-operator",
@@ -95,10 +98,11 @@ var _ = g.Describe("[Suite:openshift/operators]", func() {
 		packageSplitted := strings.Split(operator, ":")
 
 		if len(packageSplitted) > 1 {
-			packageName := packageSplitted[1]
+			packageName := strings.TrimSpace(packageSplitted[1])
 
 			g.It(TestCaseName(packageName, BasicPrefix), func() {
-				if contains(SkippedOperators, packageName) {
+
+				if slice.Contains(SkippedOperators, packageName) {
 					g.Skip("Operator " + packageName + " can't be tested in a generic way")
 				}
 				g.By("by installing", func() {
@@ -127,7 +131,6 @@ func IsCertifiedOperator(operator string) bool {
 	}
 	return false
 }
-
 func contains(s []string, searchterm string) bool {
 	i := sort.SearchStrings(s, searchterm)
 	return i < len(s) && s[i] == searchterm
