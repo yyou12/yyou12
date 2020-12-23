@@ -22,7 +22,7 @@ function run {
   config_env_for_cluster
   id
   date
-  select_fail_case_for_rerun
+  select_fail_case_for_official_rerun
   execute
   result_report
 }
@@ -45,7 +45,7 @@ function result_report {
   #if we do not set it, it means LAUNCHTRIAL is no and the launch is treated as official if LAUNCH_NAME and PROFILE_NAME are official
   #if we do not set it as yes, it means LAUNCHTRIAL is yes and the launch is treated as trial although LAUNCH_NAME and PROFILE_NAME are official
   #if LAUNCH_NAME or PROFILE_NAME are not official, the launch will be treated as personal launch.
-  ocgr ${WORKBUILDDIR} ${WORKSPACE} ${JENKINS_SLAVE} "null"${LAUNCH_NAME} "null""${PROFILE_NAME}" "null""${LAUNCHTRIAL}" ${TIERN_REPO_OWNER}
+  ocgr ${WORKBUILDDIR} ${WORKSPACE} ${JENKINS_SLAVE} "null"${LAUNCH_NAME} "null""${PROFILE_NAME}" "null""${LAUNCHTRIAL}" "${TIERN_REPO_OWNER}""-""${REPO_OWNER}" ${BUILD_NUMBER} "null""${FILTERS}"
 }
 
 #execute cases
@@ -68,19 +68,23 @@ function execute {
   esac
 }
 
-#reselect case for rerun
-function select_fail_case_for_rerun {
+#reselect case for rerun only for offical nightly
+function select_fail_case_for_official_rerun {
   #ROOT_BUILD_CAUSE=CIBUILDCAUSE,MANUALTRIGGER,DEEPLYNESTEDCAUSES
-  if ((echo ${LAUNCHID} | grep -E '^([0-9]{8})-([0-9]{4})$') || \
-      (echo ${LAUNCHID} | grep -E '^([0-9]{8})-([0-9]{4})_([0-9]{1,2})$')) && \
-      [[ "${ROOT_BUILD_CAUSE}" == *"MANUALTRIGGER"* ]] && [[ "${ROOT_BUILD_CAUSE}" == *"CIBUILDCAUSE"* ]]; then
+  if ((echo ${LAUNCH_NAME} | grep -E '^([0-9]{8})-([0-9]{4})$') || \
+      (echo ${LAUNCH_NAME} | grep -E '^([0-9]{8})-([0-9]{4})_([0-9]{1,2})$')) && \
+      [[ "${ROOT_BUILD_CAUSE}" == *"MANUALTRIGGER"* ]] && [[ "${ROOT_BUILD_CAUSE}" == *"CIBUILDCAUSE"* ]] && \
+      [[ "${TIERN_REPO_OWNER}" == "openshift" ]] && [[ "${REPO_OWNER}" == "openshift" ]]; then
     echo "valid launch name with reran pipeline build. Try to find fail case and update SCENARIO"
-    failcaseid=`ocgfc ${WORKBUILDDIR} ${WORKSPACE} ${LAUNCH_NAME} "PerScenario" "${SCENARIO}" 2>&1 || true`
+    failcaseid=`ocgfc ${WORKBUILDDIR} ${WORKSPACE} ${LAUNCH_NAME} "${SCENARIO}" 2>&1 || true`
     echo -e "${failcaseid}"
     result=`echo -e ${failcaseid} | tail -1|xargs`
-    if [ "X${result}X" != "XX" ] && [ "X${result}X" != "XNONEX" ]; then
+    if [ "X${result}X" != "XX" ] && [ "X${result}X" != "XNOREPLACEX" ] && [ "X${result}X" != "XNORERUNX" ]; then
       echo -e "Found fail case ID: ${result}"
       SCENARIO="${result}"
+    elif [ "X${result}X" == "XNORERUNX" ]; then
+      echo "No need to rerun it"
+      exit 0
     fi
   else
     echo "no launch name or invalid launch name, or not rerun pipeline build, and keep original ${SCENARIO}"

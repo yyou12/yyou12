@@ -9,7 +9,9 @@ VERSION=${VERSION: 0:1}"."${VERSION: 1:1}
 LAUNCHID=$4
 PROFILENAME=$5
 LAUNCHTRIAL=$6
-REPO_OWNER=$7
+TWOREPOOWNER=$7
+BUILDNUM=$8
+FILTERSO=$9
 if [ "${LAUNCHID}" == "null" ]; then
   LAUNCHID=""
 else
@@ -20,10 +22,23 @@ if [ "${PROFILENAME}" == "null" ]; then
 else
   PROFILENAME=${PROFILENAME:4}
 fi
+if [ "${FILTERSO}" == "null" ]; then
+  FILTERSO=""
+else
+  FILTERSO=${FILTERSO:4}
+fi
 if [ "X${LAUNCHTRIAL}X" == "XnullyesX" ]; then
   LAUNCHTRIAL="yes"
 else
   LAUNCHTRIAL="no"
+fi
+
+if [[ "X${FILTERSO}X" == "XX" ]] || [[ "${FILTERSO}" == *"~Disruptive"* ]]; then
+  buildtype="NonDisruptive-"
+elif [[ "${FILTERSO}" == *"Disruptive"* ]]; then
+  buildtype="Disruptive-"
+else
+  buildtype="NonDisruptive-"
 fi
 
 cd ${WORKBUILDDIR}
@@ -53,7 +68,7 @@ if [ "X${LAUNCHID}X" != "XX" ]; then
     PROFILENAMEVALID=false
   fi
 
-  if [ "X${REPO_OWNER}X" == "XopenshiftX" ]; then
+  if [ "X${TWOREPOOWNER}X" == "Xopenshift-openshiftX" ]; then
     REPOOWNERVALID=true
   else
     REPOOWNERVALID=false
@@ -72,7 +87,7 @@ if [ "X${LAUNCHID}X" != "XX" ]; then
   for subteamfile in `ls import-*.xml`; do
     subteam=${subteamfile:7:-4}
     eval zip -r "${LAUNCHID}.zip" "${subteamfile}"
-    ret=`python3 reportportal.py -a import -f "${LAUNCHID}.zip" -s "${subteam}" -v "${VERSION}" -pn "${PROFILENAME}" -pp "../misc/jenkins/ci/" -t "${rpmmtoken}" -ta "${rppmtoken}" -trial "${LAUNCHTRIAL}" 2>&1 || true`
+    ret=`python3 reportportal.py -a import -f "${LAUNCHID}.zip" -s "${subteam}" -v "${VERSION}" -bn "${buildtype}""${BUILDNUM}" -pn "${PROFILENAME}" -pp "../misc/jenkins/ci/" -t "${rpmmtoken}" -ta "${rppmtoken}" -trial "${LAUNCHTRIAL}" 2>&1 || true`
     eval rm -fr  "${LAUNCHID}.zip"
     result=`echo -e ${ret} | tail -1|xargs`
     if ! [ "X${result}X" == "XSUCCESSX" ]; then

@@ -28,6 +28,8 @@ class ReportPortalClient:
         adapter = HTTPAdapter(max_retries=retry)
         self.session.mount('https://', adapter)
         self.session.mount('http://', adapter)
+        # os.environ['no_proxy'] = "reportportal-openshift.apps.ocp4.prod.psi.redhat.com"
+        self.session.trust_env = False
 
         self.launch_url = args.endpoint + "/v1/" + args.project + "/launch"
         self.item_url = args.endpoint + "/v1/" + args.project + "/item"
@@ -92,6 +94,8 @@ class ReportPortalClient:
                             deletedList.append(casename)
                         else:
                             shouldDeletedList.append(casename)
+
+            self.addMoreBuildNumToLaunch(existingid)
 
             launchrestarted = self.startLaunch(launchname, existinguuid, starttime)
             if not launchrestarted:
@@ -415,12 +419,15 @@ class ReportPortalClient:
                 "name":     {"action": "add", "value":os.path.splitext(os.path.basename(self.args.file))[0]},
                 "team":     {"action": "add", "value":self.args.subteam},
                 "version":  {"action": "add", "value":self.args.version.replace(".", "_")},
+                "ginkgobuildnum": {"action": "add", "value":self.args.buildnum},
                 }
             else:
                 attDict = {
                 "name":     {"action": "add", "value":os.path.splitext(os.path.basename(self.args.file))[0]},
                 "team":     {"action": "add", "value":self.args.subteam},
                 "version":  {"action": "add", "value":self.args.version.replace(".", "_")},
+                "ginkgobuildnum": {"action": "add", "value":self.args.buildnum},
+                "profilename": {"action": "add", "value":self.args.profilename},
                 }
                 if self.args.triallaunch == "yes":
                     attDict["trial"] = {"action": "add", "value":"\"\""}
@@ -437,7 +444,7 @@ class ReportPortalClient:
                 # "products":                     {"action": "add", "value":attMap["custom_fields"]["products"][0]},
                 # }
             if not self.handleLaunchAttribution([id], attDict):
-                raise Exception("fail to add attr subteam")
+                raise Exception("fail to add attrs")
 
             return True
         except BaseException as e:
@@ -516,7 +523,7 @@ class ReportPortalClient:
             print("\\n")
             return False
 
-    def getLaunchsByName(self, launchname):
+    def checkLaunchsByNameScenario(self, launchname, scenarios):
         filter_url = self.launch_url + "?filter.eq.name=" + launchname
         # print(filter_url)
         try:
@@ -526,30 +533,56 @@ class ReportPortalClient:
             if (r.status_code != 200):
                 raise Exception("get launch error: {0}".format(r.text))
             retContent = r.json()["content"]
-            ids = []
-            if self.args.scenarios == "":
+
+            if len(retContent) == 0:
+                return {"LAUNCHRESULT": ["NEWLAUNCH"], "SUBMATCHRESULT": "NONE"}
+
+            subTeamList = self.parseScenarios(scenarios)
+            if len(subTeamList) == 0:
+                return {"LAUNCHRESULT": ["NOSUBTEAMINSCENARIO"], "SUBMATCHRESULT": "NONE"}
+
+            ids = ["EXISTINGLAUNCH"]
+            subteamNotMatched = []
+            for st in subTeamList:
+                matched = False
                 for ret in retContent:
-                    ids.append(ret["id"])
-            else:
-                subTeamList = self.parseScenarios(self.args.scenarios)
-                for st in subTeamList:
-                    for ret in retContent:
-                        for attr in ret["attributes"]:
-                            if attr["key"] == "team" and attr["value"] == st:
-                                ids.append(ret["id"])
-            return ids
+                    for attr in ret["attributes"]:
+                        if attr["key"] == "team" and attr["value"] == st:
+                            ids.append(ret["id"])
+                            matched = True
+                if not matched:
+                    subteamNotMatched.append(st)
+
+            return {"LAUNCHRESULT": ids, "SUBMATCHRESULT": subteamNotMatched}
         except BaseException as e:
             print(e)
             print("\\n")
             return None
 
     def getFailCaseID(self):
-        launchId = self.getLaunchsByName(self.args.launchname)
-        if launchId is None:
-            return "\\nNOFOUND-NOREPLACE"
-        if len(launchId) == 0:
-            return "\\nNEWLAUNCHORSCENARIOSUBTEAMNOTCORRECT-NOREPLACE"
+        checkresult = self.checkLaunchsByNameScenario(self.args.launchname, self.args.scenarios)
+        if checkresult is None:
+            return "\\nNOFOUND-GETLAUNCHERROR-NOREPLACE"
 
+        if checkresult["LAUNCHRESULT"][0] == "NEWLAUNCH":
+            return "\\nNOFOUND-NEWLAUNCH-NOREPLACE"
+
+        if checkresult["LAUNCHRESULT"][0] == "NOSUBTEAMINSCENARIO":
+            return "\\nNOFOUND-NOSUBTEAMINSCENARIO-NOREPLACE"
+
+        notMatchedSubTeamInScenario = ""
+        if len(checkresult["SUBMATCHRESULT"]) != 0:
+            notMatchedSubTeamInScenario = '|'.join(checkresult["SUBMATCHRESULT"])
+        nonSubTeamInScenario = self.getNonSubTeamPerScenarios(self.args.scenarios)
+        notFailCase = ""
+        if notMatchedSubTeamInScenario != "" and nonSubTeamInScenario != "":
+            notFailCase = notMatchedSubTeamInScenario + "|" + nonSubTeamInScenario
+        elif notMatchedSubTeamInScenario == "":
+            notFailCase = nonSubTeamInScenario
+        else:
+            notFailCase = notMatchedSubTeamInScenario
+
+        launchId = checkresult["LAUNCHRESULT"][1:]
         returnString = ""
         try:
             failCaseList = []
@@ -581,14 +614,25 @@ class ReportPortalClient:
 
             for _, v in getFailReason.items():
                 returnString = returnString + "\\n"+v
-            if len(failCaseList) == 0:
-                return returnString + "\\nNOFAILCASEORNOTGETFAILCASE-NOREPLACE"
+            if len(failCaseList) == 0 and notFailCase == "":
+                return returnString + "\\nNOFAILEDCASEFOUNDNONEWCASE-NORERUN"
 
             if returnString != "":
                 returnString = returnString + "\\nThere is error to get failcase althoug we already get some fails case. maybe need to rerun again"
 
-            separator = '|'
-            return returnString + "\\n" + separator.join(failCaseList)
+            returnString = returnString + "\\n"
+
+            finalReplaceScenario = ""
+            if len(failCaseList) != 0:
+                finalReplaceScenario = finalReplaceScenario + "|".join(failCaseList)
+            if notFailCase != "":
+                if finalReplaceScenario == "":
+                    finalReplaceScenario = notFailCase
+                else:
+                    finalReplaceScenario = finalReplaceScenario + "|" + notFailCase
+
+            finalReplaceScenario = finalReplaceScenario.replace("ISV_Operators", "isv]")
+            return returnString + finalReplaceScenario
         except BaseException as e:
             print(e)
             return returnString + "\\nEXCEPTION-NOREPLACE"
@@ -638,11 +682,16 @@ class ReportPortalClient:
         update_url = self.launch_url + "/info"
         attrList = []
         for k, v in attrDict.items():
-            kv = {"key":k, "value":v["value"]}
-            if v["action"] == "add":
-                att = {"action": "CREATE", "to": kv}
+            if v["action"] == "update":
+                oldkv = {"key":k, "value":v["oldvalue"]}
+                newkv = {"key":k, "value":v["newvalue"]}
+                att = {"action": "UPDATE", "from": oldkv, "to": newkv}
             else:
-                att = {"action": "DELETE", "from": kv}
+                kv = {"key":k, "value":v["value"]}
+                if v["action"] == "add":
+                    att = {"action": "CREATE", "to": kv}
+                else:
+                    att = {"action": "DELETE", "from": kv}
             attrList.append(att)
         data = {"attributes": attrList, "ids": idList}
         try:
@@ -654,6 +703,55 @@ class ReportPortalClient:
             print(e)
             print("\\n")
             return False
+
+    def addMoreBuildNumToLaunch(self, lid):
+        try:
+            existingattrvalue = self.getLaunchAttrByID(lid, "ginkgobuildnum")
+            if existingattrvalue == None or existingattrvalue == "":
+                raise Exception("fail to get attr or no such attr")
+
+            if self.args.buildnum in existingattrvalue:
+                #build id already exists
+                return True
+
+            buildType = self.args.buildnum.split("-")[0]
+            for bid in existingattrvalue.split(","):
+                bidType = bid.replace(" ", "").split("-")[0]
+                if bidType == buildType:
+                    #same build type already exist
+                    return True
+
+            newattrvalue = existingattrvalue + "," + self.args.buildnum
+            attDict = {
+                "ginkgobuildnum": {"action": "update", "oldvalue":existingattrvalue, "newvalue":newattrvalue},
+                }
+
+            if not self.handleLaunchAttribution([lid], attDict):
+                raise Exception("fail to add more buildnum")
+
+            return True
+        except BaseException as e:
+            print(e)
+            print("\\n")
+            return False
+
+    def getLaunchAttrByID(self, lid, attrkey):
+        lid_url = self.launch_url + "/" + str(lid)
+        try:
+            r = self.session.get(url=lid_url)
+            if (r.status_code != 200):
+                raise Exception("get attr of launch id {0} error: {1}".format(lid, r.text))
+            retAttr = r.json()["attributes"]
+            attrvalue = ""
+            for attr in retAttr:
+                if attr["key"] == attrkey:
+                    attrvalue = attr["value"]
+            return attrvalue
+        except BaseException as e:
+            print(e)
+            print("\\n")
+            return None
+
 
     def getProfileAttr(self):
         filename = self.args.profilepath + self.args.version + "/" + self.args.profilename + ".test_run.yaml"
@@ -672,12 +770,24 @@ class ReportPortalClient:
         valideSubTeam = []
         scenarioList = scenarios.split("|")
         for s in scenarioList:
-            sr = s.replace(" ", "")
+            sr = s.strip()
             if sr == "isv]":
                 valideSubTeam.append("ISV_Operators")
             if sr in self.subteam:
                 valideSubTeam.append(sr)
         return valideSubTeam
+
+    def getNonSubTeamPerScenarios(self, scenarios):
+        nonSubTeam = []
+        scenarioList = scenarios.split("|")
+        for s in scenarioList:
+            sr = s.strip()
+            if sr != "isv]" and (sr not in self.subteam):
+                nonSubTeam.append(sr)
+
+        if len(nonSubTeam) == 0:
+            return ""
+        return "|".join(nonSubTeam)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("reportportal.py")
@@ -694,13 +804,14 @@ if __name__ == "__main__":
     parser.add_argument("-pp","--profilepath", default="../misc/jenkins/ci/")
     #merge, getwithlanuchname, delete, getfcd
     parser.add_argument("-l","--launchname", default="")
-    parser.add_argument("-ss","--scenarios", default="")
+    parser.add_argument("-ss","--scenarios", default="notnull")
     #handle attr
     parser.add_argument("-id","--launchid", default="")
     parser.add_argument("-aa","--attract", default="")
     parser.add_argument("-key","--attrkey", default="")
     parser.add_argument("-value","--attrvalue", default="")
     parser.add_argument("-trial","--triallaunch", default="yes")
+    parser.add_argument("-bn","--buildnum", default="unknown")
     args=parser.parse_args()
 
     rpc = ReportPortalClient(args)
