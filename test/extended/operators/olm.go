@@ -446,66 +446,50 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 
 	g.It("Critical-22070-support grpc sourcetype [Serial]", func() {
 		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
-		catalogsourceYAML := filepath.Join(buildPruningBaseDir, "image-catalogsource.yaml")
-		subscriptionYAML := filepath.Join(buildPruningBaseDir, "image-sub.yaml")
+		csTemplate := filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
+		subTemplate := filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+		oc.SetupProject()
 
-		// Check packagemanifest: Test Operators
-		_, err := oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", catalogsourceYAML).Output()
+		g.By("Start to create the CatalogSource CR")
+		cs := catalogSourceDescription{
+			name:        "cs-22070",
+			namespace:   "openshift-marketplace",
+			displayName: "OLM QE",
+			publisher:   "OLM QE",
+			sourceType:  "grpc",
+			address:     "quay.io/olmqe/catalogsource:etcd-auto",
+			template:    csTemplate,
+		}
+
+		dr := make(describerResrouce)
+		itName := g.CurrentGinkgoTestDescription().TestText
+		dr.addIr(itName)
+		cs.create(oc, itName, dr)
+		defer cs.delete(itName, dr)
+
+		newCheck("expect", asAdmin, withoutNamespace, compare, "READY", ok, []string{"catsrc", cs.name, "-n", cs.namespace, "-o=jsonpath={.status..lastObservedState}"}).check(oc)
+
+		g.By("Start to subscribe this etcd-atuo operator")
+		sub := subscriptionDescription{
+			subName:                "sub-22070",
+			namespace:              "openshift-operators",
+			catalogSourceName:      "cs-22070",
+			catalogSourceNamespace: "openshift-marketplace",
+			channel:                "clusterwide-alpha",
+			ipApproval:             "Automatic",
+			operatorPackage:        "etcd-auto",
+			singleNamespace:        false,
+			template:               subTemplate,
+		}
+		sub.create(oc, itName, dr)
+		defer sub.delete(itName, dr)
+		defer sub.getCSV().delete(itName, dr)
+		newCheck("expect", asAdmin, withNamespace, compare, "Succeeded", ok, []string{"csv", sub.installedCSV, "-o=jsonpath={.status.phase}"}).check(oc)
+
+		g.By("Assert that etcd dependency is resolved")
+		msg, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", "-n", oc.Namespace()).Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
-		err = wait.Poll(5*time.Second, 180*time.Second, func() (bool, error) {
-			_, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", "openshift-marketplace", "packagemanifest", "etcd-auto").Output()
-			if err != nil {
-				e2e.Logf("Fail to get packagemanifest:%v, and try again", err)
-				return false, nil
-			}
-			e2e.Logf("Get packagemanifest etcd-auto successfully")
-			return true, nil
-		})
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		// Check the Subscription, InstallPlan, CSV
-		_, err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", subscriptionYAML).Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		getCmds := []struct {
-			kind   string
-			expect string
-		}{
-			{"subscription", "test-operator"},
-			{"clusterserviceversion", "etcdoperator.v0.9.4-clusterwide"},
-			{"pods", "etcd-operator"},
-		}
-
-		for _, cmd := range getCmds {
-			err := wait.Poll(5*time.Second, 180*time.Second, func() (bool, error) {
-				output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args(cmd.kind, "-n", "openshift-operators").Output()
-				if err != nil {
-					e2e.Logf("Fail to get %v, error:%v", cmd.kind, err)
-					return false, nil
-				}
-				if strings.Contains(output, cmd.expect) {
-					e2e.Logf("Get %v successfully", cmd.kind)
-					return true, nil
-				}
-				return false, nil
-			})
-			o.Expect(err).NotTo(o.HaveOccurred())
-		}
-
-		// Clean up
-		removeCmds := []struct {
-			kind      string
-			namespace string
-			name      string
-		}{
-			{"catalogsource", "openshift-marketplace", "test-operator"},
-			{"subscription", "openshift-operators", "--all"},
-			{"clusterserviceversion", "openshift-operators", "etcdoperator.v0.9.4-clusterwide"},
-		}
-		for _, v := range removeCmds {
-			e2e.Logf("Start to remove: %v", v)
-			_, err := oc.AsAdmin().WithoutNamespace().Run("delete").Args(v.kind, "-n", v.namespace, v.name).Output()
-			o.Expect(err).NotTo(o.HaveOccurred())
-		}
+		o.Expect(msg).To(o.ContainSubstring("0.9.4-clusterwide"))
 	})
 
 	// author: bandrade@redhat.com
