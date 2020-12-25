@@ -26,7 +26,7 @@ function run {
   cat ./case_selected
   echo "-----------------------------------------------------"
 
-  ./bin/extended-platform-tests run --timeout 35m --junit-dir=./ -f ./case_selected
+  ./bin/extended-platform-tests run --max-parallel-tests 6 --timeout 35m --junit-dir=./ -f ./case_selected
   rm -fr ./case_selected
 }
 

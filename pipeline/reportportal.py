@@ -419,14 +419,14 @@ class ReportPortalClient:
                 "name":     {"action": "add", "value":os.path.splitext(os.path.basename(self.args.file))[0]},
                 "team":     {"action": "add", "value":self.args.subteam},
                 "version":  {"action": "add", "value":self.args.version.replace(".", "_")},
-                "ginkgobuildnum": {"action": "add", "value":self.args.buildnum},
+                "gbuildnum": {"action": "add", "value":self.args.buildnum},
                 }
             else:
                 attDict = {
                 "name":     {"action": "add", "value":os.path.splitext(os.path.basename(self.args.file))[0]},
                 "team":     {"action": "add", "value":self.args.subteam},
                 "version":  {"action": "add", "value":self.args.version.replace(".", "_")},
-                "ginkgobuildnum": {"action": "add", "value":self.args.buildnum},
+                "gbuildnum": {"action": "add", "value":self.args.buildnum},
                 "profilename": {"action": "add", "value":self.args.profilename},
                 }
                 if self.args.triallaunch == "yes":
@@ -706,7 +706,7 @@ class ReportPortalClient:
 
     def addMoreBuildNumToLaunch(self, lid):
         try:
-            existingattrvalue = self.getLaunchAttrByID(lid, "ginkgobuildnum")
+            existingattrvalue = self.getLaunchAttrByID(lid, "gbuildnum")
             if existingattrvalue == None or existingattrvalue == "":
                 raise Exception("fail to get attr or no such attr")
 
@@ -714,16 +714,16 @@ class ReportPortalClient:
                 #build id already exists
                 return True
 
-            buildType = self.args.buildnum.split("-")[0]
+            buildType = self.args.buildnum.split("-")[1]
             for bid in existingattrvalue.split(","):
-                bidType = bid.replace(" ", "").split("-")[0]
+                bidType = bid.replace(" ", "").split("-")[1]
                 if bidType == buildType:
                     #same build type already exist
                     return True
 
             newattrvalue = existingattrvalue + "," + self.args.buildnum
             attDict = {
-                "ginkgobuildnum": {"action": "update", "oldvalue":existingattrvalue, "newvalue":newattrvalue},
+                "gbuildnum": {"action": "update", "oldvalue":existingattrvalue, "newvalue":newattrvalue},
                 }
 
             if not self.handleLaunchAttribution([lid], attDict):
