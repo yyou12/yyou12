@@ -546,10 +546,18 @@ class ReportPortalClient:
             for st in subTeamList:
                 matched = False
                 for ret in retContent:
+                    buildnum = ""
                     for attr in ret["attributes"]:
-                        if attr["key"] == "team" and attr["value"] == st:
-                            ids.append(ret["id"])
-                            matched = True
+                        if attr["key"] == "gbuildnum" and attr.get("value") != None:
+                            buildnum = attr["value"]
+
+                    for attr in ret["attributes"]:
+                        if attr["key"] == "team" and attr["value"] == st and buildnum != "":
+                            for bid in buildnum.split(","):
+                                if bid.replace(" ", "").split("-")[1] == self.args.buildnum.split("-")[1]:
+                                    # launch, team and buildtype already exist
+                                    ids.append(ret["id"])
+                                    matched = True
                 if not matched:
                     subteamNotMatched.append(st)
 

@@ -33,9 +33,7 @@ else
   LAUNCHTRIAL="no"
 fi
 
-if [[ "X${FILTERSO}X" == "XX" ]] || [[ "${FILTERSO}" == *"~Disruptive"* ]]; then
-  buildtype="-ND"
-elif [[ "${FILTERSO}" == *"Disruptive"* ]]; then
+if [[ "${FILTERSO}" == *"Disruptive"* ]] && [[ "${FILTERSO}" != *"~Disruptive"* ]]; then
   buildtype="-YD"
 else
   buildtype="-ND"

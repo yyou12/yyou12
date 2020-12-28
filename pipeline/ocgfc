@@ -6,13 +6,27 @@ WORKBUILDDIR=$1
 WORKSPACE=$2
 LAUNCHID=$3
 ORIGSCENARIO="$4"
+BUILDNUM=$5
+FILTERSO="$6"
+
+if [ "${FILTERSO}" == "null" ]; then
+  FILTERSO=""
+else
+  FILTERSO=${FILTERSO:4}
+fi
+
+if [[ "${FILTERSO}" == *"Disruptive"* ]] && [[ "${FILTERSO}" != *"~Disruptive"* ]]; then
+  buildtype="-YD"
+else
+  buildtype="-ND"
+fi
 
 cd ${WORKBUILDDIR}
 rm -fr reportportal.py && eval cp -fr ${WORKSPACE}"/private/pipeline/reportportal.py" .
 
 rpmmtoken=`cat ${WORKSPACE}"/private/secrets/rp/openshift-qe-reportportal.json" | jq  -r ".ginkgo_rp_mmtoken"`
 rppmtoken=`cat ${WORKSPACE}"/private/secrets/rp/openshift-qe-reportportal.json" | jq  -r ".ginkgo_rp_pmtoken"`
-ret=`python3 reportportal.py -a getfcd -l "${LAUNCHID}" -ss "${ORIGSCENARIO}" -t "${rpmmtoken}" -ta "${rppmtoken}" 2>&1 || true`
+ret=`python3 reportportal.py -a getfcd -l "${LAUNCHID}" -ss "${ORIGSCENARIO}"  -bn "${BUILDNUM}""${buildtype}" -t "${rpmmtoken}" -ta "${rppmtoken}" 2>&1 || true`
 # echo -e "\\\n"${ret}"\\\n"
 
 result=`echo -e ${ret} | tail -1|xargs`
