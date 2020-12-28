@@ -100,4 +100,11 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
         output, _ := operatorsdkCLI.Run("run").Args("bundle-upgrade", "-h").Output()
         o.Expect(output).To(o.ContainSubstring("Upgrade an Operator previously installed in the bundle format with OLM"))		
     })
+    // author: chuo@redhat.com
+    g.It("Medium-34945-ansible Add flag metricsaddr for ansible operator", func() {
+        operatorsdkCLI.showInfo = true
+        result, err := exec.Command("bash", "-c", "ansible-operator run --help").Output()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        o.Expect(result).To(o.ContainSubstring("--metrics-addr"))	
+    })
 })
