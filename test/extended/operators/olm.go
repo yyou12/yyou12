@@ -23,7 +23,7 @@ import (
 var _ = g.Describe("[sig-operators] OLM should", func() {
 	defer g.GinkgoRecover()
 
-	var oc = exutil.NewCLIWithoutNamespace("default")
+	var oc = exutil.NewCLI("default-"+getRandomString(), exutil.KubeConfigPath())
 
 	// author: jiazha@redhat.com
 	g.It("Medium-25922-Support spec.config.volumes and volumemount in Subscription", func() {
@@ -639,16 +639,12 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		cockroachdbSub := filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
 
 		g.By("create new catalogsource")
-		configFile, err := oc.AsAdmin().WithoutNamespace().Run("process").Args("--ignore-unknown-parameters=true", "-f", catsrcImage, "-p", "NAME=cockroachdb-catalog-30206", "NAMESPACE=openshift-marketplace", "ADDRESS=quay.io/olmqe/cockroachdb-index:2.0.9new", "DISPLAYNAME=OLMCOCKROACHDB-30206", "PUBLISHER=QE", "SOURCETYPE=grpc").OutputToFile("config-30206.json")
+		configFile, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", catsrcImage, "-p", "NAME=cockroachdb-catalog-30206", "NAMESPACE=openshift-marketplace", "ADDRESS=quay.io/olmqe/cockroachdb-index:2.0.9new", "DISPLAYNAME=OLMCOCKROACHDB-30206", "PUBLISHER=QE", "SOURCETYPE=grpc").OutputToFile("config-30206.json")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", configFile).Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("catalogsource", "cockroachdb-catalog-30206", "-n", "openshift-marketplace").Execute()
 
-		g.By("check catalogsource pods status")
-		podName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", "openshift-marketplace", "pods", "-l", "olm.catalogSource=cockroachdb-catalog-30206", "-o=jsonpath={.items[0].metadata.name}").Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		e2e.Logf("get pod name %s", podName)
 		g.By("check packagemanifests")
 		err = wait.Poll(10*time.Second, 150*time.Second, func() (bool, error) {
 			output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("packagemanifests").Output()
@@ -669,13 +665,13 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("ns", "test-operators-30206").Execute()
 
 		g.By("create operatorGroup")
-		configFile, err = oc.AsAdmin().WithoutNamespace().Run("process").Args("--ignore-unknown-parameters=true", "-f", operatorGroup, "-p", "NAME=test-operator", "NAMESPACE=test-operators-30206").OutputToFile("config-30206.json")
+		configFile, err = oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", operatorGroup, "-p", "NAME=test-operator", "NAMESPACE=test-operators-30206").OutputToFile("config-30206.json")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", configFile).Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		g.By("create subscription")
-		configFile, err = oc.AsAdmin().WithoutNamespace().Run("process").Args("--ignore-unknown-parameters=true", "-f", cockroachdbSub, "-p", "SUBNAME=test-operator", "SUBNAMESPACE=test-operators-30206", "CHANNEL=alpha", "APPROVAL=Automatic", "OPERATORNAME=cockroachdb", "SOURCENAME=cockroachdb-catalog-30206", "SOURCENAMESPACE=openshift-marketplace", "STARTINGCSV=cockroachdb.v2.0.9").OutputToFile("config-30206.json")
+		configFile, err = oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", cockroachdbSub, "-p", "SUBNAME=test-operator", "SUBNAMESPACE=test-operators-30206", "CHANNEL=alpha", "APPROVAL=Automatic", "OPERATORNAME=cockroachdb", "SOURCENAME=cockroachdb-catalog-30206", "SOURCENAMESPACE=openshift-marketplace", "STARTINGCSV=cockroachdb.v2.0.9").OutputToFile("config-30206.json")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", configFile).Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -743,13 +739,13 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("ns", newNamespace).Execute()
 
 		g.By("create operatorGroup")
-		configFile, err := oc.AsAdmin().WithoutNamespace().Run("process").Args("--ignore-unknown-parameters=true", "-f", operatorGroup, "-p", "NAME=test-operator", fmt.Sprintf("NAMESPACE=%s", newNamespace)).OutputToFile("config-30312.json")
+		configFile, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", operatorGroup, "-p", "NAME=test-operator", fmt.Sprintf("NAMESPACE=%s", newNamespace)).OutputToFile("config-30312.json")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", configFile).Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		g.By("create csv")
-		configFile, err = oc.AsAdmin().WithoutNamespace().Run("process").Args("--ignore-unknown-parameters=true", "-f", validatingCsv, "-p", fmt.Sprintf("NAMESPACE=%s", newNamespace), "OPERATION=CREATE").OutputToFile("config-30312.json")
+		configFile, err = oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", validatingCsv, "-p", fmt.Sprintf("NAMESPACE=%s", newNamespace), "OPERATION=CREATE").OutputToFile("config-30312.json")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		err = oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", configFile).Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -765,7 +761,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		g.By("update csv")
-		configFile, err = oc.AsAdmin().WithoutNamespace().Run("process").Args("--ignore-unknown-parameters=true", "-f", validatingCsv, "-p", fmt.Sprintf("NAMESPACE=%s", newNamespace), "OPERATION=DELETE").OutputToFile("config-30312.json")
+		configFile, err = oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", validatingCsv, "-p", fmt.Sprintf("NAMESPACE=%s", newNamespace), "OPERATION=DELETE").OutputToFile("config-30312.json")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		err = oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", configFile).Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -799,13 +795,13 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("ns", newNamespace).Execute()
 
 		g.By("create operatorGroup")
-		configFile, err := oc.AsAdmin().WithoutNamespace().Run("process").Args("--ignore-unknown-parameters=true", "-f", operatorGroup, "-p", "NAME=test-operator", fmt.Sprintf("NAMESPACE=%s", newNamespace)).OutputToFile("config-30317.json")
+		configFile, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", operatorGroup, "-p", "NAME=test-operator", fmt.Sprintf("NAMESPACE=%s", newNamespace)).OutputToFile("config-30317.json")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", configFile).Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		g.By("create csv")
-		configFile, err = oc.AsAdmin().WithoutNamespace().Run("process").Args("--ignore-unknown-parameters=true", "-f", mutatingCsv, "-p", fmt.Sprintf("NAMESPACE=%s", newNamespace), "OPERATION=CREATE").OutputToFile("config-30317.json")
+		configFile, err = oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", mutatingCsv, "-p", fmt.Sprintf("NAMESPACE=%s", newNamespace), "OPERATION=CREATE").OutputToFile("config-30317.json")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		err = oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", configFile).Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -822,7 +818,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 
 		g.By("Start to test 30374")
 		g.By("update csv")
-		configFile, err = oc.AsAdmin().WithoutNamespace().Run("process").Args("--ignore-unknown-parameters=true", "-f", mutatingCsv, "-p", fmt.Sprintf("NAMESPACE=%s", newNamespace), "OPERATION=DELETE").OutputToFile("config-30317.json")
+		configFile, err = oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", mutatingCsv, "-p", fmt.Sprintf("NAMESPACE=%s", newNamespace), "OPERATION=DELETE").OutputToFile("config-30317.json")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		err = oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", configFile).Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -860,13 +856,13 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 			defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("ns", newNamespace).Execute()
 
 			g.By("create operatorGroup")
-			configFile, err := oc.AsAdmin().WithoutNamespace().Run("process").Args("--ignore-unknown-parameters=true", "-f", operatorGroup, "-p", "NAME=test-operator", fmt.Sprintf("NAMESPACE=%s", newNamespace)).OutputToFile("config-30319.json")
+			configFile, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", operatorGroup, "-p", "NAME=test-operator", fmt.Sprintf("NAMESPACE=%s", newNamespace)).OutputToFile("config-30319.json")
 			o.Expect(err).NotTo(o.HaveOccurred())
 			err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", configFile).Execute()
 			o.Expect(err).NotTo(o.HaveOccurred())
 
 			g.By("create csv")
-			configFile, err = oc.AsAdmin().WithoutNamespace().Run("process").Args("--ignore-unknown-parameters=true", "-f", validatingCsv, "-p", fmt.Sprintf("NAMESPACE=%s", newNamespace), "OPERATION=CREATE").OutputToFile("config-30319.json")
+			configFile, err = oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", validatingCsv, "-p", fmt.Sprintf("NAMESPACE=%s", newNamespace), "OPERATION=CREATE").OutputToFile("config-30319.json")
 			o.Expect(err).NotTo(o.HaveOccurred())
 			err = oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", configFile).Execute()
 			o.Expect(err).NotTo(o.HaveOccurred())
@@ -905,16 +901,13 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		crwebhook := filepath.Join(buildPruningBaseDir, "cr-webhookTest.yaml")
 
 		g.By("create new catalogsource")
-		configFile, err := oc.AsAdmin().WithoutNamespace().Run("process").Args("--ignore-unknown-parameters=true", "-f", catsrcImage, "-p", "NAME=webhook-operator-catalog-34181", "NAMESPACE=openshift-marketplace", "ADDRESS=quay.io/olmtest/webhook-operator-index:0.0.3", "DISPLAYNAME=WebhookOperatorCatalog-34181", "PUBLISHER=QE", "SOURCETYPE=grpc").OutputToFile("config-34181.json")
+		configFile, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", catsrcImage, "-p", "NAME=webhook-operator-catalog-34181", "NAMESPACE=openshift-marketplace",
+			"ADDRESS=quay.io/olmqe/webhook-operator-index:0.0.3", "DISPLAYNAME=WebhookOperatorCatalog-34181", "PUBLISHER=QE", "SOURCETYPE=grpc").OutputToFile("config-34181.json")
 		o.Expect(err).NotTo(o.HaveOccurred())
-		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", configFile).Execute()
+		err = oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", configFile).Execute()
 		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("catalogsource", "webhook-operator-catalog-34181", "-n", "openshift-marketplace").Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		g.By("check catalogsource pods status")
-		podName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", "openshift-marketplace", "pods", "-l", "olm.catalogSource=webhook-operator-catalog-34181", "-o=jsonpath={.items[0].metadata.name}").Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		e2e.Logf("get pod name %s", podName)
 		g.By("check packagemanifests")
 		err = wait.Poll(10*time.Second, 150*time.Second, func() (bool, error) {
 			output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("packagemanifests").Output()
@@ -930,9 +923,11 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		g.By("create subscription")
-		configFile, err = oc.AsAdmin().WithoutNamespace().Run("process").Args("--ignore-unknown-parameters=true", "-f", cockroachdbSub, "-p", "SUBNAME=test-operator-34181", "SUBNAMESPACE=openshift-operators", "CHANNEL=alpha", "APPROVAL=Automatic", "OPERATORNAME=webhook-operator", "SOURCENAME=webhook-operator-catalog-34181", "SOURCENAMESPACE=openshift-marketplace").OutputToFile("config-34181.json")
+		configFile, err = oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", cockroachdbSub, "-p", "SUBNAME=test-operator-34181",
+			"SUBNAMESPACE=openshift-operators", "CHANNEL=alpha", "APPROVAL=Automatic", "OPERATORNAME=webhook-operator", "SOURCENAME=webhook-operator-catalog-34181",
+			"SOURCENAMESPACE=openshift-marketplace").OutputToFile("config-34181.json")
 		o.Expect(err).NotTo(o.HaveOccurred())
-		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", configFile).Execute()
+		err = oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", configFile).Execute()
 		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("sub", "test-operator-34181", "-n", "openshift-operators").Execute()
 		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("csv", "webhook-operator.v0.0.1", "-n", "openshift-operators").Execute()
 		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("crd", "webhooktests.webhook.operators.coreos.io", "-n", "openshift-operators").Execute()
@@ -952,16 +947,25 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		g.By("check invalid CR")
-		configFile, err = oc.AsAdmin().WithoutNamespace().Run("process").Args("--ignore-unknown-parameters=true", "-f", crwebhook, "-p", "NAME=webhooktest-34181", "NAMESPACE=openshift-operators", "VALID=false").OutputToFile("config-34181.json")
+		configFile, err = oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", crwebhook, "-p", "NAME=webhooktest-34181",
+			"NAMESPACE=openshift-operators", "VALID=false").OutputToFile("config-34181.json")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", configFile).Execute()
 		o.Expect(err).To(o.HaveOccurred())
 
 		g.By("check valid CR")
-		configFile, err = oc.AsAdmin().WithoutNamespace().Run("process").Args("--ignore-unknown-parameters=true", "-f", crwebhook, "-p", "NAME=webhooktest-34181", "NAMESPACE=openshift-operators", "VALID=true").OutputToFile("config-34181.json")
+		configFile, err = oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", crwebhook, "-p", "NAME=webhooktest-34181",
+			"NAMESPACE=openshift-operators", "VALID=true").OutputToFile("config-34181.json")
 		o.Expect(err).NotTo(o.HaveOccurred())
-		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", configFile).Execute()
 		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("WebhookTest", "webhooktest-34181", "-n", "openshift-operators").Execute()
+		err = wait.Poll(15*time.Second, 150*time.Second, func() (bool, error) {
+			erra := oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", configFile).Execute()
+			if erra != nil {
+				e2e.Logf("try next, err:%v", err)
+				return false, nil
+			}
+			return true, nil
+		})
 		o.Expect(err).NotTo(o.HaveOccurred())
 	})
 
@@ -973,7 +977,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		cockroachdbSub := filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
 
 		g.By("create new catalogsource")
-		configFile, err := oc.AsAdmin().WithoutNamespace().Run("process").Args("--ignore-unknown-parameters=true", "-f", catsrcImage, "-p", "NAME=cockroachdb-catalog-29809",
+		configFile, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", catsrcImage, "-p", "NAME=cockroachdb-catalog-29809",
 			"NAMESPACE=openshift-marketplace", "ADDRESS=quay.io/olmqe/cockroachdb-index:2.1.11", "DISPLAYNAME=OLMCOCKROACHDB-REPLACE", "PUBLISHER=QE", "SOURCETYPE=grpc").OutputToFile("config-29809.json")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		err = oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", configFile).Execute()
@@ -1000,20 +1004,20 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		g.By("create operatorGroup")
-		configFile, err = oc.AsAdmin().WithoutNamespace().Run("process").Args("--ignore-unknown-parameters=true", "-f", operatorGroup, "-p",
+		configFile, err = oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", operatorGroup, "-p",
 			"NAME=test-operator", "NAMESPACE="+newNamespace).OutputToFile("config-29809.json")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", configFile).Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		g.By("create subscription")
-		configFile, err = oc.AsAdmin().WithoutNamespace().Run("process").Args("--ignore-unknown-parameters=true", "-f", cockroachdbSub, "-p", "SUBNAME=test-operator", "SUBNAMESPACE="+newNamespace,
+		configFile, err = oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", cockroachdbSub, "-p", "SUBNAME=test-operator", "SUBNAMESPACE="+newNamespace,
 			"CHANNEL=alpha", "APPROVAL=Automatic", "OPERATORNAME=cockroachdb", "SOURCENAME=cockroachdb-catalog-29809", "SOURCENAMESPACE=openshift-marketplace", "STARTINGCSV=cockroachdb.v2.0.9").OutputToFile("config-29809.json")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", configFile).Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		err = wait.Poll(10*time.Second, 180*time.Second, func() (bool, error) {
+		err = wait.Poll(10*time.Second, 300*time.Second, func() (bool, error) {
 			output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", newNamespace, "csv", "cockroachdb.v2.1.11", "-o=jsonpath={.spec.replaces}").Output()
 			e2e.Logf(output)
 			if err != nil {
