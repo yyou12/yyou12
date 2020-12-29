@@ -1399,7 +1399,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		sub.approve(oc, itName, dr)
 
 		g.By("the target CSV is created with upgrade")
-		o.Expect(strings.Compare(sub.installedCSV, sub.currentCSV) == 0).To(o.BeTrue())
+		o.Expect(strings.Compare(sub.installedCSV, sub.startingCSV) != 0).To(o.BeTrue())
 	})
 
 	// It will cover test case: OCP-24438, author: kuiwang@redhat.com
