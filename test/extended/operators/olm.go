@@ -2230,8 +2230,15 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		subCouchbase.create(oc, itName, dr)
 
 		g.By("check if Couchbase is installed")
-		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", subCouchbase.installedCSV, "-n", subCouchbase.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
-
+		err := wait.Poll(15*time.Second, 360*time.Second, func() (bool, error) {
+			csvPhase := getResource(oc, asAdmin, withoutNamespace, "csv", subCouchbase.installedCSV, "-n", subCouchbase.namespace, "-o=jsonpath={.status.phase}")
+			if strings.Contains(csvPhase, "Succeeded") {
+				e2e.Logf("Couchbase is installed")
+				return true, nil
+			}
+			return false, nil
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
 	})
 
 	// It will cover test case: OCP-33176, author: kuiwang@redhat.com
