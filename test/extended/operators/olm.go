@@ -1625,10 +1625,10 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		o.Expect(output).NotTo(o.BeEmpty())
 
 		output = getResource(oc, asAdmin, withoutNamespace, "operator", sub.operatorPackage+"."+sub.namespace,
-			fmt.Sprintf("-o=jsonpath={.status.components.refs[?(@.name==\"%s\")].conditions[*].reason}", sub.subName))
-		o.Expect(output).To(o.ContainSubstring("UnhealthyCatalogSourceFound"))
+			fmt.Sprintf("-o=jsonpath={.status.components.refs[?(@.name==\"%s\")].conditions[*].type}", sub.subName))
+		o.Expect(output).To(o.ContainSubstring("CatalogSourcesUnhealthy"))
 
-		newCheck("expect", asAdmin, withoutNamespace, contain, "RequirementsNotMet", ok, []string{"operator", sub.operatorPackage + "." + sub.namespace,
+		newCheck("expect", asAdmin, withoutNamespace, contain, "RequirementsNotMet+2+InstallWaiting", ok, []string{"operator", sub.operatorPackage + "." + sub.namespace,
 			fmt.Sprintf("-o=jsonpath={.status.components.refs[?(@.name==\"%s\")].conditions[*].reason}", sub.installedCSV)}).check(oc)
 	})
 
