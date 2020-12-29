@@ -1882,7 +1882,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		g.By("check schema does not work")
 		installPlan := getResource(oc, asAdmin, withoutNamespace, "sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.installplan.name}")
 		o.Expect(installPlan).NotTo(o.BeEmpty())
-		newCheck("expect", asAdmin, withoutNamespace, contain, "error validating existing CRs agains new CRD's schema", ok, []string{"ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.conditions[*].message}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, contain, "error validating existing CRs", ok, []string{"ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.conditions[*].message}"}).check(oc)
 	})
 
 	// It will cover test case: OCP-25760, author: kuiwang@redhat.com
