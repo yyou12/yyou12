@@ -645,20 +645,6 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("catalogsource", "cockroachdb-catalog-30206", "-n", "openshift-marketplace").Execute()
 
-		g.By("check packagemanifests")
-		err = wait.Poll(10*time.Second, 150*time.Second, func() (bool, error) {
-			output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("packagemanifests").Output()
-			if err != nil {
-				e2e.Logf("Failed to get packagemanifests, error:%v", err)
-				return false, err
-			}
-			if strings.Contains(output, "OLMCOCKROACHDB-30206") {
-				return true, nil
-			}
-			return false, nil
-		})
-		o.Expect(err).NotTo(o.HaveOccurred())
-
 		g.By("create new namespace")
 		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("ns", "test-operators-30206").Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -677,7 +663,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		g.By("check secrets")
-		err = wait.Poll(30*time.Second, 120*time.Second, func() (bool, error) {
+		err = wait.Poll(30*time.Second, 240*time.Second, func() (bool, error) {
 			err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", "test-operators-30206", "secrets", "mysecret").Execute()
 			if err != nil {
 				e2e.Logf("Failed to create secrets, error:%v", err)
@@ -688,7 +674,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		g.By("check configmaps")
-		err = wait.Poll(30*time.Second, 120*time.Second, func() (bool, error) {
+		err = wait.Poll(30*time.Second, 240*time.Second, func() (bool, error) {
 			err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", "test-operators-30206", "configmaps", "my-config-map").Execute()
 			if err != nil {
 				e2e.Logf("Failed to create secrets, error:%v", err)
@@ -704,7 +690,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		g.By("check secrets has been deleted")
-		err = wait.Poll(20*time.Second, 100*time.Second, func() (bool, error) {
+		err = wait.Poll(20*time.Second, 120*time.Second, func() (bool, error) {
 			err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", "test-operators-30206", "secrets", "mysecret").Execute()
 			if err != nil {
 				e2e.Logf("The secrets has been deleted")
@@ -715,7 +701,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		g.By("check configmaps has been deleted")
-		err = wait.Poll(20*time.Second, 100*time.Second, func() (bool, error) {
+		err = wait.Poll(20*time.Second, 120*time.Second, func() (bool, error) {
 			err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", "test-operators-30206", "configmaps", "my-config-map").Execute()
 			if err != nil {
 				e2e.Logf("The configmaps has been deleted")
@@ -750,7 +736,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		err = oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", configFile).Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		err = wait.Poll(20*time.Second, 100*time.Second, func() (bool, error) {
+		err = wait.Poll(20*time.Second, 180*time.Second, func() (bool, error) {
 			err := oc.AsAdmin().WithoutNamespace().Run("get").Args("validatingwebhookconfiguration", "-l", "olm.owner.namespace=test-operators-30312").Execute()
 			if err != nil {
 				e2e.Logf("The validatingwebhookconfiguration is not created:%v", err)
@@ -767,7 +753,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		validatingwebhookName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("validatingwebhookconfiguration", "-l", "olm.owner.namespace=test-operators-30312", "-o=jsonpath={.items[0].metadata.name}").Output()
-		err = wait.Poll(20*time.Second, 100*time.Second, func() (bool, error) {
+		err = wait.Poll(20*time.Second, 180*time.Second, func() (bool, error) {
 			output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("validatingwebhookconfiguration", validatingwebhookName, "-o=jsonpath={..operations}").Output()
 			e2e.Logf(output)
 			if err != nil {
@@ -806,7 +792,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		err = oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", configFile).Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		err = wait.Poll(20*time.Second, 100*time.Second, func() (bool, error) {
+		err = wait.Poll(20*time.Second, 180*time.Second, func() (bool, error) {
 			err := oc.AsAdmin().WithoutNamespace().Run("get").Args("mutatingwebhookconfiguration", "-l", "olm.owner.namespace=test-operators-30317").Execute()
 			if err != nil {
 				e2e.Logf("The mutatingwebhookconfiguration is not created:%v", err)
@@ -824,7 +810,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		mutatingwebhookName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("mutatingwebhookconfiguration", "-l", "olm.owner.namespace=test-operators-30317", "-o=jsonpath={.items[0].metadata.name}").Output()
-		err = wait.Poll(20*time.Second, 100*time.Second, func() (bool, error) {
+		err = wait.Poll(20*time.Second, 180*time.Second, func() (bool, error) {
 			output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("mutatingwebhookconfiguration", mutatingwebhookName, "-o=jsonpath={..operations}").Output()
 			e2e.Logf(output)
 			if err != nil {
@@ -867,7 +853,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 			err = oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", configFile).Execute()
 			o.Expect(err).NotTo(o.HaveOccurred())
 
-			err = wait.Poll(20*time.Second, 100*time.Second, func() (bool, error) {
+			err = wait.Poll(20*time.Second, 180*time.Second, func() (bool, error) {
 				err := oc.AsAdmin().WithoutNamespace().Run("get").Args("validatingwebhookconfiguration", "-l", fmt.Sprintf("olm.owner.namespace=%s", newNamespace)).Execute()
 				if err != nil {
 					e2e.Logf("The validatingwebhookconfiguration is not created:%v", err)
@@ -908,20 +894,6 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("catalogsource", "webhook-operator-catalog-34181", "-n", "openshift-marketplace").Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		g.By("check packagemanifests")
-		err = wait.Poll(10*time.Second, 150*time.Second, func() (bool, error) {
-			output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("packagemanifests").Output()
-			if err != nil {
-				e2e.Logf("Failed to get packagemanifests, error:%v", err)
-				return false, err
-			}
-			if strings.Contains(output, "WebhookOperatorCatalog-34181") {
-				return true, nil
-			}
-			return false, nil
-		})
-		o.Expect(err).NotTo(o.HaveOccurred())
-
 		g.By("create subscription")
 		configFile, err = oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", cockroachdbSub, "-p", "SUBNAME=test-operator-34181",
 			"SUBNAMESPACE=openshift-operators", "CHANNEL=alpha", "APPROVAL=Automatic", "OPERATORNAME=webhook-operator", "SOURCENAME=webhook-operator-catalog-34181",
@@ -933,11 +905,11 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("crd", "webhooktests.webhook.operators.coreos.io", "-n", "openshift-operators").Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		err = wait.Poll(10*time.Second, 100*time.Second, func() (bool, error) {
+		err = wait.Poll(15*time.Second, 300*time.Second, func() (bool, error) {
 			output, err := oc.AsAdmin().WithoutNamespace().Run("api-resources").Args("-o", "name").Output()
 			if err != nil {
 				e2e.Logf("There is no WebhookTest, err:%v", err)
-				return false, err
+				return false, nil
 			}
 			if strings.Contains(output, "webhooktests.webhook.operators.coreos.io") {
 				return true, nil
@@ -958,7 +930,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 			"NAMESPACE=openshift-operators", "VALID=true").OutputToFile("config-34181.json")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("WebhookTest", "webhooktest-34181", "-n", "openshift-operators").Execute()
-		err = wait.Poll(15*time.Second, 150*time.Second, func() (bool, error) {
+		err = wait.Poll(15*time.Second, 300*time.Second, func() (bool, error) {
 			erra := oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", configFile).Execute()
 			if erra != nil {
 				e2e.Logf("try next, err:%v", err)
@@ -983,19 +955,6 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		err = oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", configFile).Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("catalogsource", "cockroachdb-catalog-29809", "-n", "openshift-marketplace").Execute()
-		g.By("check packagemanifests")
-		err = wait.Poll(10*time.Second, 150*time.Second, func() (bool, error) {
-			output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("packagemanifests").Output()
-			if err != nil {
-				e2e.Logf("Failed to get packagemanifests, error:%v", err)
-				return false, err
-			}
-			if strings.Contains(output, "OLMCOCKROACHDB-REPLACE") {
-				return true, nil
-			}
-			return false, nil
-		})
-		o.Expect(err).NotTo(o.HaveOccurred())
 
 		g.By("create new namespace")
 		newNamespace := "test-operators-29809"
@@ -1017,7 +976,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", configFile).Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		err = wait.Poll(10*time.Second, 300*time.Second, func() (bool, error) {
+		err = wait.Poll(15*time.Second, 480*time.Second, func() (bool, error) {
 			output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", newNamespace, "csv", "cockroachdb.v2.1.11", "-o=jsonpath={.spec.replaces}").Output()
 			e2e.Logf(output)
 			if err != nil {
