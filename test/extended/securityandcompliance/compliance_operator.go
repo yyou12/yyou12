@@ -16,23 +16,24 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 	defer g.GinkgoRecover()
 
 	var (
-		oc                     = exutil.NewCLI("compliance-"+getRandomString(), exutil.KubeConfigPath())
-		buildPruningBaseDir    = exutil.FixturePath("testdata", "securityandcompliance")
-		ogCoTemplate           = filepath.Join(buildPruningBaseDir, "operator-group.yaml")
-		catsrcCoTemplate       = filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
-		subCoTemplate          = filepath.Join(buildPruningBaseDir, "subscription.yaml")
-		csuiteTemplate         = filepath.Join(buildPruningBaseDir, "compliancesuite.yaml")
-		csuitetpcmTemplate     = filepath.Join(buildPruningBaseDir, "compliancesuitetpconfmap.yaml")
-		csuitetaintTemplate    = filepath.Join(buildPruningBaseDir, "compliancesuitetaint.yaml")
-		csuitenodeTemplate     = filepath.Join(buildPruningBaseDir, "compliancesuitenodes.yaml")
-		cscanTemplate          = filepath.Join(buildPruningBaseDir, "compliancescan.yaml")
-		cscantaintTemplate     = filepath.Join(buildPruningBaseDir, "compliancescantaint.yaml")
-		tprofileTemplate       = filepath.Join(buildPruningBaseDir, "tailoredprofile.yaml")
-		scansettingYAML        = filepath.Join(buildPruningBaseDir, "scansetting.yaml")
-		scansettingbindingYAML = filepath.Join(buildPruningBaseDir, "scansettingbinding.yaml")
-		pvextractpodYAML       = filepath.Join(buildPruningBaseDir, "pv-extract-pod.yaml")
-		podModifyTemplate      = filepath.Join(buildPruningBaseDir, "pod_modify.yaml")
-		dr                     = make(describerResrouce)
+		oc                         = exutil.NewCLI("compliance-"+getRandomString(), exutil.KubeConfigPath())
+		buildPruningBaseDir        = exutil.FixturePath("testdata", "securityandcompliance")
+		ogCoTemplate               = filepath.Join(buildPruningBaseDir, "operator-group.yaml")
+		catsrcCoTemplate           = filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
+		subCoTemplate              = filepath.Join(buildPruningBaseDir, "subscription.yaml")
+		csuiteTemplate             = filepath.Join(buildPruningBaseDir, "compliancesuite.yaml")
+		csuitetpcmTemplate         = filepath.Join(buildPruningBaseDir, "compliancesuitetpconfmap.yaml")
+		csuitetaintTemplate        = filepath.Join(buildPruningBaseDir, "compliancesuitetaint.yaml")
+		csuitenodeTemplate         = filepath.Join(buildPruningBaseDir, "compliancesuitenodes.yaml")
+		cscanTemplate              = filepath.Join(buildPruningBaseDir, "compliancescan.yaml")
+		cscantaintTemplate         = filepath.Join(buildPruningBaseDir, "compliancescantaint.yaml")
+		cscantaintsTemplate        = filepath.Join(buildPruningBaseDir, "compliancescantaints.yaml")
+		tprofileTemplate           = filepath.Join(buildPruningBaseDir, "tailoredprofile.yaml")
+		scansettingYAML            = filepath.Join(buildPruningBaseDir, "scansetting.yaml")
+		scansettingbindingTemplate = filepath.Join(buildPruningBaseDir, "scansettingbinding.yaml")
+		pvextractpodYAML           = filepath.Join(buildPruningBaseDir, "pv-extract-pod.yaml")
+		podModifyTemplate          = filepath.Join(buildPruningBaseDir, "pod_modify.yaml")
+		dr                         = make(describerResrouce)
 
 		catSrc = catalogSourceDescription{
 			name:        "compliance-operator",
@@ -384,14 +385,24 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 					value:        "permissive",
 					template:     tprofileTemplate,
 				}
+				ssb = scanSettingBindingDescription{
+					name:            "co-requirement",
+					namespace:       "",
+					profilekind1:    "TailoredProfile",
+					profilename1:    "rhcos-tp",
+					profilename2:    "ocp4-moderate",
+					scansettingname: "co-setting",
+					template:        scansettingbindingTemplate,
+				}
+				itName = g.CurrentGinkgoTestDescription().TestText
 			)
 
 			// These are special steps to overcome problem which are discussed in [1] so that namespace should not stuck in 'Terminating' state
 			// [1] https://bugzilla.redhat.com/show_bug.cgi?id=1858186
 			defer cleanupObjects(oc,
-				objectTableRef{"compliancesuite", subD.namespace, "co-requirement"},
-				objectTableRef{"scansetting", subD.namespace, "co-setting"},
-				objectTableRef{"tailoredprofile", subD.namespace, "rhcos-tp"})
+				objectTableRef{"scansettingbinding", subD.namespace, ssb.name},
+				objectTableRef{"scansetting", subD.namespace, ssb.scansettingname},
+				objectTableRef{"tailoredprofile", subD.namespace, ssb.profilename1})
 
 			// adding label to rhcos worker node to skip rhel worker node if any
 			g.By("Label all rhcos worker nodes as wscan !!!\n")
@@ -401,6 +412,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			subD.getProfileName(oc, "rhcos4-e8")
 
 			tprofileD.namespace = subD.namespace
+			ssb.namespace = subD.namespace
 			g.By("Create tailoredprofile rhcos-tp !!!\n")
 			tprofileD.create(oc, itName, dr)
 
@@ -414,13 +426,12 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 				"-o=jsonpath={.items[0].metadata.name}"}).check(oc)
 
 			g.By("Create scansettingbinding !!!\n")
-			_, err1 := oc.AsAdmin().WithoutNamespace().Run("create").Args("-n", subD.namespace, "-f", scansettingbindingYAML).Output()
-			o.Expect(err1).NotTo(o.HaveOccurred())
-			newCheck("expect", asAdmin, withoutNamespace, contain, "co-requirement", ok, []string{"scansettingbinding", "-n", subD.namespace,
+			ssb.create(oc, itName, dr)
+			newCheck("expect", asAdmin, withoutNamespace, contain, ssb.name, ok, []string{"scansettingbinding", "-n", subD.namespace,
 				"-o=jsonpath={.items[0].metadata.name}"}).check(oc)
 
 			g.By("Check ComplianceSuite status !!!\n")
-			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", "co-requirement", "-n", subD.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", ssb.name, "-n", subD.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
 
 			g.By("Check worker and master scan pods status.. !!! \n")
 			subD.scanPodStatus(oc, "Succeeded")
@@ -437,7 +448,6 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			newCheck("expect", asAdmin, withoutNamespace, contain, "rhcos-scan-audit-rules-dac-modification-chown", nok, []string{"compliancecheckresult", "-n", subD.namespace}).check(oc)
 
 			g.By("ocp-32840 The ComplianceSuite generated successfully using scansetting... !!!\n")
-
 		})
 
 		// author: pdhamdhe@redhat.com
@@ -507,6 +517,115 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 
 			g.By("ocp-33381 The ComplianceSuite performed scan successfully using tailored profile... !!!\n")
 
+		})
+		// author: xiyuan@redhat.com
+		g.It("Medium-33611-Verify the tolerations could work for compliancescan when there is more than one taint on node [Serial]", func() {
+			var (
+				cscanD = complianceScanDescription{
+					name:         "example-compliancescan3",
+					namespace:    "",
+					profile:      "xccdf_org.ssgproject.content_profile_moderate",
+					content:      "ssg-rhcos4-ds.xml",
+					contentImage: "quay.io/complianceascode/ocp4:latest",
+					rule:         "xccdf_org.ssgproject.content_rule_no_netrc_files",
+					key:          "key1",
+					value:        "value1",
+					operator:     "Equal",
+					key1:         "key2",
+					value1:       "value2",
+					operator1:    "Equal",
+					nodeSelector: "wscan",
+					template:     cscantaintsTemplate,
+				}
+				itName = g.CurrentGinkgoTestDescription().TestText
+			)
+
+			// adding label to rhcos worker node to skip rhel worker node if any
+			g.By("Label all rhcos worker nodes as wscan.. !!!\n")
+			setLabelToNode(oc)
+
+			g.By("Label and set taint value to one worker node.. !!!\n")
+			nodeName := getOneWorkerNodeName(oc)
+			taintNode(oc, "taint", "node", nodeName, "key1=value1:NoSchedule", "key2=value2:NoExecute")
+			labelTaintNode(oc, "node", nodeName, "taint=true")
+			defer func() {
+				taintNode(oc, "taint", "node", nodeName, "key1=value1:NoSchedule-", "key2=value2:NoExecute-")
+				labelTaintNode(oc, "node", nodeName, "taint-")
+			}()
+
+			cscanD.namespace = subD.namespace
+			g.By("Create compliancescan.. !!!\n")
+			cscanD.create(oc, itName, dr)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancescan", cscanD.name, "-n",
+				subD.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+
+			g.By("Check worker scan pods status.. !!! \n")
+			subD.scanPodStatus(oc, "Succeeded")
+
+			g.By("Check complianceScan name and result.. !!!\n")
+			subD.complianceScanName(oc, "worker-scan")
+			subD.complianceScanResult(oc, "COMPLIANT")
+
+			g.By("Check complianceScan result exit-code through configmap.. !!!\n")
+			subD.getScanExitCodeFromConfigmap(oc, "0")
+
+			g.By("Verify if scan pod generated for tainted node.. !!!\n")
+			assertCoPodNumerEqualNodeNumber(oc, cscanD.namespace, "node-role.kubernetes.io/wscan=")
+
+			g.By("Remove compliancescan object and recover tainted worker node.. !!!\n")
+			cscanD.delete(itName, dr)
+
+			g.By("ocp-33611 Verify the tolerations could work for compliancescan when there is more than one taints on node successfully.. !!!\n")
+
+		})
+
+		// author: xiyuan@redhat.com
+		g.It("High-37121-The ComplianceSuite generates through ScanSettingBinding CR with cis profile and default scansetting", func() {
+			var (
+				ssb = scanSettingBindingDescription{
+					name:            "cis-test",
+					namespace:       "",
+					profilekind1:    "Profile",
+					profilename1:    "ocp4-cis",
+					profilename2:    "ocp4-cis-node",
+					scansettingname: "default",
+					template:        scansettingbindingTemplate,
+				}
+				itName = g.CurrentGinkgoTestDescription().TestText
+			)
+
+			// adding label to rhcos worker node to skip rhel worker node if any
+			g.By("Label all rhcos worker nodes as wscan !!!\n")
+			setLabelToNode(oc)
+
+			g.By("Check default profiles name ocp4-cis .. !!!\n")
+			subD.getProfileName(oc, "ocp4-cis")
+			g.By("Check default profiles name ocp4-cis-node .. !!!\n")
+			subD.getProfileName(oc, "ocp4-cis-node")
+
+			g.By("Create scansettingbinding !!!\n")
+			ssb.namespace = subD.namespace
+			defer cleanupObjects(oc, objectTableRef{"scansettingbinding", subD.namespace, ssb.name})
+			ssb.create(oc, itName, dr)
+			newCheck("expect", asAdmin, withoutNamespace, contain, ssb.name, ok, []string{"scansettingbinding", "-n", ssb.namespace,
+				"-o=jsonpath={.items[0].metadata.name}"}).check(oc)
+
+			g.By("Check ComplianceSuite status !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", ssb.name, "-n", ssb.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+
+			g.By("Check worker and master scan pods status.. !!! \n")
+			subD.scanPodStatus(oc, "Succeeded")
+
+			g.By("Check complianceSuite name and result.. !!!\n")
+			subD.complianceSuiteName(oc, ssb.name)
+			subD.complianceSuiteResult(oc, "NON-COMPLIANT")
+
+			g.By("Check complianceSuite result through exit-code.. !!!\n")
+			subD.getScanExitCodeFromConfigmap(oc, "2")
+
+			g.By("Verify the disable rules are not available in compliancecheckresult.. !!!\n")
+
+			g.By("ocp-37121 The ComplianceSuite generated successfully using scansetting... !!!\n")
 		})
 
 		// author: pdhamdhe@redhat.com
@@ -869,8 +988,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			subD.getScanExitCodeFromConfigmap(oc, "0")
 
 			g.By("Verify if pod generated for tainted node.. !!!\n")
-			newCheck("expect", asAdmin, withoutNamespace, contain, nodeName, ok, []string{"pods", "-n", subD.namespace, "--selector=workload=scanner",
-				"-o=jsonpath={.items[*].metadata.name}"}).check(oc)
+			assertCoPodNumerEqualNodeNumber(oc, subD.namespace, "node-role.kubernetes.io/wscan=")
 
 			g.By("Remove csuite and taint label from worker node.. !!!\n")
 			csuiteD.delete(itName, dr)
@@ -898,9 +1016,8 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			g.By("Check complianceScan result exit-code through configmap...!!!\n")
 			subD.getScanExitCodeFromConfigmap(oc, "0")
 
-			g.By("Verify if the pod generated for tainted node...!!!\n")
-			newCheck("expect", asAdmin, withoutNamespace, contain, nodeName, ok, []string{"pods", "-n", subD.namespace, "--selector=workload=scanner",
-				"-o=jsonpath={.items[*].metadata.name}"}).check(oc)
+			g.By("Verify if pod generated for tainted node.. !!!\n")
+			assertCoPodNumerEqualNodeNumber(oc, subD.namespace, "node-role.kubernetes.io/wscan=")
 
 			g.By("Remove csuite, taint label and key from worker node.. !!!\n")
 			csuite.delete(itName, dr)
@@ -986,8 +1103,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			subD.getScanExitCodeFromConfigmap(oc, "0")
 
 			g.By("Verify if scan pod generated for tainted node.. !!!\n")
-			newCheck("expect", asAdmin, withoutNamespace, contain, nodeName, ok, []string{"pods", "-n", subD.namespace, "--selector=workload=scanner",
-				"-o=jsonpath={.items[*].metadata.name}"}).check(oc)
+			assertCoPodNumerEqualNodeNumber(oc, subD.namespace, "node-role.kubernetes.io/wscan=")
 
 			g.By("Remove compliancescan object and recover tainted worker node.. !!!\n")
 			cscanD.delete(itName, dr)
@@ -1013,8 +1129,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			subD.getScanExitCodeFromConfigmap(oc, "0")
 
 			g.By("Verify if the scan pod generated for tainted node...!!!\n")
-			newCheck("expect", asAdmin, withoutNamespace, contain, nodeName, ok, []string{"pods", "-n", subD.namespace, "--selector=workload=scanner",
-				"-o=jsonpath={.items[*].metadata.name}"}).check(oc)
+			assertCoPodNumerEqualNodeNumber(oc, subD.namespace, "node-role.kubernetes.io/wscan=")
 
 			g.By("Remove compliancescan object and taint label and key from worker node.. !!!\n")
 			cscan.delete(itName, dr)

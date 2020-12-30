@@ -34,6 +34,16 @@ type complianceSuiteDescription struct {
 	template            string
 }
 
+type scanSettingBindingDescription struct {
+	name            string
+	namespace       string
+	profilekind1    string
+	profilename1    string
+	profilename2    string
+	scansettingname string
+	template        string
+}
+
 func (csuite *complianceSuiteDescription) create(oc *exutil.CLI, itName string, dr describerResrouce) {
 	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", csuite.template, "-p", "NAME="+csuite.name, "NAMESPACE="+csuite.namespace,
 		"SCHEDULE="+csuite.schedule, "SCANNAME="+csuite.scanname, "SCANTYPE="+csuite.scanType, "PROFILE="+csuite.profile, "CONTENT="+csuite.content,
@@ -42,6 +52,13 @@ func (csuite *complianceSuiteDescription) create(oc *exutil.CLI, itName string, 
 		"TAILORCONFIGMAPNAME="+csuite.tailoringConfigMap)
 	o.Expect(err).NotTo(o.HaveOccurred())
 	dr.getIr(itName).add(newResource(oc, "compliancesuite", csuite.name, requireNS, csuite.namespace))
+}
+
+func (ssb *scanSettingBindingDescription) create(oc *exutil.CLI, itName string, dr describerResrouce) {
+	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", ssb.template, "-p", "NAME="+ssb.name, "NAMESPACE="+ssb.namespace,
+		"PROFILENAME1="+ssb.profilename1, "PROFILEKIND1="+ssb.profilekind1, "PROFILENAME2="+ssb.profilename2, "SCANSETTINGNAME="+ssb.scansettingname)
+	o.Expect(err).NotTo(o.HaveOccurred())
+	dr.getIr(itName).add(newResource(oc, "scansettingbinding", ssb.name, requireNS, ssb.namespace))
 }
 
 func (csuite *complianceSuiteDescription) delete(itName string, dr describerResrouce) {
@@ -74,6 +91,9 @@ type complianceScanDescription struct {
 	key          string
 	value        string
 	operator     string
+	key1         string
+	value1       string
+	operator1    string
 	nodeSelector string
 	size         string
 	template     string
@@ -83,7 +103,7 @@ func (cscan *complianceScanDescription) create(oc *exutil.CLI, itName string, dr
 	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", cscan.template, "-p", "NAME="+cscan.name,
 		"NAMESPACE="+cscan.namespace, "SCANTYPE="+cscan.scanType, "PROFILE="+cscan.profile, "CONTENT="+cscan.content,
 		"CONTENTIMAGE="+cscan.contentImage, "RULE="+cscan.rule, "KEY="+cscan.key, "VALUE="+cscan.value, "OPERATOR="+cscan.operator,
-		"NODESELECTOR="+cscan.nodeSelector, "SIZE="+cscan.size)
+		"KEY1="+cscan.key1, "VALUE1="+cscan.value1, "OPERATOR1="+cscan.operator1, "NODESELECTOR="+cscan.nodeSelector, "SIZE="+cscan.size)
 	o.Expect(err).NotTo(o.HaveOccurred())
 	dr.getIr(itName).add(newResource(oc, "compliancescan", cscan.name, requireNS, cscan.namespace))
 }
@@ -346,4 +366,17 @@ func (subD *subscriptionDescription) getARFreportFromPVC(oc *exutil.CLI, expecte
 		}
 	}
 	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+func assertCoPodNumerEqualNodeNumber(oc *exutil.CLI, namespace string, label string) {
+
+	intNodeNumber := getNodeNumberPerLabel(oc, label)
+	podNameString, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-n", namespace, "--selector=workload=scanner", "-o=jsonpath={.items[*].metadata.name}").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	intPodNumber := len(strings.Fields(podNameString))
+	e2e.Logf("the result of intNodeNumber:%v", intNodeNumber)
+	e2e.Logf("the result of intPodNumber:%v", intPodNumber)
+	if intNodeNumber != intPodNumber {
+		e2e.Failf("the intNodeNumber and intPodNumber not equal!")
+	}
 }

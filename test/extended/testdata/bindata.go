@@ -55,6 +55,7 @@
 // test/extended/testdata/securityandcompliance/catalogsource-image.yaml
 // test/extended/testdata/securityandcompliance/compliancescan.yaml
 // test/extended/testdata/securityandcompliance/compliancescantaint.yaml
+// test/extended/testdata/securityandcompliance/compliancescantaints.yaml
 // test/extended/testdata/securityandcompliance/compliancesuite.yaml
 // test/extended/testdata/securityandcompliance/compliancesuitenodes.yaml
 // test/extended/testdata/securityandcompliance/compliancesuitetaint.yaml
@@ -7015,6 +7016,70 @@ func testExtendedTestdataSecurityandcomplianceCompliancescantaintYaml() (*asset,
 	return a, nil
 }
 
+var _testExtendedTestdataSecurityandcomplianceCompliancescantaintsYaml = []byte(`apiVersion: v1
+kind: Template
+metadata:
+  name: compliancescan-template
+objects:
+- apiVersion: compliance.openshift.io/v1alpha1
+  kind: ComplianceScan
+  metadata:
+    name: "${NAME}"
+    namespace: "${NAMESPACE}"
+  spec:
+    profile: "${PROFILE}"
+    scanType: "${SCANTYPE}"
+    content: "${CONTENT}"
+    contentImage: "${CONTENTIMAGE}"
+    rule: "${RULE}"
+    debug: true
+    scanTolerations:
+    - effect: NoSchedule
+      key: "${KEY}"
+      value: "${VALUE}"
+      operator: "${OPERATOR}"
+    - effect: NoExecute
+      key: "${KEY1}"
+      value: "${VALUE1}"
+      operator: "${OPERATOR1}"
+    nodeSelector:
+      node-role.kubernetes.io/${NODESELECTOR}: ""
+    rawResultStorage:
+      size: "${SIZE}"
+
+parameters:
+- name: NAME
+- name: NAMESPACE
+- name: PROFILE
+- name: SCANTYPE
+- name: CONTENT
+- name: CONTENTIMAGE
+- name: RULE
+- name: KEY
+- name: VALUE
+- name: OPERATOR
+- name: KEY1
+- name: VALUE1
+- name: OPERATOR1
+- name: NODESELECTOR
+- name: SIZE
+`)
+
+func testExtendedTestdataSecurityandcomplianceCompliancescantaintsYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataSecurityandcomplianceCompliancescantaintsYaml, nil
+}
+
+func testExtendedTestdataSecurityandcomplianceCompliancescantaintsYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataSecurityandcomplianceCompliancescantaintsYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/securityandcompliance/compliancescantaints.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
 var _testExtendedTestdataSecurityandcomplianceCompliancesuiteYaml = []byte(`apiVersion: v1
 kind: Template
 metadata:
@@ -7448,23 +7513,38 @@ func testExtendedTestdataSecurityandcomplianceScansettingYaml() (*asset, error) 
 	return a, nil
 }
 
-var _testExtendedTestdataSecurityandcomplianceScansettingbindingYaml = []byte(`apiVersion: compliance.openshift.io/v1alpha1
-kind: ScanSettingBinding
+var _testExtendedTestdataSecurityandcomplianceScansettingbindingYaml = []byte(`apiVersion: v1
+kind: Template
 metadata:
-  name: co-requirement
-profiles:
-  # Node checks
-  - name: rhcos-tp
-    kind: TailoredProfile
+  name: scansettingbinding-template
+objects:
+- apiVersion: compliance.openshift.io/v1alpha1
+  kind: ScanSettingBinding
+  metadata:
+    name: "${NAME}"
+    namespace: "${NAMESPACE}"
+  profiles:
+    # Node checks
+    - name: "${PROFILENAME1}"
+      kind: "${PROFILEKIND1}"
+      apiGroup: compliance.openshift.io/v1alpha1
+    # Cluster checks
+    - name: ocp4-moderate
+      kind: Profile
+      apiGroup: compliance.openshift.io/v1alpha1
+  settingsRef:
+    name: "${SCANSETTINGNAME}"
+    kind: ScanSetting
     apiGroup: compliance.openshift.io/v1alpha1
-  # Cluster checks
-  - name: ocp4-moderate
-    kind: Profile
-    apiGroup: compliance.openshift.io/v1alpha1
-settingsRef:
-  name: co-setting
-  kind: ScanSetting
-  apiGroup: compliance.openshift.io/v1alpha1
+
+parameters:
+- name: NAME
+- name: NAMESPACE
+- name: PROFILENAME1
+- name: PROFILEKIND1
+- name: PROFILENAME2
+- name: SCANSETTINGNAME
+
 `)
 
 func testExtendedTestdataSecurityandcomplianceScansettingbindingYamlBytes() ([]byte, error) {
@@ -8820,6 +8900,7 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/securityandcompliance/catalogsource-image.yaml":      testExtendedTestdataSecurityandcomplianceCatalogsourceImageYaml,
 	"test/extended/testdata/securityandcompliance/compliancescan.yaml":           testExtendedTestdataSecurityandcomplianceCompliancescanYaml,
 	"test/extended/testdata/securityandcompliance/compliancescantaint.yaml":      testExtendedTestdataSecurityandcomplianceCompliancescantaintYaml,
+	"test/extended/testdata/securityandcompliance/compliancescantaints.yaml":     testExtendedTestdataSecurityandcomplianceCompliancescantaintsYaml,
 	"test/extended/testdata/securityandcompliance/compliancesuite.yaml":          testExtendedTestdataSecurityandcomplianceCompliancesuiteYaml,
 	"test/extended/testdata/securityandcompliance/compliancesuitenodes.yaml":     testExtendedTestdataSecurityandcomplianceCompliancesuitenodesYaml,
 	"test/extended/testdata/securityandcompliance/compliancesuitetaint.yaml":     testExtendedTestdataSecurityandcomplianceCompliancesuitetaintYaml,
@@ -8961,6 +9042,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 					"catalogsource-image.yaml":      {testExtendedTestdataSecurityandcomplianceCatalogsourceImageYaml, map[string]*bintree{}},
 					"compliancescan.yaml":           {testExtendedTestdataSecurityandcomplianceCompliancescanYaml, map[string]*bintree{}},
 					"compliancescantaint.yaml":      {testExtendedTestdataSecurityandcomplianceCompliancescantaintYaml, map[string]*bintree{}},
+					"compliancescantaints.yaml":     {testExtendedTestdataSecurityandcomplianceCompliancescantaintsYaml, map[string]*bintree{}},
 					"compliancesuite.yaml":          {testExtendedTestdataSecurityandcomplianceCompliancesuiteYaml, map[string]*bintree{}},
 					"compliancesuitenodes.yaml":     {testExtendedTestdataSecurityandcomplianceCompliancesuitenodesYaml, map[string]*bintree{}},
 					"compliancesuitetaint.yaml":     {testExtendedTestdataSecurityandcomplianceCompliancesuitetaintYaml, map[string]*bintree{}},
