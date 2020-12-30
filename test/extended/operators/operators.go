@@ -76,21 +76,25 @@ var BasicPrefix = "[Basic]"
 const INSTALLPLAN_AUTOMATIC_MODE = "Automatic"
 const INSTALLPLAN_MANUAL_MODE = "Manual"
 
-var _ = g.Describe("[Suite:openshift/operators]", func() {
-
+var _ = g.Describe("[sig-operators] ISV_Operators", func() {
 	var (
-		oc                      = exutil.NewCLI("operator", exutil.KubeConfigPath())
-		output, _               = oc.AsAdmin().WithoutNamespace().NotShowInfo().Run("get").Args("packagemanifest", "-l catalog="+CatalogLabels[0], "-o=jsonpath={range .items[*]}{.metadata.labels.catalog}:{.metadata.name}{'\\n'}{end}").Output()
-		certifiedPackages       = strings.Split(output, "\n")
-		output2, _              = oc.AsAdmin().WithoutNamespace().NotShowInfo().Run("get").Args("packagemanifest", "-l catalog="+CatalogLabels[1], "-o=jsonpath={range .items[*]}{.metadata.labels.catalog}:{.metadata.name}{'\\n'}{end}").Output()
-		redhatOperatorsPackages = strings.Split(output2, "\n")
-		output3, _              = oc.AsAdmin().WithoutNamespace().NotShowInfo().Run("get").Args("packagemanifest", "-l catalog="+CatalogLabels[2], "-o=jsonpath={range .items[*]}{.metadata.labels.catalog}:{.metadata.name}{'\\n'}{end}").Output()
-		communityPackages       = strings.Split(output3, "\n")
-		packages1               = append(certifiedPackages, redhatOperatorsPackages...)
-		allPackages             = append(packages1, communityPackages...)
-		currentPackage          Packagemanifest
+		oc             = exutil.NewCLI("operator", exutil.KubeConfigPath())
+		currentPackage Packagemanifest
+		allPackages    []string
 	)
+
 	defer g.GinkgoRecover()
+
+	g.BeforeEach(func() {
+		output, _ := oc.AsAdmin().WithoutNamespace().NotShowInfo().Run("get").Args("packagemanifest", "-l catalog="+CatalogLabels[0], "-o=jsonpath={range .items[*]}{.metadata.labels.catalog}:{.metadata.name}{'\\n'}{end}").Output()
+		certifiedPackages := strings.Split(output, "\n")
+		output2, _ := oc.AsAdmin().WithoutNamespace().NotShowInfo().Run("get").Args("packagemanifest", "-l catalog="+CatalogLabels[1], "-o=jsonpath={range .items[*]}{.metadata.labels.catalog}:{.metadata.name}{'\\n'}{end}").Output()
+		redhatOperatorsPackages := strings.Split(output2, "\n")
+		output3, _ := oc.AsAdmin().WithoutNamespace().NotShowInfo().Run("get").Args("packagemanifest", "-l catalog="+CatalogLabels[2], "-o=jsonpath={range .items[*]}{.metadata.labels.catalog}:{.metadata.name}{'\\n'}{end}").Output()
+		communityPackages := strings.Split(output3, "\n")
+		packages1 := append(certifiedPackages, redhatOperatorsPackages...)
+		allPackages = append(packages1, communityPackages...)
+	})
 
 	for i := range allPackages {
 
@@ -116,7 +120,6 @@ var _ = g.Describe("[Suite:openshift/operators]", func() {
 		}
 
 	}
-
 })
 
 func TestCaseName(operator string, initialPrefix string) string {

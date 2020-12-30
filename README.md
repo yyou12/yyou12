@@ -166,10 +166,3 @@ You can update the SA by following this [authentication](https://cloud.google.co
 ```console
 $ ./bin/extended-platform-tests run openshift/isv --dry-run | grep -E "<REGEX>" | ./bin/extended-platform-tests run -f -
 ```
-
-
-## Run Operators test
-
-```console
-$ ./bin/extended-platform-tests run openshift/operators --dry-run | grep -E "<REGEX>" | ./bin/extended-platform-tests run -f -
-```

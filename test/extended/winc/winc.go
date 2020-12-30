@@ -18,15 +18,21 @@ import (
 
 var _ = g.Describe("[sig-windows] Windows_Containers", func() {
 	defer g.GinkgoRecover()
+
 	var (
 		oc           = exutil.NewCLIWithoutNamespace("default")
-		output, _    = oc.WithoutNamespace().Run("get").Args("infrastructure", "cluster", "-o=jsonpath={.status.platformStatus.type}").Output()
-		iaasPlatform = strings.ToLower(output)
+		iaasPlatform string
 		privateKey   = "../internal/config/keys/openshift-qe.pem"
 		publicKey    = "../internal/config/keys/openshift-qe.pub"
 		// privateKey = "~/.ssh/openshift-qe.pem"
 		// publicKey  = "~/.ssh/openshift-qe.pub"
 	)
+
+	g.BeforeEach(func() {
+		output, _ := oc.WithoutNamespace().Run("get").Args("infrastructure", "cluster", "-o=jsonpath={.status.platformStatus.type}").Output()
+		iaasPlatform = strings.ToLower(output)
+
+	})
 
 	// author: sgao@redhat.com
 	g.It("Critical-33612-Windows node basic check", func() {
