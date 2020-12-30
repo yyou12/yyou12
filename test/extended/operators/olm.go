@@ -2756,7 +2756,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle to support", func
 	})
 
 	// It will cover test case: OCP-22200, author: kuiwang@redhat.com
-	g.It("ConnectedOnly-Medium-22200-add minimum kube version to CSV", func() {
+	g.It("ConnectedOnly-Medium-22200-add minimum kube version to CSV [Slow]", func() {
 		var (
 			itName = g.CurrentGinkgoTestDescription().TestText
 			og     = operatorGroupDescription{
@@ -2808,7 +2808,20 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle to support", func
 
 		g.By("Create sub with orignal KubeVersion")
 		sub.create(oc, itName, dr)
-		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+		err := wait.Poll(15*time.Second, 360*time.Second, func() (bool, error) {
+			csvPhase := getResource(oc, asAdmin, withoutNamespace, "csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={.status.phase}")
+			if strings.Contains(csvPhase, "Succeeded") {
+				e2e.Logf("sub is installed")
+				return true, nil
+			}
+			return false, nil
+		})
+		if err != nil {
+			msg := getResource(oc, asAdmin, withoutNamespace, "csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={.status.requirementStatus[?(@.kind==\"ClusterServiceVersion\")].message}")
+			if strings.Contains(msg, "CSV version requirement not met") {
+				e2e.Failf("the csv can not be installed with correct kube version")
+			}
+		}
 	})
 
 	// It will cover test case: OCP-23473, author: kuiwang@redhat.com
