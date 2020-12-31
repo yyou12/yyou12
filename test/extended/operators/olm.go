@@ -2818,7 +2818,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle to support", func
 		})
 		if err != nil {
 			msg := getResource(oc, asAdmin, withoutNamespace, "csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={.status.requirementStatus[?(@.kind==\"ClusterServiceVersion\")].message}")
-			if strings.Contains(msg, "CSV version requirement not met") {
+			if strings.Contains(msg, "CSV version requirement not met") && !strings.Contains(msg, kubeVersionUpdated) {
 				e2e.Failf("the csv can not be installed with correct kube version")
 			}
 		}
