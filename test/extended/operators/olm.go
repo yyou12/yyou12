@@ -1139,6 +1139,30 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle common object", f
 		o.Expect(result).NotTo(o.ContainSubstring("docker.io/atlasmap/atlasmap-operator"))
 	})
 
+	// It will cover test case: OCP-33452, author: kuiwang@redhat.com
+	g.It("ConnectedOnly-Medium-33452-oc adm catalog mirror does not mirror the index image itself", func() {
+		var (
+			bundleIndex1 = "quay.io/olmqe/olm-api@sha256:71cfd4deaa493d31cd1d8255b1dce0fb670ae574f4839c778f2cfb1bf1f96995"
+			manifestPath = "manifests-olm-api-" + getRandomString()
+		)
+		defer exec.Command("bash", "-c", "rm -fr ./"+manifestPath).Output()
+
+		g.By("mirror to localhost:5000/test")
+		output, err := oc.AsAdmin().WithoutNamespace().Run("adm", "catalog", "mirror").Args("--manifests-only", "--to-manifests="+manifestPath, bundleIndex1, "localhost:5000/test").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring("manifests-olm-api"))
+
+		g.By("check mapping.txt to localhost:5000")
+		result, err := exec.Command("bash", "-c", "cat ./"+manifestPath+"/mapping.txt|grep -E \"quay.io/olmqe/olm-api\"").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(result).To(o.ContainSubstring("quay.io/olmqe/olm-api"))
+
+		g.By("check icsp yaml to localhost:5000")
+		result, err = exec.Command("bash", "-c", "cat ./"+manifestPath+"/imageContentSourcePolicy.yaml | grep -E \"quay.io/olmqe/olm-api\"").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(result).To(o.ContainSubstring("quay.io/olmqe/olm-api"))
+	})
+
 	// It will cover test case: OCP-21825, author: kuiwang@redhat.com
 	g.It("ConnectedOnly-Medium-21825-Certs for packageserver can be rotated successfully", func() {
 		var (
