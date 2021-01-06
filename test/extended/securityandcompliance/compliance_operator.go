@@ -1,6 +1,7 @@
 package securityandcompliance
 
 import (
+	"fmt"
 	"strings"
 
 	g "github.com/onsi/ginkgo"
@@ -263,14 +264,14 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 
 			g.By("Check master-compliancesuite name and result..!!!\n")
 			subD.complianceSuiteName(oc, "master-compliancesuite")
-			subD.complianceSuiteResult(oc, "NON-COMPLIANT")
+			subD.complianceSuiteResult(oc, csuiteMD.name, "NON-COMPLIANT")
 
 			g.By("Check master-compliancesuite result through exit-code ..!!!\n")
 			subD.getScanExitCodeFromConfigmap(oc, "2")
 
 			g.By("Check worker-compliancesuite name and result..!!!\n")
 			subD.complianceSuiteName(oc, "worker-compliancesuite")
-			subD.complianceSuiteResult(oc, "COMPLIANT")
+			subD.complianceSuiteResult(oc, csuiteD.name, "COMPLIANT")
 
 			g.By("Check worker-compliancesuite result through exit-code ..!!!\n")
 			subD.getScanExitCodeFromConfigmap(oc, "0")
@@ -318,7 +319,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 
 			g.By("Check complianceSuite name and result..!!!\n")
 			subD.complianceSuiteName(oc, "worker-compliancesuite")
-			subD.complianceSuiteResult(oc, "NOT-APPLICABLE")
+			subD.complianceSuiteResult(oc, csuite.name, "NOT-APPLICABLE")
 
 			g.By("Check rule status through complianceCheckResult.. !!!\n")
 			subD.getRuleStatus(oc, "SKIP")
@@ -438,7 +439,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 
 			g.By("Check complianceSuite name and result.. !!!\n")
 			subD.complianceSuiteName(oc, "co-requirement")
-			subD.complianceSuiteResult(oc, "NON-COMPLIANT")
+			subD.complianceSuiteResult(oc, ssb.name, "NON-COMPLIANT")
 
 			g.By("Check complianceSuite result through exit-code.. !!!\n")
 			subD.getScanExitCodeFromConfigmap(oc, "2")
@@ -505,7 +506,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 
 			g.By("Check rhcos-csuite name and result.. !!!\n")
 			subD.complianceSuiteName(oc, "rhcos-csuite")
-			subD.complianceSuiteResult(oc, "NON-COMPLIANT")
+			subD.complianceSuiteResult(oc, csuiteD.name, "NON-COMPLIANT")
 
 			g.By("Check rhcos-csuite result through exit-code.. !!!\n")
 			subD.getScanExitCodeFromConfigmap(oc, "2")
@@ -618,14 +619,12 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 
 			g.By("Check complianceSuite name and result.. !!!\n")
 			subD.complianceSuiteName(oc, ssb.name)
-			subD.complianceSuiteResult(oc, "NON-COMPLIANT")
+			subD.complianceSuiteResult(oc, ssb.name, "NON-COMPLIANT INCONSISTENT")
 
 			g.By("Check complianceSuite result through exit-code.. !!!\n")
 			subD.getScanExitCodeFromConfigmap(oc, "2")
 
-			g.By("Verify the disable rules are not available in compliancecheckresult.. !!!\n")
-
-			g.By("ocp-37121 The ComplianceSuite generated successfully using scansetting... !!!\n")
+			g.By("ocp-37121 The ComplianceSuite generated successfully using scansetting CR and cis profile and default scansetting... !!!\n")
 		})
 
 		// author: pdhamdhe@redhat.com
@@ -664,7 +663,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 
 			g.By("Check complianceSuite name and result..!!!\n")
 			subD.complianceSuiteName(oc, "worker-compliancesuite")
-			subD.complianceSuiteResult(oc, "ERROR")
+			subD.complianceSuiteResult(oc, csuiteD.name, "ERROR")
 
 			g.By("Check complianceScan result through configmap exit-code and result from error-msg..!!!\n")
 			subD.getScanExitCodeFromConfigmap(oc, "1")
@@ -888,7 +887,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 
 			g.By("Check worker-compliancesuite name and result.. !!!\n")
 			subD.complianceSuiteName(oc, "worker-compliancesuite")
-			subD.complianceSuiteResult(oc, "COMPLIANT")
+			subD.complianceSuiteResult(oc, csuiteD.name, "COMPLIANT")
 
 			g.By("Check worker-compliancesuite result through exit-code.. !!!\n")
 			subD.getScanExitCodeFromConfigmap(oc, "0")
@@ -982,7 +981,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 
 			g.By("Check complianceSuite name and result.. !!!\n")
 			subD.complianceSuiteName(oc, "worker-compliancesuite")
-			subD.complianceSuiteResult(oc, "COMPLIANT")
+			subD.complianceSuiteResult(oc, csuiteD.name, "COMPLIANT")
 
 			g.By("Check complianceScan result exit-code through configmap.. !!!\n")
 			subD.getScanExitCodeFromConfigmap(oc, "0")
@@ -1011,7 +1010,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 
 			g.By("Check complianceSuite name and result.. !!!\n")
 			subD.complianceSuiteName(oc, "worker-compliancesuite")
-			subD.complianceSuiteResult(oc, "COMPLIANT")
+			subD.complianceSuiteResult(oc, csuite.name, "COMPLIANT")
 
 			g.By("Check complianceScan result exit-code through configmap...!!!\n")
 			subD.getScanExitCodeFromConfigmap(oc, "0")
@@ -1194,7 +1193,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 
 			g.By("Check platform-compliancesuite name and result.. !!!\n")
 			subD.complianceSuiteName(oc, "platform-compliancesuite")
-			subD.complianceSuiteResult(oc, "NON-COMPLIANT")
+			subD.complianceSuiteResult(oc, csuiteD.name, "NON-COMPLIANT")
 
 			g.By("Check platform-compliancesuite result through exit-code.. !!!\n")
 			subD.getScanExitCodeFromConfigmap(oc, "2")
@@ -1284,7 +1283,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 
 			g.By("Check platform-compliancesuite name and result.. !!!\n")
 			subD.complianceSuiteName(oc, "platform-compliancesuite")
-			subD.complianceSuiteResult(oc, "NON-COMPLIANT")
+			subD.complianceSuiteResult(oc, csuiteD.name, "NON-COMPLIANT")
 
 			g.By("Check platform-compliancesuite result through exit-code.. !!!\n")
 			subD.getScanExitCodeFromConfigmap(oc, "2")
@@ -1349,7 +1348,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 
 			g.By("Check worker-compliancesuite name and result..!!!\n")
 			subD.complianceSuiteName(oc, "worker-compliancesuite")
-			subD.complianceSuiteResult(oc, "NON-COMPLIANT")
+			subD.complianceSuiteResult(oc, csuiteD.name, "NON-COMPLIANT")
 
 			g.By("Check worker-compliancesuite result through exit-code ..!!!\n")
 			subD.getScanExitCodeFromConfigmap(oc, "2")
@@ -1372,7 +1371,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 
 			g.By("Check master-compliancesuite name and result..!!!\n")
 			subD.complianceSuiteName(oc, "master-compliancesuite")
-			subD.complianceSuiteResult(oc, "NON-COMPLIANT")
+			subD.complianceSuiteResult(oc, csuiteMD.name, "NON-COMPLIANT")
 
 			g.By("Check master-compliancesuite result through exit-code ..!!!\n")
 			subD.getScanExitCodeFromConfigmap(oc, "2")
@@ -1393,7 +1392,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 
 			g.By("Check master-compliancesuite name and result..!!!\n")
 			subD.complianceSuiteName(oc, "rhcos-compliancesuite")
-			subD.complianceSuiteResult(oc, "INCONSISTENT")
+			subD.complianceSuiteResult(oc, csuiteRD.name, "INCONSISTENT")
 
 			g.By("Check master-compliancesuite result through exit-code ..!!!\n")
 			subD.getScanExitCodeFromConfigmap(oc, "2")
@@ -1444,7 +1443,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 
 			g.By("Check platform-compliancesuite name and result.. !!!\n")
 			subD.complianceSuiteName(oc, "platform-compliancesuite")
-			subD.complianceSuiteResult(oc, "NON-COMPLIANT")
+			subD.complianceSuiteResult(oc, csuiteD.name, "NON-COMPLIANT")
 
 			g.By("Check platform-compliancesuite result through exit-code.. !!!\n")
 			subD.getScanExitCodeFromConfigmap(oc, "2")
@@ -1466,7 +1465,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 
 			g.By("Check platform-compliancesuite name and result.. !!!\n")
 			subD.complianceSuiteName(oc, "platform-compliancesuite")
-			subD.complianceSuiteResult(oc, "NON-COMPLIANT")
+			subD.complianceSuiteResult(oc, csuiteD.name, "NON-COMPLIANT")
 
 			g.By("Check worker-compliancesuite result through exit-code.. !!!\n")
 			subD.getScanExitCodeFromConfigmap(oc, "2")
@@ -1513,7 +1512,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 
 			g.By("Check worker-compliancesuite name and result.. !!!\n")
 			subD.complianceSuiteName(oc, "worker-compliancesuite")
-			subD.complianceSuiteResult(oc, "COMPLIANT")
+			subD.complianceSuiteResult(oc, csuiteD.name, "COMPLIANT")
 
 			g.By("Check worker-compliancesuite result through exit-code.. !!!\n")
 			subD.getScanExitCodeFromConfigmap(oc, "0")
@@ -1535,12 +1534,85 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 
 			g.By("Check worker-compliancesuite name and result.. !!!\n")
 			subD.complianceSuiteName(oc, "worker-compliancesuite")
-			subD.complianceSuiteResult(oc, "COMPLIANT")
+			subD.complianceSuiteResult(oc, csuiteD.name, "COMPLIANT")
 
 			g.By("Check worker-compliancesuite result through exit-code.. !!!\n")
 			subD.getScanExitCodeFromConfigmap(oc, "0")
 
 			g.By("The ocp-33418 The ComplianceSuite object performed schedule scan successfully.. !!!\n")
+		})
+
+		// author: xiyuan@redhat.com
+		g.It("Medium-33456-The Compliance-Operator edits the scheduled cron job to scan from ComplianceSuite", func() {
+
+			var (
+				csuiteD = complianceSuiteDescription{
+					name:         "example-compliancesuite1",
+					namespace:    "",
+					schedule:     "*/3 * * * *",
+					scanname:     "worker-scan",
+					profile:      "xccdf_org.ssgproject.content_profile_moderate",
+					content:      "ssg-rhcos4-ds.xml",
+					contentImage: "quay.io/complianceascode/ocp4:latest",
+					rule:         "xccdf_org.ssgproject.content_rule_no_netrc_files",
+					nodeSelector: "wscan",
+					template:     csuiteTemplate,
+				}
+			)
+
+			defer cleanupObjects(oc,
+				objectTableRef{"compliancesuite", subD.namespace, csuiteD.name},
+			)
+
+			// adding label to rhcos worker node to skip non-rhcos worker node if any
+			g.By("Label all rhcos worker nodes as wscan.. !!!\n")
+			setLabelToNode(oc)
+
+			csuiteD.namespace = subD.namespace
+			g.By("Create worker-compliancesuite.. !!!\n")
+			e2e.Logf("Here namespace : %v\n", catSrc.namespace)
+			csuiteD.create(oc, itName, dr)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", csuiteD.name, "-n",
+				subD.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+
+			g.By("Check worker scan pods status.. !!! \n")
+			subD.scanPodStatus(oc, "Succeeded")
+
+			g.By("Check worker-compliancesuite name and result.. !!!\n")
+			subD.complianceSuiteName(oc, csuiteD.name)
+			subD.complianceSuiteResult(oc, csuiteD.name, "COMPLIANT")
+
+			g.By("Check worker-compliancesuite result through exit-code.. !!!\n")
+			subD.getScanExitCodeFromConfigmap(oc, "0")
+			newCheck("expect", asAdmin, withoutNamespace, contain, csuiteD.name+"-rerunner", ok, []string{"cronjob", "-n",
+				subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "*/3 * * * *", ok, []string{"cronjob", csuiteD.name + "-rerunner",
+				"-n", subD.namespace, "-o=jsonpath={.spec.schedule}"}).check(oc)
+
+			g.By("edit schedule by patch.. !!!\n")
+			patch := fmt.Sprintf("{\"spec\":{\"schedule\":\"*/4 * * * *\"}}")
+			patchResource(oc, asAdmin, withoutNamespace, "compliancesuites", csuiteD.name, "-n", csuiteD.namespace, "--type", "merge", "-p", patch)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "*/4 * * * *", ok, []string{"cronjob", csuiteD.name + "-rerunner",
+				"-n", subD.namespace, "-o=jsonpath={.spec.schedule}"}).check(oc)
+
+			newCheck("expect", asAdmin, withoutNamespace, contain, "1", ok, []string{"compliancesuite", csuiteD.name, "-n",
+				subD.namespace, "-o=jsonpath={.status.scanStatuses[*].currentIndex}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "Succeeded", ok, []string{"pod", "-l workload=suitererunner", "-n",
+				subD.namespace, "-o=jsonpath={.items[0].status.phase}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", csuiteD.name, "-n",
+				subD.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+
+			g.By("Check worker scan pods status.. !!! \n")
+			subD.scanPodStatus(oc, "Succeeded")
+
+			g.By("Check worker-compliancesuite name and result.. !!!\n")
+			subD.complianceSuiteName(oc, csuiteD.name)
+			subD.complianceSuiteResult(oc, csuiteD.name, "COMPLIANT")
+
+			g.By("Check worker-compliancesuite result through exit-code.. !!!\n")
+			subD.getScanExitCodeFromConfigmap(oc, "0")
+
+			g.By("The ocp-33456-The Compliance-Operator could edit scheduled cron job to scan from ComplianceSuite successfully.. !!!\n")
 		})
 
 		// author: pdhamdhe@redhat.com
@@ -1582,7 +1654,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			subD.scanPodStatus(oc, "Succeeded")
 			g.By("Check worker-compliancesuite name and result.. !!!\n")
 			subD.complianceSuiteName(oc, "worker-compliancesuite")
-			subD.complianceSuiteResult(oc, "COMPLIANT")
+			subD.complianceSuiteResult(oc, csuiteD.name, "COMPLIANT")
 			g.By("Check worker-compliancesuite result through exit-code.. !!!\n")
 			subD.getScanExitCodeFromConfigmap(oc, "0")
 
@@ -1606,7 +1678,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			subD.scanPodStatus(oc, "Succeeded")
 			g.By("Check worker-compliancesuite name and result.. !!!\n")
 			subD.complianceSuiteName(oc, "worker-compliancesuite")
-			subD.complianceSuiteResult(oc, "COMPLIANT")
+			subD.complianceSuiteResult(oc, csuiteD.name, "COMPLIANT")
 			g.By("Check worker-compliancesuite result through exit-code.. !!!\n")
 			subD.getScanExitCodeFromConfigmap(oc, "0")
 
@@ -1622,7 +1694,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			subD.scanPodStatus(oc, "Succeeded")
 			g.By("Check worker-compliancesuite name and result.. !!!\n")
 			subD.complianceSuiteName(oc, "worker-compliancesuite")
-			subD.complianceSuiteResult(oc, "COMPLIANT")
+			subD.complianceSuiteResult(oc, csuiteD.name, "COMPLIANT")
 			g.By("Check worker-compliancesuite result through exit-code.. !!!\n")
 			subD.getScanExitCodeFromConfigmap(oc, "0")
 
@@ -1688,7 +1760,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 
 			g.By("Check complianceSuite name and result..!!!\n")
 			subD.complianceSuiteName(oc, "worker-compliancesuite")
-			subD.complianceSuiteResult(oc, "INCONSISTENT")
+			subD.complianceSuiteResult(oc, csuiteD.name, "INCONSISTENT")
 
 			g.By("Verify compliance scan result compliancecheckresult through label ...!!!\n")
 			newCheck("expect", asAdmin, withoutNamespace, contain, "worker-scan-no-direct-root-logins", ok, []string{"compliancecheckresult",
@@ -1752,7 +1824,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 
 			g.By("Check complianceSuite name and result..!!!\n")
 			subD.complianceSuiteName(oc, "worker-compliancesuite")
-			subD.complianceSuiteResult(oc, "COMPLIANT")
+			subD.complianceSuiteResult(oc, csuiteD.name, "COMPLIANT")
 
 			g.By("Check complianceScan result exit-code through configmap...!!!\n")
 			subD.getScanExitCodeFromConfigmap(oc, "0")
@@ -1857,7 +1929,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 
 			g.By("Check complianceSuite name and result..!!!\n")
 			subD.complianceSuiteName(oc, "worker-compliancesuite")
-			subD.complianceSuiteResult(oc, "NON-COMPLIANT")
+			subD.complianceSuiteResult(oc, csuiteD.name, "NON-COMPLIANT")
 
 			g.By("Check worker-compliancesuite result through exit-code ..!!!\n")
 			subD.getScanExitCodeFromConfigmap(oc, "2")
@@ -1873,6 +1945,49 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 
 			g.By("The ocp-33449 complianceScan raw result successfully stored in ARF format on the PVC... !!!!\n")
 
+		})
+
+		// author: xiyuan@redhat.com
+		g.It("Medium-37171-Check compliancesuite status when there are multiple rhcos4 profiles added in scansettingbinding object", func() {
+			var (
+				ssb = scanSettingBindingDescription{
+					name:            "rhcos4",
+					namespace:       "",
+					profilekind1:    "Profile",
+					profilename1:    "rhcos4-e8",
+					profilename2:    "rhcos4-moderate",
+					scansettingname: "default",
+					template:        scansettingbindingTemplate,
+				}
+				itName = g.CurrentGinkgoTestDescription().TestText
+			)
+
+			g.By("Check default profiles name rhcos4-e8 .. !!!\n")
+			subD.getProfileName(oc, ssb.profilename1)
+			g.By("Check default profiles name rhcos4-moderate .. !!!\n")
+			subD.getProfileName(oc, ssb.profilename2)
+
+			g.By("Create scansettingbinding !!!\n")
+			ssb.namespace = subD.namespace
+			defer cleanupObjects(oc, objectTableRef{"scansettingbinding", subD.namespace, ssb.name})
+			ssb.create(oc, itName, dr)
+			newCheck("expect", asAdmin, withoutNamespace, contain, ssb.name, ok, []string{"scansettingbinding", "-n", ssb.namespace,
+				"-o=jsonpath={.items[0].metadata.name}"}).check(oc)
+
+			g.By("Check ComplianceSuite status !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", ssb.name, "-n", ssb.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+
+			g.By("Check worker and master scan pods status.. !!! \n")
+			subD.scanPodStatus(oc, "Succeeded")
+
+			g.By("Check complianceSuite name and result.. !!!\n")
+			subD.complianceSuiteName(oc, ssb.name)
+			subD.complianceSuiteResult(oc, ssb.name, "NON-COMPLIANT INCONSISTENT")
+
+			g.By("Check complianceSuite result through exit-code.. !!!\n")
+			subD.getScanExitCodeFromConfigmap(oc, "2")
+
+			g.By("ocp-37171 Check compliancesuite status when there are multiple rhcos4 profiles added in scansettingbinding object successfully... !!!\n")
 		})
 	})
 
