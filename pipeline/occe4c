@@ -34,11 +34,11 @@ else
   KUBECONFIG_FILE=${FLEXYURLBASE}${BUILD_NUM_FOR_CONF}"/artifact/workdir/install-dir/auth/kubeconfig"
   ck "${KUBECONFIG_FILE}"
   # configure azure authentication script
-  AZURE_AUTH_LOCATION_FILE=${FLEXYURLBASE}${BUILD_NUM_FOR_CONF}"/artifact/workdir/install-dir/terraform.azure.auto.tfvars.json"
-  ret_code=`curl -s -k ${AZURE_AUTH_LOCATION_FILE} -o /dev/null  -w "%{http_code}"`
-  if [ "${ret_code}" == "200" ]; then
-    cz "${AZURE_AUTH_LOCATION_FILE}" 
-  fi
+  # AZURE_AUTH_LOCATION_FILE=${FLEXYURLBASE}${BUILD_NUM_FOR_CONF}"/artifact/workdir/install-dir/terraform.azure.auto.tfvars.json"
+  # ret_code=`curl -s -k ${AZURE_AUTH_LOCATION_FILE} -o /dev/null  -w "%{http_code}"`
+  # if [ "${ret_code}" == "200" ]; then
+  cz "${WORKDIRBASE}"
+  # fi
   #config client proxy if necessary
   #export http_proxy= && export https_proxy=
   CLIENT_PROXY_SETTING_SH=${FLEXYURLBASE}${BUILD_NUM_FOR_CONF}"/artifact/workdir/install-dir/client_proxy_setting.sh"

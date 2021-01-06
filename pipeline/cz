@@ -3,32 +3,48 @@ set -e
 
 AZUREAUTHDIR="${HOME}/azureauth"
 AZUREAUTHFILE="azure_auth.json"
-AZUREAUTHURL=$1
+WORKDIRINTERNAL=$1"/internal"
 
-WGET=`which wget`
-if (echo ${WGET} | grep -E "not found") || (echo ${WGET} | grep -E "no ") ; then
-    echo "There is no wget installed or added into PATH"
+CLUSTERSERVER=`cat ${KUBECONFIG} | grep -E "server: "`
+if [ "X${CLUSTERSERVER}X" == "XX" ]; then
+    echo "wrong kubeconfig file and can not get server address"
     exit 1
 fi
+echo "${CLUSTERSERVER}"
 
-echo "try to get azure auth file ${AZUREAUTHURL}"
+if [[ "${CLUSTERSERVER}" == *".azure.devcluster"* ]]; then
+    echo "It is Azure platform and try to get azure auth file ${AZUREAUTHURL}"
 
-current=`date "+%Y-%m-%d %H:%M:%S"`
-date_str=`echo ${current} | awk -F " " '{print $1}'`
-time_str=`echo ${current} | awk -F " " '{print $2}'`
-config_name="terraform.azure.auto.tfvars-${date_str}-${time_str}.json"
-echo "the new azure auth file file is ${config_name}"
+    if ! [ -e "${WORKDIRINTERNAL}/config/credentials/azure.json" ]; then
+        echo "the azure authentication file does not exit"
+        exit 1
+    fi
 
-cd ${AZUREAUTHDIR}
-${WGET} --no-check-certificate ${AZUREAUTHURL} -O ${config_name}
+    current=`date "+%Y-%m-%d %H:%M:%S"`
+    date_str=`echo ${current} | awk -F " " '{print $1}'`
+    time_str=`echo ${current} | awk -F " " '{print $2}'`
+    config_name="terraform.azure.auto.tfvars-${date_str}-${time_str}.json"
+    echo "the new azure auth file file is ${config_name}"
 
-if [ $? -ne 0 ];then
-    echo "the new azure auth file file is not downloaded, please check the reason. still keep existing azure auth file file"
-    exit 1
+    cd ${AZUREAUTHDIR}
+    cp -fr "${WORKDIRINTERNAL}/config/credentials/azure.json" ${config_name}
+    if [ $? -ne 0 ];then
+        echo "the new azure auth file file is not copied, please check the reason."
+        exit 1
+    fi
+
+    sed -i "s/subscriptionId/azure_subscription_id/g" "${config_name}"
+    sed -i "s/clientId/azure_client_id/g" "${config_name}"
+    sed -i "s/clientSecret/azure_client_secret/g" "${config_name}"
+    sed -i "s/tenantId/azure_tenant_id/g" "${config_name}"
+
+    if (! grep -q "azure_subscription_id" "${config_name}") || (! grep -q "azure_client_id" "${config_name}") || (! grep -q "azure_client_secret" "${config_name}") || (! grep -q "azure_tenant_id" "${config_name}"); then
+        echo "azure_subscription_id, azure_client_id, azure_client_secret or azure_tenant_id is not set"
+        exit 1
+    fi
+
+    rm -fr ${AZUREAUTHFILE}
+    ln -s ${config_name} ${AZUREAUTHFILE}
+    echo "the new azure auth file file ${config_name} take effective"
+
 fi
-echo "succeed to get ${config_name}"
-
-rm -fr ${AZUREAUTHFILE}
-ln -s ${config_name} ${AZUREAUTHFILE}
-echo "the new azure auth file file ${config_name} take effective"
-
