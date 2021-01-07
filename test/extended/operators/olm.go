@@ -991,6 +991,205 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 	})
 
+	// author: scolange@redhat.com
+	g.It("Medium-24738-CRD should update if previously defined schemas don't change", func() {
+		var buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
+		var cfgMap = filepath.Join(buildPruningBaseDir, "configmap-etcd.yaml")
+		var patchCfgMap = filepath.Join(buildPruningBaseDir, "configmap-ectd-alpha-beta.yaml")
+		var catSource = filepath.Join(buildPruningBaseDir, "catalogsource-configmap.yaml")
+		var og = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+		var Sub = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+		var etcdCluster = filepath.Join(buildPruningBaseDir, "etcd-cluster.yaml")
+		var operatorWait = 150 * time.Second
+
+		defer oc.AsAdmin().Run("delete").Args("ns", "test-automation-24738").Execute()
+		defer oc.AsAdmin().Run("delete").Args("ns", "test-automation-24738-1").Execute()
+		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("configmap", "installed-community-24738-global-operators", "-n", "openshift-marketplace").Execute()
+		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("catalogsource", "installed-community-24738-global-operators", "-n", "openshift-marketplace").Execute()
+
+		g.By("create new namespace")
+		var err = oc.AsAdmin().Run("create").Args("ns", "test-automation-24738").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("create ConfigMap")
+		createCfgMap, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", cfgMap, "-p", "NAME=installed-community-24738-global-operators", "NAMESPACE=openshift-marketplace").OutputToFile("config-24738.json")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf("TEST1********** %v", createCfgMap)
+
+		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", createCfgMap, "-n", "openshift-marketplace").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("create CatalogSource")
+		createCatSource, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", catSource, "-p", "NAME=installed-community-24738-global-operators", "NAMESPACE=openshift-marketplace", "ADDRESS=installed-community-24738-global-operators", "DISPLAYNAME=Community Operators", "PUBLISHER=Community", "SOURCETYPE=internal").OutputToFile("config-24738.json")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf("TEST2oc get ********** %v", createCatSource)
+
+		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", createCatSource, "-n", "openshift-marketplace").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		createOg, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", og, "-p", "NAME=test-operators-og", "NAMESPACE=test-automation-24738").OutputToFile("config-24738.json")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", createOg).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		err = wait.Poll(60*time.Second, operatorWait, func() (bool, error) {
+			checkCatSource, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("catalogsource", "installed-community-24738-global-operators", "-n", "openshift-marketplace", "-o", "jsonpath={.status.connectionState.lastObservedState}").Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			//o.Expect(checkCatSource).To(o.Equal("READY"))
+			if checkCatSource == "READY" {
+				e2e.Logf("Installed catalogsource")
+				return true, nil
+			} else {
+				e2e.Logf("FAIL - Installed catalogsource ")
+				return false, nil
+			}
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		createImgSub, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", Sub, "-p", "SUBNAME=etcd-etcdoperator.v0.9.2", "SUBNAMESPACE=test-automation-24738", "CHANNEL=alpha", "APPROVAL=Automatic", "OPERATORNAME=etcd-update", "SOURCENAME=installed-community-24738-global-operators", "SOURCENAMESPACE=openshift-marketplace", "STARTINGCSV=etcdoperator.v0.9.2").OutputToFile("config-24738.json")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", createImgSub).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		err = wait.Poll(60*time.Second, operatorWait, func() (bool, error) {
+			checknameCsv, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", "etcdoperator.v0.9.2", "-n", "test-automation-24738", "-o", "jsonpath={.status.phase}").Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			e2e.Logf(checknameCsv)
+			if checknameCsv == "Succeeded" {
+				e2e.Logf("CSV Installed ")
+				return true, nil
+			} else {
+				e2e.Logf("CSV not installed  ")
+				return false, nil
+			}
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		createEtcdCluster, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", etcdCluster, "-p", "NAME=example", "NAMESPACE=test-automation-24738").OutputToFile("config-24738.json")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", createEtcdCluster).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		err = wait.Poll(30*time.Second, operatorWait, func() (bool, error) {
+			checkCreateEtcdCluster, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-n", "test-automation-24738").Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			e2e.Logf(checkCreateEtcdCluster)
+
+			lines := strings.Split(checkCreateEtcdCluster, "\n")
+			var count = 0
+			for _, line := range lines {
+				e2e.Logf(line)
+				if strings.Contains(line, "example") {
+					count++
+				}
+				e2e.Logf(line)
+			}
+			if count == 3 {
+				e2e.Logf("EtcCluster Create Installed ")
+				return true, nil
+			} else {
+				e2e.Logf("EtcCluster Not Installed ")
+				return false, nil
+			}
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("create new namespace")
+		err = oc.AsAdmin().Run("create").Args("ns", "test-automation-24738-1").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		createOg1, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", og, "-p", "NAME=test-operators-og", "NAMESPACE=test-automation-24738-1").OutputToFile("cconfig-24738.json")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", createOg1).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		createImgSub1, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", Sub, "-p", "SUBNAME=etcd-etcdoperator.v0.9.2", "SUBNAMESPACE=test-automation-24738-1", "CHANNEL=alpha", "APPROVAL=Automatic", "OPERATORNAME=etcd-update", "SOURCENAME=installed-community-24738-global-operators", "SOURCENAMESPACE=openshift-marketplace", "STARTINGCSV=etcdoperator.v0.9.2").OutputToFile("config-24738.json")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", createImgSub1).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		createEtcdCluster1, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", etcdCluster, "-p", "NAME=example", "NAMESPACE=test-automation-24738-1").OutputToFile("config-24738.json")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", createEtcdCluster1).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		err = wait.Poll(30*time.Second, operatorWait, func() (bool, error) {
+			checkCreateEtcdCluster, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-n", "test-automation-24738-1").Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			e2e.Logf(checkCreateEtcdCluster)
+
+			lines := strings.Split(checkCreateEtcdCluster, "\n")
+			var count = 0
+			for _, line := range lines {
+				e2e.Logf(line)
+				if strings.Contains(line, "example") {
+					count++
+				}
+				e2e.Logf(line)
+			}
+			if count == 3 {
+				e2e.Logf("EtcCluster Create Installed ")
+				return true, nil
+			} else {
+				e2e.Logf("EtcCluster Not Installed ")
+				return false, nil
+			}
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("update ConfigMap")
+		createPatchCfgMap, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", patchCfgMap, "-p", "NAME=installed-community-24738-global-operators", "NAMESPACE=openshift-marketplace").OutputToFile("config-24738.json")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf("TEST1********** %v", createPatchCfgMap)
+
+		err = oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", createPatchCfgMap, "-n", "openshift-marketplace").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		patchIP, err2 := oc.AsAdmin().WithoutNamespace().Run("patch").Args("sub", "etcd-etcdoperator.v0.9.2", "-n", "test-automation-24738-1", "--type=json", "-p", "[{\"op\": \"replace\" , \"path\" : \"/spec/channel\", \"value\":beta}]").Output()
+		e2e.Logf(patchIP)
+		o.Expect(err2).NotTo(o.HaveOccurred())
+		o.Expect(patchIP).To(o.ContainSubstring("patched"))
+
+		err = wait.Poll(30*time.Second, operatorWait, func() (bool, error) {
+			checkCreateEtcdCluster, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("ip", "-n", "test-automation-24738-1").Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			e2e.Logf(checkCreateEtcdCluster)
+
+			lines := strings.Split(checkCreateEtcdCluster, "\n")
+			var count = 0
+			for _, line := range lines {
+				e2e.Logf(line)
+				if strings.Contains(line, "install") {
+					count++
+				}
+				e2e.Logf(line)
+			}
+			if count == 2 {
+				e2e.Logf("Ip Channel created")
+				return true, nil
+			} else {
+				e2e.Logf("Ip Channel NOT created")
+				return false, nil
+			}
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		err = wait.Poll(60*time.Second, operatorWait, func() (bool, error) {
+			checknameCsv, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", "etcdoperator.v0.9.4", "-n", "test-automation-24738-1", "-o", "jsonpath={.status.phase}").Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			e2e.Logf(checknameCsv)
+			if checknameCsv == "Succeeded" {
+				e2e.Logf("CSV Installed ")
+				return true, nil
+			} else {
+				e2e.Logf("CSV not installed  ")
+				return false, nil
+			}
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+	})
+
 })
 
 var _ = g.Describe("[sig-operators] OLM for an end user use", func() {
