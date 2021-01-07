@@ -35,7 +35,7 @@ import (
 
 	projectv1 "github.com/openshift/api/project/v1"
 	securityv1client "github.com/openshift/client-go/security/clientset/versioned"
-	"github.com/openshift/openshift-tests/pkg/version"
+	"github.com/openshift/openshift-tests-private/pkg/version"
 )
 
 var (
@@ -65,8 +65,6 @@ func InitTest(dryRun bool) error {
 		Asset:      generated.Asset,
 		AssetNames: generated.AssetNames,
 	})
-	e2e.Logf("_Asset %v", generated.Asset)
-	e2e.Logf("_Asset Name %v", generated.AssetNames)
 	TestContext.KubectlPath = "kubectl"
 	TestContext.KubeConfig = KubeConfigPath()
 	os.Setenv("KUBECONFIG", TestContext.KubeConfig)
@@ -183,7 +181,7 @@ func newGinkgoTestRenamerFromGlobals(provider string, networkSkips []string) *gi
 	for _, network := range networkSkips {
 		excludedTests = append(excludedTests, fmt.Sprintf(`\[Skipped:Network/%s\]`, network))
 	}
-	klog.V(4).Infof("openshift-tests excluded test regex is %q", strings.Join(excludedTests, `|`))
+	klog.V(4).Infof("openshift-tests-private excluded test regex is %q", strings.Join(excludedTests, `|`))
 	excludedTestsFilter := regexp.MustCompile(strings.Join(excludedTests, `|`))
 
 	return &ginkgoTestRenamer{
@@ -242,7 +240,7 @@ func (r *ginkgoTestRenamer) maybeRenameTest(name string, node types.TestNode) {
 		}
 	}
 
-	if !r.excludedTestsFilter.MatchString(name) && !strings.Contains(name, "openshift/isv") {
+	if !r.excludedTestsFilter.MatchString(name) {
 		isSerial := strings.Contains(name, "[Serial]")
 		isConformance := strings.Contains(name, "[Conformance]")
 		switch {
@@ -486,7 +484,7 @@ var (
 		"[Skipped:azure]": {
 			"Networking should provide Internet connection for containers", // Azure does not allow ICMP traffic to internet.
 
-			// openshift-tests cannot access Azure API to create in-line or pre-provisioned volumes, https://bugzilla.redhat.com/show_bug.cgi?id=1723603
+			// openshift-tests-private cannot access Azure API to create in-line or pre-provisioned volumes, https://bugzilla.redhat.com/show_bug.cgi?id=1723603
 			`\[sig-storage\] In-tree Volumes \[Driver: azure\] \[Testpattern: Inline-volume`,
 			`\[sig-storage\] In-tree Volumes \[Driver: azure\] \[Testpattern: Pre-provisioned PV`,
 		},
@@ -556,9 +554,6 @@ var (
 		},
 		"[Suite:openshift/csi]": {
 			`External Storage \[Driver:`,
-		},
-		"[Suite:openshift/isv]": {
-			`\[Suite:openshift/isv\]`,
 		},
 	}
 

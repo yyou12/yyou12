@@ -1409,7 +1409,6 @@ func FixturePath(elem ...string) string {
 	relativePath := path.Join(elem...)
 	fullPath := path.Join(fixtureDir, relativePath)
 	if err := testdata.RestoreAsset(fixtureDir, relativePath); err != nil {
-		e2e.Logf("FixtureDir: %s", fixtureDir)
 		if err := testdata.RestoreAssets(fixtureDir, relativePath); err != nil {
 			panic(err)
 		}
