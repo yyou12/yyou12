@@ -1001,7 +1001,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	})
 
 	// author: scolange@redhat.com
-	g.It("Medium-24738-CRD should update if previously defined schemas don't change", func() {
+	g.It("ConnectedOnly-Medium-24738-CRD should update if previously defined schemas do not change [Disruptive]", func() {
 		var buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
 		var cfgMap = filepath.Join(buildPruningBaseDir, "configmap-etcd.yaml")
 		var patchCfgMap = filepath.Join(buildPruningBaseDir, "configmap-ectd-alpha-beta.yaml")
@@ -1010,6 +1010,15 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		var Sub = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
 		var etcdCluster = filepath.Join(buildPruningBaseDir, "etcd-cluster.yaml")
 		var operatorWait = 150 * time.Second
+
+		g.By("check precondition and prepare env")
+		if isPresentResource(oc, asAdmin, withoutNamespace, present, "crd", "etcdclusters.etcd.database.coreos.com") && isPresentResource(oc, asAdmin, withoutNamespace, present, "EtcdCluster", "-A") {
+			e2e.Logf("It is distruptive case and the resources exists, do not destory it. exit")
+			return
+		}
+		oc.AsAdmin().Run("delete").Args("crd", "etcdclusters.etcd.database.coreos.com").Output()
+		oc.AsAdmin().Run("delete").Args("crd", "etcdbackups.etcd.database.coreos.com").Output()
+		oc.AsAdmin().Run("delete").Args("crd", "etcdrestores.etcd.database.coreos.com").Output()
 
 		defer oc.AsAdmin().Run("delete").Args("ns", "test-automation-24738").Execute()
 		defer oc.AsAdmin().Run("delete").Args("ns", "test-automation-24738-1").Execute()
@@ -1057,6 +1066,11 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 
 		createImgSub, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", Sub, "-p", "SUBNAME=etcd-etcdoperator.v0.9.2", "SUBNAMESPACE=test-automation-24738", "CHANNEL=alpha", "APPROVAL=Automatic", "OPERATORNAME=etcd-update", "SOURCENAME=installed-community-24738-global-operators", "SOURCENAMESPACE=openshift-marketplace", "STARTINGCSV=etcdoperator.v0.9.2").OutputToFile("config-24738.json")
 		o.Expect(err).NotTo(o.HaveOccurred())
+		defer func() {
+			oc.AsAdmin().Run("delete").Args("crd", "etcdclusters.etcd.database.coreos.com").Output()
+			oc.AsAdmin().Run("delete").Args("crd", "etcdbackups.etcd.database.coreos.com").Output()
+			oc.AsAdmin().Run("delete").Args("crd", "etcdrestores.etcd.database.coreos.com").Output()
+		}()
 		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", createImgSub).Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
 
