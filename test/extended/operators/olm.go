@@ -922,8 +922,17 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		configFile, err = oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", crwebhook, "-p", "NAME=webhooktest-34181",
 			"NAMESPACE=openshift-operators", "VALID=false").OutputToFile("config-34181.json")
 		o.Expect(err).NotTo(o.HaveOccurred())
-		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", configFile).Execute()
-		o.Expect(err).To(o.HaveOccurred())
+		err = wait.Poll(15*time.Second, 180*time.Second, func() (bool, error) {
+			erra := oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", configFile).Execute()
+			if erra == nil {
+				e2e.Logf("expect fail and try next")
+				oc.AsAdmin().WithoutNamespace().Run("delete").Args("WebhookTest", "webhooktest-34181", "-n", "openshift-operators").Execute()
+				return false, nil
+			}
+			e2e.Logf("err:%v", err)
+			return true, nil
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
 
 		g.By("check valid CR")
 		configFile, err = oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", crwebhook, "-p", "NAME=webhooktest-34181",
