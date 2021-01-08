@@ -26,6 +26,58 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	var oc = exutil.NewCLI("default-"+getRandomString(), exutil.KubeConfigPath())
 
 	// author: jiazha@redhat.com
+	g.It("High-37260-should allow to create the default CatalogSource [Disruptive]", func() {
+		g.By("1) Disable the default OperatorHub")
+		patchResource(oc, asAdmin, withoutNamespace, "operatorhub", "cluster", "-p", "{\"spec\": {\"disableAllDefaultSources\": true}}", "--type=merge")
+		defer patchResource(oc, asAdmin, withoutNamespace, "operatorhub", "cluster", "-p", "{\"spec\": {\"disableAllDefaultSources\": false}}", "--type=merge")
+
+		g.By("2) Check if the default CatalogSource resource are removed")
+		err := wait.Poll(10*time.Second, 180*time.Second, func() (bool, error) {
+			res, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("catalogsource", "redhat-operators", "-n", "openshift-marketplace").Output()
+			if strings.Contains(res, "not found") {
+				return true, nil
+			}
+			return false, nil
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("3) Create a CatalogSource with a default CatalogSource name")
+		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
+		csImageTemplate := filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
+		oc.SetupProject()
+		cs := catalogSourceDescription{
+			name:        "redhat-operators",
+			namespace:   oc.Namespace(),
+			displayName: "Red Hat Operators",
+			publisher:   "OLM QE",
+			sourceType:  "grpc",
+			address:     "quay.io/openshift-qe-optional-operators/ocp4-index:latest",
+			template:    csImageTemplate,
+		}
+		dr := make(describerResrouce)
+		itName := g.CurrentGinkgoTestDescription().TestText
+		dr.addIr(itName)
+		cs.create(oc, itName, dr)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "READY", ok, []string{"catsrc", cs.name, "-n", cs.namespace, "-o=jsonpath={.status..lastObservedState}"}).check(oc)
+
+		g.By("4) Enable the default OperatorHub")
+		patchResource(oc, true, true, "operatorhub", "cluster", "-p", "{\"spec\": {\"disableAllDefaultSources\": false}}", "--type=merge")
+
+		g.By("5) Check if the default CatalogSource resource are back")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "READY", ok, []string{"catsrc", "redhat-operators", "-n", "openshift-marketplace", "-o=jsonpath={.status..lastObservedState}"}).check(oc)
+
+		g.By("6) Check if the custom CatalogSource resource are removed")
+		err1 := wait.Poll(10*time.Second, 180*time.Second, func() (bool, error) {
+			res, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("catalogsource", "redhat-operators", "-n", cs.namespace).Output()
+			if strings.Contains(res, "not found") {
+				return true, nil
+			}
+			return false, nil
+		})
+		o.Expect(err1).NotTo(o.HaveOccurred())
+	})
+
+	// author: jiazha@redhat.com
 	g.It("Medium-25922-Support spec.config.volumes and volumemount in Subscription", func() {
 		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
 		ogSingleTemplate := filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
