@@ -1190,6 +1190,25 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 
 	})
 
+	// author: scolange@redhat.com
+	g.It("Medium-32862-Pods found with invalid container images not present in release payload", func() {
+
+		g.By("Verify the version of marketplace_operator")
+		pods, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-n", "openshift-marketplace", "--no-headers").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		lines := strings.Split(pods, "\n")
+		for _, line := range lines {
+			e2e.Logf("line: %v", line)
+			if strings.Contains(line, "certified-operators") || strings.Contains(line, "community-operators") || strings.Contains(line, "marketplace-operator") || strings.Contains(line, "redhat-marketplace") || strings.Contains(line, "redhat-operators") {
+				name := strings.Split(line, " ")
+				checkRel, err := oc.AsAdmin().WithoutNamespace().Run("exec").Args(name[0], "-n", "openshift-marketplace", "--", "cat", "/etc/redhat-release").Output()
+				o.Expect(err).NotTo(o.HaveOccurred())
+				o.Expect(checkRel).To(o.ContainSubstring("Red Hat"))
+			}
+		}
+
+	})
+
 })
 
 var _ = g.Describe("[sig-operators] OLM for an end user use", func() {
