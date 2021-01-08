@@ -87,6 +87,27 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
         o.Expect(output).To(o.ContainSubstring("x-kubernetes-preserve-unknown-fields: true"))
     })
 
+    // author: jfan@redhat.com
+    g.It("High-37627-SDK run bundle upgrade test", func() {
+        operatorsdkCLI.showInfo = true
+        oc.SetupProject()
+        output, err := operatorsdkCLI.Run("run").Args("bundle", "quay.io/olmqe/etcd-bundle:0.9.2-share", "-n", oc.Namespace()).Output()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        o.Expect(output).To(o.ContainSubstring("OLM has successfully installed"))
+        output, err = operatorsdkCLI.Run("run").Args("bundle-upgrade", "quay.io/olmqe/etcd-bundle:0.9.4-share", "-n", oc.Namespace()).Output()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        o.Expect(output).To(o.ContainSubstring("Successfully upgraded to"))
+        output, _ = oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-n", oc.Namespace()).Output()
+        o.Expect(output).To(o.ContainSubstring("quay-io-olmqe-etcd-bundle-0-9-4-share"))
+        output, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", "etcdoperator.v0.9.4", "-n", oc.Namespace()).Output()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        o.Expect(output).To(o.ContainSubstring("Succeeded"))
+        output, err = operatorsdkCLI.Run("run").Args("cleanup", "etcd", "-n", oc.Namespace()).Output()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        o.Expect(output).To(o.ContainSubstring("uninstalled"))
+
+    })
+
     // author: chuo@redhat.com
     g.It("Medium-27718-scorecard remove version flag", func() {
         operatorsdkCLI.showInfo = true
@@ -100,6 +121,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
         output, _ := operatorsdkCLI.Run("run").Args("bundle-upgrade", "-h").Output()
         o.Expect(output).To(o.ContainSubstring("Upgrade an Operator previously installed in the bundle format with OLM"))		
     })
+
     // author: chuo@redhat.com
     g.It("Medium-34945-ansible Add flag metricsaddr for ansible operator", func() {
         operatorsdkCLI.showInfo = true
