@@ -78,6 +78,7 @@
 // test/extended/testdata/securityandcompliance/scansetting.yaml
 // test/extended/testdata/securityandcompliance/scansettingbinding.yaml
 // test/extended/testdata/securityandcompliance/subscription.yaml
+// test/extended/testdata/securityandcompliance/tailoredprofile-withoutvariable.yaml
 // test/extended/testdata/securityandcompliance/tailoredprofile.yaml
 // test/extended/testdata/winc/aws_windows_machineset_no_label.yaml
 // test/extended/testdata/winc/azure_windows_machineset_no_label.yaml
@@ -9599,22 +9600,38 @@ func testExtendedTestdataSecurityandcompliancePvExtractPodYaml() (*asset, error)
 	return a, nil
 }
 
-var _testExtendedTestdataSecurityandcomplianceScansettingYaml = []byte(`apiVersion: compliance.openshift.io/v1alpha1
-kind: ScanSetting
+var _testExtendedTestdataSecurityandcomplianceScansettingYaml = []byte(`apiVersion: v1
+kind: Template
 metadata:
-  name: co-setting 
-# Suite-specific settings
-autoApplyRemediations: false
-schedule: "0 1 * * *"
-# Scan-specific settings
-rawResultStorage:
-  size: "2Gi"
-  rotation: 10
-# For each role, a separate scan will be created pointing
-# to a node-role specified in roles
-roles:
-  - wscan
-  - master
+  name: scansetting-template
+objects:
+- apiVersion: compliance.openshift.io/v1alpha1
+  kind: ScanSetting
+  metadata:
+    name: "${NAME}"
+    namespace: "${NAMESPACE}" 
+  # Suite-specific settings
+  autoApplyRemediations: ${{AUTOAPPLYREMEDIATIONS}}
+  schedule: "${SCHEDULE}"
+  # Scan-specific settings
+  rawResultStorage:
+    size: "${SIZE}"
+    rotation: ${{ROTATION}}
+  # For each role, a separate scan will be created pointing
+  # to a node-role specified in roles
+  roles:
+    - "${ROLES1}"
+    - "${ROLES2}"
+
+parameters:
+- name: NAME
+- name: NAMESPACE
+- name: AUTOAPPLYREMEDIATIONS
+- name: SCHEDULE
+- name: SIZE
+- name: ROTATION
+- name: ROLES1
+- name: ROLES2
 `)
 
 func testExtendedTestdataSecurityandcomplianceScansettingYamlBytes() ([]byte, error) {
@@ -9721,6 +9738,56 @@ func testExtendedTestdataSecurityandcomplianceSubscriptionYaml() (*asset, error)
 	}
 
 	info := bindataFileInfo{name: "test/extended/testdata/securityandcompliance/subscription.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataSecurityandcomplianceTailoredprofileWithoutvariableYaml = []byte(`apiVersion: v1
+kind: Template
+metadata:
+  name: tailoredprofile-template
+objects:
+- apiVersion: compliance.openshift.io/v1alpha1
+  kind: TailoredProfile
+  metadata:
+    name: "${NAME}"
+    namespace: "${NAMESPACE}"
+  spec:
+    extends: "${EXTENDS}"
+    title: My little profile
+    enableRules:
+      - name: "${ENRULENAME1}"
+        rationale: testing this
+      - name: "${ENRULENAME2}"
+        rationale: testing this
+    disableRules:
+      - name: "${DISRULENAME1}"
+        rationale: testing this
+      - name: "${DISRULENAME2}"
+        rationale: testing this
+
+parameters:
+- name: NAME
+- name: NAMESPACE  
+- name: EXTENDS
+- name: ENRULENAME1
+- name: ENRULENAME2
+- name: DISRULENAME1
+- name: DISRULENAME2
+
+`)
+
+func testExtendedTestdataSecurityandcomplianceTailoredprofileWithoutvariableYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataSecurityandcomplianceTailoredprofileWithoutvariableYaml, nil
+}
+
+func testExtendedTestdataSecurityandcomplianceTailoredprofileWithoutvariableYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataSecurityandcomplianceTailoredprofileWithoutvariableYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/securityandcompliance/tailoredprofile-withoutvariable.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -10964,106 +11031,107 @@ func AssetNames() []string {
 
 // _bindata is a table, holding each asset generator, mapped to its name.
 var _bindata = map[string]func() (*asset, error){
-	"test/extended/testdata/ldap/groupsync.sh":                                   testExtendedTestdataLdapGroupsyncSh,
-	"test/extended/testdata/ldap/ldapserver-config-cm.yaml":                      testExtendedTestdataLdapLdapserverConfigCmYaml,
-	"test/extended/testdata/ldap/ldapserver-deployment.yaml":                     testExtendedTestdataLdapLdapserverDeploymentYaml,
-	"test/extended/testdata/ldap/ldapserver-scripts-cm.yaml":                     testExtendedTestdataLdapLdapserverScriptsCmYaml,
-	"test/extended/testdata/ldap/ldapserver-service.yaml":                        testExtendedTestdataLdapLdapserverServiceYaml,
-	"test/extended/testdata/oauthserver/cabundle-cm.yaml":                        testExtendedTestdataOauthserverCabundleCmYaml,
-	"test/extended/testdata/oauthserver/oauth-network.yaml":                      testExtendedTestdataOauthserverOauthNetworkYaml,
-	"test/extended/testdata/oauthserver/oauth-pod.yaml":                          testExtendedTestdataOauthserverOauthPodYaml,
-	"test/extended/testdata/oauthserver/oauth-sa.yaml":                           testExtendedTestdataOauthserverOauthSaYaml,
-	"test/extended/testdata/olm/apiservice.yaml":                                 testExtendedTestdataOlmApiserviceYaml,
-	"test/extended/testdata/olm/catalogsource-address.yaml":                      testExtendedTestdataOlmCatalogsourceAddressYaml,
-	"test/extended/testdata/olm/catalogsource-configmap.yaml":                    testExtendedTestdataOlmCatalogsourceConfigmapYaml,
-	"test/extended/testdata/olm/catalogsource-image.yaml":                        testExtendedTestdataOlmCatalogsourceImageYaml,
-	"test/extended/testdata/olm/catalogsource-namespace.yaml":                    testExtendedTestdataOlmCatalogsourceNamespaceYaml,
-	"test/extended/testdata/olm/cm-certutil-readytest.yaml":                      testExtendedTestdataOlmCmCertutilReadytestYaml,
-	"test/extended/testdata/olm/cm-certutil-readytests.yaml":                     testExtendedTestdataOlmCmCertutilReadytestsYaml,
-	"test/extended/testdata/olm/cm-csv-etcd.yaml":                                testExtendedTestdataOlmCmCsvEtcdYaml,
-	"test/extended/testdata/olm/cm-learn-v1.yaml":                                testExtendedTestdataOlmCmLearnV1Yaml,
-	"test/extended/testdata/olm/cm-learn-v2.yaml":                                testExtendedTestdataOlmCmLearnV2Yaml,
-	"test/extended/testdata/olm/cm-lightbend.yaml":                               testExtendedTestdataOlmCmLightbendYaml,
-	"test/extended/testdata/olm/cm-namespaceconfig.yaml":                         testExtendedTestdataOlmCmNamespaceconfigYaml,
-	"test/extended/testdata/olm/cm-template.yaml":                                testExtendedTestdataOlmCmTemplateYaml,
-	"test/extended/testdata/olm/configmap-ectd-alpha-beta.yaml":                  testExtendedTestdataOlmConfigmapEctdAlphaBetaYaml,
-	"test/extended/testdata/olm/configmap-etcd.yaml":                             testExtendedTestdataOlmConfigmapEtcdYaml,
-	"test/extended/testdata/olm/configmap-test.yaml":                             testExtendedTestdataOlmConfigmapTestYaml,
-	"test/extended/testdata/olm/configmap-with-defaultchannel.yaml":              testExtendedTestdataOlmConfigmapWithDefaultchannelYaml,
-	"test/extended/testdata/olm/configmap-without-defaultchannel.yaml":           testExtendedTestdataOlmConfigmapWithoutDefaultchannelYaml,
-	"test/extended/testdata/olm/cr-webhookTest.yaml":                             testExtendedTestdataOlmCrWebhooktestYaml,
-	"test/extended/testdata/olm/cs-without-image.yaml":                           testExtendedTestdataOlmCsWithoutImageYaml,
-	"test/extended/testdata/olm/csc.yaml":                                        testExtendedTestdataOlmCscYaml,
-	"test/extended/testdata/olm/etcd-cluster.yaml":                               testExtendedTestdataOlmEtcdClusterYaml,
-	"test/extended/testdata/olm/etcd-custom-csc.yaml":                            testExtendedTestdataOlmEtcdCustomCscYaml,
-	"test/extended/testdata/olm/etcd-subscription-manual.yaml":                   testExtendedTestdataOlmEtcdSubscriptionManualYaml,
-	"test/extended/testdata/olm/etcd-subscription.yaml":                          testExtendedTestdataOlmEtcdSubscriptionYaml,
-	"test/extended/testdata/olm/mutatingwebhook-csv.yaml":                        testExtendedTestdataOlmMutatingwebhookCsvYaml,
-	"test/extended/testdata/olm/og-allns.yaml":                                   testExtendedTestdataOlmOgAllnsYaml,
-	"test/extended/testdata/olm/og-multins.yaml":                                 testExtendedTestdataOlmOgMultinsYaml,
-	"test/extended/testdata/olm/olm-subscription.yaml":                           testExtendedTestdataOlmOlmSubscriptionYaml,
-	"test/extended/testdata/olm/operatorgroup.yaml":                              testExtendedTestdataOlmOperatorgroupYaml,
-	"test/extended/testdata/olm/opsrc.yaml":                                      testExtendedTestdataOlmOpsrcYaml,
-	"test/extended/testdata/olm/validatingwebhook-csv.yaml":                      testExtendedTestdataOlmValidatingwebhookCsvYaml,
-	"test/extended/testdata/olm/vpa-crd.yaml":                                    testExtendedTestdataOlmVpaCrdYaml,
-	"test/extended/testdata/operators/argocd-cr.yaml":                            testExtendedTestdataOperatorsArgocdCrYaml,
-	"test/extended/testdata/operators/couchbase-enterprise-cr.yaml":              testExtendedTestdataOperatorsCouchbaseEnterpriseCrYaml,
-	"test/extended/testdata/operators/jaeger.yaml":                               testExtendedTestdataOperatorsJaegerYaml,
-	"test/extended/testdata/operators/kafka.yaml":                                testExtendedTestdataOperatorsKafkaYaml,
-	"test/extended/testdata/operators/keycloak-cr.yaml":                          testExtendedTestdataOperatorsKeycloakCrYaml,
-	"test/extended/testdata/operators/kiali-cr.yaml":                             testExtendedTestdataOperatorsKialiCrYaml,
-	"test/extended/testdata/operators/mongodb-ops-manager-cr.yaml":               testExtendedTestdataOperatorsMongodbOpsManagerCrYaml,
-	"test/extended/testdata/operators/mongodb-ops-manager-secret.yaml":           testExtendedTestdataOperatorsMongodbOpsManagerSecretYaml,
-	"test/extended/testdata/operators/operator_group.yaml":                       testExtendedTestdataOperatorsOperator_groupYaml,
-	"test/extended/testdata/operators/portworx-snode-cr.yaml":                    testExtendedTestdataOperatorsPortworxSnodeCrYaml,
-	"test/extended/testdata/operators/resourcelocker-cr.yaml":                    testExtendedTestdataOperatorsResourcelockerCrYaml,
-	"test/extended/testdata/operators/spark-gcp-sparkapplication-cr.yaml":        testExtendedTestdataOperatorsSparkGcpSparkapplicationCrYaml,
-	"test/extended/testdata/operators/storageos-secret.yaml":                     testExtendedTestdataOperatorsStorageosSecretYaml,
-	"test/extended/testdata/operators/storageoscluster-cr.yaml":                  testExtendedTestdataOperatorsStorageosclusterCrYaml,
-	"test/extended/testdata/operators/storageosupgrade-cr.yaml":                  testExtendedTestdataOperatorsStorageosupgradeCrYaml,
-	"test/extended/testdata/operators/strimzi-cr.yaml":                           testExtendedTestdataOperatorsStrimziCrYaml,
-	"test/extended/testdata/operators/subscription.yaml":                         testExtendedTestdataOperatorsSubscriptionYaml,
-	"test/extended/testdata/opm/index_34016.db":                                  testExtendedTestdataOpmIndex_34016Db,
-	"test/extended/testdata/securityandcompliance/aide.conf.rhel8":               testExtendedTestdataSecurityandcomplianceAideConfRhel8,
-	"test/extended/testdata/securityandcompliance/aide.conf.rhel8.1":             testExtendedTestdataSecurityandcomplianceAideConfRhel81,
-	"test/extended/testdata/securityandcompliance/aide.conf.rhel8.err":           testExtendedTestdataSecurityandcomplianceAideConfRhel8Err,
-	"test/extended/testdata/securityandcompliance/catalogsource-image.yaml":      testExtendedTestdataSecurityandcomplianceCatalogsourceImageYaml,
-	"test/extended/testdata/securityandcompliance/compliancescan.yaml":           testExtendedTestdataSecurityandcomplianceCompliancescanYaml,
-	"test/extended/testdata/securityandcompliance/compliancescantaint.yaml":      testExtendedTestdataSecurityandcomplianceCompliancescantaintYaml,
-	"test/extended/testdata/securityandcompliance/compliancescantaints.yaml":     testExtendedTestdataSecurityandcomplianceCompliancescantaintsYaml,
-	"test/extended/testdata/securityandcompliance/compliancesuite.yaml":          testExtendedTestdataSecurityandcomplianceCompliancesuiteYaml,
-	"test/extended/testdata/securityandcompliance/compliancesuitenodes.yaml":     testExtendedTestdataSecurityandcomplianceCompliancesuitenodesYaml,
-	"test/extended/testdata/securityandcompliance/compliancesuitetaint.yaml":     testExtendedTestdataSecurityandcomplianceCompliancesuitetaintYaml,
-	"test/extended/testdata/securityandcompliance/compliancesuitetpconfmap.yaml": testExtendedTestdataSecurityandcomplianceCompliancesuitetpconfmapYaml,
-	"test/extended/testdata/securityandcompliance/fileintegrity.yaml":            testExtendedTestdataSecurityandcomplianceFileintegrityYaml,
-	"test/extended/testdata/securityandcompliance/operator-group.yaml":           testExtendedTestdataSecurityandcomplianceOperatorGroupYaml,
-	"test/extended/testdata/securityandcompliance/pod_modify.yaml":               testExtendedTestdataSecurityandcompliancePod_modifyYaml,
-	"test/extended/testdata/securityandcompliance/pv-extract-pod.yaml":           testExtendedTestdataSecurityandcompliancePvExtractPodYaml,
-	"test/extended/testdata/securityandcompliance/scansetting.yaml":              testExtendedTestdataSecurityandcomplianceScansettingYaml,
-	"test/extended/testdata/securityandcompliance/scansettingbinding.yaml":       testExtendedTestdataSecurityandcomplianceScansettingbindingYaml,
-	"test/extended/testdata/securityandcompliance/subscription.yaml":             testExtendedTestdataSecurityandcomplianceSubscriptionYaml,
-	"test/extended/testdata/securityandcompliance/tailoredprofile.yaml":          testExtendedTestdataSecurityandcomplianceTailoredprofileYaml,
-	"test/extended/testdata/winc/aws_windows_machineset_no_label.yaml":           testExtendedTestdataWincAws_windows_machineset_no_labelYaml,
-	"test/extended/testdata/winc/azure_windows_machineset_no_label.yaml":         testExtendedTestdataWincAzure_windows_machineset_no_labelYaml,
-	"test/extended/testdata/winc/linux_web_server.yaml":                          testExtendedTestdataWincLinux_web_serverYaml,
-	"test/extended/testdata/winc/windows_web_server.yaml":                        testExtendedTestdataWincWindows_web_serverYaml,
-	"test/extended/testdata/winc/windows_web_server_no_taint.yaml":               testExtendedTestdataWincWindows_web_server_no_taintYaml,
-	"test/extended/testdata/workloads/deploy_nodeaffinity.yaml":                  testExtendedTestdataWorkloadsDeploy_nodeaffinityYaml,
-	"test/extended/testdata/workloads/deploy_nodeselect.yaml":                    testExtendedTestdataWorkloadsDeploy_nodeselectYaml,
-	"test/extended/testdata/workloads/deploy_single_pts.yaml":                    testExtendedTestdataWorkloadsDeploy_single_ptsYaml,
-	"test/extended/testdata/workloads/kubedescheduler.yaml":                      testExtendedTestdataWorkloadsKubedeschedulerYaml,
-	"test/extended/testdata/workloads/operatorgroup.yaml":                        testExtendedTestdataWorkloadsOperatorgroupYaml,
-	"test/extended/testdata/workloads/pod_multipts.yaml":                         testExtendedTestdataWorkloadsPod_multiptsYaml,
-	"test/extended/testdata/workloads/pod_nodeselect.yaml":                       testExtendedTestdataWorkloadsPod_nodeselectYaml,
-	"test/extended/testdata/workloads/pod_pts_nodeaffinity_required.yaml":        testExtendedTestdataWorkloadsPod_pts_nodeaffinity_requiredYaml,
-	"test/extended/testdata/workloads/pod_single_nodeaffinity_required.yaml":     testExtendedTestdataWorkloadsPod_single_nodeaffinity_requiredYaml,
-	"test/extended/testdata/workloads/pod_singlepts.yaml":                        testExtendedTestdataWorkloadsPod_singleptsYaml,
-	"test/extended/testdata/workloads/pod_singlepts_nodeselect.yaml":             testExtendedTestdataWorkloadsPod_singlepts_nodeselectYaml,
-	"test/extended/testdata/workloads/pod_singlepts_prefer.yaml":                 testExtendedTestdataWorkloadsPod_singlepts_preferYaml,
-	"test/extended/testdata/workloads/pod_singlepts_required.yaml":               testExtendedTestdataWorkloadsPod_singlepts_requiredYaml,
-	"test/extended/testdata/workloads/pod_tolerationseconds.yaml":                testExtendedTestdataWorkloadsPod_tolerationsecondsYaml,
-	"test/extended/testdata/workloads/policy.cfg":                                testExtendedTestdataWorkloadsPolicyCfg,
-	"test/extended/testdata/workloads/subscription.yaml":                         testExtendedTestdataWorkloadsSubscriptionYaml,
+	"test/extended/testdata/ldap/groupsync.sh":                                          testExtendedTestdataLdapGroupsyncSh,
+	"test/extended/testdata/ldap/ldapserver-config-cm.yaml":                             testExtendedTestdataLdapLdapserverConfigCmYaml,
+	"test/extended/testdata/ldap/ldapserver-deployment.yaml":                            testExtendedTestdataLdapLdapserverDeploymentYaml,
+	"test/extended/testdata/ldap/ldapserver-scripts-cm.yaml":                            testExtendedTestdataLdapLdapserverScriptsCmYaml,
+	"test/extended/testdata/ldap/ldapserver-service.yaml":                               testExtendedTestdataLdapLdapserverServiceYaml,
+	"test/extended/testdata/oauthserver/cabundle-cm.yaml":                               testExtendedTestdataOauthserverCabundleCmYaml,
+	"test/extended/testdata/oauthserver/oauth-network.yaml":                             testExtendedTestdataOauthserverOauthNetworkYaml,
+	"test/extended/testdata/oauthserver/oauth-pod.yaml":                                 testExtendedTestdataOauthserverOauthPodYaml,
+	"test/extended/testdata/oauthserver/oauth-sa.yaml":                                  testExtendedTestdataOauthserverOauthSaYaml,
+	"test/extended/testdata/olm/apiservice.yaml":                                        testExtendedTestdataOlmApiserviceYaml,
+	"test/extended/testdata/olm/catalogsource-address.yaml":                             testExtendedTestdataOlmCatalogsourceAddressYaml,
+	"test/extended/testdata/olm/catalogsource-configmap.yaml":                           testExtendedTestdataOlmCatalogsourceConfigmapYaml,
+	"test/extended/testdata/olm/catalogsource-image.yaml":                               testExtendedTestdataOlmCatalogsourceImageYaml,
+	"test/extended/testdata/olm/catalogsource-namespace.yaml":                           testExtendedTestdataOlmCatalogsourceNamespaceYaml,
+	"test/extended/testdata/olm/cm-certutil-readytest.yaml":                             testExtendedTestdataOlmCmCertutilReadytestYaml,
+	"test/extended/testdata/olm/cm-certutil-readytests.yaml":                            testExtendedTestdataOlmCmCertutilReadytestsYaml,
+	"test/extended/testdata/olm/cm-csv-etcd.yaml":                                       testExtendedTestdataOlmCmCsvEtcdYaml,
+	"test/extended/testdata/olm/cm-learn-v1.yaml":                                       testExtendedTestdataOlmCmLearnV1Yaml,
+	"test/extended/testdata/olm/cm-learn-v2.yaml":                                       testExtendedTestdataOlmCmLearnV2Yaml,
+	"test/extended/testdata/olm/cm-lightbend.yaml":                                      testExtendedTestdataOlmCmLightbendYaml,
+	"test/extended/testdata/olm/cm-namespaceconfig.yaml":                                testExtendedTestdataOlmCmNamespaceconfigYaml,
+	"test/extended/testdata/olm/cm-template.yaml":                                       testExtendedTestdataOlmCmTemplateYaml,
+	"test/extended/testdata/olm/configmap-ectd-alpha-beta.yaml":                         testExtendedTestdataOlmConfigmapEctdAlphaBetaYaml,
+	"test/extended/testdata/olm/configmap-etcd.yaml":                                    testExtendedTestdataOlmConfigmapEtcdYaml,
+	"test/extended/testdata/olm/configmap-test.yaml":                                    testExtendedTestdataOlmConfigmapTestYaml,
+	"test/extended/testdata/olm/configmap-with-defaultchannel.yaml":                     testExtendedTestdataOlmConfigmapWithDefaultchannelYaml,
+	"test/extended/testdata/olm/configmap-without-defaultchannel.yaml":                  testExtendedTestdataOlmConfigmapWithoutDefaultchannelYaml,
+	"test/extended/testdata/olm/cr-webhookTest.yaml":                                    testExtendedTestdataOlmCrWebhooktestYaml,
+	"test/extended/testdata/olm/cs-without-image.yaml":                                  testExtendedTestdataOlmCsWithoutImageYaml,
+	"test/extended/testdata/olm/csc.yaml":                                               testExtendedTestdataOlmCscYaml,
+	"test/extended/testdata/olm/etcd-cluster.yaml":                                      testExtendedTestdataOlmEtcdClusterYaml,
+	"test/extended/testdata/olm/etcd-custom-csc.yaml":                                   testExtendedTestdataOlmEtcdCustomCscYaml,
+	"test/extended/testdata/olm/etcd-subscription-manual.yaml":                          testExtendedTestdataOlmEtcdSubscriptionManualYaml,
+	"test/extended/testdata/olm/etcd-subscription.yaml":                                 testExtendedTestdataOlmEtcdSubscriptionYaml,
+	"test/extended/testdata/olm/mutatingwebhook-csv.yaml":                               testExtendedTestdataOlmMutatingwebhookCsvYaml,
+	"test/extended/testdata/olm/og-allns.yaml":                                          testExtendedTestdataOlmOgAllnsYaml,
+	"test/extended/testdata/olm/og-multins.yaml":                                        testExtendedTestdataOlmOgMultinsYaml,
+	"test/extended/testdata/olm/olm-subscription.yaml":                                  testExtendedTestdataOlmOlmSubscriptionYaml,
+	"test/extended/testdata/olm/operatorgroup.yaml":                                     testExtendedTestdataOlmOperatorgroupYaml,
+	"test/extended/testdata/olm/opsrc.yaml":                                             testExtendedTestdataOlmOpsrcYaml,
+	"test/extended/testdata/olm/validatingwebhook-csv.yaml":                             testExtendedTestdataOlmValidatingwebhookCsvYaml,
+	"test/extended/testdata/olm/vpa-crd.yaml":                                           testExtendedTestdataOlmVpaCrdYaml,
+	"test/extended/testdata/operators/argocd-cr.yaml":                                   testExtendedTestdataOperatorsArgocdCrYaml,
+	"test/extended/testdata/operators/couchbase-enterprise-cr.yaml":                     testExtendedTestdataOperatorsCouchbaseEnterpriseCrYaml,
+	"test/extended/testdata/operators/jaeger.yaml":                                      testExtendedTestdataOperatorsJaegerYaml,
+	"test/extended/testdata/operators/kafka.yaml":                                       testExtendedTestdataOperatorsKafkaYaml,
+	"test/extended/testdata/operators/keycloak-cr.yaml":                                 testExtendedTestdataOperatorsKeycloakCrYaml,
+	"test/extended/testdata/operators/kiali-cr.yaml":                                    testExtendedTestdataOperatorsKialiCrYaml,
+	"test/extended/testdata/operators/mongodb-ops-manager-cr.yaml":                      testExtendedTestdataOperatorsMongodbOpsManagerCrYaml,
+	"test/extended/testdata/operators/mongodb-ops-manager-secret.yaml":                  testExtendedTestdataOperatorsMongodbOpsManagerSecretYaml,
+	"test/extended/testdata/operators/operator_group.yaml":                              testExtendedTestdataOperatorsOperator_groupYaml,
+	"test/extended/testdata/operators/portworx-snode-cr.yaml":                           testExtendedTestdataOperatorsPortworxSnodeCrYaml,
+	"test/extended/testdata/operators/resourcelocker-cr.yaml":                           testExtendedTestdataOperatorsResourcelockerCrYaml,
+	"test/extended/testdata/operators/spark-gcp-sparkapplication-cr.yaml":               testExtendedTestdataOperatorsSparkGcpSparkapplicationCrYaml,
+	"test/extended/testdata/operators/storageos-secret.yaml":                            testExtendedTestdataOperatorsStorageosSecretYaml,
+	"test/extended/testdata/operators/storageoscluster-cr.yaml":                         testExtendedTestdataOperatorsStorageosclusterCrYaml,
+	"test/extended/testdata/operators/storageosupgrade-cr.yaml":                         testExtendedTestdataOperatorsStorageosupgradeCrYaml,
+	"test/extended/testdata/operators/strimzi-cr.yaml":                                  testExtendedTestdataOperatorsStrimziCrYaml,
+	"test/extended/testdata/operators/subscription.yaml":                                testExtendedTestdataOperatorsSubscriptionYaml,
+	"test/extended/testdata/opm/index_34016.db":                                         testExtendedTestdataOpmIndex_34016Db,
+	"test/extended/testdata/securityandcompliance/aide.conf.rhel8":                      testExtendedTestdataSecurityandcomplianceAideConfRhel8,
+	"test/extended/testdata/securityandcompliance/aide.conf.rhel8.1":                    testExtendedTestdataSecurityandcomplianceAideConfRhel81,
+	"test/extended/testdata/securityandcompliance/aide.conf.rhel8.err":                  testExtendedTestdataSecurityandcomplianceAideConfRhel8Err,
+	"test/extended/testdata/securityandcompliance/catalogsource-image.yaml":             testExtendedTestdataSecurityandcomplianceCatalogsourceImageYaml,
+	"test/extended/testdata/securityandcompliance/compliancescan.yaml":                  testExtendedTestdataSecurityandcomplianceCompliancescanYaml,
+	"test/extended/testdata/securityandcompliance/compliancescantaint.yaml":             testExtendedTestdataSecurityandcomplianceCompliancescantaintYaml,
+	"test/extended/testdata/securityandcompliance/compliancescantaints.yaml":            testExtendedTestdataSecurityandcomplianceCompliancescantaintsYaml,
+	"test/extended/testdata/securityandcompliance/compliancesuite.yaml":                 testExtendedTestdataSecurityandcomplianceCompliancesuiteYaml,
+	"test/extended/testdata/securityandcompliance/compliancesuitenodes.yaml":            testExtendedTestdataSecurityandcomplianceCompliancesuitenodesYaml,
+	"test/extended/testdata/securityandcompliance/compliancesuitetaint.yaml":            testExtendedTestdataSecurityandcomplianceCompliancesuitetaintYaml,
+	"test/extended/testdata/securityandcompliance/compliancesuitetpconfmap.yaml":        testExtendedTestdataSecurityandcomplianceCompliancesuitetpconfmapYaml,
+	"test/extended/testdata/securityandcompliance/fileintegrity.yaml":                   testExtendedTestdataSecurityandcomplianceFileintegrityYaml,
+	"test/extended/testdata/securityandcompliance/operator-group.yaml":                  testExtendedTestdataSecurityandcomplianceOperatorGroupYaml,
+	"test/extended/testdata/securityandcompliance/pod_modify.yaml":                      testExtendedTestdataSecurityandcompliancePod_modifyYaml,
+	"test/extended/testdata/securityandcompliance/pv-extract-pod.yaml":                  testExtendedTestdataSecurityandcompliancePvExtractPodYaml,
+	"test/extended/testdata/securityandcompliance/scansetting.yaml":                     testExtendedTestdataSecurityandcomplianceScansettingYaml,
+	"test/extended/testdata/securityandcompliance/scansettingbinding.yaml":              testExtendedTestdataSecurityandcomplianceScansettingbindingYaml,
+	"test/extended/testdata/securityandcompliance/subscription.yaml":                    testExtendedTestdataSecurityandcomplianceSubscriptionYaml,
+	"test/extended/testdata/securityandcompliance/tailoredprofile-withoutvariable.yaml": testExtendedTestdataSecurityandcomplianceTailoredprofileWithoutvariableYaml,
+	"test/extended/testdata/securityandcompliance/tailoredprofile.yaml":                 testExtendedTestdataSecurityandcomplianceTailoredprofileYaml,
+	"test/extended/testdata/winc/aws_windows_machineset_no_label.yaml":                  testExtendedTestdataWincAws_windows_machineset_no_labelYaml,
+	"test/extended/testdata/winc/azure_windows_machineset_no_label.yaml":                testExtendedTestdataWincAzure_windows_machineset_no_labelYaml,
+	"test/extended/testdata/winc/linux_web_server.yaml":                                 testExtendedTestdataWincLinux_web_serverYaml,
+	"test/extended/testdata/winc/windows_web_server.yaml":                               testExtendedTestdataWincWindows_web_serverYaml,
+	"test/extended/testdata/winc/windows_web_server_no_taint.yaml":                      testExtendedTestdataWincWindows_web_server_no_taintYaml,
+	"test/extended/testdata/workloads/deploy_nodeaffinity.yaml":                         testExtendedTestdataWorkloadsDeploy_nodeaffinityYaml,
+	"test/extended/testdata/workloads/deploy_nodeselect.yaml":                           testExtendedTestdataWorkloadsDeploy_nodeselectYaml,
+	"test/extended/testdata/workloads/deploy_single_pts.yaml":                           testExtendedTestdataWorkloadsDeploy_single_ptsYaml,
+	"test/extended/testdata/workloads/kubedescheduler.yaml":                             testExtendedTestdataWorkloadsKubedeschedulerYaml,
+	"test/extended/testdata/workloads/operatorgroup.yaml":                               testExtendedTestdataWorkloadsOperatorgroupYaml,
+	"test/extended/testdata/workloads/pod_multipts.yaml":                                testExtendedTestdataWorkloadsPod_multiptsYaml,
+	"test/extended/testdata/workloads/pod_nodeselect.yaml":                              testExtendedTestdataWorkloadsPod_nodeselectYaml,
+	"test/extended/testdata/workloads/pod_pts_nodeaffinity_required.yaml":               testExtendedTestdataWorkloadsPod_pts_nodeaffinity_requiredYaml,
+	"test/extended/testdata/workloads/pod_single_nodeaffinity_required.yaml":            testExtendedTestdataWorkloadsPod_single_nodeaffinity_requiredYaml,
+	"test/extended/testdata/workloads/pod_singlepts.yaml":                               testExtendedTestdataWorkloadsPod_singleptsYaml,
+	"test/extended/testdata/workloads/pod_singlepts_nodeselect.yaml":                    testExtendedTestdataWorkloadsPod_singlepts_nodeselectYaml,
+	"test/extended/testdata/workloads/pod_singlepts_prefer.yaml":                        testExtendedTestdataWorkloadsPod_singlepts_preferYaml,
+	"test/extended/testdata/workloads/pod_singlepts_required.yaml":                      testExtendedTestdataWorkloadsPod_singlepts_requiredYaml,
+	"test/extended/testdata/workloads/pod_tolerationseconds.yaml":                       testExtendedTestdataWorkloadsPod_tolerationsecondsYaml,
+	"test/extended/testdata/workloads/policy.cfg":                                       testExtendedTestdataWorkloadsPolicyCfg,
+	"test/extended/testdata/workloads/subscription.yaml":                                testExtendedTestdataWorkloadsSubscriptionYaml,
 }
 
 // AssetDir returns the file names below a certain
@@ -11181,25 +11249,26 @@ var _bintree = &bintree{nil, map[string]*bintree{
 					"index_34016.db": {testExtendedTestdataOpmIndex_34016Db, map[string]*bintree{}},
 				}},
 				"securityandcompliance": {nil, map[string]*bintree{
-					"aide.conf.rhel8":               {testExtendedTestdataSecurityandcomplianceAideConfRhel8, map[string]*bintree{}},
-					"aide.conf.rhel8.1":             {testExtendedTestdataSecurityandcomplianceAideConfRhel81, map[string]*bintree{}},
-					"aide.conf.rhel8.err":           {testExtendedTestdataSecurityandcomplianceAideConfRhel8Err, map[string]*bintree{}},
-					"catalogsource-image.yaml":      {testExtendedTestdataSecurityandcomplianceCatalogsourceImageYaml, map[string]*bintree{}},
-					"compliancescan.yaml":           {testExtendedTestdataSecurityandcomplianceCompliancescanYaml, map[string]*bintree{}},
-					"compliancescantaint.yaml":      {testExtendedTestdataSecurityandcomplianceCompliancescantaintYaml, map[string]*bintree{}},
-					"compliancescantaints.yaml":     {testExtendedTestdataSecurityandcomplianceCompliancescantaintsYaml, map[string]*bintree{}},
-					"compliancesuite.yaml":          {testExtendedTestdataSecurityandcomplianceCompliancesuiteYaml, map[string]*bintree{}},
-					"compliancesuitenodes.yaml":     {testExtendedTestdataSecurityandcomplianceCompliancesuitenodesYaml, map[string]*bintree{}},
-					"compliancesuitetaint.yaml":     {testExtendedTestdataSecurityandcomplianceCompliancesuitetaintYaml, map[string]*bintree{}},
-					"compliancesuitetpconfmap.yaml": {testExtendedTestdataSecurityandcomplianceCompliancesuitetpconfmapYaml, map[string]*bintree{}},
-					"fileintegrity.yaml":            {testExtendedTestdataSecurityandcomplianceFileintegrityYaml, map[string]*bintree{}},
-					"operator-group.yaml":           {testExtendedTestdataSecurityandcomplianceOperatorGroupYaml, map[string]*bintree{}},
-					"pod_modify.yaml":               {testExtendedTestdataSecurityandcompliancePod_modifyYaml, map[string]*bintree{}},
-					"pv-extract-pod.yaml":           {testExtendedTestdataSecurityandcompliancePvExtractPodYaml, map[string]*bintree{}},
-					"scansetting.yaml":              {testExtendedTestdataSecurityandcomplianceScansettingYaml, map[string]*bintree{}},
-					"scansettingbinding.yaml":       {testExtendedTestdataSecurityandcomplianceScansettingbindingYaml, map[string]*bintree{}},
-					"subscription.yaml":             {testExtendedTestdataSecurityandcomplianceSubscriptionYaml, map[string]*bintree{}},
-					"tailoredprofile.yaml":          {testExtendedTestdataSecurityandcomplianceTailoredprofileYaml, map[string]*bintree{}},
+					"aide.conf.rhel8":                      {testExtendedTestdataSecurityandcomplianceAideConfRhel8, map[string]*bintree{}},
+					"aide.conf.rhel8.1":                    {testExtendedTestdataSecurityandcomplianceAideConfRhel81, map[string]*bintree{}},
+					"aide.conf.rhel8.err":                  {testExtendedTestdataSecurityandcomplianceAideConfRhel8Err, map[string]*bintree{}},
+					"catalogsource-image.yaml":             {testExtendedTestdataSecurityandcomplianceCatalogsourceImageYaml, map[string]*bintree{}},
+					"compliancescan.yaml":                  {testExtendedTestdataSecurityandcomplianceCompliancescanYaml, map[string]*bintree{}},
+					"compliancescantaint.yaml":             {testExtendedTestdataSecurityandcomplianceCompliancescantaintYaml, map[string]*bintree{}},
+					"compliancescantaints.yaml":            {testExtendedTestdataSecurityandcomplianceCompliancescantaintsYaml, map[string]*bintree{}},
+					"compliancesuite.yaml":                 {testExtendedTestdataSecurityandcomplianceCompliancesuiteYaml, map[string]*bintree{}},
+					"compliancesuitenodes.yaml":            {testExtendedTestdataSecurityandcomplianceCompliancesuitenodesYaml, map[string]*bintree{}},
+					"compliancesuitetaint.yaml":            {testExtendedTestdataSecurityandcomplianceCompliancesuitetaintYaml, map[string]*bintree{}},
+					"compliancesuitetpconfmap.yaml":        {testExtendedTestdataSecurityandcomplianceCompliancesuitetpconfmapYaml, map[string]*bintree{}},
+					"fileintegrity.yaml":                   {testExtendedTestdataSecurityandcomplianceFileintegrityYaml, map[string]*bintree{}},
+					"operator-group.yaml":                  {testExtendedTestdataSecurityandcomplianceOperatorGroupYaml, map[string]*bintree{}},
+					"pod_modify.yaml":                      {testExtendedTestdataSecurityandcompliancePod_modifyYaml, map[string]*bintree{}},
+					"pv-extract-pod.yaml":                  {testExtendedTestdataSecurityandcompliancePvExtractPodYaml, map[string]*bintree{}},
+					"scansetting.yaml":                     {testExtendedTestdataSecurityandcomplianceScansettingYaml, map[string]*bintree{}},
+					"scansettingbinding.yaml":              {testExtendedTestdataSecurityandcomplianceScansettingbindingYaml, map[string]*bintree{}},
+					"subscription.yaml":                    {testExtendedTestdataSecurityandcomplianceSubscriptionYaml, map[string]*bintree{}},
+					"tailoredprofile-withoutvariable.yaml": {testExtendedTestdataSecurityandcomplianceTailoredprofileWithoutvariableYaml, map[string]*bintree{}},
+					"tailoredprofile.yaml":                 {testExtendedTestdataSecurityandcomplianceTailoredprofileYaml, map[string]*bintree{}},
 				}},
 				"winc": {nil, map[string]*bintree{
 					"aws_windows_machineset_no_label.yaml":   {testExtendedTestdataWincAws_windows_machineset_no_labelYaml, map[string]*bintree{}},

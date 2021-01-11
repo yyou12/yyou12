@@ -34,6 +34,18 @@ type complianceSuiteDescription struct {
 	template            string
 }
 
+type scanSettingDescription struct {
+	autoapplyremediations bool
+	name                  string
+	namespace             string
+	roles1                string
+	roles2                string
+	rotation              int
+	schedule              string
+	size                  string
+	template              string
+}
+
 type scanSettingBindingDescription struct {
 	name            string
 	namespace       string
@@ -44,39 +56,33 @@ type scanSettingBindingDescription struct {
 	template        string
 }
 
-func (csuite *complianceSuiteDescription) create(oc *exutil.CLI, itName string, dr describerResrouce) {
-	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", csuite.template, "-p", "NAME="+csuite.name, "NAMESPACE="+csuite.namespace,
-		"SCHEDULE="+csuite.schedule, "SCANNAME="+csuite.scanname, "SCANTYPE="+csuite.scanType, "PROFILE="+csuite.profile, "CONTENT="+csuite.content,
-		"CONTENTIMAGE="+csuite.contentImage, "RULE="+csuite.rule, "NOEXTERNALRESOURCES="+strconv.FormatBool(csuite.noExternalResources), "KEY="+csuite.key,
-		"VALUE="+csuite.value, "OPERATOR="+csuite.operator, "NODESELECTOR="+csuite.nodeSelector, "SIZE="+csuite.size, "ROTATION="+strconv.Itoa(csuite.rotation),
-		"TAILORCONFIGMAPNAME="+csuite.tailoringConfigMap)
-	o.Expect(err).NotTo(o.HaveOccurred())
-	dr.getIr(itName).add(newResource(oc, "compliancesuite", csuite.name, requireNS, csuite.namespace))
+type tailoredProfileDescription struct {
+	name         string
+	namespace    string
+	extends      string
+	enrulename1  string
+	disrulename1 string
+	disrulename2 string
+	varname      string
+	value        string
+	template     string
 }
 
-func (ssb *scanSettingBindingDescription) create(oc *exutil.CLI, itName string, dr describerResrouce) {
-	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", ssb.template, "-p", "NAME="+ssb.name, "NAMESPACE="+ssb.namespace,
-		"PROFILENAME1="+ssb.profilename1, "PROFILEKIND1="+ssb.profilekind1, "PROFILENAME2="+ssb.profilename2, "SCANSETTINGNAME="+ssb.scansettingname)
-	o.Expect(err).NotTo(o.HaveOccurred())
-	dr.getIr(itName).add(newResource(oc, "scansettingbinding", ssb.name, requireNS, ssb.namespace))
-}
-
-func (csuite *complianceSuiteDescription) delete(itName string, dr describerResrouce) {
-	dr.getIr(itName).remove(csuite.name, "compliancesuite", csuite.namespace)
+type tailoredProfileWithoutVarDescription struct {
+	name         string
+	namespace    string
+	extends      string
+	enrulename1  string
+	enrulename2  string
+	disrulename1 string
+	disrulename2 string
+	template     string
 }
 
 type objectTableRef struct {
 	kind      string
 	namespace string
 	name      string
-}
-
-func cleanupObjects(oc *exutil.CLI, objs ...objectTableRef) {
-	for _, v := range objs {
-		e2e.Logf("Start to remove: %v", v)
-		_, err := oc.AsAdmin().WithoutNamespace().Run("delete").Args(v.kind, "-n", v.namespace, v.name).Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-	}
 }
 
 type complianceScanDescription struct {
@@ -99,6 +105,43 @@ type complianceScanDescription struct {
 	template     string
 }
 
+func (csuite *complianceSuiteDescription) create(oc *exutil.CLI, itName string, dr describerResrouce) {
+	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", csuite.template, "-p", "NAME="+csuite.name, "NAMESPACE="+csuite.namespace,
+		"SCHEDULE="+csuite.schedule, "SCANNAME="+csuite.scanname, "SCANTYPE="+csuite.scanType, "PROFILE="+csuite.profile, "CONTENT="+csuite.content,
+		"CONTENTIMAGE="+csuite.contentImage, "RULE="+csuite.rule, "NOEXTERNALRESOURCES="+strconv.FormatBool(csuite.noExternalResources), "KEY="+csuite.key,
+		"VALUE="+csuite.value, "OPERATOR="+csuite.operator, "NODESELECTOR="+csuite.nodeSelector, "SIZE="+csuite.size, "ROTATION="+strconv.Itoa(csuite.rotation),
+		"TAILORCONFIGMAPNAME="+csuite.tailoringConfigMap)
+	o.Expect(err).NotTo(o.HaveOccurred())
+	dr.getIr(itName).add(newResource(oc, "compliancesuite", csuite.name, requireNS, csuite.namespace))
+}
+
+func (ss *scanSettingDescription) create(oc *exutil.CLI, itName string, dr describerResrouce) {
+	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", ss.template, "-p", "NAME="+ss.name, "NAMESPACE="+ss.namespace,
+		"AUTOAPPLYREMEDIATIONS="+strconv.FormatBool(ss.autoapplyremediations), "SCHEDULE="+ss.schedule, "SIZE="+ss.size, "ROTATION="+strconv.Itoa(ss.rotation),
+		"ROLES1="+ss.roles1, "ROLES2="+ss.roles2)
+	o.Expect(err).NotTo(o.HaveOccurred())
+	dr.getIr(itName).add(newResource(oc, "scansetting", ss.name, requireNS, ss.namespace))
+}
+
+func (ssb *scanSettingBindingDescription) create(oc *exutil.CLI, itName string, dr describerResrouce) {
+	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", ssb.template, "-p", "NAME="+ssb.name, "NAMESPACE="+ssb.namespace,
+		"PROFILENAME1="+ssb.profilename1, "PROFILEKIND1="+ssb.profilekind1, "PROFILENAME2="+ssb.profilename2, "SCANSETTINGNAME="+ssb.scansettingname)
+	o.Expect(err).NotTo(o.HaveOccurred())
+	dr.getIr(itName).add(newResource(oc, "scansettingbinding", ssb.name, requireNS, ssb.namespace))
+}
+
+func (csuite *complianceSuiteDescription) delete(itName string, dr describerResrouce) {
+	dr.getIr(itName).remove(csuite.name, "compliancesuite", csuite.namespace)
+}
+
+func cleanupObjects(oc *exutil.CLI, objs ...objectTableRef) {
+	for _, v := range objs {
+		e2e.Logf("Start to remove: %v", v)
+		_, err := oc.AsAdmin().WithoutNamespace().Run("delete").Args(v.kind, "-n", v.namespace, v.name).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+	}
+}
+
 func (cscan *complianceScanDescription) create(oc *exutil.CLI, itName string, dr describerResrouce) {
 	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", cscan.template, "-p", "NAME="+cscan.name,
 		"NAMESPACE="+cscan.namespace, "SCANTYPE="+cscan.scanType, "PROFILE="+cscan.profile, "CONTENT="+cscan.content,
@@ -112,18 +155,6 @@ func (cscan *complianceScanDescription) delete(itName string, dr describerResrou
 	dr.getIr(itName).remove(cscan.name, "compliancescan", cscan.namespace)
 }
 
-type tailoredProfileDescription struct {
-	name         string
-	namespace    string
-	extends      string
-	enrulename1  string
-	disrulename1 string
-	disrulename2 string
-	varname      string
-	value        string
-	template     string
-}
-
 func (tprofile *tailoredProfileDescription) create(oc *exutil.CLI, itName string, dr describerResrouce) {
 	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", tprofile.template, "-p", "NAME="+tprofile.name, "NAMESPACE="+tprofile.namespace,
 		"EXTENDS="+tprofile.extends, "ENRULENAME1="+tprofile.enrulename1, "DISRULENAME1="+tprofile.disrulename1, "DISRULENAME2="+tprofile.disrulename2,
@@ -133,6 +164,18 @@ func (tprofile *tailoredProfileDescription) create(oc *exutil.CLI, itName string
 }
 
 func (tprofile *tailoredProfileDescription) delete(itName string, dr describerResrouce) {
+	dr.getIr(itName).remove(tprofile.name, "tailoredprofile", tprofile.namespace)
+}
+
+func (tprofile *tailoredProfileWithoutVarDescription) create(oc *exutil.CLI, itName string, dr describerResrouce) {
+	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", tprofile.template, "-p", "NAME="+tprofile.name, "NAMESPACE="+tprofile.namespace,
+		"EXTENDS="+tprofile.extends, "ENRULENAME1="+tprofile.enrulename1, "ENRULENAME2="+tprofile.enrulename2, "DISRULENAME1="+tprofile.disrulename1,
+		"DISRULENAME2="+tprofile.disrulename2)
+	o.Expect(err).NotTo(o.HaveOccurred())
+	dr.getIr(itName).add(newResource(oc, "tailoredprofile", tprofile.name, requireNS, tprofile.namespace))
+}
+
+func (tprofile *tailoredProfileWithoutVarDescription) delete(itName string, dr describerResrouce) {
 	dr.getIr(itName).remove(tprofile.name, "tailoredprofile", tprofile.namespace)
 }
 
@@ -148,7 +191,7 @@ func (csuite *complianceSuiteDescription) checkComplianceSuiteStatus(oc *exutil.
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
-func setLabelToNode(oc *exutil.CLI) string {
+func setLabelToNode(oc *exutil.CLI) {
 	nodeName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("nodes", "--selector=node-role.kubernetes.io/worker=,node.openshift.io/os_id=rhcos",
 		"-o=jsonpath={.items[*].metadata.name}").Output()
 	o.Expect(err).NotTo(o.HaveOccurred())
@@ -161,7 +204,6 @@ func setLabelToNode(oc *exutil.CLI) string {
 			o.Expect(err).NotTo(o.HaveOccurred())
 		}
 	}
-	return nodeName
 }
 
 func getOneRhcosWorkerNodeName(oc *exutil.CLI) string {

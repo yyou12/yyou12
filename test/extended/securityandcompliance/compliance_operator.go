@@ -30,7 +30,8 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		cscantaintTemplate         = filepath.Join(buildPruningBaseDir, "compliancescantaint.yaml")
 		cscantaintsTemplate        = filepath.Join(buildPruningBaseDir, "compliancescantaints.yaml")
 		tprofileTemplate           = filepath.Join(buildPruningBaseDir, "tailoredprofile.yaml")
-		scansettingYAML            = filepath.Join(buildPruningBaseDir, "scansetting.yaml")
+		tprofileWithoutVarTemplate = filepath.Join(buildPruningBaseDir, "tailoredprofile-withoutvariable.yaml")
+		scansettingTemplate        = filepath.Join(buildPruningBaseDir, "scansetting.yaml")
 		scansettingbindingTemplate = filepath.Join(buildPruningBaseDir, "scansettingbinding.yaml")
 		pvextractpodYAML           = filepath.Join(buildPruningBaseDir, "pv-extract-pod.yaml")
 		podModifyTemplate          = filepath.Join(buildPruningBaseDir, "pod_modify.yaml")
@@ -386,13 +387,24 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 					value:        "permissive",
 					template:     tprofileTemplate,
 				}
+				ss = scanSettingDescription{
+					autoapplyremediations: false,
+					name:                  "myss",
+					namespace:             "",
+					roles1:                "master",
+					roles2:                "worker",
+					rotation:              10,
+					schedule:              "0 1 * * *",
+					size:                  "2Gi",
+					template:              scansettingTemplate,
+				}
 				ssb = scanSettingBindingDescription{
 					name:            "co-requirement",
 					namespace:       "",
 					profilekind1:    "TailoredProfile",
 					profilename1:    "rhcos-tp",
 					profilename2:    "ocp4-moderate",
-					scansettingname: "co-setting",
+					scansettingname: "",
 					template:        scansettingbindingTemplate,
 				}
 				itName = g.CurrentGinkgoTestDescription().TestText
@@ -402,18 +414,17 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			// [1] https://bugzilla.redhat.com/show_bug.cgi?id=1858186
 			defer cleanupObjects(oc,
 				objectTableRef{"scansettingbinding", subD.namespace, ssb.name},
-				objectTableRef{"scansetting", subD.namespace, ssb.scansettingname},
+				objectTableRef{"scansetting", subD.namespace, ss.name},
 				objectTableRef{"tailoredprofile", subD.namespace, ssb.profilename1})
-
-			// adding label to rhcos worker node to skip rhel worker node if any
-			g.By("Label all rhcos worker nodes as wscan !!!\n")
-			setLabelToNode(oc)
 
 			g.By("Check default profiles name rhcos4-e8 .. !!!\n")
 			subD.getProfileName(oc, "rhcos4-e8")
 
 			tprofileD.namespace = subD.namespace
 			ssb.namespace = subD.namespace
+			ss.namespace = subD.namespace
+			ssb.scansettingname = ss.name
+
 			g.By("Create tailoredprofile rhcos-tp !!!\n")
 			tprofileD.create(oc, itName, dr)
 
@@ -421,14 +432,14 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			subD.getTailoredProfileNameandStatus(oc, "rhcos-tp")
 
 			g.By("Create scansetting !!!\n")
-			_, err := oc.AsAdmin().WithoutNamespace().Run("create").Args("-n", subD.namespace, "-f", scansettingYAML).Output()
-			o.Expect(err).NotTo(o.HaveOccurred())
-			newCheck("expect", asAdmin, withoutNamespace, contain, "co-setting", ok, []string{"scansetting", "-n", subD.namespace,
-				"-o=jsonpath={.items[0].metadata.name}"}).check(oc)
+
+			ss.create(oc, itName, dr)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "myss", ok, []string{"scansetting", "-n", ss.namespace, ss.name,
+				"-o=jsonpath={.metadata.name}"}).check(oc)
 
 			g.By("Create scansettingbinding !!!\n")
 			ssb.create(oc, itName, dr)
-			newCheck("expect", asAdmin, withoutNamespace, contain, ssb.name, ok, []string{"scansettingbinding", "-n", subD.namespace,
+			newCheck("expect", asAdmin, withoutNamespace, contain, "co-requirement", ok, []string{"scansettingbinding", "-n", subD.namespace,
 				"-o=jsonpath={.items[0].metadata.name}"}).check(oc)
 
 			g.By("Check ComplianceSuite status !!!\n")
@@ -439,7 +450,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 
 			g.By("Check complianceSuite name and result.. !!!\n")
 			subD.complianceSuiteName(oc, "co-requirement")
-			subD.complianceSuiteResult(oc, ssb.name, "NON-COMPLIANT")
+			subD.complianceSuiteResult(oc, ssb.name, "NON-COMPLIANT INCONSISTENT")
 
 			g.By("Check complianceSuite result through exit-code.. !!!\n")
 			subD.getScanExitCodeFromConfigmap(oc, "2")
@@ -594,10 +605,6 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 				}
 				itName = g.CurrentGinkgoTestDescription().TestText
 			)
-
-			// adding label to rhcos worker node to skip rhel worker node if any
-			g.By("Label all rhcos worker nodes as wscan !!!\n")
-			setLabelToNode(oc)
 
 			g.By("Check default profiles name ocp4-cis .. !!!\n")
 			subD.getProfileName(oc, "ocp4-cis")
@@ -1988,6 +1995,85 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			subD.getScanExitCodeFromConfigmap(oc, "2")
 
 			g.By("ocp-37171 Check compliancesuite status when there are multiple rhcos4 profiles added in scansettingbinding object successfully... !!!\n")
+		})
+
+		// author: xiyuan@redhat.com
+		g.It("High-37084-The ComplianceSuite generates through ScanSettingBinding CR with tailored cis profile", func() {
+			var (
+				tp = tailoredProfileWithoutVarDescription{
+					name:         "ocp4-cis-custom",
+					namespace:    "",
+					extends:      "ocp4-cis",
+					enrulename1:  "ocp4-scc-limit-root-containers",
+					enrulename2:  "ocp4-scheduler-no-bind-address",
+					disrulename1: "ocp4-api-server-encryption-provider-cipher",
+					disrulename2: "ocp4-scc-drop-container-capabilities",
+					template:     tprofileWithoutVarTemplate,
+				}
+				ss = scanSettingDescription{
+					autoapplyremediations: true,
+					name:                  "myss",
+					namespace:             "",
+					roles1:                "master",
+					roles2:                "worker",
+					rotation:              5,
+					schedule:              "0 1 * * *",
+					size:                  "2Gi",
+					template:              scansettingTemplate,
+				}
+				ssb = scanSettingBindingDescription{
+					name:            "my-companys-compliance-requirements",
+					namespace:       "",
+					profilekind1:    "TailoredProfile",
+					profilename1:    "ocp4-cis-custom",
+					profilename2:    "ocp4-cis-node",
+					scansettingname: "myss",
+					template:        scansettingbindingTemplate,
+				}
+			)
+
+			// These are special steps to overcome problem which are discussed in [1] so that namespace should not stuck in 'Terminating' state
+			// [1] https://bugzilla.redhat.com/show_bug.cgi?id=1858186
+			defer cleanupObjects(oc,
+			        objectTableRef{"scansettingbinding", subD.namespace, ssb.name},
+				objectTableRef{"scansetting", subD.namespace, ss.name},
+				objectTableRef{"tailoredprofile", subD.namespace, tp.name})
+
+			g.By("Check default profiles name ocp4-cis and ocp4-cis-node.. !!!\n")
+			subD.getProfileName(oc, "ocp4-cis")
+			subD.getProfileName(oc, "ocp4-cis-node")
+
+			tp.namespace = subD.namespace
+			g.By("Create tailoredprofile !!!\n")
+			tp.create(oc, itName, dr)
+			subD.getTailoredProfileNameandStatus(oc, tp.name)
+
+			g.By("Create scansetting !!!\n")
+			ss.namespace = subD.namespace
+			ss.create(oc, itName, dr)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "myss", ok, []string{"scansetting", ss.name, "-n", ss.namespace,
+				"-o=jsonpath={.metadata.name}"}).check(oc)
+
+			g.By("Create scansettingbinding !!!\n")
+			ssb.namespace = subD.namespace
+			ssb.create(oc, itName, dr)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "my-companys-compliance-requirements", ok, []string{"scansettingbinding", "-n", ssb.namespace,
+				"-o=jsonpath={.items[0].metadata.name}"}).check(oc)
+
+			g.By("Check ComplianceSuite status !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", ssb.name, "-n", ssb.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+
+			g.By("Check worker and master scan pods status.. !!! \n")
+			subD.scanPodStatus(oc, "Succeeded")
+
+			g.By("Check complianceSuite name and result.. !!!\n")
+			subD.complianceSuiteName(oc, ssb.name)
+			subD.complianceSuiteResult(oc, ssb.name, "NON-COMPLIANT INCONSISTENT")
+
+			g.By("Check complianceSuite result through exit-code.. !!!\n")
+			subD.getScanExitCodeFromConfigmap(oc, "2")
+
+			g.By("ocp-37084 The ComplianceSuite generates through ScanSettingBinding CR with tailored cis profile successfully... !!!\n")
 		})
 	})
 
