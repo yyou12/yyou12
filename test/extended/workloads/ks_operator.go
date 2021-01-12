@@ -16,7 +16,7 @@ import (
 var _ = g.Describe("[sig-apps] Workloads", func() {
 	defer g.GinkgoRecover()
 
-	var oc = exutil.NewCLIWithoutNamespace("default")
+	var oc = exutil.NewCLI("default-"+getRandomString(), exutil.KubeConfigPath())
 
 	// author: yinzhou@redhat.com
 	//It is destructive case, will make kube-scheduler roll out, so adding [Disruptive]. One rollout costs about 5mins, so adding [Slow]

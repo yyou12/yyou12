@@ -17,7 +17,7 @@ import (
 var _ = g.Describe("[sig-scheduling] Workloads", func() {
 	defer g.GinkgoRecover()
 
-	var oc = exutil.NewCLIWithoutNamespace("default")
+	var oc = exutil.NewCLI("default-"+getRandomString(), exutil.KubeConfigPath())
 
 	// author: yinzhou@redhat.com
 	g.It("Medium-13538-Check Existing pods with matched NoExecute will stay on node for time of tolerationSeconds [Disruptive]", func() {
@@ -26,12 +26,10 @@ var _ = g.Describe("[sig-scheduling] Workloads", func() {
 
 		g.By("Test for case OCP-13538")
 		g.By("create new namespace")
-		err := oc.AsAdmin().WithoutNamespace().Run("create").Args("ns", "test-13538").Execute()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("ns", "test-13538").Execute()
+		oc.SetupProject()
 
 		pod13538 := podTolerate{
-			namespace:      "test-13538",
+			namespace:      oc.Namespace(),
 			keyName:        "key1",
 			operatorPolicy: "Equal",
 			valueName:      "value1",
@@ -42,11 +40,10 @@ var _ = g.Describe("[sig-scheduling] Workloads", func() {
 
 		g.By("Trying to launch a pod with toleration")
 		pod13538.createPodTolerate(oc)
-		o.Expect(err).NotTo(o.HaveOccurred())
 		pod13538nodename := getPodNodeName(oc, "test-13538", "tolerationseconds-1")
 
 		g.By("Add a matched taint on the node")
-		err = oc.AsAdmin().WithoutNamespace().Run("adm").Args("taint", "node", pod13538nodename, "key1=value1:NoExecute").Execute()
+		err := oc.AsAdmin().WithoutNamespace().Run("adm").Args("taint", "node", pod13538nodename, "key1=value1:NoExecute").Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		defer oc.AsAdmin().WithoutNamespace().Run("adm").Args("taint", "node", pod13538nodename, "key1:NoExecute-").Execute()
 

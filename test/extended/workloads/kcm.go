@@ -16,7 +16,7 @@ import (
 var _ = g.Describe("[sig-apps] Workloads", func() {
 	defer g.GinkgoRecover()
 
-	var oc = exutil.NewCLIWithoutNamespace("default")
+	var oc = exutil.NewCLI("default-"+getRandomString(), exutil.KubeConfigPath())
 
 	// author: yinzhou@redhat.com
 	g.It("High-28001-bug 1749478 KCM should recover when its temporary secrets are deleted [Disruptive]", func() {

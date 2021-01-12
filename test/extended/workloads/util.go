@@ -264,7 +264,7 @@ func (pod *podAffinityPreferredPts) getPodNodeName(oc *exutil.CLI) string {
 func applyResourceFromTemplate(oc *exutil.CLI, parameters ...string) error {
 	var configFile string
 	err := wait.Poll(3*time.Second, 15*time.Second, func() (bool, error) {
-		output, err := oc.WithoutNamespace().Run("process").Args(parameters...).OutputToFile(getRandomString() + "workload-config.json")
+		output, err := oc.Run("process").Args(parameters...).OutputToFile(getRandomString() + "workload-config.json")
 		if err != nil {
 			e2e.Logf("the err:%v, and try next round", err)
 			return false, nil

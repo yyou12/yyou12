@@ -18,7 +18,7 @@ var _ = g.Describe("[sig-apps] Workloads", func() {
 		hostport = "8443"
 	)
 	var (
-		oc = exutil.NewCLIWithoutNamespace("default")
+		oc = exutil.NewCLI("default-"+getRandomString(), exutil.KubeConfigPath())
 	)
 	g.It("Medium-29780-Controller metrics reported from openshift-controller-manager", func() {
 		g.By("check controller metrics")

@@ -17,7 +17,7 @@ import (
 var _ = g.Describe("[sig-scheduling] Workloads", func() {
 	defer g.GinkgoRecover()
 
-	var oc = exutil.NewCLIWithoutNamespace("default")
+	var oc = exutil.NewCLI("default-"+getRandomString(), exutil.KubeConfigPath())
 
 	// author: yinzhou@redhat.com
 	g.It("Critical-33836-Critical-33845-High-33767-Check Validate Pod with only one TopologySpreadConstraint topologyKey node", func() {
@@ -50,13 +50,11 @@ var _ = g.Describe("[sig-scheduling] Workloads", func() {
 
 		g.By("Test for case OCP-33836")
 		g.By("create new namespace")
-		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("ns", "test-pts-33836").Execute()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("ns", "test-pts-33836").Execute()
+		oc.SetupProject()
 
 		pod1 := podNodeSelector{
 			name:       "mypod1-33836",
-			namespace:  "test-pts-33836",
+			namespace:  oc.Namespace(),
 			nodeKey:    "node",
 			nodeValue:  "node1",
 			labelKey:   "foo",
@@ -66,7 +64,7 @@ var _ = g.Describe("[sig-scheduling] Workloads", func() {
 
 		pod2 := podNodeSelector{
 			name:       "mypod2-33836",
-			namespace:  "test-pts-33836",
+			namespace:  oc.Namespace(),
 			nodeKey:    "node",
 			nodeValue:  "node2",
 			labelKey:   "foo",
@@ -76,7 +74,7 @@ var _ = g.Describe("[sig-scheduling] Workloads", func() {
 
 		pod3 := podSinglePts{
 			name:       "mypod3-33836",
-			namespace:  "test-pts-33836",
+			namespace:  oc.Namespace(),
 			labelKey:   "foo",
 			labelValue: "bar",
 			ptsKeyName: "node",
@@ -104,13 +102,11 @@ var _ = g.Describe("[sig-scheduling] Workloads", func() {
 
 		g.By("Test for case OCP-33845")
 		g.By("create new namespace")
-		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("ns", "test-pts-33845").Execute()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("ns", "test-pts-33845").Execute()
+		oc.SetupProject()
 
 		pod338451 := podNodeSelector{
 			name:       "mypod1-33845",
-			namespace:  "test-pts-33845",
+			namespace:  oc.Namespace(),
 			nodeKey:    "node",
 			nodeValue:  "node1",
 			labelKey:   "foo",
@@ -120,7 +116,7 @@ var _ = g.Describe("[sig-scheduling] Workloads", func() {
 
 		pod338452 := podNodeSelector{
 			name:       "mypod2-33845",
-			namespace:  "test-pts-33845",
+			namespace:  oc.Namespace(),
 			nodeKey:    "node",
 			nodeValue:  "node2",
 			labelKey:   "foo",
@@ -130,7 +126,7 @@ var _ = g.Describe("[sig-scheduling] Workloads", func() {
 
 		pod338453 := podNodeSelector{
 			name:       "mypod3-33845",
-			namespace:  "test-pts-33845",
+			namespace:  oc.Namespace(),
 			nodeKey:    "node",
 			nodeValue:  "node3",
 			labelKey:   "foo",
@@ -140,7 +136,7 @@ var _ = g.Describe("[sig-scheduling] Workloads", func() {
 
 		pod338454 := podSinglePts{
 			name:       "mypod4-33845",
-			namespace:  "test-pts-33845",
+			namespace:  oc.Namespace(),
 			labelKey:   "foo",
 			labelValue: "bar",
 			ptsKeyName: "zone",
@@ -175,13 +171,11 @@ var _ = g.Describe("[sig-scheduling] Workloads", func() {
 
 		g.By("Test for case OCP-33767")
 		g.By("create new namespace")
-		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("ns", "test-pts-33767").Execute()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("ns", "test-pts-33767").Execute()
+		oc.SetupProject()
 
 		pod337671 := podSinglePtsNodeSelector{
 			name:       "mypod1-33767",
-			namespace:  "test-pts-33767",
+			namespace:  oc.Namespace(),
 			labelKey:   "foo",
 			labelValue: "bar",
 			ptsKeyName: "node",
@@ -194,7 +188,7 @@ var _ = g.Describe("[sig-scheduling] Workloads", func() {
 
 		pod337672 := podSinglePtsNodeSelector{
 			name:       "mypod2-33767",
-			namespace:  "test-pts-33767",
+			namespace:  oc.Namespace(),
 			labelKey:   "foo",
 			labelValue: "bar",
 			ptsKeyName: "node",
@@ -246,13 +240,11 @@ var _ = g.Describe("[sig-scheduling] Workloads", func() {
 
 		g.By("Test for case OCP-34019")
 		g.By("create new namespace")
-		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("ns", "test-pts-34019").Execute()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("ns", "test-pts-34019").Execute()
+		oc.SetupProject()
 
 		deploy34019 := deploySinglePts{
 			dName:      "d34019",
-			namespace:  "test-pts-34019",
+			namespace:  oc.Namespace(),
 			replicaNum: 2,
 			labelKey:   "foo",
 			labelValue: "bar",
@@ -333,13 +325,11 @@ var _ = g.Describe("[sig-scheduling] Workloads", func() {
 
 		g.By("Test for case OCP-33824")
 		g.By("create new namespace")
-		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("ns", "test-pts-33824").Execute()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("ns", "test-pts-33824").Execute()
+		oc.SetupProject()
 
 		pod338241 := podNodeSelector{
 			name:       "mypod1-33824",
-			namespace:  "test-pts-33824",
+			namespace:  oc.Namespace(),
 			nodeKey:    "node33824",
 			nodeValue:  "node338241",
 			labelKey:   "foo",
@@ -349,7 +339,7 @@ var _ = g.Describe("[sig-scheduling] Workloads", func() {
 
 		pod338242 := podNodeSelector{
 			name:       "mypod2-33824",
-			namespace:  "test-pts-33824",
+			namespace:  oc.Namespace(),
 			nodeKey:    "node33824",
 			nodeValue:  "node338243",
 			labelKey:   "security",
@@ -359,7 +349,7 @@ var _ = g.Describe("[sig-scheduling] Workloads", func() {
 
 		pod338243 := podAffinityPreferredPts{
 			name:           "mypod3-33824",
-			namespace:      "test-pts-33824",
+			namespace:      oc.Namespace(),
 			labelKey:       "foo",
 			labelValue:     "bar",
 			ptsKeyName:     "zone33824",
@@ -375,7 +365,7 @@ var _ = g.Describe("[sig-scheduling] Workloads", func() {
 
 		pod338244 := podAffinityRequiredPts{
 			name:           "mypod4-33824",
-			namespace:      "test-pts-33824",
+			namespace:      oc.Namespace(),
 			labelKey:       "foo",
 			labelValue:     "bar",
 			ptsKeyName:     "zone33824",
@@ -390,7 +380,7 @@ var _ = g.Describe("[sig-scheduling] Workloads", func() {
 
 		pod338245 := podAffinityRequiredPts{
 			name:           "mypod5-33824",
-			namespace:      "test-pts-33824",
+			namespace:      oc.Namespace(),
 			labelKey:       "foo",
 			labelValue:     "bar",
 			ptsKeyName:     "zone33824",
@@ -465,18 +455,11 @@ var _ = g.Describe("[sig-scheduling] Workloads", func() {
 
 		g.By("Test for case OCP-34017")
 		g.By("create new namespace")
-		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("ns", "test-pts-34017").Execute()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("ns", "test-pts-34017").Execute()
-
-		g.By("create second namespace")
-		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("ns", "test-pts-340171").Execute()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("ns", "test-pts-340171").Execute()
+		oc.SetupProject()
 
 		pod1 := podNodeSelector{
 			name:       "pod1-34017",
-			namespace:  "test-pts-34017",
+			namespace:  oc.Namespace(),
 			nodeKey:    "node34017",
 			nodeValue:  "node340171",
 			labelKey:   "foo",
@@ -485,29 +468,12 @@ var _ = g.Describe("[sig-scheduling] Workloads", func() {
 		}
 		pod2 := podNodeSelector{
 			name:       "pod2-34017",
-			namespace:  "test-pts-34017",
+			namespace:  oc.Namespace(),
 			nodeKey:    "node34017",
 			nodeValue:  "node340172",
 			labelKey:   "foo",
 			labelValue: "bar",
 			template:   podSelectorT,
-		}
-		pod3 := podNodeAffinityRequiredPts{
-			name:           "pod3-34017",
-			namespace:      "test-pts-340171",
-			labelKey:       "foo",
-			labelValue:     "bar",
-			ptsKeyName:     "zone34017",
-			ptsPolicy:      "DoNotSchedule",
-			skewNum:        1,
-			ptsKey2Name:    "node34017",
-			ptsPolicy2:     "DoNotSchedule",
-			skewNum2:       1,
-			affinityMethod: "nodeAffinity",
-			keyName:        "zone34017",
-			operatorName:   "NotIn",
-			valueName:      "zone34017B",
-			template:       podNodeAffinityRequiredPtsT,
 		}
 
 		g.By("Trying to launch a pod with a label to node1")
@@ -521,6 +487,27 @@ var _ = g.Describe("[sig-scheduling] Workloads", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 		pod2nodename := pod2.getPodNodeName(oc)
 		e2e.ExpectEqual(nodeList.Items[1].Name, pod2nodename)
+
+		g.By("create second namespace")
+		oc.SetupProject()
+
+                pod3 := podNodeAffinityRequiredPts{
+                        name:           "pod3-34017",
+                        namespace:      oc.Namespace(),
+                        labelKey:       "foo",
+                        labelValue:     "bar",
+                        ptsKeyName:     "zone34017",
+                        ptsPolicy:      "DoNotSchedule",
+                        skewNum:        1,
+                        ptsKey2Name:    "node34017",
+                        ptsPolicy2:     "DoNotSchedule",
+                        skewNum2:       1,
+                        affinityMethod: "nodeAffinity",
+                        keyName:        "zone34017",
+                        operatorName:   "NotIn",
+                        valueName:      "zone34017B",
+                        template:       podNodeAffinityRequiredPtsT,
+                }
 
 		g.By("Trying to launch a pod with nodeAffinity not to second node")
 		pod3.createpodNodeAffinityRequiredPts(oc)
@@ -559,13 +546,11 @@ var _ = g.Describe("[sig-scheduling] Workloads", func() {
 
 		g.By("Test for case OCP-34014")
 		g.By("create new namespace")
-		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("ns", "test-pts-34014").Execute()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("ns", "test-pts-34014").Execute()
+		oc.SetupProject()
 
 		pod340141 := podSingleNodeAffinityRequiredPts{
                         name:           "pod1-34014",
-                        namespace:      "test-pts-34014",
+                        namespace:      oc.Namespace(),
                         labelKey:       "foo",
                         labelValue:     "bar",
                         ptsKeyName:     "node34014",
@@ -580,7 +565,7 @@ var _ = g.Describe("[sig-scheduling] Workloads", func() {
 
 		pod340142 := podSingleNodeAffinityRequiredPts{
 			name:           "pod2-34014",
-			namespace:      "test-pts-34014",
+                        namespace:      oc.Namespace(),
 			labelKey:       "foo",
 			labelValue:     "bar",
 			ptsKeyName:     "node34014",
