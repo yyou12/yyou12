@@ -13,17 +13,34 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 	defer g.GinkgoRecover()
 
 	var (
-		oc = exutil.NewCLI("fio-"+getRandomString(), exutil.KubeConfigPath())
+		oc                  = exutil.NewCLI("fio-"+getRandomString(), exutil.KubeConfigPath())
+		dr                  = make(describerResrouce)
+		buildPruningBaseDir string
+		ogSingleTemplate    string
+		catsrcImageTemplate string
+		subTemplate         string
+		fioTemplate         string
+		podModifyTemplate   string
+		configFile          string
+		configErrFile       string
+		configFile1         string
+		catsrc              catalogSourceDescription
+		og                  operatorGroupDescription
+		sub                 subscriptionDescription
+		fi1                 fileintegrity
+		podModifyD          podModify
+	)
 
+	g.BeforeEach(func() {
 		buildPruningBaseDir = exutil.FixturePath("testdata", "securityandcompliance")
-		ogSingleTemplate    = filepath.Join(buildPruningBaseDir, "operator-group.yaml")
+		ogSingleTemplate = filepath.Join(buildPruningBaseDir, "operator-group.yaml")
 		catsrcImageTemplate = filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
-		subTemplate         = filepath.Join(buildPruningBaseDir, "subscription.yaml")
-		fioTemplate         = filepath.Join(buildPruningBaseDir, "fileintegrity.yaml")
-		podModifyTemplate   = filepath.Join(buildPruningBaseDir, "pod_modify.yaml")
-		configFile          = filepath.Join(buildPruningBaseDir, "aide.conf.rhel8")
-		configErrFile       = filepath.Join(buildPruningBaseDir, "aide.conf.rhel8.err")
-		configFile1         = filepath.Join(buildPruningBaseDir, "aide.conf.rhel8.1")
+		subTemplate = filepath.Join(buildPruningBaseDir, "subscription.yaml")
+		fioTemplate = filepath.Join(buildPruningBaseDir, "fileintegrity.yaml")
+		podModifyTemplate = filepath.Join(buildPruningBaseDir, "pod_modify.yaml")
+		configFile = filepath.Join(buildPruningBaseDir, "aide.conf.rhel8")
+		configErrFile = filepath.Join(buildPruningBaseDir, "aide.conf.rhel8.err")
+		configFile1 = filepath.Join(buildPruningBaseDir, "aide.conf.rhel8.1")
 
 		catsrc = catalogSourceDescription{
 			name:        "file-integrity-operator",
@@ -71,10 +88,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 			args:      "",
 			template:  podModifyTemplate,
 		}
-		dr = make(describerResrouce)
-	)
 
-	g.BeforeEach(func() {
 		itName := g.CurrentGinkgoTestDescription().TestText
 		dr.addIr(itName)
 	})

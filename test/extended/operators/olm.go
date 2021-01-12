@@ -1569,13 +1569,21 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 	defer g.GinkgoRecover()
 
 	var (
-		oc = exutil.NewCLI("olm-a-"+getRandomString(), exutil.KubeConfigPath())
-
-		buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
-		ogSingleTemplate    = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
-		catsrcImageTemplate = filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
-		subTemplate         = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+		oc                  = exutil.NewCLI("olm-a-"+getRandomString(), exutil.KubeConfigPath())
+		buildPruningBaseDir string
+		ogSingleTemplate    string
+		catsrcImageTemplate string
+		subTemplate         string
+		ogD                 operatorGroupDescription
+		subD                subscriptionDescription
 		dr                  = make(describerResrouce)
+	)
+
+	g.BeforeEach(func() {
+		buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
+		ogSingleTemplate = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+		catsrcImageTemplate = filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
+		subTemplate = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
 
 		ogD = operatorGroupDescription{
 			name:      "og-singlenamespace",
@@ -1596,9 +1604,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 			template:               subTemplate,
 			singleNamespace:        true,
 		}
-	)
 
-	g.BeforeEach(func() {
 		itName := g.CurrentGinkgoTestDescription().TestText
 		dr.addIr(itName)
 	})
@@ -2972,20 +2978,42 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle to support", func
 	defer g.GinkgoRecover()
 
 	var (
-		oc = exutil.NewCLI("olm-cm-"+getRandomString(), exutil.KubeConfigPath())
+		oc                      = exutil.NewCLI("olm-cm-"+getRandomString(), exutil.KubeConfigPath())
+		dr                      = make(describerResrouce)
+		buildPruningBaseDir     string
+		cmNcTemplate            string
+		cmReadyTestTemplate     string
+		cmReadyTestsTemplate    string
+		cmLearnV1Template       string
+		cmLearnV2Template       string
+		catsrcCmTemplate        string
+		ogTemplate              string
+		ogMultiTemplate         string
+		subTemplate             string
+		crdOlmtestTemplate      string
+		cmNc                    configMapDescription
+		cmLearn                 configMapDescription
+		cmCertUtilReadytest     configMapDescription
+		catsrcNc                catalogSourceDescription
+		catsrcLearn             catalogSourceDescription
+		catsrcCertUtilReadytest catalogSourceDescription
+		subNc                   subscriptionDescription
+		subLearn                subscriptionDescription
+		subCertUtilReadytest    subscriptionDescription
+	)
 
-		buildPruningBaseDir  = exutil.FixturePath("testdata", "olm")
-		cmNcTemplate         = filepath.Join(buildPruningBaseDir, "cm-namespaceconfig.yaml")
-		cmReadyTestTemplate  = filepath.Join(buildPruningBaseDir, "cm-certutil-readytest.yaml")
+	g.BeforeEach(func() {
+		buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
+		cmNcTemplate = filepath.Join(buildPruningBaseDir, "cm-namespaceconfig.yaml")
+		cmReadyTestTemplate = filepath.Join(buildPruningBaseDir, "cm-certutil-readytest.yaml")
 		cmReadyTestsTemplate = filepath.Join(buildPruningBaseDir, "cm-certutil-readytests.yaml")
-		cmLearnV1Template    = filepath.Join(buildPruningBaseDir, "cm-learn-v1.yaml")
-		cmLearnV2Template    = filepath.Join(buildPruningBaseDir, "cm-learn-v2.yaml")
-		catsrcCmTemplate     = filepath.Join(buildPruningBaseDir, "catalogsource-configmap.yaml")
-		ogTemplate           = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
-		ogMultiTemplate      = filepath.Join(buildPruningBaseDir, "og-multins.yaml")
-		subTemplate          = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
-		crdOlmtestTemplate   = filepath.Join(buildPruningBaseDir, "crd-olmtest.yaml")
-		dr                   = make(describerResrouce)
+		cmLearnV1Template = filepath.Join(buildPruningBaseDir, "cm-learn-v1.yaml")
+		cmLearnV2Template = filepath.Join(buildPruningBaseDir, "cm-learn-v2.yaml")
+		catsrcCmTemplate = filepath.Join(buildPruningBaseDir, "catalogsource-configmap.yaml")
+		ogTemplate = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+		ogMultiTemplate = filepath.Join(buildPruningBaseDir, "og-multins.yaml")
+		subTemplate = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+		crdOlmtestTemplate = filepath.Join(buildPruningBaseDir, "crd-olmtest.yaml")
 
 		cmNc = configMapDescription{
 			name:      "cm-community-namespaceconfig-operators",
@@ -3071,9 +3099,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle to support", func
 			template:               subTemplate,
 			singleNamespace:        true,
 		}
-	)
 
-	g.BeforeEach(func() {
 		itName := g.CurrentGinkgoTestDescription().TestText
 		dr.addIr(itName)
 	})
@@ -3366,14 +3392,16 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within all namesp
 	defer g.GinkgoRecover()
 
 	var (
-		oc = exutil.NewCLI("olm-all-"+getRandomString(), exutil.KubeConfigPath())
-
-		buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
-		subTemplate         = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+		oc                  = exutil.NewCLI("olm-all-"+getRandomString(), exutil.KubeConfigPath())
+		buildPruningBaseDir string
+		subTemplate         string
 		dr                  = make(describerResrouce)
 	)
 
 	g.BeforeEach(func() {
+		buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
+		subTemplate = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+
 		itName := g.CurrentGinkgoTestDescription().TestText
 		dr.addIr(itName)
 	})

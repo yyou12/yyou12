@@ -18,24 +18,48 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 
 	var (
 		oc                         = exutil.NewCLI("compliance-"+getRandomString(), exutil.KubeConfigPath())
-		buildPruningBaseDir        = exutil.FixturePath("testdata", "securityandcompliance")
-		ogCoTemplate               = filepath.Join(buildPruningBaseDir, "operator-group.yaml")
-		catsrcCoTemplate           = filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
-		subCoTemplate              = filepath.Join(buildPruningBaseDir, "subscription.yaml")
-		csuiteTemplate             = filepath.Join(buildPruningBaseDir, "compliancesuite.yaml")
-		csuitetpcmTemplate         = filepath.Join(buildPruningBaseDir, "compliancesuitetpconfmap.yaml")
-		csuitetaintTemplate        = filepath.Join(buildPruningBaseDir, "compliancesuitetaint.yaml")
-		csuitenodeTemplate         = filepath.Join(buildPruningBaseDir, "compliancesuitenodes.yaml")
-		cscanTemplate              = filepath.Join(buildPruningBaseDir, "compliancescan.yaml")
-		cscantaintTemplate         = filepath.Join(buildPruningBaseDir, "compliancescantaint.yaml")
-		cscantaintsTemplate        = filepath.Join(buildPruningBaseDir, "compliancescantaints.yaml")
-		tprofileTemplate           = filepath.Join(buildPruningBaseDir, "tailoredprofile.yaml")
-		tprofileWithoutVarTemplate = filepath.Join(buildPruningBaseDir, "tailoredprofile-withoutvariable.yaml")
-		scansettingTemplate        = filepath.Join(buildPruningBaseDir, "scansetting.yaml")
-		scansettingbindingTemplate = filepath.Join(buildPruningBaseDir, "scansettingbinding.yaml")
-		pvextractpodYAML           = filepath.Join(buildPruningBaseDir, "pv-extract-pod.yaml")
-		podModifyTemplate          = filepath.Join(buildPruningBaseDir, "pod_modify.yaml")
 		dr                         = make(describerResrouce)
+		buildPruningBaseDir        string
+		ogCoTemplate               string
+		catsrcCoTemplate           string
+		subCoTemplate              string
+		csuiteTemplate             string
+		csuitetpcmTemplate         string
+		csuitetaintTemplate        string
+		csuitenodeTemplate         string
+		cscanTemplate              string
+		cscantaintTemplate         string
+		cscantaintsTemplate        string
+		tprofileTemplate           string
+		tprofileWithoutVarTemplate string
+		scansettingTemplate        string
+		scansettingbindingTemplate string
+		pvextractpodYAML           string
+		podModifyTemplate          string
+		catSrc                     catalogSourceDescription
+		ogD                        operatorGroupDescription
+		subD                       subscriptionDescription
+		podModifyD                 podModify
+	)
+
+	g.BeforeEach(func() {
+		buildPruningBaseDir = exutil.FixturePath("testdata", "securityandcompliance")
+		ogCoTemplate = filepath.Join(buildPruningBaseDir, "operator-group.yaml")
+		catsrcCoTemplate = filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
+		subCoTemplate = filepath.Join(buildPruningBaseDir, "subscription.yaml")
+		csuiteTemplate = filepath.Join(buildPruningBaseDir, "compliancesuite.yaml")
+		csuitetpcmTemplate = filepath.Join(buildPruningBaseDir, "compliancesuitetpconfmap.yaml")
+		csuitetaintTemplate = filepath.Join(buildPruningBaseDir, "compliancesuitetaint.yaml")
+		csuitenodeTemplate = filepath.Join(buildPruningBaseDir, "compliancesuitenodes.yaml")
+		cscanTemplate = filepath.Join(buildPruningBaseDir, "compliancescan.yaml")
+		cscantaintTemplate = filepath.Join(buildPruningBaseDir, "compliancescantaint.yaml")
+		cscantaintsTemplate = filepath.Join(buildPruningBaseDir, "compliancescantaints.yaml")
+		tprofileTemplate = filepath.Join(buildPruningBaseDir, "tailoredprofile.yaml")
+		tprofileWithoutVarTemplate = filepath.Join(buildPruningBaseDir, "tailoredprofile-withoutvariable.yaml")
+		scansettingTemplate = filepath.Join(buildPruningBaseDir, "scansetting.yaml")
+		scansettingbindingTemplate = filepath.Join(buildPruningBaseDir, "scansettingbinding.yaml")
+		pvextractpodYAML = filepath.Join(buildPruningBaseDir, "pv-extract-pod.yaml")
+		podModifyTemplate = filepath.Join(buildPruningBaseDir, "pod_modify.yaml")
 
 		catSrc = catalogSourceDescription{
 			name:        "compliance-operator",
@@ -72,9 +96,6 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			args:      "",
 			template:  podModifyTemplate,
 		}
-	)
-
-	g.BeforeEach(func() {
 
 		itName := g.CurrentGinkgoTestDescription().TestText
 		dr.addIr(itName)
@@ -2035,7 +2056,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			// These are special steps to overcome problem which are discussed in [1] so that namespace should not stuck in 'Terminating' state
 			// [1] https://bugzilla.redhat.com/show_bug.cgi?id=1858186
 			defer cleanupObjects(oc,
-			        objectTableRef{"scansettingbinding", subD.namespace, ssb.name},
+				objectTableRef{"scansettingbinding", subD.namespace, ssb.name},
 				objectTableRef{"scansetting", subD.namespace, ss.name},
 				objectTableRef{"tailoredprofile", subD.namespace, tp.name})
 
