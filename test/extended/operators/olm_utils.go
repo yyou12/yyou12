@@ -158,6 +158,38 @@ func (sub *subscriptionDescription) approve(oc *exutil.CLI, itName string, dr de
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
+// The user can approve the specific InstallPlan:
+// NAME            CSV                   APPROVAL   APPROVED
+// install-vmwlk   etcdoperator.v0.9.4   Manual     false
+// install-xqgtx   etcdoperator.v0.9.2   Manual     true
+// sub.approveSpecificIP(oc, itName, dr, "etcdoperator.v0.9.2", "Complete") approve this "etcdoperator.v0.9.2" InstallPlan only
+func (sub *subscriptionDescription) approveSpecificIP(oc *exutil.CLI, itName string, dr describerResrouce, csvName string, phase string) {
+	state := getResource(oc, asAdmin, withoutNamespace, "sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.state}")
+	if strings.Compare(state, "UpgradePending") == 0 {
+		e2e.Logf(" and the expected CSV")
+		ipCsv := getResource(oc, asAdmin, withoutNamespace, "sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.installplan.name}{\" \"}{.status.currentCSV}")
+		if strings.Contains(ipCsv, csvName) {
+			installPlan := strings.Fields(ipCsv)[0]
+			o.Expect(installPlan).NotTo(o.BeEmpty())
+			e2e.Logf("---> Get the pending InstallPlan %s", installPlan)
+			patchResource(oc, asAdmin, withoutNamespace, "ip", installPlan, "-n", sub.namespace, "--type", "merge", "-p", "{\"spec\": {\"approved\": true}}")
+			err := wait.Poll(3*time.Second, 10*time.Second, func() (bool, error) {
+				err := newCheck("expect", asAdmin, withoutNamespace, compare, phase, ok, []string{"ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).checkWithoutAssert(oc)
+				if err != nil {
+					return false, nil
+				}
+				return true, nil
+			})
+			o.Expect(err).NotTo(o.HaveOccurred())
+		} else {
+			e2e.Logf("--> Not found the specific InstallPlan, the current IP:%s", ipCsv)
+		}
+	} else {
+		CSVs := getResource(oc, asAdmin, withoutNamespace, "sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.installedCSV}{\" \"}{.status.currentCSV}")
+		e2e.Logf("---> No need any apporval operation, the InstalledCSV and currentCSV are the same: %s", CSVs)
+	}
+}
+
 //the method is to construct one csv object.
 func (sub *subscriptionDescription) getCSV() csvDescription {
 	return csvDescription{sub.installedCSV, sub.namespace}
@@ -289,10 +321,10 @@ func (og *operatorGroupDescription) createwithCheck(oc *exutil.CLI, itName strin
 	output, err := doAction(oc, "get", asAdmin, false, "operatorgroup")
 	o.Expect(err).NotTo(o.HaveOccurred())
 	if strings.Contains(output, "No resources found") {
-		e2e.Logf(fmt.Sprintf("No operatorgroup in project: %s, create one: %s", oc.Namespace, og.name))
+		e2e.Logf(fmt.Sprintf("No operatorgroup in project: %s, create one: %s", oc.Namespace(), og.name))
 		og.create(oc, itName, dr)
 	} else {
-		e2e.Logf(fmt.Sprintf("Already exist operatorgroup in project: %s", oc.Namespace))
+		e2e.Logf(fmt.Sprintf("Already exist operatorgroup in project: %s", oc.Namespace()))
 	}
 
 }
@@ -879,6 +911,11 @@ func getResource(oc *exutil.CLI, asAdmin bool, withoutNamespace bool, parameters
 //the expect is ok, contain or compare result is OK for method == expect, no error raise. if not OK, error raise
 //the expect is nok, contain or compare result is NOK for method == expect, no error raise. if OK, error raise
 func expectedResource(oc *exutil.CLI, asAdmin bool, withoutNamespace bool, isCompare bool, content string, expect bool, parameters ...string) error {
+	expectMap := map[bool]string{
+		true:  "do",
+		false: "do not",
+	}
+
 	cc := func(a, b string, ic bool) bool {
 		bs := strings.Split(b, "+2+")
 		ret := false
@@ -895,7 +932,7 @@ func expectedResource(oc *exutil.CLI, asAdmin bool, withoutNamespace bool, isCom
 			e2e.Logf("the get error is %v, and try next", err)
 			return false, nil
 		}
-		e2e.Logf("the queried resource:%s", output)
+		e2e.Logf("---> we %v expect value: %s, in returned value: %s", expectMap[expect], content, output)
 		if isCompare && expect && cc(output, content, isCompare) {
 			e2e.Logf("the output %s matches one of the content %s, expected", output, content)
 			return true, nil
@@ -912,6 +949,7 @@ func expectedResource(oc *exutil.CLI, asAdmin bool, withoutNamespace bool, isCom
 			e2e.Logf("the output %s does not contain the content %s, expected", output, content)
 			return true, nil
 		}
+		e2e.Logf("---> Not as expected! Return false")
 		return false, nil
 	})
 }

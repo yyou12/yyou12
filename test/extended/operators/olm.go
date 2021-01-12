@@ -26,6 +26,74 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	var oc = exutil.NewCLI("default-"+getRandomString(), exutil.KubeConfigPath())
 
 	// author: jiazha@redhat.com
+	g.It("Medium-33450-Operator upgrades can delete existing CSV before completion", func() {
+		g.By("1) Install a customization CatalogSource CR")
+		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
+		csImageTemplate := filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
+		cs := catalogSourceDescription{
+			name:        "cs-33450",
+			namespace:   "openshift-marketplace",
+			displayName: "OLM QE Operators",
+			publisher:   "Jian",
+			sourceType:  "grpc",
+			address:     "quay.io/olmqe/etcd-index:0.9.4-sa",
+			template:    csImageTemplate,
+		}
+		dr := make(describerResrouce)
+		itName := g.CurrentGinkgoTestDescription().TestText
+		dr.addIr(itName)
+		cs.create(oc, itName, dr)
+		defer cs.delete(itName, dr)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "READY", ok, []string{"catsrc", cs.name, "-n", "openshift-marketplace", "-o=jsonpath={.status..lastObservedState}"}).check(oc)
+
+		g.By("2) Subscribe to the etcd operator with Manual approval")
+		oc.SetupProject()
+		ogSingleTemplate := filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+
+		og := operatorGroupDescription{
+			name:      "og-33450",
+			namespace: oc.Namespace(),
+			template:  ogSingleTemplate,
+		}
+		og.createwithCheck(oc, itName, dr)
+
+		subTemplate := filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+		sub := subscriptionDescription{
+			subName:                "sub-33450",
+			namespace:              oc.Namespace(),
+			catalogSourceName:      "cs-33450",
+			catalogSourceNamespace: "openshift-marketplace",
+			channel:                "alpha",
+			ipApproval:             "Manual",
+			operatorPackage:        "etcd",
+			startingCSV:            "etcdoperator.v0.9.2",
+			singleNamespace:        true,
+			template:               subTemplate,
+		}
+		sub.create(oc, itName, dr)
+		g.By("3) Apprrove the etcdoperator.v0.9.2, it should be in Complete state")
+		sub.approveSpecificIP(oc, itName, dr, "etcdoperator.v0.9.2", "Complete")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", "etcdoperator.v0.9.2", "-n", oc.Namespace(), "-o=jsonpath={.status.phase}"}).check(oc)
+
+		g.By("4) Apprrove the etcdoperator.v0.9.4, it should be in Failed state")
+		sub.approveSpecificIP(oc, itName, dr, "etcdoperator.v0.9.4", "Failed")
+
+		g.By("5) The etcdoperator.v0.9.4 CSV should be in Pending status")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Pending", ok, []string{"csv", "etcdoperator.v0.9.4", "-n", oc.Namespace(), "-o=jsonpath={.status.phase}"}).check(oc)
+
+		g.By("6) The SA should be owned by the etcdoperator.v0.9.2")
+		err := wait.Poll(3*time.Second, 10*time.Second, func() (bool, error) {
+			saOwner := getResource(oc, asAdmin, withoutNamespace, "sa", "etcd-operator", "-n", sub.namespace, "-o=jsonpath={.metadata.ownerReferences[0].name}")
+			if strings.Compare(saOwner, "etcdoperator.v0.9.2") != 0 {
+				return false, nil
+			}
+			return true, nil
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+	})
+
+	// author: jiazha@redhat.com
 	g.It("High-37260-should allow to create the default CatalogSource [Disruptive]", func() {
 		g.By("1) Disable the default OperatorHub")
 		patchResource(oc, asAdmin, withoutNamespace, "operatorhub", "cluster", "-p", "{\"spec\": {\"disableAllDefaultSources\": true}}", "--type=merge")
