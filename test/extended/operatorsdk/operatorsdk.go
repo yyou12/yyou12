@@ -105,7 +105,28 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
         output, err = operatorsdkCLI.Run("run").Args("cleanup", "etcd", "-n", oc.Namespace()).Output()
         o.Expect(err).NotTo(o.HaveOccurred())
         o.Expect(output).To(o.ContainSubstring("uninstalled"))
+        
+    })
 
+
+    // author: jfan@redhat.com
+    g.It("Medium-38054-SDK run bundle create pods and csv", func() {
+        operatorsdkCLI.showInfo = true
+        oc.SetupProject()
+        output, err := operatorsdkCLI.Run("run").Args("bundle", "quay.io/olmqe/etcd-bundle:0.9.2-share", "-n", oc.Namespace()).Output()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        o.Expect(output).To(o.ContainSubstring("OLM has successfully installed"))
+        output, _ = oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-n", oc.Namespace()).Output()
+        o.Expect(output).To(o.ContainSubstring("quay-io-olmqe-etcd-bundle-0-9-2-share"))
+        output, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", "etcdoperator.v0.9.2", "-n", oc.Namespace()).Output()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        o.Expect(output).To(o.ContainSubstring("Succeeded"))
+        output, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("catalogsource", "etcd-catalog", "-n", oc.Namespace()).Output()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        o.Expect(output).To(o.ContainSubstring("grpc"))
+        output, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("installplan", "-n", oc.Namespace()).Output()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        o.Expect(output).To(o.ContainSubstring("etcdoperator.v0.9.2"))
     })
 
     // author: chuo@redhat.com
