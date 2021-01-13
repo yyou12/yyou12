@@ -749,6 +749,9 @@ func (dr describerResrouce) addIr(itName string) {
 }
 func (dr describerResrouce) getIr(itName string) itResource {
 	ir, ok := dr[itName]
+	if !ok {
+		e2e.Logf("!!! couldn't find the itName:%s, print the describerResrouce:%v", itName, dr)
+	}
 	o.Expect(ok).To(o.BeTrue())
 	return ir
 }

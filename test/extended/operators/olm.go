@@ -26,6 +26,67 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	var oc = exutil.NewCLI("default-"+getRandomString(), exutil.KubeConfigPath())
 
 	// author: jiazha@redhat.com
+	g.It("Medium-37631-Allow cluster admin to overwrite the OperatorCondition", func() {
+		g.By("1) Install the OperatorGroup in a ramdom project")
+		dr := make(describerResrouce)
+		itName := g.CurrentGinkgoTestDescription().TestText
+		dr.addIr(itName)
+
+		oc.SetupProject()
+		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
+		ogSingleTemplate := filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+		og := operatorGroupDescription{
+			name:      "og-37631",
+			namespace: oc.Namespace(),
+			template:  ogSingleTemplate,
+		}
+		og.createwithCheck(oc, itName, dr)
+
+		g.By("2) Install the etcdoperator v0.9.2 with Manual approval")
+		subTemplate := filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+		sub := subscriptionDescription{
+			subName:                "sub-37631",
+			namespace:              oc.Namespace(),
+			catalogSourceName:      "community-operators",
+			catalogSourceNamespace: "openshift-marketplace",
+			channel:                "singlenamespace-alpha",
+			ipApproval:             "Manual",
+			operatorPackage:        "etcd",
+			startingCSV:            "etcdoperator.v0.9.2",
+			singleNamespace:        true,
+			template:               subTemplate,
+		}
+		sub.create(oc, itName, dr)
+
+		g.By("3) Apprrove this etcdoperator.v0.9.2, it should be in Complete state")
+		sub.approveSpecificIP(oc, itName, dr, "etcdoperator.v0.9.2", "Complete")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", "etcdoperator.v0.9.2", "-n", oc.Namespace(), "-o=jsonpath={.status.phase}"}).check(oc)
+
+		g.By("4) Patch the OperatorCondition to set the Upgradeable to False")
+		patchResource(oc, asAdmin, withoutNamespace, "-n", oc.Namespace(), "operatorcondition", "etcdoperator.v0.9.2", "-p", "{\"spec\": {\"overrides\": [{\"type\": \"Upgradeable\", \"status\": \"False\", \"reason\": \"upgradeIsNotSafe\", \"message\": \"Disbale the upgrade\"}]}}", "--type=merge")
+
+		g.By("5) Apprrove this etcdoperator.v0.9.4, the corresponding CSV should be in Pending state")
+		sub.approveSpecificIP(oc, itName, dr, "etcdoperator.v0.9.4", "Complete")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Pending", ok, []string{"csv", "etcdoperator.v0.9.4", "-n", oc.Namespace(), "-o=jsonpath={.status.phase}"}).check(oc)
+
+		g.By("6) Check the CSV message, the operator is not upgradeable")
+		err := wait.Poll(3*time.Second, 60*time.Second, func() (bool, error) {
+			msg, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", oc.Namespace(), "csv", "etcdoperator.v0.9.4", "-o=jsonpath={.status.message}").Output()
+			if !strings.Contains(msg, "operator is not upgradeable") {
+				return false, nil
+			}
+			return true, nil
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("7) Change the Upgradeable of the OperatorCondition to True")
+		patchResource(oc, asAdmin, withoutNamespace, "-n", oc.Namespace(), "operatorcondition", "etcdoperator.v0.9.2", "-p", "{\"spec\": {\"overrides\": [{\"type\": \"Upgradeable\", \"status\": \"True\", \"reason\": \"upgradeIsNotSafe\", \"message\": \"Disbale the upgrade\"}]}}", "--type=merge")
+
+		g.By("8) the etcdoperator.v0.9.2 should be upgraded to etcdoperator.v0.9.4 successfully")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", "etcdoperator.v0.9.4", "-n", oc.Namespace(), "-o=jsonpath={.status.phase}"}).check(oc)
+	})
+
+	// author: jiazha@redhat.com
 	g.It("Medium-33450-Operator upgrades can delete existing CSV before completion", func() {
 		g.By("1) Install a customization CatalogSource CR")
 		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
