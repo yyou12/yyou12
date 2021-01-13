@@ -129,6 +129,14 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
         o.Expect(output).To(o.ContainSubstring("etcdoperator.v0.9.2"))
     })
 
+    // author: jfan@redhat.com
+    g.It("High-38060-SDK run bundle detail message about failed", func() {
+        operatorsdkCLI.showInfo = true
+        oc.SetupProject()
+        output, _ := operatorsdkCLI.Run("run").Args("bundle", "quay.io/olmqe/etcd-bundle:0.0.1", "-n", oc.Namespace()).Output()
+        o.Expect(output).To(o.ContainSubstring("quay.io/olmqe/etcd-bundle:0.0.1: not found"))  
+    })
+
     // author: chuo@redhat.com
     g.It("Medium-27718-scorecard remove version flag", func() {
         operatorsdkCLI.showInfo = true
