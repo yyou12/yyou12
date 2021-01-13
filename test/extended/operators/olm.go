@@ -3033,6 +3033,249 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		o.Expect(waitErr).NotTo(o.HaveOccurred())
 		e2e.Logf("cleaning up")
 	})
+
+	// It will cover test case: OCP-25644, author: tbuskey@redhat.com
+	g.It("Medium-25644-OLM collect CSV health per version", func() {
+		var err error
+		var (
+			itName              = g.CurrentGinkgoTestDescription().TestText
+			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
+			catsrcImageTemplate = filepath.Join(buildPruningBaseDir, "catalogsource-configmap.yaml")
+			ogTemplate          = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+			ogAllTemplate       = filepath.Join(buildPruningBaseDir, "og-allns.yaml")
+			cmFile              = filepath.Join(buildPruningBaseDir, "cm-25644-etcd-csv.yaml")
+			subFile             = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+			cmName              = "installed-community-25644-global-operators"
+			cmSelector          = fmt.Sprintf("--selector=olm.catalogSource=%s", cmName)
+			csvName             = ""
+			metrics             = ""
+			metricsVar          = ""
+			metricsVal          = ""
+			msg                 = ""
+			next                = false
+			ogName              = "test-25644-group"
+			olmPodname          = ""
+			olmToken            = ""
+			podname             = ""
+			s                   = ""
+		)
+
+		oc.SetupProject()
+
+		var (
+			og = operatorGroupDescription{
+				name:      ogName,
+				namespace: oc.Namespace(),
+				template:  ogTemplate,
+			}
+			ogAll = operatorGroupDescription{
+				name:      ogName,
+				namespace: oc.Namespace(),
+				template:  ogAllTemplate,
+			}
+			cm = configMapDescription{
+				name:      cmName,
+				namespace: oc.Namespace(),
+				template:  cmFile,
+			}
+			catsrc = catalogSourceDescription{
+				name:        cmName,
+				namespace:   oc.Namespace(),
+				displayName: "QE Operators",
+				publisher:   "QE",
+				sourceType:  "configmap",
+				address:     cmName,
+				template:    catsrcImageTemplate,
+			}
+			sub = subscriptionDescription{
+				subName:                "etcd",
+				namespace:              oc.Namespace(),
+				catalogSourceName:      cmName,
+				catalogSourceNamespace: oc.Namespace(),
+				ipApproval:             "Automatic",
+				template:               subFile,
+				channel:                "alpha",
+				operatorPackage:        "etcd",
+				startingCSV:            "etcdoperator.v0.9.2",
+				installedCSV:           "",
+				singleNamespace:        true,
+			}
+		)
+
+		g.By("Create og-allnamespace, cm etcd, catalog source")
+		ogAll.create(oc, itName, dr)
+		msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("og", "-n", oc.Namespace(), ogName).Output()
+		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("og", ogName, "-n", oc.Namespace()).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		cm.create(oc, itName, dr)
+		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("cm", cmName, "-n", oc.Namespace()).Execute()
+
+		catsrc.create(oc, itName, dr)
+		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("catsrc", cmName, "-n", oc.Namespace()).Execute()
+
+		g.By("Wait for cm pod")
+		waitErr := wait.Poll(3*time.Second, 180*time.Second, func() (bool, error) {
+			msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-n", oc.Namespace(), cmSelector).Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			if strings.Contains(msg, cmName) && strings.Contains(msg, "Running") && strings.Contains(msg, "1/1") {
+				e2e.Logf("\nRunning cm pod %v\n", msg)
+				return true, nil
+			}
+			return false, nil
+		})
+		o.Expect(waitErr).NotTo(o.HaveOccurred())
+
+		g.By("Get podname & wait for it to be ready")
+		podname = getResource(oc, asAdmin, withoutNamespace, "pod", cmSelector, "-o=jsonpath={...metadata.name}", "-n", oc.Namespace())
+		o.Expect(podname).NotTo(o.BeEmpty())
+
+		waitErr = wait.Poll(3*time.Second, 180*time.Second, func() (bool, error) {
+			msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-n", oc.Namespace(), podname, "-o=jsonpath={.status.containerStatuses..ready}").Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			if strings.Contains(msg, "true") {
+				return true, nil
+			}
+			return false, nil
+		})
+		o.Expect(waitErr).NotTo(o.HaveOccurred())
+
+		msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-n", oc.Namespace(), podname, "-o=jsonpath={.status.containerStatuses..ready}").Output()
+		e2e.Logf("\npod %v container ready: %v\n", podname, msg)
+
+		g.By("Subscribe and wait for the csv to fail")
+		// CSV should fail && show fail.  oc describe csv xyz will have error
+		sub.createWithoutCheck(oc, itName, dr)
+
+		waitErr = wait.Poll(5*time.Second, 120*time.Second, func() (bool, error) {
+			msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", "-n", oc.Namespace(), "--no-headers=true").Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			if strings.Contains(msg, "etcdoperator") && strings.Contains(msg, "Failed") {
+				csvName = sub.getCSV().name
+				e2e.Logf("\nAs expected CSV %v has failed: ", csvName)
+				return true, nil
+			}
+			return false, nil
+		})
+		e2e.Logf("\n%v\n", msg)
+		o.Expect(waitErr).NotTo(o.HaveOccurred())
+
+		// really get the csv name
+		if csvName == "" {
+			if sub.getCSV().name == "" {
+				csvName = strings.Fields(msg)[0]
+			} else {
+				csvName = sub.getCSV().name
+			}
+		}
+
+		msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", "-n", oc.Namespace(), csvName, "-o=jsonpath={.status.conditions..phase}").Output()
+		e2e.Logf("CSV %v reasons:", msg)
+		o.Expect(strings.Contains(msg, "Failed")).To(o.BeTrue())
+
+		msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", "-n", oc.Namespace(), csvName, "-o=jsonpath={.status.conditions..reason}").Output()
+		e2e.Logf(" %v ", msg)
+		o.Expect(strings.Contains(msg, "UnsupportedOperatorGroup") || strings.Contains(msg, "NoOperatorGroup")).To(o.BeTrue())
+
+		msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", "-n", oc.Namespace(), csvName, "-o=jsonpath={.status.conditions..message}").Output()
+		e2e.Logf(" %v\n", msg)
+		o.Expect(strings.Contains(msg, "InstallModeType not supported") || strings.Contains(msg, "csv in namespace with no operatorgroup")).To(o.BeTrue())
+
+		g.By("Get prometheus token, OLM pod name and check metrics")
+		// TK=$(oc sa get-token prometheus-k8s -n openshift-monitoring)
+		// olm_pod=$(oc get pods -n openshift-operator-lifecycle-manager --selector=app=olm-operator | awk '/olm-operator/{print $1}')
+		olmToken, err = oc.AsAdmin().WithoutNamespace().Run("sa").Args("get-token", "prometheus-k8s", "-n", "openshift-monitoring").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(olmToken).NotTo(o.BeEmpty())
+
+		olmPodname, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-n", "openshift-operator-lifecycle-manager", "--selector=app=olm-operator", "-o=jsonpath={.items..metadata.name}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(olmPodname).NotTo(o.BeEmpty())
+
+		// oc  -n openshift-operator-lifecycle-manager exec $olm_pod  -it -- curl -k -H "Authorization: Bearer $TK" https://localhost:8081/metrics
+		metrics, err = oc.AsAdmin().WithoutNamespace().Run("exec").Args(olmPodname, "-n", "openshift-operator-lifecycle-manager", "-i", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", olmToken), "https://localhost:8081/metrics").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(metrics).NotTo(o.BeEmpty())
+		for _, s = range strings.Fields(metrics) {
+			if next {
+				metricsVal = s
+				break
+			}
+			if strings.Contains(s, "csv_abnormal{") && strings.Contains(s, csvName) && strings.Contains(s, oc.Namespace()) {
+				metricsVar = s
+				next = true
+			}
+		}
+		e2e.Logf("\n\nVar %v %v\n\n", metricsVar, metricsVal)
+		o.Expect(metricsVal).NotTo(o.BeEmpty())
+
+		g.By("reset og to single namespace and wait for csv to recreate")
+		err = oc.AsAdmin().WithoutNamespace().Run("delete").Args("og", ogName, "-n", oc.Namespace()).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		csvName = ""
+		og.create(oc, itName, dr)
+		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("og", ogName, "-n", oc.Namespace()).Execute()
+		waitErr = wait.Poll(5*time.Second, 120*time.Second, func() (bool, error) {
+			msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", "-n", oc.Namespace(), "--no-headers=true").Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			if strings.Contains(msg, "etcdoperator.v0.9.2") && strings.Contains(msg, "Succeeded") {
+				csvName = sub.getCSV().name
+				return true, nil
+			}
+			return false, nil
+		})
+		o.Expect(waitErr).NotTo(o.HaveOccurred())
+		if csvName == "" {
+			if sub.getCSV().name == "" {
+				csvName = strings.Fields(msg)[0]
+			} else {
+				csvName = sub.getCSV().name
+			}
+		}
+		msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", "-n", oc.Namespace(), csvName, "-o=jsonpath={.status.phase}").Output()
+		e2e.Logf("New CSV %v has %v", csvName, msg)
+		o.Expect(strings.Contains(msg, "Succeeded")).To(o.BeTrue())
+		msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", "-n", oc.Namespace(), csvName, "-o=jsonpath={.status.reason}").Output()
+		e2e.Logf(" %v ", msg)
+		o.Expect(strings.Contains(msg, "InstallSucceeded")).To(o.BeTrue())
+		msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", "-n", oc.Namespace(), csvName, "-o=jsonpath={.status.message}").Output()
+		e2e.Logf(" %v\n", msg)
+		o.Expect(strings.Contains(msg, "completed with no errors")).To(o.BeTrue())
+
+		g.By("Make sure pods are fully running and check new metrics")
+		next = false
+		metricsVar = ""
+		metricsVal = ""
+		waitErr = wait.Poll(5*time.Second, 120*time.Second, func() (bool, error) {
+			msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-n", oc.Namespace()).Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			if strings.Contains(msg, "etcd-operator") && strings.Contains(msg, "Running") && strings.Contains(msg, "3/3") {
+				return true, nil
+			}
+			return false, nil
+		})
+		e2e.Logf("\nPods\n%v", msg)
+		o.Expect(waitErr).NotTo(o.HaveOccurred())
+		metrics, err = oc.AsAdmin().WithoutNamespace().Run("exec").Args(olmPodname, "-n", "openshift-operator-lifecycle-manager", "-i", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", olmToken), "https://localhost:8081/metrics").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(metrics).NotTo(o.BeEmpty())
+		for _, s = range strings.Fields(metrics) {
+			if next {
+				metricsVal = s
+				break
+			}
+			if strings.Contains(s, "csv_succeeded{") && strings.Contains(s, csvName) && strings.Contains(s, oc.Namespace()) {
+				metricsVar = s
+				next = true
+			}
+		}
+		e2e.Logf("\n\n%v   %v\n\n", metricsVar, metricsVal)
+		o.Expect(metricsVar).NotTo(o.BeEmpty())
+		o.Expect(metricsVal).NotTo(o.BeEmpty())
+
+		g.By("SUCCESS")
+	})
+
 })
 
 var _ = g.Describe("[sig-operators] OLM for an end user handle to support", func() {
