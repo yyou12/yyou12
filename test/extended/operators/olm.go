@@ -1413,6 +1413,67 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 
 	})
 
+	// author: scolange@redhat.com
+	g.It("Medium-23673-Installplan can be created while Install and uninstall operators via Marketplace for 5 times [SLow]", func() {
+
+		var buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
+		var operatorGroup = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+		var promeSub = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+		var operatorWait = 180 * time.Second
+		defer oc.AsAdmin().Run("delete").Args("ns", "test23673").Execute()
+
+		g.By("create new namespace")
+		var err = oc.AsAdmin().Run("create").Args("ns", "test23673").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("create new OperatorGroup")
+		ogFile, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", operatorGroup, "-p", "NAME=test-operator", "NAMESPACE=test23673").OutputToFile("config-23673.json")
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", ogFile).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		var count = 0
+		for i := 0; i < 5; i++ {
+
+			count++
+			e2e.Logf("Install Operator  for ## %v", count)
+
+			configFile, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", promeSub, "-p", "SUBNAME=test-operator", "SUBNAMESPACE=test23673", "CHANNEL=beta", "OPERATORNAME=prometheus", "SOURCENAME=community-operators", "SOURCENAMESPACE=openshift-marketplace", "STARTINGCSV=prometheusoperator.0.37.0").OutputToFile("config-23673.json")
+			o.Expect(err).NotTo(o.HaveOccurred())
+			err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", configFile).Execute()
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			err = wait.Poll(30*time.Second, operatorWait, func() (bool, error) {
+
+				statusCsv, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", "prometheusoperator.0.37.0", "-n", "test23673", "-o", "jsonpath={.status.reason}").Output()
+				o.Expect(err).NotTo(o.HaveOccurred())
+				e2e.Logf("CSV prometheus %v", statusCsv)
+				if statusCsv == "InstallSucceeded" {
+					e2e.Logf("CSV prometheus InstallSucceeded is present")
+					return true, nil
+				} else {
+					e2e.Logf("FAIL - CSV prometheus InstallSucceeded is not present ")
+					return false, nil
+				}
+
+			})
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			nameCsv, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", "prometheusoperator.0.37.0", "-n", "test23673", "-o", "jsonpath={.metadata.name}").Output()
+			deleteCsv, err := oc.AsAdmin().WithoutNamespace().Run("delete").Args("csv", nameCsv, "-n", "test23673").Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			o.Expect(deleteCsv).To(o.ContainSubstring("deleted"))
+
+			nameSub, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("sub", "test-operator", "-n", "test23673", "-o", "jsonpath={.metadata.name}").Output()
+			deleteSub, err := oc.AsAdmin().WithoutNamespace().Run("delete").Args("sub", nameSub, "-n", "test23673").Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			o.Expect(deleteSub).To(o.ContainSubstring("deleted"))
+
+		}
+		e2e.Logf("CSV prometheus InstallSucceeded")
+	})
+
 })
 
 var _ = g.Describe("[sig-operators] OLM for an end user use", func() {
