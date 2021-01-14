@@ -312,6 +312,32 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		oc.AsAdmin().WithoutNamespace().Run("get").Args("packagemanifest", "prometheus", "-o=jsonpath={.status.channels[?(.name=='beta')].currentCSVDesc.nativeAPIs}").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 	})
+
+	// author: bandrade@redhat.com
+	g.It("Medium-24850- Allow users to edit the deployment of an active CSV	", func() {
+
+		oc.SetupProject()
+
+		g.By("1)Start to subscribe the Etcd operator")
+		etcdPackage := CreateSubscriptionSpecificNamespace("etcd", oc, false, true, oc.Namespace(), INSTALLPLAN_AUTOMATIC_MODE)
+		CheckDeployment(etcdPackage, oc)
+
+		g.By("2) Patch the deploy object by adding an environment variable")
+		msg, err := oc.AsAdmin().WithoutNamespace().Run("patch").Args("deploy/etcd-operator", "--type=json", "--patch", "[{\"op\": \"add\",\"path\": \"/spec/template/spec/containers/0/env/-\", \"value\": { \"name\": \"a\",\"value\": \"b\"} }]", "-n", oc.Namespace()).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("3) Check if the pod is restared")
+		var waitErr = wait.Poll(5*time.Second, 120*time.Second, func() (bool, error) {
+			msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-n", oc.Namespace()).Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			if strings.Contains(msg, "etcd-operator") && strings.Contains(msg, "Terminating") {
+				return true, nil
+			}
+			return false, nil
+		})
+		o.Expect(waitErr).NotTo(o.HaveOccurred())
+
+	})
 	// author: jiazha@redhat.com
 	g.It("Medium-33902-Catalog Weighting", func() {
 		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
