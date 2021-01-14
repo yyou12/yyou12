@@ -1691,42 +1691,11 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 	defer g.GinkgoRecover()
 
 	var (
-		oc                  = exutil.NewCLI("olm-a-"+getRandomString(), exutil.KubeConfigPath())
-		buildPruningBaseDir string
-		ogSingleTemplate    string
-		catsrcImageTemplate string
-		subTemplate         string
-		ogD                 operatorGroupDescription
-		subD                subscriptionDescription
-		dr                  = make(describerResrouce)
+		oc = exutil.NewCLI("olm-a-"+getRandomString(), exutil.KubeConfigPath())
+		dr = make(describerResrouce)
 	)
 
 	g.BeforeEach(func() {
-		buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
-		ogSingleTemplate = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
-		catsrcImageTemplate = filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
-		subTemplate = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
-
-		ogD = operatorGroupDescription{
-			name:      "og-singlenamespace",
-			namespace: "",
-			template:  ogSingleTemplate,
-		}
-		subD = subscriptionDescription{
-			subName:                "hawtio-operator",
-			namespace:              "",
-			channel:                "alpha",
-			ipApproval:             "Automatic",
-			operatorPackage:        "hawtio-operator",
-			catalogSourceName:      "community-operators",
-			catalogSourceNamespace: "openshift-marketplace",
-			startingCSV:            "",
-			currentCSV:             "",
-			installedCSV:           "",
-			template:               subTemplate,
-			singleNamespace:        true,
-		}
-
 		itName := g.CurrentGinkgoTestDescription().TestText
 		dr.addIr(itName)
 	})
@@ -1736,8 +1705,10 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 	// It will cover test case: OCP-29231 and OCP-29277, author: kuiwang@redhat.com
 	g.It("Medium-29231-Medium-29277-label to target namespace of group", func() {
 		var (
-			itName = g.CurrentGinkgoTestDescription().TestText
-			og1    = operatorGroupDescription{
+			itName              = g.CurrentGinkgoTestDescription().TestText
+			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
+			ogSingleTemplate    = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+			og1                 = operatorGroupDescription{
 				name:      "og1-singlenamespace",
 				namespace: "",
 				template:  ogSingleTemplate,
@@ -1785,9 +1756,31 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 	// It will cover test case: OCP-23170, author: kuiwang@redhat.com
 	g.It("ConnectedOnly-Medium-23170-API labels should be hash", func() {
 		var (
-			itName = g.CurrentGinkgoTestDescription().TestText
-			og     = ogD
-			sub    = subD
+			itName              = g.CurrentGinkgoTestDescription().TestText
+			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
+			ogSingleTemplate    = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+			subTemplate         = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+			ogD                 = operatorGroupDescription{
+				name:      "og-singlenamespace",
+				namespace: "",
+				template:  ogSingleTemplate,
+			}
+			subD = subscriptionDescription{
+				subName:                "hawtio-operator",
+				namespace:              "",
+				channel:                "alpha",
+				ipApproval:             "Automatic",
+				operatorPackage:        "hawtio-operator",
+				catalogSourceName:      "community-operators",
+				catalogSourceNamespace: "openshift-marketplace",
+				startingCSV:            "",
+				currentCSV:             "",
+				installedCSV:           "",
+				template:               subTemplate,
+				singleNamespace:        true,
+			}
+			og  = ogD
+			sub = subD
 		)
 		oc.SetupProject() //project and its resource are deleted automatically when out of It, so no need derfer or AfterEach
 		og.namespace = oc.Namespace()
@@ -1816,9 +1809,31 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 	// It will cover test case: OCP-20979, author: kuiwang@redhat.com
 	g.It("ConnectedOnly-Medium-20979-only one IP is generated", func() {
 		var (
-			itName = g.CurrentGinkgoTestDescription().TestText
-			og     = ogD
-			sub    = subD
+			itName              = g.CurrentGinkgoTestDescription().TestText
+			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
+			ogSingleTemplate    = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+			subTemplate         = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+			ogD                 = operatorGroupDescription{
+				name:      "og-singlenamespace",
+				namespace: "",
+				template:  ogSingleTemplate,
+			}
+			subD = subscriptionDescription{
+				subName:                "hawtio-operator",
+				namespace:              "",
+				channel:                "alpha",
+				ipApproval:             "Automatic",
+				operatorPackage:        "hawtio-operator",
+				catalogSourceName:      "community-operators",
+				catalogSourceNamespace: "openshift-marketplace",
+				startingCSV:            "",
+				currentCSV:             "",
+				installedCSV:           "",
+				template:               subTemplate,
+				singleNamespace:        true,
+			}
+			og  = ogD
+			sub = subD
 		)
 		oc.SetupProject() //project and its resource are deleted automatically when out of It, so no need derfer or AfterEach
 		og.namespace = oc.Namespace()
@@ -1844,9 +1859,31 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 	// It will cover test case: OCP-25757 and 22656, author: kuiwang@redhat.com
 	g.It("ConnectedOnly-Medium-25757-High-22656-manual approval strategy apply to subsequent releases", func() {
 		var (
-			itName = g.CurrentGinkgoTestDescription().TestText
-			og     = ogD
-			sub    = subD
+			itName              = g.CurrentGinkgoTestDescription().TestText
+			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
+			ogSingleTemplate    = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+			subTemplate         = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+			ogD                 = operatorGroupDescription{
+				name:      "og-singlenamespace",
+				namespace: "",
+				template:  ogSingleTemplate,
+			}
+			subD = subscriptionDescription{
+				subName:                "hawtio-operator",
+				namespace:              "",
+				channel:                "alpha",
+				ipApproval:             "Automatic",
+				operatorPackage:        "hawtio-operator",
+				catalogSourceName:      "community-operators",
+				catalogSourceNamespace: "openshift-marketplace",
+				startingCSV:            "",
+				currentCSV:             "",
+				installedCSV:           "",
+				template:               subTemplate,
+				singleNamespace:        true,
+			}
+			og  = ogD
+			sub = subD
 		)
 		oc.SetupProject() //project and its resource are deleted automatically when out of It, so no need derfer or AfterEach
 		og.namespace = oc.Namespace()
@@ -1877,7 +1914,31 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 	// It will cover test case: OCP-24438, author: kuiwang@redhat.com
 	g.It("ConnectedOnly-Medium-24438-check subscription CatalogSource Status", func() {
 		var (
-			itName = g.CurrentGinkgoTestDescription().TestText
+			itName              = g.CurrentGinkgoTestDescription().TestText
+			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
+			ogSingleTemplate    = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+			catsrcImageTemplate = filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
+			subTemplate         = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+			ogD                 = operatorGroupDescription{
+				name:      "og-singlenamespace",
+				namespace: "",
+				template:  ogSingleTemplate,
+			}
+			subD = subscriptionDescription{
+				subName:                "hawtio-operator",
+				namespace:              "",
+				channel:                "alpha",
+				ipApproval:             "Automatic",
+				operatorPackage:        "hawtio-operator",
+				catalogSourceName:      "community-operators",
+				catalogSourceNamespace: "openshift-marketplace",
+				startingCSV:            "",
+				currentCSV:             "",
+				installedCSV:           "",
+				template:               subTemplate,
+				singleNamespace:        true,
+			}
+
 			catsrc = catalogSourceDescription{
 				name:        "catsrc-test-operator",
 				namespace:   "",
@@ -1922,7 +1983,30 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 	// It will cover test case: OCP-24027, author: kuiwang@redhat.com
 	g.It("ConnectedOnly-Medium-24027-can create and delete catalogsource and sub repeatedly", func() {
 		var (
-			itName = g.CurrentGinkgoTestDescription().TestText
+			itName              = g.CurrentGinkgoTestDescription().TestText
+			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
+			ogSingleTemplate    = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+			catsrcImageTemplate = filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
+			subTemplate         = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+			ogD                 = operatorGroupDescription{
+				name:      "og-singlenamespace",
+				namespace: "",
+				template:  ogSingleTemplate,
+			}
+			subD = subscriptionDescription{
+				subName:                "hawtio-operator",
+				namespace:              "",
+				channel:                "alpha",
+				ipApproval:             "Automatic",
+				operatorPackage:        "hawtio-operator",
+				catalogSourceName:      "community-operators",
+				catalogSourceNamespace: "openshift-marketplace",
+				startingCSV:            "",
+				currentCSV:             "",
+				installedCSV:           "",
+				template:               subTemplate,
+				singleNamespace:        true,
+			}
 			catsrc = catalogSourceDescription{
 				name:        "catsrc-test-operator",
 				namespace:   "",
@@ -1974,9 +2058,31 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 	// It will cover part of test case: OCP-21404, author: kuiwang@redhat.com
 	g.It("ConnectedOnly-Medium-21404-csv will be RequirementsNotMet after sa is delete", func() {
 		var (
-			itName = g.CurrentGinkgoTestDescription().TestText
-			og     = ogD
-			sub    = subD
+			itName              = g.CurrentGinkgoTestDescription().TestText
+			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
+			ogSingleTemplate    = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+			subTemplate         = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+			ogD                 = operatorGroupDescription{
+				name:      "og-singlenamespace",
+				namespace: "",
+				template:  ogSingleTemplate,
+			}
+			subD = subscriptionDescription{
+				subName:                "hawtio-operator",
+				namespace:              "",
+				channel:                "alpha",
+				ipApproval:             "Automatic",
+				operatorPackage:        "hawtio-operator",
+				catalogSourceName:      "community-operators",
+				catalogSourceNamespace: "openshift-marketplace",
+				startingCSV:            "",
+				currentCSV:             "",
+				installedCSV:           "",
+				template:               subTemplate,
+				singleNamespace:        true,
+			}
+			og  = ogD
+			sub = subD
 		)
 		oc.SetupProject() //project and its resource are deleted automatically when out of It, so no need derfer or AfterEach
 		og.namespace = oc.Namespace()
@@ -2005,9 +2111,31 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 	// It will cover part of test case: OCP-21404, author: kuiwang@redhat.com
 	g.It("ConnectedOnly-Medium-21404-csv will be RequirementsNotMet after role rule is delete", func() {
 		var (
-			itName = g.CurrentGinkgoTestDescription().TestText
-			og     = ogD
-			sub    = subD
+			itName              = g.CurrentGinkgoTestDescription().TestText
+			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
+			ogSingleTemplate    = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+			subTemplate         = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+			ogD                 = operatorGroupDescription{
+				name:      "og-singlenamespace",
+				namespace: "",
+				template:  ogSingleTemplate,
+			}
+			subD = subscriptionDescription{
+				subName:                "hawtio-operator",
+				namespace:              "",
+				channel:                "alpha",
+				ipApproval:             "Automatic",
+				operatorPackage:        "hawtio-operator",
+				catalogSourceName:      "community-operators",
+				catalogSourceNamespace: "openshift-marketplace",
+				startingCSV:            "",
+				currentCSV:             "",
+				installedCSV:           "",
+				template:               subTemplate,
+				singleNamespace:        true,
+			}
+			og  = ogD
+			sub = subD
 		)
 		oc.SetupProject() //project and its resource are deleted automatically when out of It, so no need derfer or AfterEach
 		og.namespace = oc.Namespace()
@@ -2041,8 +2169,12 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 	// It will cover test case: OCP-29723, author: kuiwang@redhat.com
 	g.It("ConnectedOnly-Medium-29723-As cluster admin find abnormal status condition via components of operator resource", func() {
 		var (
-			itName = g.CurrentGinkgoTestDescription().TestText
-			og     = operatorGroupDescription{
+			itName              = g.CurrentGinkgoTestDescription().TestText
+			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
+			ogSingleTemplate    = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+			catsrcImageTemplate = filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
+			subTemplate         = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+			og                  = operatorGroupDescription{
 				name:      "og-singlenamespace",
 				namespace: "",
 				template:  ogSingleTemplate,
@@ -2107,8 +2239,12 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 	// It will cover test case: OCP-30762, author: kuiwang@redhat.com
 	g.It("ConnectedOnly-Medium-30762-installs bundles with v1 CRDs", func() {
 		var (
-			itName = g.CurrentGinkgoTestDescription().TestText
-			og     = operatorGroupDescription{
+			itName              = g.CurrentGinkgoTestDescription().TestText
+			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
+			ogSingleTemplate    = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+			catsrcImageTemplate = filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
+			subTemplate         = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+			og                  = operatorGroupDescription{
 				name:      "og-singlenamespace",
 				namespace: "",
 				template:  ogSingleTemplate,
@@ -2159,8 +2295,12 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 	// It will cover test case: OCP-27683, author: kuiwang@redhat.com
 	g.It("ConnectedOnly-Medium-27683-InstallPlans can install from extracted bundles", func() {
 		var (
-			itName = g.CurrentGinkgoTestDescription().TestText
-			og     = operatorGroupDescription{
+			itName              = g.CurrentGinkgoTestDescription().TestText
+			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
+			ogSingleTemplate    = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+			catsrcImageTemplate = filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
+			subTemplate         = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+			og                  = operatorGroupDescription{
 				name:      "og-singlenamespace",
 				namespace: "",
 				template:  ogSingleTemplate,
@@ -2224,8 +2364,12 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 	// It will cover test case: OCP-24513, author: kuiwang@redhat.com
 	g.It("ConnectedOnly-Medium-24513-Operator config support env only", func() {
 		var (
-			itName = g.CurrentGinkgoTestDescription().TestText
-			og     = operatorGroupDescription{
+			itName              = g.CurrentGinkgoTestDescription().TestText
+			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
+			ogSingleTemplate    = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+			catsrcImageTemplate = filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
+			subTemplate         = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+			og                  = operatorGroupDescription{
 				name:      "og-singlenamespace",
 				namespace: "",
 				template:  ogSingleTemplate,
@@ -2287,9 +2431,13 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 	// It will cover test case: OCP-24382, author: kuiwang@redhat.com
 	g.It("ConnectedOnly-Medium-24382-Should restrict CRD update if schema changes [Serial]", func() {
 		var (
-			etcdCluster = filepath.Join(buildPruningBaseDir, "etcd-cluster.yaml")
-			itName      = g.CurrentGinkgoTestDescription().TestText
-			og          = operatorGroupDescription{
+			itName              = g.CurrentGinkgoTestDescription().TestText
+			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
+			ogSingleTemplate    = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+			catsrcImageTemplate = filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
+			subTemplate         = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+			etcdCluster         = filepath.Join(buildPruningBaseDir, "etcd-cluster.yaml")
+			og                  = operatorGroupDescription{
 				name:      "og-singlenamespace",
 				namespace: "",
 				template:  ogSingleTemplate,
@@ -2360,8 +2508,12 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 	// It will cover test case: OCP-25760, author: kuiwang@redhat.com
 	g.It("ConnectedOnly-Medium-25760-Operator upgrades does not fail after change the channel", func() {
 		var (
-			itName = g.CurrentGinkgoTestDescription().TestText
-			og     = operatorGroupDescription{
+			itName              = g.CurrentGinkgoTestDescription().TestText
+			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
+			ogSingleTemplate    = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+			catsrcImageTemplate = filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
+			subTemplate         = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+			og                  = operatorGroupDescription{
 				name:      "og-singlenamespace",
 				namespace: "",
 				template:  ogSingleTemplate,
@@ -2419,8 +2571,12 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 	// It will cover test case: OCP-35895, author: kuiwang@redhat.com
 	g.It("ConnectedOnly-Medium-35895-can't install a CSV with duplicate roles", func() {
 		var (
-			itName = g.CurrentGinkgoTestDescription().TestText
-			og     = operatorGroupDescription{
+			itName              = g.CurrentGinkgoTestDescription().TestText
+			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
+			ogSingleTemplate    = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+			catsrcImageTemplate = filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
+			subTemplate         = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+			og                  = operatorGroupDescription{
 				name:      "og-singlenamespace",
 				namespace: "",
 				template:  ogSingleTemplate,
@@ -2474,9 +2630,13 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 	// It will cover test case: OCP-32863, author: kuiwang@redhat.com
 	g.It("ConnectedOnly-Medium-32863-Support resources required for SAP Gardener Control Plane Operator", func() {
 		var (
-			itName      = g.CurrentGinkgoTestDescription().TestText
-			vpaTemplate = filepath.Join(buildPruningBaseDir, "vpa-crd.yaml")
-			crdVpa      = crdDescription{
+			itName              = g.CurrentGinkgoTestDescription().TestText
+			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
+			ogSingleTemplate    = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+			catsrcImageTemplate = filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
+			subTemplate         = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+			vpaTemplate         = filepath.Join(buildPruningBaseDir, "vpa-crd.yaml")
+			crdVpa              = crdDescription{
 				name:     "verticalpodautoscalers.autoscaling.k8s.io",
 				template: vpaTemplate,
 			}
@@ -2542,8 +2702,12 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 	// It will cover test case: OCP-34472, author: kuiwang@redhat.com
 	g.It("ConnectedOnly-Medium-34472-OLM label dependency", func() {
 		var (
-			itName = g.CurrentGinkgoTestDescription().TestText
-			og     = operatorGroupDescription{
+			itName              = g.CurrentGinkgoTestDescription().TestText
+			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
+			ogSingleTemplate    = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+			catsrcImageTemplate = filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
+			subTemplate         = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+			og                  = operatorGroupDescription{
 				name:      "og-singlenamespace",
 				namespace: "",
 				template:  ogSingleTemplate,
@@ -2596,8 +2760,12 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 	// It will cover test case: OCP-37263, author: kuiwang@redhat.com
 	g.It("ConnectedOnly-Medium-37263-Subscription stays in UpgradePending but InstallPlan not installing [Slow]", func() {
 		var (
-			itName = g.CurrentGinkgoTestDescription().TestText
-			og     = operatorGroupDescription{
+			itName              = g.CurrentGinkgoTestDescription().TestText
+			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
+			ogSingleTemplate    = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+			catsrcImageTemplate = filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
+			subTemplate         = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+			og                  = operatorGroupDescription{
 				name:      "og-singlenamespace",
 				namespace: "",
 				template:  ogSingleTemplate,
@@ -2717,6 +2885,9 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 	g.It("ConnectedOnly-Medium-33176-Enable generated operator component adoption for operators with single ns mode [Slow]", func() {
 		var (
 			itName                  = g.CurrentGinkgoTestDescription().TestText
+			buildPruningBaseDir     = exutil.FixturePath("testdata", "olm")
+			ogSingleTemplate        = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+			subTemplate             = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
 			catsrcImageTemplate     = filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
 			apiserviceImageTemplate = filepath.Join(buildPruningBaseDir, "apiservice.yaml")
 			apiserviceVersion       = "v33176"
@@ -3343,128 +3514,11 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle to support", func
 	defer g.GinkgoRecover()
 
 	var (
-		oc                      = exutil.NewCLI("olm-cm-"+getRandomString(), exutil.KubeConfigPath())
-		dr                      = make(describerResrouce)
-		buildPruningBaseDir     string
-		cmNcTemplate            string
-		cmReadyTestTemplate     string
-		cmReadyTestsTemplate    string
-		cmLearnV1Template       string
-		cmLearnV2Template       string
-		catsrcCmTemplate        string
-		ogTemplate              string
-		ogMultiTemplate         string
-		subTemplate             string
-		crdOlmtestTemplate      string
-		cmNc                    configMapDescription
-		cmLearn                 configMapDescription
-		cmCertUtilReadytest     configMapDescription
-		catsrcNc                catalogSourceDescription
-		catsrcLearn             catalogSourceDescription
-		catsrcCertUtilReadytest catalogSourceDescription
-		subNc                   subscriptionDescription
-		subLearn                subscriptionDescription
-		subCertUtilReadytest    subscriptionDescription
+		oc = exutil.NewCLI("olm-cm-"+getRandomString(), exutil.KubeConfigPath())
+		dr = make(describerResrouce)
 	)
 
 	g.BeforeEach(func() {
-		buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
-		cmNcTemplate = filepath.Join(buildPruningBaseDir, "cm-namespaceconfig.yaml")
-		cmReadyTestTemplate = filepath.Join(buildPruningBaseDir, "cm-certutil-readytest.yaml")
-		cmReadyTestsTemplate = filepath.Join(buildPruningBaseDir, "cm-certutil-readytests.yaml")
-		cmLearnV1Template = filepath.Join(buildPruningBaseDir, "cm-learn-v1.yaml")
-		cmLearnV2Template = filepath.Join(buildPruningBaseDir, "cm-learn-v2.yaml")
-		catsrcCmTemplate = filepath.Join(buildPruningBaseDir, "catalogsource-configmap.yaml")
-		ogTemplate = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
-		ogMultiTemplate = filepath.Join(buildPruningBaseDir, "og-multins.yaml")
-		subTemplate = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
-		crdOlmtestTemplate = filepath.Join(buildPruningBaseDir, "crd-olmtest.yaml")
-
-		cmNc = configMapDescription{
-			name:      "cm-community-namespaceconfig-operators",
-			namespace: "", //must be set in iT
-			template:  cmNcTemplate,
-		}
-		cmLearn = configMapDescription{
-			name:      "cm-learn-operators",
-			namespace: "", //must be set in iT
-			template:  cmLearnV1Template,
-		}
-		cmCertUtilReadytest = configMapDescription{
-			name:      "cm-certutil-readytest-operators",
-			namespace: "", //must be set in iT
-			template:  cmReadyTestTemplate,
-		}
-		catsrcNc = catalogSourceDescription{
-			name:        "catsrc-community-namespaceconfig-operators",
-			namespace:   "", //must be set in iT
-			displayName: "Community namespaceconfig Operators",
-			publisher:   "Community",
-			sourceType:  "configmap",
-			address:     "cm-community-namespaceconfig-operators",
-			template:    catsrcCmTemplate,
-		}
-		catsrcLearn = catalogSourceDescription{
-			name:        "catsrc-learn-operators",
-			namespace:   "", //must be set in iT
-			displayName: "Learn Operators",
-			publisher:   "Community",
-			sourceType:  "configmap",
-			address:     "cm-learn-operators",
-			template:    catsrcCmTemplate,
-		}
-		catsrcCertUtilReadytest = catalogSourceDescription{
-			name:        "catsrc-certutil-readytest-operators",
-			namespace:   "", //must be set in iT
-			displayName: "certutil readytest Operators",
-			publisher:   "Community",
-			sourceType:  "configmap",
-			address:     "cm-certutil-readytest-operators",
-			template:    catsrcCmTemplate,
-		}
-		subNc = subscriptionDescription{
-			subName:                "namespace-configuration-operator",
-			namespace:              "", //must be set in iT
-			channel:                "alpha",
-			ipApproval:             "Automatic",
-			operatorPackage:        "namespace-configuration-operator",
-			catalogSourceName:      "catsrc-community-namespaceconfig-operators",
-			catalogSourceNamespace: "", //must be set in iT
-			startingCSV:            "",
-			currentCSV:             "namespace-configuration-operator.v0.1.0", //it matches to that in cm, so set it.
-			installedCSV:           "",
-			template:               subTemplate,
-			singleNamespace:        true,
-		}
-		subLearn = subscriptionDescription{
-			subName:                "learn-operator",
-			namespace:              "", //must be set in iT
-			channel:                "alpha",
-			ipApproval:             "Automatic",
-			operatorPackage:        "learn-operator",
-			catalogSourceName:      "catsrc-learn-operators",
-			catalogSourceNamespace: "", //must be set in iT
-			startingCSV:            "",
-			currentCSV:             "learn-operator.v0.0.1", //it matches to that in cm, so set it.
-			installedCSV:           "",
-			template:               subTemplate,
-			singleNamespace:        true,
-		}
-		subCertUtilReadytest = subscriptionDescription{
-			subName:                "cert-utils-operator",
-			namespace:              "", //must be set in iT
-			channel:                "alpha",
-			ipApproval:             "Automatic",
-			operatorPackage:        "cert-utils-operator",
-			catalogSourceName:      "catsrc-certutil-readytest-operators",
-			catalogSourceNamespace: "", //must be set in iT
-			startingCSV:            "",
-			currentCSV:             "cert-utils-operator.v0.0.3", //it matches to that in cm, so set it.
-			installedCSV:           "",
-			template:               subTemplate,
-			singleNamespace:        true,
-		}
-
 		itName := g.CurrentGinkgoTestDescription().TestText
 		dr.addIr(itName)
 	})
@@ -3474,8 +3528,10 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle to support", func
 	// It will cover part of test case: OCP-29275, author: kuiwang@redhat.com
 	g.It("ConnectedOnly-Medium-29275-label to target namespace of operator group with multi namespace", func() {
 		var (
-			itName = g.CurrentGinkgoTestDescription().TestText
-			og     = operatorGroupDescription{
+			itName              = g.CurrentGinkgoTestDescription().TestText
+			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
+			ogMultiTemplate     = filepath.Join(buildPruningBaseDir, "og-multins.yaml")
+			og                  = operatorGroupDescription{
 				name:         "og-1651-1",
 				namespace:    "",
 				multinslabel: "test-og-label-1651",
@@ -3532,11 +3588,44 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle to support", func
 	// It will cover test case: OCP-22200, author: kuiwang@redhat.com
 	g.It("ConnectedOnly-Medium-22200-add minimum kube version to CSV [Slow]", func() {
 		var (
-			itName = g.CurrentGinkgoTestDescription().TestText
-			og     = operatorGroupDescription{
+			itName              = g.CurrentGinkgoTestDescription().TestText
+			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
+			ogTemplate          = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+			cmNcTemplate        = filepath.Join(buildPruningBaseDir, "cm-namespaceconfig.yaml")
+			catsrcCmTemplate    = filepath.Join(buildPruningBaseDir, "catalogsource-configmap.yaml")
+			subTemplate         = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+			og                  = operatorGroupDescription{
 				name:      "og-singlenamespace",
 				namespace: "",
 				template:  ogTemplate,
+			}
+			cmNc = configMapDescription{
+				name:      "cm-community-namespaceconfig-operators",
+				namespace: "", //must be set in iT
+				template:  cmNcTemplate,
+			}
+			catsrcNc = catalogSourceDescription{
+				name:        "catsrc-community-namespaceconfig-operators",
+				namespace:   "", //must be set in iT
+				displayName: "Community namespaceconfig Operators",
+				publisher:   "Community",
+				sourceType:  "configmap",
+				address:     "cm-community-namespaceconfig-operators",
+				template:    catsrcCmTemplate,
+			}
+			subNc = subscriptionDescription{
+				subName:                "namespace-configuration-operator",
+				namespace:              "", //must be set in iT
+				channel:                "alpha",
+				ipApproval:             "Automatic",
+				operatorPackage:        "namespace-configuration-operator",
+				catalogSourceName:      "catsrc-community-namespaceconfig-operators",
+				catalogSourceNamespace: "", //must be set in iT
+				startingCSV:            "",
+				currentCSV:             "namespace-configuration-operator.v0.1.0", //it matches to that in cm, so set it.
+				installedCSV:           "",
+				template:               subTemplate,
+				singleNamespace:        true,
 			}
 			cm     = cmNc
 			catsrc = catsrcNc
@@ -3601,16 +3690,49 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle to support", func
 	// It will cover test case: OCP-23473, author: kuiwang@redhat.com
 	g.It("ConnectedOnly-Medium-23473-permit z-stream releases skipping during operator updates", func() {
 		var (
-			itName = g.CurrentGinkgoTestDescription().TestText
-			og     = operatorGroupDescription{
+			itName              = g.CurrentGinkgoTestDescription().TestText
+			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
+			ogTemplate          = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+			cmNcTemplate        = filepath.Join(buildPruningBaseDir, "cm-namespaceconfig.yaml")
+			catsrcCmTemplate    = filepath.Join(buildPruningBaseDir, "catalogsource-configmap.yaml")
+			subTemplate         = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+			og                  = operatorGroupDescription{
 				name:      "og-singlenamespace",
 				namespace: "",
 				template:  ogTemplate,
 			}
 			skippedVersion = "namespace-configuration-operator.v0.0.2"
-			cm             = cmNc
-			catsrc         = catsrcNc
-			sub            = subNc
+			cmNc           = configMapDescription{
+				name:      "cm-community-namespaceconfig-operators",
+				namespace: "", //must be set in iT
+				template:  cmNcTemplate,
+			}
+			catsrcNc = catalogSourceDescription{
+				name:        "catsrc-community-namespaceconfig-operators",
+				namespace:   "", //must be set in iT
+				displayName: "Community namespaceconfig Operators",
+				publisher:   "Community",
+				sourceType:  "configmap",
+				address:     "cm-community-namespaceconfig-operators",
+				template:    catsrcCmTemplate,
+			}
+			subNc = subscriptionDescription{
+				subName:                "namespace-configuration-operator",
+				namespace:              "", //must be set in iT
+				channel:                "alpha",
+				ipApproval:             "Automatic",
+				operatorPackage:        "namespace-configuration-operator",
+				catalogSourceName:      "catsrc-community-namespaceconfig-operators",
+				catalogSourceNamespace: "", //must be set in iT
+				startingCSV:            "",
+				currentCSV:             "namespace-configuration-operator.v0.1.0", //it matches to that in cm, so set it.
+				installedCSV:           "",
+				template:               subTemplate,
+				singleNamespace:        true,
+			}
+			cm     = cmNc
+			catsrc = catsrcNc
+			sub    = subNc
 		)
 
 		//oc.TeardownProject()
@@ -3645,11 +3767,45 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle to support", func
 	// It will cover test case: OCP-24664, author: kuiwang@redhat.com
 	g.It("ConnectedOnly-Medium-24664-CRD updates if new schemas are backwards compatible", func() {
 		var (
-			itName = g.CurrentGinkgoTestDescription().TestText
-			og     = operatorGroupDescription{
+			itName              = g.CurrentGinkgoTestDescription().TestText
+			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
+			ogTemplate          = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+			cmLearnV1Template   = filepath.Join(buildPruningBaseDir, "cm-learn-v1.yaml")
+			cmLearnV2Template   = filepath.Join(buildPruningBaseDir, "cm-learn-v2.yaml")
+			catsrcCmTemplate    = filepath.Join(buildPruningBaseDir, "catalogsource-configmap.yaml")
+			subTemplate         = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+			og                  = operatorGroupDescription{
 				name:      "og-singlenamespace",
 				namespace: "",
 				template:  ogTemplate,
+			}
+			cmLearn = configMapDescription{
+				name:      "cm-learn-operators",
+				namespace: "", //must be set in iT
+				template:  cmLearnV1Template,
+			}
+			catsrcLearn = catalogSourceDescription{
+				name:        "catsrc-learn-operators",
+				namespace:   "", //must be set in iT
+				displayName: "Learn Operators",
+				publisher:   "Community",
+				sourceType:  "configmap",
+				address:     "cm-learn-operators",
+				template:    catsrcCmTemplate,
+			}
+			subLearn = subscriptionDescription{
+				subName:                "learn-operator",
+				namespace:              "", //must be set in iT
+				channel:                "alpha",
+				ipApproval:             "Automatic",
+				operatorPackage:        "learn-operator",
+				catalogSourceName:      "catsrc-learn-operators",
+				catalogSourceNamespace: "", //must be set in iT
+				startingCSV:            "",
+				currentCSV:             "learn-operator.v0.0.1", //it matches to that in cm, so set it.
+				installedCSV:           "",
+				template:               subTemplate,
+				singleNamespace:        true,
 			}
 			cm     = cmLearn
 			catsrc = catsrcLearn
@@ -3699,11 +3855,46 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle to support", func
 	// It will cover test case: OCP-21824, author: kuiwang@redhat.com
 	g.It("ConnectedOnly-Medium-21824-verify CRD should be ready before installing the operator", func() {
 		var (
-			itName = g.CurrentGinkgoTestDescription().TestText
-			og     = operatorGroupDescription{
+			itName               = g.CurrentGinkgoTestDescription().TestText
+			buildPruningBaseDir  = exutil.FixturePath("testdata", "olm")
+			ogTemplate           = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+			cmReadyTestTemplate  = filepath.Join(buildPruningBaseDir, "cm-certutil-readytest.yaml")
+			catsrcCmTemplate     = filepath.Join(buildPruningBaseDir, "catalogsource-configmap.yaml")
+			subTemplate          = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+			crdOlmtestTemplate   = filepath.Join(buildPruningBaseDir, "crd-olmtest.yaml")
+			cmReadyTestsTemplate = filepath.Join(buildPruningBaseDir, "cm-certutil-readytests.yaml")
+			og                   = operatorGroupDescription{
 				name:      "og-singlenamespace",
 				namespace: "",
 				template:  ogTemplate,
+			}
+			cmCertUtilReadytest = configMapDescription{
+				name:      "cm-certutil-readytest-operators",
+				namespace: "", //must be set in iT
+				template:  cmReadyTestTemplate,
+			}
+			catsrcCertUtilReadytest = catalogSourceDescription{
+				name:        "catsrc-certutil-readytest-operators",
+				namespace:   "", //must be set in iT
+				displayName: "certutil readytest Operators",
+				publisher:   "Community",
+				sourceType:  "configmap",
+				address:     "cm-certutil-readytest-operators",
+				template:    catsrcCmTemplate,
+			}
+			subCertUtilReadytest = subscriptionDescription{
+				subName:                "cert-utils-operator",
+				namespace:              "", //must be set in iT
+				channel:                "alpha",
+				ipApproval:             "Automatic",
+				operatorPackage:        "cert-utils-operator",
+				catalogSourceName:      "catsrc-certutil-readytest-operators",
+				catalogSourceNamespace: "", //must be set in iT
+				startingCSV:            "",
+				currentCSV:             "cert-utils-operator.v0.0.3", //it matches to that in cm, so set it.
+				installedCSV:           "",
+				template:               subTemplate,
+				singleNamespace:        true,
 			}
 			cm           = cmCertUtilReadytest
 			catsrc       = catsrcCertUtilReadytest
@@ -3757,16 +3948,11 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within all namesp
 	defer g.GinkgoRecover()
 
 	var (
-		oc                  = exutil.NewCLI("olm-all-"+getRandomString(), exutil.KubeConfigPath())
-		buildPruningBaseDir string
-		subTemplate         string
-		dr                  = make(describerResrouce)
+		oc = exutil.NewCLI("olm-all-"+getRandomString(), exutil.KubeConfigPath())
+		dr = make(describerResrouce)
 	)
 
 	g.BeforeEach(func() {
-		buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
-		subTemplate = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
-
 		itName := g.CurrentGinkgoTestDescription().TestText
 		dr.addIr(itName)
 	})
@@ -3780,8 +3966,10 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within all namesp
 	// It will cover test case: OCP-21484, OCP-21532(acutally it covers OCP-21484), author: kuiwang@redhat.com
 	g.It("ConnectedOnly-Medium-21484-High-21532-watch special or all namespace by operator group", func() {
 		var (
-			itName = g.CurrentGinkgoTestDescription().TestText
-			sub    = subscriptionDescription{
+			itName              = g.CurrentGinkgoTestDescription().TestText
+			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
+			subTemplate         = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+			sub                 = subscriptionDescription{
 				subName:                "composable-operator",
 				namespace:              "openshift-operators",
 				channel:                "alpha",
@@ -3830,8 +4018,10 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within all namesp
 	// It will cover test case: OCP-24906, author: kuiwang@redhat.com
 	g.It("ConnectedOnly-Medium-24906-Operators requesting cluster-scoped permission can trigger kube GC bug", func() {
 		var (
-			itName = g.CurrentGinkgoTestDescription().TestText
-			sub    = subscriptionDescription{
+			itName              = g.CurrentGinkgoTestDescription().TestText
+			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
+			subTemplate         = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+			sub                 = subscriptionDescription{
 				subName:                "amq-streams",
 				namespace:              "openshift-operators",
 				channel:                "stable",
@@ -3865,7 +4055,9 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within all namesp
 	g.It("ConnectedOnly-Medium-33241-Enable generated operator component adoption for operators with all ns mode [Serial]", func() {
 		var (
 			itName              = g.CurrentGinkgoTestDescription().TestText
+			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
 			catsrcImageTemplate = filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
+			subTemplate         = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
 			catsrc              = catalogSourceDescription{
 				name:        "catsrc-33241-operator",
 				namespace:   "openshift-marketplace",
