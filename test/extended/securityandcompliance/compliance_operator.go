@@ -27,19 +27,23 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		csuitetpcmTemplate         string
 		csuitetaintTemplate        string
 		csuitenodeTemplate         string
+		csuiteSCTemplate           string
 		cscanTemplate              string
 		cscantaintTemplate         string
 		cscantaintsTemplate        string
+		cscanSCTemplate            string
 		tprofileTemplate           string
 		tprofileWithoutVarTemplate string
 		scansettingTemplate        string
 		scansettingbindingTemplate string
 		pvextractpodYAML           string
 		podModifyTemplate          string
+		storageClassTemplate       string
 		catSrc                     catalogSourceDescription
 		ogD                        operatorGroupDescription
 		subD                       subscriptionDescription
 		podModifyD                 podModify
+		storageClass               storageClassDescription
 	)
 
 	g.BeforeEach(func() {
@@ -51,15 +55,18 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		csuitetpcmTemplate = filepath.Join(buildPruningBaseDir, "compliancesuitetpconfmap.yaml")
 		csuitetaintTemplate = filepath.Join(buildPruningBaseDir, "compliancesuitetaint.yaml")
 		csuitenodeTemplate = filepath.Join(buildPruningBaseDir, "compliancesuitenodes.yaml")
+		csuiteSCTemplate = filepath.Join(buildPruningBaseDir, "compliancesuiteStorageClass.yaml")
 		cscanTemplate = filepath.Join(buildPruningBaseDir, "compliancescan.yaml")
 		cscantaintTemplate = filepath.Join(buildPruningBaseDir, "compliancescantaint.yaml")
 		cscantaintsTemplate = filepath.Join(buildPruningBaseDir, "compliancescantaints.yaml")
+		cscanSCTemplate = filepath.Join(buildPruningBaseDir, "compliancescanStorageClass.yaml")
 		tprofileTemplate = filepath.Join(buildPruningBaseDir, "tailoredprofile.yaml")
 		tprofileWithoutVarTemplate = filepath.Join(buildPruningBaseDir, "tailoredprofile-withoutvariable.yaml")
 		scansettingTemplate = filepath.Join(buildPruningBaseDir, "scansetting.yaml")
 		scansettingbindingTemplate = filepath.Join(buildPruningBaseDir, "scansettingbinding.yaml")
 		pvextractpodYAML = filepath.Join(buildPruningBaseDir, "pv-extract-pod.yaml")
 		podModifyTemplate = filepath.Join(buildPruningBaseDir, "pod_modify.yaml")
+		storageClassTemplate = filepath.Join(buildPruningBaseDir, "storage_class.yaml")
 
 		catSrc = catalogSourceDescription{
 			name:        "compliance-operator",
@@ -67,7 +74,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			displayName: "openshift-compliance-operator",
 			publisher:   "Red Hat",
 			sourceType:  "grpc",
-			address:     "quay.io/openshift-qe-optional-operators/compliance-operator-index:latest",
+			address:     "quay.io/openshift-qe-optional-operators/compliance-operator-index:v4.7",
 			template:    catsrcCoTemplate,
 		}
 		ogD = operatorGroupDescription{
@@ -78,7 +85,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		subD = subscriptionDescription{
 			subName:                "compliance-operator",
 			namespace:              "",
-			channel:                "4.6",
+			channel:                "4.7",
 			ipApproval:             "Automatic",
 			operatorPackage:        "compliance-operator",
 			catalogSourceName:      "compliance-operator",
@@ -95,6 +102,13 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			nodeName:  "",
 			args:      "",
 			template:  podModifyTemplate,
+		}
+		storageClass = storageClassDescription{
+			name:              "",
+			provisioner:       "",
+			reclaimPolicy:     "",
+			volumeBindingMode: "",
+			template:          storageClassTemplate,
 		}
 
 		itName := g.CurrentGinkgoTestDescription().TestText
@@ -2096,6 +2110,98 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 
 			g.By("ocp-37084 The ComplianceSuite generates through ScanSettingBinding CR with tailored cis profile successfully... !!!\n")
 		})
+
+		// author: pdhamdhe@redhat.com
+		g.It("High-34928-Storage class and access modes are configurable through ComplianceSuite and ComplianceScan", func() {
+
+			var (
+				csuiteD = complianceSuiteDescription{
+					name:             "worker-compliancesuite",
+					namespace:        "",
+					scanname:         "worker-scan",
+					profile:          "xccdf_org.ssgproject.content_profile_moderate",
+					content:          "ssg-rhcos4-ds.xml",
+					contentImage:     "quay.io/complianceascode/ocp4:latest",
+					rule:             "xccdf_org.ssgproject.content_rule_no_netrc_files",
+					nodeSelector:     "worker",
+					storageClassName: "gold",
+					pvAccessModes:    "ReadWriteOnce",
+					template:         csuiteSCTemplate,
+				}
+				cscanMD = complianceScanDescription{
+					name:             "master-scan",
+					namespace:        "",
+					profile:          "xccdf_org.ssgproject.content_profile_e8",
+					content:          "ssg-rhcos4-ds.xml",
+					contentImage:     "quay.io/complianceascode/ocp4:latest",
+					rule:             "xccdf_org.ssgproject.content_rule_accounts_no_uid_except_zero",
+					nodeSelector:     "master",
+					storageClassName: "gold",
+					pvAccessModes:    "ReadWriteOnce",
+					template:         cscanSCTemplate,
+				}
+			)
+
+			defer cleanupObjects(oc,
+				objectTableRef{"compliancesuite", subD.namespace, "worker-compliancesuite"},
+				objectTableRef{"compliancescan", subD.namespace, "master-scan"},
+				objectTableRef{"storageclass", subD.namespace, "gold"})
+
+			g.By("Get the default storageClass provisioner & volumeBindingMode from cluster .. !!!\n")
+			storageClass.name = "gold"
+			storageClass.provisioner = getStorageClassProvisioner(oc)
+			storageClass.reclaimPolicy = "Delete"
+			storageClass.volumeBindingMode = getStorageClassVolumeBindingMode(oc)
+			storageClass.create(oc, itName, dr)
+
+			csuiteD.namespace = subD.namespace
+			g.By("Create worker-compliancesuite.. !!!\n")
+			e2e.Logf("Here namespace : %v\n", catSrc.namespace)
+			csuiteD.create(oc, itName, dr)
+
+			cscanMD.namespace = subD.namespace
+			g.By("Create master-scan.. !!!\n")
+			cscanMD.create(oc, itName, dr)
+
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", csuiteD.name, "-n",
+				subD.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancescan", cscanMD.name, "-n",
+				subD.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+
+			g.By("Check worker & master scan pods status.. !!! \n")
+			subD.scanPodStatus(oc, "Succeeded")
+
+			g.By("Check worker-compliancesuite name and result.. !!!\n")
+			subD.complianceSuiteName(oc, "worker-compliancesuite")
+			subD.complianceSuiteResult(oc, csuiteD.name, "COMPLIANT INCONSISTENT")
+
+			g.By("Check worker-compliancesuite result through exit-code.. !!!\n")
+			subD.getScanExitCodeFromConfigmap(oc, "0")
+
+			g.By("Check pvc name and storage size for worker-scan.. !!!\n")
+			subD.getPVCName(oc, "worker-scan")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "gold", ok, []string{"pvc", csuiteD.scanname, "-n",
+				subD.namespace, "-o=jsonpath={.spec.storageClassName}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "ReadWriteOnce", ok, []string{"pvc", csuiteD.scanname, "-n",
+				subD.namespace, "-o=jsonpath={.status.accessModes[]}"}).check(oc)
+
+			g.By("Check master-scan name and result..!!!\n")
+			subD.complianceScanName(oc, "master-scan")
+			subD.complianceScanResult(oc, "COMPLIANT")
+
+			g.By("Check master-scan result through exit-code ..!!!\n")
+			subD.getScanExitCodeFromConfigmap(oc, "0")
+
+			g.By("Check pvc name and storage size for master-scan ..!!!\n")
+			subD.getPVCName(oc, "master-scan")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "gold", ok, []string{"pvc", cscanMD.name, "-n",
+				subD.namespace, "-o=jsonpath={.spec.storageClassName}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "ReadWriteOnce", ok, []string{"pvc", cscanMD.name, "-n",
+				subD.namespace, "-o=jsonpath={.status.accessModes[]}"}).check(oc)
+
+			g.By("ocp-34928 Storage class and access modes are successfully configurable through ComplianceSuite and ComplianceScan ..!!!\n")
+		})
+
 	})
 
 })

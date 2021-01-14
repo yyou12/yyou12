@@ -28,8 +28,10 @@ type complianceSuiteDescription struct {
 	value               string
 	operator            string
 	nodeSelector        string
+	pvAccessModes       string
 	size                string
 	rotation            int
+	storageClassName    string
 	tailoringConfigMap  string
 	template            string
 }
@@ -86,31 +88,41 @@ type objectTableRef struct {
 }
 
 type complianceScanDescription struct {
-	name         string
-	namespace    string
-	scanType     string
-	profile      string
-	content      string
-	contentImage string
-	rule         string
-	debug        bool
-	key          string
-	value        string
-	operator     string
-	key1         string
-	value1       string
-	operator1    string
-	nodeSelector string
-	size         string
-	template     string
+	name             string
+	namespace        string
+	scanType         string
+	profile          string
+	content          string
+	contentImage     string
+	rule             string
+	debug            bool
+	key              string
+	value            string
+	operator         string
+	key1             string
+	value1           string
+	operator1        string
+	nodeSelector     string
+	pvAccessModes    string
+	size             string
+	storageClassName string
+	template         string
+}
+
+type storageClassDescription struct {
+	name              string
+	provisioner       string
+	reclaimPolicy     string
+	volumeBindingMode string
+	template          string
 }
 
 func (csuite *complianceSuiteDescription) create(oc *exutil.CLI, itName string, dr describerResrouce) {
 	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", csuite.template, "-p", "NAME="+csuite.name, "NAMESPACE="+csuite.namespace,
 		"SCHEDULE="+csuite.schedule, "SCANNAME="+csuite.scanname, "SCANTYPE="+csuite.scanType, "PROFILE="+csuite.profile, "CONTENT="+csuite.content,
 		"CONTENTIMAGE="+csuite.contentImage, "RULE="+csuite.rule, "NOEXTERNALRESOURCES="+strconv.FormatBool(csuite.noExternalResources), "KEY="+csuite.key,
-		"VALUE="+csuite.value, "OPERATOR="+csuite.operator, "NODESELECTOR="+csuite.nodeSelector, "SIZE="+csuite.size, "ROTATION="+strconv.Itoa(csuite.rotation),
-		"TAILORCONFIGMAPNAME="+csuite.tailoringConfigMap)
+		"VALUE="+csuite.value, "OPERATOR="+csuite.operator, "NODESELECTOR="+csuite.nodeSelector, "PVACCESSMODE="+csuite.pvAccessModes, "STORAGECLASSNAME="+csuite.storageClassName,
+		"SIZE="+csuite.size, "ROTATION="+strconv.Itoa(csuite.rotation), "TAILORCONFIGMAPNAME="+csuite.tailoringConfigMap)
 	o.Expect(err).NotTo(o.HaveOccurred())
 	dr.getIr(itName).add(newResource(oc, "compliancesuite", csuite.name, requireNS, csuite.namespace))
 }
@@ -146,7 +158,8 @@ func (cscan *complianceScanDescription) create(oc *exutil.CLI, itName string, dr
 	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", cscan.template, "-p", "NAME="+cscan.name,
 		"NAMESPACE="+cscan.namespace, "SCANTYPE="+cscan.scanType, "PROFILE="+cscan.profile, "CONTENT="+cscan.content,
 		"CONTENTIMAGE="+cscan.contentImage, "RULE="+cscan.rule, "KEY="+cscan.key, "VALUE="+cscan.value, "OPERATOR="+cscan.operator,
-		"KEY1="+cscan.key1, "VALUE1="+cscan.value1, "OPERATOR1="+cscan.operator1, "NODESELECTOR="+cscan.nodeSelector, "SIZE="+cscan.size)
+		"KEY1="+cscan.key1, "VALUE1="+cscan.value1, "OPERATOR1="+cscan.operator1, "NODESELECTOR="+cscan.nodeSelector,
+		"PVACCESSMODE="+cscan.pvAccessModes, "STORAGECLASSNAME="+cscan.storageClassName, "SIZE="+cscan.size)
 	o.Expect(err).NotTo(o.HaveOccurred())
 	dr.getIr(itName).add(newResource(oc, "compliancescan", cscan.name, requireNS, cscan.namespace))
 }
@@ -177,6 +190,12 @@ func (tprofile *tailoredProfileWithoutVarDescription) create(oc *exutil.CLI, itN
 
 func (tprofile *tailoredProfileWithoutVarDescription) delete(itName string, dr describerResrouce) {
 	dr.getIr(itName).remove(tprofile.name, "tailoredprofile", tprofile.namespace)
+}
+
+func (sclass *storageClassDescription) create(oc *exutil.CLI, itName string, dr describerResrouce) {
+	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", sclass.template, "-p", "NAME="+sclass.name,
+		"PROVISIONER="+sclass.provisioner, "RECLAIMPOLICY="+sclass.reclaimPolicy, "VOLUMEBINDINGMODE="+sclass.volumeBindingMode)
+	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
 func (csuite *complianceSuiteDescription) checkComplianceSuiteStatus(oc *exutil.CLI, expected string) {
@@ -426,5 +445,37 @@ func assertCoPodNumerEqualNodeNumber(oc *exutil.CLI, namespace string, label str
 	e2e.Logf("the result of intPodNumber:%v", intPodNumber)
 	if intNodeNumber != intPodNumber {
 		e2e.Failf("the intNodeNumber and intPodNumber not equal!")
+	}
+}
+
+func getStorageClassProvisioner(oc *exutil.CLI) string {
+	scname, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("storageclass", "-o=jsonpath={.items[*].metadata.name}").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	if strings.Contains(scname, "nfs") {
+		scpro, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("storageclass", "nfs", "-o=jsonpath={.provisioner}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf("the result of StorageClassProvisioner:%v", scpro)
+		return scpro
+	} else {
+		sclasspro, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("storageclass", "-o=jsonpath={.items[0].provisioner}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf("the result of StorageClassProvisioner:%v", sclasspro)
+		return sclasspro
+	}
+}
+
+func getStorageClassVolumeBindingMode(oc *exutil.CLI) string {
+	scname, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("storageclass", "-o=jsonpath={.items[*].metadata.name}").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	if strings.Contains(scname, "nfs") {
+		scvbm, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("storageclass", "nfs", "-o=jsonpath={.volumeBindingMode}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf("the result of StorageClassVolumeBindingMode:%v", scvbm)
+		return scvbm
+	} else {
+		sclassvbm, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("storageclass", "-o=jsonpath={.items[0].volumeBindingMode}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf("the result of StorageClassVolumeBindingMode:%v", sclassvbm)
+		return sclassvbm
 	}
 }
