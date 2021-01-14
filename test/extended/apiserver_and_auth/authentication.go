@@ -1,8 +1,11 @@
 package apiserver_and_auth
 
 import (
-	"time"
+	"path/filepath"
 	"regexp"
+	"strings"
+	"time"
+
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	g "github.com/onsi/ginkgo"
@@ -122,6 +125,104 @@ var _ = g.Describe("[sig-auth] Apiserver_and_Auth", func() {
 			}
 			return false, nil
 		})
+		o.Expect(err).NotTo(o.HaveOccurred())
+	})
+
+	// author: pmali@redhat.com
+	// It is destructive case, will make co/authentical Available=False for a while, so adding [Disruptive]
+
+	g.It("High-33390-Network Stability check every level of a managed route [Disruptive]", func() {
+		g.By("Check pods under openshift-authentication namespace is available")
+		err := wait.Poll(1*time.Second, 60*time.Second, func() (bool, error) {
+			output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-n", "openshift-authentication").Output()
+			if err != nil {
+				e2e.Logf("Fail to get pods under openshift-authentication, error: %s. Trying again", err)
+				return false, nil
+			}
+			if matched, _ := regexp.MatchString("oauth-openshift.*Running", output); matched {
+				e2e.Logf("Pods are in Running state:\n%s", output)
+				return true, nil
+			}
+			return false, nil
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		// Check authentication operator, If its UP and running that means route and service is also working properly. No need to check seperately Service and route endpoints.
+		g.By("Check authentication operator is available")
+		err = wait.Poll(1*time.Second, 60*time.Second, func() (bool, error) {
+			output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("co", "authentication", "-o=jsonpath={.status.conditions[0].status}").Output()
+			if err != nil {
+				e2e.Logf("Fail to get authentication.operator cluster, error: %s. Trying again", err)
+				return false, nil
+			}
+			if matched, _ := regexp.MatchString("False", output); matched {
+				e2e.Logf("authentication.operator cluster is UP:\n%s", output)
+				return true, nil
+			}
+			return false, nil
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		//Check service endpoint is showing correct error
+
+		buildPruningBaseDir := exutil.FixturePath("testdata", "apiserver_and_auth")
+
+		g.By("Check service endpoint is showing correct error")
+		networkPolicyAllow := filepath.Join(buildPruningBaseDir, "allow-same-namespace.yaml")
+
+		g.By("Create AllowNetworkpolicy")
+		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-n", "openshift-authentication", "-f"+networkPolicyAllow).Execute()
+		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("-n", "openshift-authentication", "-f="+networkPolicyAllow).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		// Check authentication operator after allow network policy change
+		err = wait.Poll(1*time.Second, 60*time.Second, func() (bool, error) {
+			output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("co", "authentication", "-o=jsonpath={.status.conditions[0].message}").Output()
+
+			if err != nil {
+				e2e.Logf("Fail to get authentication.operator cluster, error: %s. Trying again", err)
+				return false, nil
+			}
+			if strings.Contains(output, "OAuthServiceEndpointsCheckEndpointAccessibleControllerDegraded") {
+				e2e.Logf("Allow network policy applied successfully:\n%s", output)
+				return true, nil
+			}
+			return false, nil
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Delete allow-same-namespace Networkpolicy")
+		err = oc.AsAdmin().WithoutNamespace().Run("delete").Args("-n", "openshift-authentication", "-f="+networkPolicyAllow).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		//Deny all trafic for route
+		g.By("Check route is showing correct error")
+
+		networkPolicyDeny := filepath.Join(buildPruningBaseDir, "deny-network-policy.yaml")
+
+		g.By("Create Deny-all Networkpolicy")
+		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-n", "openshift-authentication", "-f="+networkPolicyDeny).Execute()
+		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("-n", "openshift-authentication", "-f="+networkPolicyDeny).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		// Check authentication operator after network policy change
+		err = wait.Poll(1*time.Second, 60*time.Second, func() (bool, error) {
+			output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("co", "authentication", "-o=jsonpath={.status.conditions[0].message}").Output()
+
+			if err != nil {
+				e2e.Logf("Fail to get authentication.operator cluster, error: %s. Trying again", err)
+				return false, nil
+			}
+			if strings.Contains(output, "OAuthRouteCheckEndpointAccessibleControllerDegraded") {
+				e2e.Logf("Deny network policy applied:\n%s", output)
+				return true, nil
+			}
+			return false, nil
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Delete Networkpolicy")
+		err = oc.AsAdmin().WithoutNamespace().Run("delete").Args("-n", "openshift-authentication", "-f="+networkPolicyDeny).Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
 	})
 
