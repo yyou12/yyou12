@@ -48,7 +48,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 			displayName: "openshift-file-integrity-operator",
 			publisher:   "Red Hat",
 			sourceType:  "grpc",
-			address:     "quay.io/openshift-qe-optional-operators/file-integrity-operator-index:latest",
+			address:     "quay.io/openshift-qe-optional-operators/file-integrity-operator-index:v4.7",
 			template:    catsrcImageTemplate,
 		}
 		og = operatorGroupDescription{
@@ -59,7 +59,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 		sub = subscriptionDescription{
 			subName:                "file-integrity-operator",
 			namespace:              "",
-			channel:                "4.6",
+			channel:                "4.7",
 			ipApproval:             "Automatic",
 			operatorPackage:        "file-integrity-operator",
 			catalogSourceName:      "file-integrity-operator",
