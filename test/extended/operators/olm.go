@@ -1500,6 +1500,47 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		e2e.Logf("CSV prometheus InstallSucceeded")
 	})
 
+	// author: scolange@redhat.com
+	g.It("Medium-24586-Prevent Operator Conflicts in OperatorHub", func() {
+
+		var buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
+		var catSource = filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
+		var Sub = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+		var og = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+
+		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("catalogsource", "test-prometer-24586", "-n", "openshift-marketplace").Execute()
+		defer oc.AsAdmin().Run("delete").Args("ns", "test24586").Execute()
+
+		g.By("create new namespace")
+		var err = oc.AsAdmin().Run("create").Args("ns", "test24586").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("create new catalogsource")
+		configFile, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", catSource, "-p", "NAME=test-prometer-24586",
+			"NAMESPACE=openshift-marketplace", "ADDRESS=quay.io/olmqe/mktplc-367", "DISPLAYNAME=prometer-24586", "PUBLISHER=QE", "SOURCETYPE=grpc").OutputToFile("config-24586.json")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", configFile).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		createOg, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", og, "-p", "NAME=test-operators-og", "NAMESPACE=test24586").OutputToFile("config-24586.json")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", createOg).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		createImgSub, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", Sub, "-p", "SUBNAME=prometheus", "SUBNAMESPACE=test24586",
+			"CHANNEL=alpha", "APPROVAL=Automatic", "OPERATORNAME=prometheus", "SOURCENAME=community-operators", "SOURCENAMESPACE=openshift-marketplace").OutputToFile("config-24586.json")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", createImgSub).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		createImgSub2, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", Sub, "-p", "SUBNAME=prometheus2", "SUBNAMESPACE=test24586",
+			"CHANNEL=alpha", "APPROVAL=Automatic", "OPERATORNAME=prometheus", "SOURCENAME=test-prometer-24586", "SOURCENAMESPACE=openshift-marketplace").OutputToFile("config-24586.json")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", createImgSub2).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+	})
+
 })
 
 var _ = g.Describe("[sig-operators] OLM for an end user use", func() {
