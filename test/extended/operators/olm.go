@@ -3450,7 +3450,12 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 			msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", "-n", oc.Namespace(), "--no-headers=true").Output()
 			o.Expect(err).NotTo(o.HaveOccurred())
 			if strings.Contains(msg, "etcdoperator") && strings.Contains(msg, "Failed") {
-				csvName = sub.getCSV().name
+				for _, s = range strings.Fields(msg) {
+					if strings.Contains(s, "etcdoperator") {
+						csvName = s
+						break
+					}
+				}				
 				e2e.Logf("\nAs expected CSV %v has failed: ", csvName)
 				return true, nil
 			}
@@ -3458,15 +3463,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		})
 		e2e.Logf("\n%v\n", msg)
 		o.Expect(waitErr).NotTo(o.HaveOccurred())
-
-		// really get the csv name
-		if csvName == "" {
-			if sub.getCSV().name == "" {
-				csvName = strings.Fields(msg)[0]
-			} else {
-				csvName = sub.getCSV().name
-			}
-		}
+		o.Expect(csvName).NotTo(o.BeEmpty())
 
 		msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", "-n", oc.Namespace(), csvName, "-o=jsonpath={.status.conditions..phase}").Output()
 		e2e.Logf("CSV %v reasons:", msg)
@@ -3518,19 +3515,19 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 			msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", "-n", oc.Namespace(), "--no-headers=true").Output()
 			o.Expect(err).NotTo(o.HaveOccurred())
 			if strings.Contains(msg, "etcdoperator.v0.9.2") && strings.Contains(msg, "Succeeded") {
-				csvName = sub.getCSV().name
+				for _, s = range strings.Fields(msg) {
+					if strings.Contains(s, "etcdoperator") {
+						csvName = s
+						break
+					}
+				}
 				return true, nil
 			}
 			return false, nil
 		})
 		o.Expect(waitErr).NotTo(o.HaveOccurred())
-		if csvName == "" {
-			if sub.getCSV().name == "" {
-				csvName = strings.Fields(msg)[0]
-			} else {
-				csvName = sub.getCSV().name
-			}
-		}
+		o.Expect(csvName).NotTo(o.BeEmpty())
+		
 		msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", "-n", oc.Namespace(), csvName, "-o=jsonpath={.status.phase}").Output()
 		e2e.Logf("New CSV %v has %v", csvName, msg)
 		o.Expect(strings.Contains(msg, "Succeeded")).To(o.BeTrue())

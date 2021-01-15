@@ -156,7 +156,7 @@ spec:
   ingress:
   - from:
     - podSelector: {}
-    `)
+`)
 
 func testExtendedTestdataApiserver_and_authAllowSameNamespaceYamlBytes() ([]byte, error) {
 	return _testExtendedTestdataApiserver_and_authAllowSameNamespaceYaml, nil
@@ -179,8 +179,8 @@ metadata:
   name: deny-by-default
 spec:
   podSelector:
-  ingress: []
-  `)
+  ingress: [] 
+`)
 
 func testExtendedTestdataApiserver_and_authDenyNetworkPolicyYamlBytes() ([]byte, error) {
 	return _testExtendedTestdataApiserver_and_authDenyNetworkPolicyYaml, nil
