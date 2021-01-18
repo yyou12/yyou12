@@ -26,6 +26,62 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	var oc = exutil.NewCLI("default-"+getRandomString(), exutil.KubeConfigPath())
 
 	// author: jiazha@redhat.com
+	g.It("High-37442-create a Conditions CR for each Operator it installs", func() {
+		g.By("1) Install the OperatorGroup in a ramdom project")
+		dr := make(describerResrouce)
+		itName := g.CurrentGinkgoTestDescription().TestText
+		dr.addIr(itName)
+
+		oc.SetupProject()
+		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
+		ogSingleTemplate := filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+		og := operatorGroupDescription{
+			name:      "og-37442",
+			namespace: oc.Namespace(),
+			template:  ogSingleTemplate,
+		}
+		og.createwithCheck(oc, itName, dr)
+
+		g.By("2) Install the etcdoperator v0.9.4 with Automatic approval")
+		subTemplate := filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+		sub := subscriptionDescription{
+			subName:                "sub-37442",
+			namespace:              oc.Namespace(),
+			catalogSourceName:      "community-operators",
+			catalogSourceNamespace: "openshift-marketplace",
+			channel:                "singlenamespace-alpha",
+			ipApproval:             "Automatic",
+			operatorPackage:        "etcd",
+			startingCSV:            "etcdoperator.v0.9.4",
+			singleNamespace:        true,
+			template:               subTemplate,
+		}
+		sub.create(oc, itName, dr)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", "etcdoperator.v0.9.4", "-n", oc.Namespace(), "-o=jsonpath={.status.phase}"}).check(oc)
+
+		g.By("3) Check if OperatorCondition generated well")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "etcd-operator", ok, []string{"operatorcondition", "etcdoperator.v0.9.4", "-n", oc.Namespace(), "-o=jsonpath={.spec.deployments[0]}"}).check(oc)
+		for i := 0; i < 3; i++ {
+			newCheck("expect", asAdmin, withoutNamespace, compare, "OPERATOR_CONDITION_NAME", ok, []string{"deployment", "etcd-operator", "-n", oc.Namespace(), fmt.Sprintf("-o=jsonpath={.spec.template.spec.containers[%d].env[2].name}", i)}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, compare, "etcdoperator.v0.9.4", ok, []string{"deployment", "etcd-operator", "-n", oc.Namespace(), fmt.Sprintf("-o=jsonpath={.spec.template.spec.containers[%d].env[2].value}", i)}).check(oc)
+		}
+		// this etcdoperator.v0.9.4 role should be owned by OperatorCondition
+		newCheck("expect", asAdmin, withoutNamespace, compare, "OperatorCondition", ok, []string{"role", "etcdoperator.v0.9.4", "-n", oc.Namespace(), "-o=jsonpath={.metadata.ownerReferences[0].kind}"}).check(oc)
+		// this etcdoperator.v0.9.4 role should be added to etcd-operator SA
+		newCheck("expect", asAdmin, withoutNamespace, compare, "etcd-operator", ok, []string{"rolebinding", "etcdoperator.v0.9.4", "-n", oc.Namespace(), "-o=jsonpath={.subjects[0].name}"}).check(oc)
+
+		g.By("4) Uninstall the operator")
+		sub.delete(itName, dr)
+		sub.getCSV().delete(itName, dr)
+
+		g.By("5) Check if the related resources are removed successfully")
+		newCheck("present", asAdmin, withoutNamespace, notPresent, "", ok, []string{"operatorcondition", "etcdoperator.v0.9.4", "-n", oc.Namespace()}).check(oc)
+		newCheck("present", asAdmin, withoutNamespace, notPresent, "", ok, []string{"role", "etcdoperator.v0.9.4", "-n", oc.Namespace()}).check(oc)
+		newCheck("present", asAdmin, withoutNamespace, notPresent, "", ok, []string{"rolebinding", "etcdoperator.v0.9.4", "-n", oc.Namespace()}).check(oc)
+
+	})
+
+	// author: jiazha@redhat.com
 	g.It("Medium-37631-Allow cluster admin to overwrite the OperatorCondition", func() {
 		g.By("1) Install the OperatorGroup in a ramdom project")
 		dr := make(describerResrouce)
@@ -3455,7 +3511,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 						csvName = s
 						break
 					}
-				}				
+				}
 				e2e.Logf("\nAs expected CSV %v has failed: ", csvName)
 				return true, nil
 			}
@@ -3527,7 +3583,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		})
 		o.Expect(waitErr).NotTo(o.HaveOccurred())
 		o.Expect(csvName).NotTo(o.BeEmpty())
-		
+
 		msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", "-n", oc.Namespace(), csvName, "-o=jsonpath={.status.phase}").Output()
 		e2e.Logf("New CSV %v has %v", csvName, msg)
 		o.Expect(strings.Contains(msg, "Succeeded")).To(o.BeTrue())
