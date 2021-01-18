@@ -803,7 +803,7 @@ if __name__ == "__main__":
     parser.add_argument("-e","--endpoint", default="https://reportportal-openshift.apps.ocp4.prod.psi.redhat.com/api")
     parser.add_argument("-t","--token", default="")
     parser.add_argument("-ta","--tatoken", default="")
-    parser.add_argument("-p","--project", default="ocptrial")
+    parser.add_argument("-p","--project", default="ocptrial1")
     #import, getprofile
     parser.add_argument("-f","--file", default="")
     parser.add_argument("-s","--subteam", default="")
