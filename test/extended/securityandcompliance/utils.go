@@ -108,7 +108,7 @@ func (fi1 *fileintegrity) checkKeywordNotExistInLog(oc *exutil.CLI, podName stri
 
 func (fi1 *fileintegrity) checkKeywordExistInLog(oc *exutil.CLI, podName string, expected string) {
 	err := wait.Poll(5*time.Second, 20*time.Second, func() (bool, error) {
-		logs, err1 := oc.AsAdmin().WithoutNamespace().Run("logs").Args(podName, "-n", fi1.namespace).Output()
+		logs, err1 := oc.AsAdmin().WithoutNamespace().Run("logs").Args("pod/"+podName, "-n", fi1.namespace).Output()
 		o.Expect(err1).NotTo(o.HaveOccurred())
 		e2e.Logf("the result of logs:%v", logs)
 		if strings.Contains(logs, expected) {
@@ -157,7 +157,7 @@ func (fi1 *fileintegrity) createFIOWithoutConfig(oc *exutil.CLI, itName string, 
 
 func (fi1 *fileintegrity) createFIOWithoutKeyword(oc *exutil.CLI, itName string, dr describerResrouce, keyword string) {
 	err := applyResourceFromTemplateWithoutKeyword(oc, keyword, "--ignore-unknown-parameters=true", "-f", fi1.template, "-p", "NAME="+fi1.name, "NAMESPACE="+fi1.namespace,
-		"CONFNAME="+fi1.configname, "CONFKEY="+fi1.configkey, "DEBUG="+strconv.FormatBool(fi1.debug))
+		"CONFNAME="+fi1.configname, "CONFKEY="+fi1.configkey, "DEBUG="+strconv.FormatBool(fi1.debug), "NODESELECTORKEY="+fi1.nodeselectorkey, "NODESELECTORVALUE="+fi1.nodeselectorvalue)
 	o.Expect(err).NotTo(o.HaveOccurred())
 	dr.getIr(itName).add(newResource(oc, "fileintegrity", fi1.name, requireNS, fi1.namespace))
 }
@@ -348,9 +348,9 @@ func checkDataDetailsEqual(intFileAddedCM int, intFileChangedCM int, intFileRemo
 	}
 }
 
-func (fi1 *fileintegrity) checkPodNumerLessThanNodeNumber(oc *exutil.CLI, mcpRule string) {
+func (fi1 *fileintegrity) checkPodNumerLessThanNodeNumber(oc *exutil.CLI, label string) {
 	err := wait.Poll(5*time.Second, 100*time.Second, func() (bool, error) {
-		intNodeNumber := getNodeNumberPerLabel(oc, mcpRule)
+		intNodeNumber := getNodeNumberPerLabel(oc, label)
 		daemonsetPodNumber, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("daemonset", "-n", fi1.namespace, "-o=jsonpath={.items[].status.numberReady}").Output()
 		e2e.Logf("the result of intNodeNumber:%v", intNodeNumber)
 		e2e.Logf("the result of daemonsetPodNumber:%v", daemonsetPodNumber)

@@ -504,7 +504,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 		fi1.checkConfigmapCreated(oc)
 		fi1.createFIOWithConfig(oc, itName, dr)
 		fi1.checkFileintegrityStatus(oc, "running")
-		fi1.checkPodNumerLessThanNodeNumber(oc, "worker")
+		fi1.checkPodNumerLessThanNodeNumber(oc, "node-role.kubernetes.io/worker")
 
 		g.By("patch the tolerations and compare again")
 		patch := fmt.Sprintf("{\"spec\":{\"tolerations\":[{\"effect\":\"NoSchedule\",\"key\":\"key1\",\"operator\":\"Equal\",\"value\":\"value1\"}]}}")
@@ -521,7 +521,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 		fi1.removeFileintegrity(oc, "deleted")
 		fi1.createFIOWithConfig(oc, itName, dr)
 		fi1.checkFileintegrityStatus(oc, "running")
-		fi1.checkPodNumerLessThanNodeNumber(oc, "worker")
+		fi1.checkPodNumerLessThanNodeNumber(oc, "node-role.kubernetes.io/worker")
 
 		g.By("patch the tolerations and compare again")
 		patch = fmt.Sprintf("{\"spec\":{\"tolerations\":[{\"effect\":\"NoSchedule\",\"key\":\"key1\",\"operator\":\"Exists\"}]}}")
@@ -569,7 +569,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 		fi1.checkConfigmapCreated(oc)
 		fi1.createFIOWithConfig(oc, itName, dr)
 		fi1.checkFileintegrityStatus(oc, "running")
-		fi1.checkPodNumerLessThanNodeNumber(oc, "worker")
+		fi1.checkPodNumerLessThanNodeNumber(oc, "node-role.kubernetes.io/worker=")
 
 		g.By("patch the tolerations and compare again")
 		patch := fmt.Sprintf("{\"spec\":{\"tolerations\":[{\"effect\":\"NoSchedule\",\"key\":\"key1\",\"operator\":\"Equal\",\"value\":\"value1\"},{\"effect\":\"NoExecute\",\"key\":\"key2\",\"operator\":\"Equal\",\"value\":\"value2\"}]}}")
