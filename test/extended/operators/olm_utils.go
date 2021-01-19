@@ -309,10 +309,11 @@ func (crinstance *customResourceDescription) delete(itName string, dr describerR
 }
 
 type operatorGroupDescription struct {
-	name         string
-	namespace    string
-	multinslabel string
-	template     string
+	name               string
+	namespace          string
+	multinslabel       string
+	template           string
+	serviceAccountName string
 }
 
 //the method is to check if og exist. if not existing, create it with template and save it to dr.
@@ -335,7 +336,7 @@ func (og *operatorGroupDescription) createwithCheck(oc *exutil.CLI, itName strin
 func (og *operatorGroupDescription) create(oc *exutil.CLI, itName string, dr describerResrouce) {
 	var err error
 	if strings.Compare(og.multinslabel, "") == 0 {
-		err = applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", og.template, "-p", "NAME="+og.name, "NAMESPACE="+og.namespace)
+		err = applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", og.template, "-p", "NAME="+og.name, "NAMESPACE="+og.namespace, "SERVICE_ACCOUNT_NAME="+og.serviceAccountName)
 	} else {
 		err = applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", og.template, "-p", "NAME="+og.name, "NAMESPACE="+og.namespace, "MULTINSLABEL="+og.multinslabel)
 	}

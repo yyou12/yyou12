@@ -1,0 +1,20 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: scoped
+rules:
+  - apiGroups: ["*"]
+    resources: ["*"]
+    verbs: ["*"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: scoped-bindings
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: scoped
+subjects:
+  - kind: ServiceAccount
+    name: scoped

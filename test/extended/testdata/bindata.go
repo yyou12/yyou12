@@ -41,8 +41,10 @@
 // test/extended/testdata/olm/og-allns.yaml
 // test/extended/testdata/olm/og-multins.yaml
 // test/extended/testdata/olm/olm-subscription.yaml
+// test/extended/testdata/olm/operatorgroup-serviceaccount.yaml
 // test/extended/testdata/olm/operatorgroup.yaml
 // test/extended/testdata/olm/opsrc.yaml
+// test/extended/testdata/olm/scoped-sa-roles.yaml
 // test/extended/testdata/olm/validatingwebhook-csv.yaml
 // test/extended/testdata/olm/vpa-crd.yaml
 // test/extended/testdata/operators/argocd-cr.yaml
@@ -7516,6 +7518,41 @@ func testExtendedTestdataOlmOlmSubscriptionYaml() (*asset, error) {
 	return a, nil
 }
 
+var _testExtendedTestdataOlmOperatorgroupServiceaccountYaml = []byte(`apiVersion: v1
+kind: Template
+metadata:
+  name: operatorgroup-template
+objects:
+  - kind: OperatorGroup
+    apiVersion: operators.coreos.com/v1
+    metadata:
+      name: "${NAME}"
+      namespace: "${NAMESPACE}"
+    spec:
+      serviceAccountName: "${SERVICE_ACCOUNT_NAME}"
+      targetNamespaces:
+        - "${NAMESPACE}"
+parameters:
+  - name: NAME
+  - name: NAMESPACE
+  - name: SERVICE_ACCOUNT_NAME
+`)
+
+func testExtendedTestdataOlmOperatorgroupServiceaccountYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataOlmOperatorgroupServiceaccountYaml, nil
+}
+
+func testExtendedTestdataOlmOperatorgroupServiceaccountYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataOlmOperatorgroupServiceaccountYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/olm/operatorgroup-serviceaccount.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
 var _testExtendedTestdataOlmOperatorgroupYaml = []byte(`apiVersion: v1
 kind: Template
 metadata:
@@ -7589,6 +7626,43 @@ func testExtendedTestdataOlmOpsrcYaml() (*asset, error) {
 	}
 
 	info := bindataFileInfo{name: "test/extended/testdata/olm/opsrc.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataOlmScopedSaRolesYaml = []byte(`apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: scoped
+rules:
+  - apiGroups: ["*"]
+    resources: ["*"]
+    verbs: ["*"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: scoped-bindings
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: scoped
+subjects:
+  - kind: ServiceAccount
+    name: scoped
+`)
+
+func testExtendedTestdataOlmScopedSaRolesYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataOlmScopedSaRolesYaml, nil
+}
+
+func testExtendedTestdataOlmScopedSaRolesYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataOlmScopedSaRolesYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/olm/scoped-sa-roles.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -11509,8 +11583,10 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/olm/og-allns.yaml":                                          testExtendedTestdataOlmOgAllnsYaml,
 	"test/extended/testdata/olm/og-multins.yaml":                                        testExtendedTestdataOlmOgMultinsYaml,
 	"test/extended/testdata/olm/olm-subscription.yaml":                                  testExtendedTestdataOlmOlmSubscriptionYaml,
+	"test/extended/testdata/olm/operatorgroup-serviceaccount.yaml":                      testExtendedTestdataOlmOperatorgroupServiceaccountYaml,
 	"test/extended/testdata/olm/operatorgroup.yaml":                                     testExtendedTestdataOlmOperatorgroupYaml,
 	"test/extended/testdata/olm/opsrc.yaml":                                             testExtendedTestdataOlmOpsrcYaml,
+	"test/extended/testdata/olm/scoped-sa-roles.yaml":                                   testExtendedTestdataOlmScopedSaRolesYaml,
 	"test/extended/testdata/olm/validatingwebhook-csv.yaml":                             testExtendedTestdataOlmValidatingwebhookCsvYaml,
 	"test/extended/testdata/olm/vpa-crd.yaml":                                           testExtendedTestdataOlmVpaCrdYaml,
 	"test/extended/testdata/operators/argocd-cr.yaml":                                   testExtendedTestdataOperatorsArgocdCrYaml,
@@ -11665,8 +11741,10 @@ var _bintree = &bintree{nil, map[string]*bintree{
 					"og-allns.yaml":                         {testExtendedTestdataOlmOgAllnsYaml, map[string]*bintree{}},
 					"og-multins.yaml":                       {testExtendedTestdataOlmOgMultinsYaml, map[string]*bintree{}},
 					"olm-subscription.yaml":                 {testExtendedTestdataOlmOlmSubscriptionYaml, map[string]*bintree{}},
+					"operatorgroup-serviceaccount.yaml":     {testExtendedTestdataOlmOperatorgroupServiceaccountYaml, map[string]*bintree{}},
 					"operatorgroup.yaml":                    {testExtendedTestdataOlmOperatorgroupYaml, map[string]*bintree{}},
 					"opsrc.yaml":                            {testExtendedTestdataOlmOpsrcYaml, map[string]*bintree{}},
+					"scoped-sa-roles.yaml":                  {testExtendedTestdataOlmScopedSaRolesYaml, map[string]*bintree{}},
 					"validatingwebhook-csv.yaml":            {testExtendedTestdataOlmValidatingwebhookCsvYaml, map[string]*bintree{}},
 					"vpa-crd.yaml":                          {testExtendedTestdataOlmVpaCrdYaml, map[string]*bintree{}},
 				}},
