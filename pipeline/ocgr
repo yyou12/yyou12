@@ -59,7 +59,7 @@ if [ "X${LAUNCHID}X" != "XX" ]; then
   else
     LAUNCHIDVALID=false
   fi
-  existing=`ls ${WORKSPACE}"/misc/jenkins/ci/"${VERSION}"/"|grep "${PROFILENAME}"|grep "test_run.yaml"|wc -l|xargs`
+  existing=`ls ${WORKSPACE}"/misc/jenkins/ci/"${VERSION}"/"|grep "${PROFILENAME}"".test"|grep "test_run.yaml"|wc -l|xargs`
   if [ "X${existing}X" == "X1X" ]; then
     PROFILENAMEVALID=true
   else
