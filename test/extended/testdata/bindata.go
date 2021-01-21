@@ -7633,7 +7633,7 @@ func testExtendedTestdataOlmOpsrcYaml() (*asset, error) {
 var _testExtendedTestdataOlmScopedSaRolesYaml = []byte(`apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: scoped
+  name: scoped-24771
 rules:
   - apiGroups: ["*"]
     resources: ["*"]
@@ -7642,14 +7642,14 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: scoped-bindings
+  name: scoped-bindings-24771
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: scoped
+  name: scoped-24771
 subjects:
   - kind: ServiceAccount
-    name: scoped
+    name: scoped-24771
 `)
 
 func testExtendedTestdataOlmScopedSaRolesYamlBytes() ([]byte, error) {

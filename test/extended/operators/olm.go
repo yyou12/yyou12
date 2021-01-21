@@ -640,6 +640,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		ogSAtemplate := filepath.Join(buildPruningBaseDir, "operatorgroup-serviceaccount.yaml")
 		subTemplate := filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
 		csv := "etcdoperator.v0.9.4"
+		sa := "scoped-24771"
 
 		// create the openshift-storage project
 		project := projectDescription{
@@ -650,7 +651,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		og := operatorGroupDescription{
 			name:               "test-og",
 			namespace:          namespace,
-			serviceAccountName: "scoped",
+			serviceAccountName: sa,
 			template:           ogSAtemplate,
 		}
 
@@ -665,7 +666,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		og.createwithCheck(oc, itName, dr)
 
 		g.By("3) Create the service account")
-		_, err := oc.WithoutNamespace().AsAdmin().Run("create").Args("sa", "scoped", "-n", namespace).Output()
+		_, err := oc.WithoutNamespace().AsAdmin().Run("create").Args("sa", sa, "-n", namespace).Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		g.By("4) Create a Subscription")
