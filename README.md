@@ -160,6 +160,40 @@ You can update the SA by following this [authentication](https://cloud.google.co
 3. In the `Service account` name field, enter a name.
 4. Click `Create`. A JSON file that contains your key downloads to your computer.
 
+## AZURE_AUTH_LOCATION issue when debugging case on AZURE
+In order to execute case on the cluster built on AZURE, you have to configure AZURE_AUTH_LOCATION to the file which includes AZURE subscriptionId, clientId, and clientSecret etc.
+So, if you want to debug case on azure in local env, you need to get it at config/credentials/azure.json in private repo cucushift-internal to your local env.
+and
+```
+export AZURE_AUTH_LOCATION=<path to azure.json>
+```
+But maybe you can not get the azure.json file from cucushift-internal repo because of permission.  
+So, **suggest you debug your case on other platform, for example aws, or gcp etc**.
+
+If you have to debug case on azure, **suggest you to take [ginkgo-test job](https://mastern-jenkins-csb-openshift-qe.cloud.paas.psi.redhat.com/job/ginkgo-test/) to run your case with your repo**.
+Here is the parameters:  
+> - SCENARIO: input your case ID  
+> - FLEXY_BUILD: the [Launch Environment Flexy](https://mastern-jenkins-csb-openshift-qe.cloud.paas.psi.redhat.com/job/Launch%20Environment%20Flexy/) build ID to build the cluster you use  
+> - TIERN_REPO_OWNER: your GitHub account  
+> - TIERN_REPO_BRANCH: your branch for the debug case code  
+> - JENKINS_SLAVE: gocxx, xx is your cluster relase version, for example, goc47 for 4.7 cluster  
+> - For other parameters, please take default value.  
+
+So, here is the procedure:
+1. push the case code into your repo with your branch.
+   For example, https://github.com/exampleaccount/openshift-tests-private/tree/examplebranch
+2. launch build with parameters
+
+For example, you push the code of case which ID is 12345 into https://github.com/exampleaccount/openshift-tests-private/tree/examplebranch,
+             and your cluster is built by Flexy job 6789 and the cluster is 4.7 release.  
+
+After you push code, you could launch ginkgo-test job with the paramters as the example
+> - SCENARIO: 12345  
+> - FLEXY_BUILD: 6789  
+> - TIERN_REPO_OWNER: exampleaccount  
+> - TIERN_REPO_BRANCH: examplebranch  
+> - JENKINS_SLAVE: goc47  
+
 
 ## Run Certified Operators test
 
