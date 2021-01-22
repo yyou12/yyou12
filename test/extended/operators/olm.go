@@ -520,7 +520,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	})
 
 	// author: bandrade@redhat.com
-	g.It("Medium-24850- Allow users to edit the deployment of an active CSV	", func() {
+	g.It("Medium-24850- Allow users to edit the deployment of an active CSV", func() {
 
 		oc.SetupProject()
 
@@ -1718,7 +1718,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	})
 
 	// author: scolange@redhat.com
-	g.It("Medium-23673-Installplan can be created while Install and uninstall operators via Marketplace for 5 times [SLow]", func() {
+	g.It("Medium-23673-Installplan can be created while Install and uninstall operators via Marketplace for 5 times [Slow]", func() {
 
 		var buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
 		var operatorGroup = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
