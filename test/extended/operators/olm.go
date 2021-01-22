@@ -768,6 +768,78 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	})
 
 	// author: bandrade@redhat.com
+	g.It("Medium-24772-OLM should support for user defined ServiceAccount for OperatorGroup with fine grained permission", func() {
+		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
+		saRoles := filepath.Join(buildPruningBaseDir, "scoped-sa-fine-grained-roles.yaml")
+		oc.SetupProject()
+		namespace := oc.Namespace()
+		ogSAtemplate := filepath.Join(buildPruningBaseDir, "operatorgroup-serviceaccount.yaml")
+		subTemplate := filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+		csv := "etcdoperator.v0.9.4"
+		sa := "scoped-24772"
+
+		// create the openshift-storage project
+		project := projectDescription{
+			name: namespace,
+		}
+
+		// create the OperatorGroup resource
+		og := operatorGroupDescription{
+			name:               "test-og",
+			namespace:          namespace,
+			serviceAccountName: sa,
+			template:           ogSAtemplate,
+		}
+
+		dr := make(describerResrouce)
+		itName := g.CurrentGinkgoTestDescription().TestText
+		dr.addIr(itName)
+
+		g.By("1) Create the openshift-storage project")
+		project.createwithCheck(oc, itName, dr)
+
+		g.By("2) Create the OperatorGroup")
+		og.createwithCheck(oc, itName, dr)
+
+		g.By("3) Create the service account")
+		_, err := oc.WithoutNamespace().AsAdmin().Run("create").Args("sa", sa, "-n", namespace).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("4) Create a Subscription")
+		sub := subscriptionDescription{
+			subName:                "etcd",
+			namespace:              namespace,
+			catalogSourceName:      "community-operators",
+			catalogSourceNamespace: "openshift-marketplace",
+			channel:                "singlenamespace-alpha",
+			ipApproval:             "Automatic",
+			operatorPackage:        "etcd",
+			singleNamespace:        true,
+			template:               subTemplate,
+			startingCSV:            csv,
+		}
+		sub.createWithoutCheck(oc, itName, dr)
+
+		g.By("5) The install plan is Failed")
+		installPlan := getResource(oc, asAdmin, withoutNamespace, "sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.installplan.name}")
+		o.Expect(installPlan).NotTo(o.BeEmpty())
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Failed", ok, []string{"ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+
+		g.By("6) Grant the proper permissions to the service account")
+		_, err = oc.WithoutNamespace().AsAdmin().Run("create").Args("-f", saRoles, "-n", namespace).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("7) Recreate the Subscription")
+		sub.delete(itName, dr)
+		sub.getCSV().delete(itName, dr)
+		sub.createWithoutCheck(oc, itName, dr)
+
+		g.By("8) Checking the state of CSV")
+		newCheck("expect", asUser, withNamespace, compare, "Succeeded", ok, []string{"csv", csv, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+
+	})
+
+	// author: bandrade@redhat.com
 	g.It("Medium-30765-Operator-version based dependencies metadata", func() {
 		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
 		csImageTemplate := filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
