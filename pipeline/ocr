@@ -19,7 +19,7 @@ function run {
     case_importance=""
   fi
   ./bin/extended-platform-tests run all --dry-run | \
-    grep -E "${case_scenario}" | grep -i -E "${case_importance}" > ./case_selected
+    grep -E "${case_scenario}" | grep -E "${case_importance}" > ./case_selected
 
   handle_filters "${case_filter}"
   echo "------------------the case selected------------------"
