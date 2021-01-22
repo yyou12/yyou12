@@ -33,6 +33,7 @@
 // test/extended/testdata/olm/cr-webhookTest.yaml
 // test/extended/testdata/olm/cs-without-image.yaml
 // test/extended/testdata/olm/csc.yaml
+// test/extended/testdata/olm/dockerconfig.json
 // test/extended/testdata/olm/etcd-cluster.yaml
 // test/extended/testdata/olm/etcd-custom-csc.yaml
 // test/extended/testdata/olm/etcd-subscription-manual.yaml
@@ -1374,6 +1375,8 @@ objects:
     namespace: "${NAMESPACE}"
   spec:
     image: "${ADDRESS}"
+    secrets:
+    - "${SECRET}"  
     displayName: "${DISPLAYNAME}"
     icon:
       base64data: ""
@@ -1390,6 +1393,7 @@ parameters:
 - name: DISPLAYNAME
 - name: PUBLISHER
 - name: SOURCETYPE
+- name: SECRET
 `)
 
 func testExtendedTestdataOlmCatalogsourceImageYamlBytes() ([]byte, error) {
@@ -7137,6 +7141,32 @@ func testExtendedTestdataOlmCscYaml() (*asset, error) {
 	return a, nil
 }
 
+var _testExtendedTestdataOlmDockerconfigJson = []byte(`{
+	"auths": {
+		"quay.io": {
+			"auth": "amlhemhhOm9WRFI5VWRBbVoxclNiVU1YYStmcFlnUkhPU3ArSitLc1h0N1h1S204L1c2SjFkQnNVdjEvYTNURmt0RmQ5L3Y="
+		}
+	},
+	"HttpHeaders": {
+		"User-Agent": "Docker-Client/19.03.9 (linux)"
+	}
+}`)
+
+func testExtendedTestdataOlmDockerconfigJsonBytes() ([]byte, error) {
+	return _testExtendedTestdataOlmDockerconfigJson, nil
+}
+
+func testExtendedTestdataOlmDockerconfigJson() (*asset, error) {
+	bytes, err := testExtendedTestdataOlmDockerconfigJsonBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/olm/dockerconfig.json", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
 var _testExtendedTestdataOlmEtcdClusterYaml = []byte(`apiVersion: v1
 kind: Template
 metadata:
@@ -11575,6 +11605,7 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/olm/cr-webhookTest.yaml":                                    testExtendedTestdataOlmCrWebhooktestYaml,
 	"test/extended/testdata/olm/cs-without-image.yaml":                                  testExtendedTestdataOlmCsWithoutImageYaml,
 	"test/extended/testdata/olm/csc.yaml":                                               testExtendedTestdataOlmCscYaml,
+	"test/extended/testdata/olm/dockerconfig.json":                                      testExtendedTestdataOlmDockerconfigJson,
 	"test/extended/testdata/olm/etcd-cluster.yaml":                                      testExtendedTestdataOlmEtcdClusterYaml,
 	"test/extended/testdata/olm/etcd-custom-csc.yaml":                                   testExtendedTestdataOlmEtcdCustomCscYaml,
 	"test/extended/testdata/olm/etcd-subscription-manual.yaml":                          testExtendedTestdataOlmEtcdSubscriptionManualYaml,
@@ -11733,6 +11764,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 					"cr-webhookTest.yaml":                   {testExtendedTestdataOlmCrWebhooktestYaml, map[string]*bintree{}},
 					"cs-without-image.yaml":                 {testExtendedTestdataOlmCsWithoutImageYaml, map[string]*bintree{}},
 					"csc.yaml":                              {testExtendedTestdataOlmCscYaml, map[string]*bintree{}},
+					"dockerconfig.json":                     {testExtendedTestdataOlmDockerconfigJson, map[string]*bintree{}},
 					"etcd-cluster.yaml":                     {testExtendedTestdataOlmEtcdClusterYaml, map[string]*bintree{}},
 					"etcd-custom-csc.yaml":                  {testExtendedTestdataOlmEtcdCustomCscYaml, map[string]*bintree{}},
 					"etcd-subscription-manual.yaml":         {testExtendedTestdataOlmEtcdSubscriptionManualYaml, map[string]*bintree{}},

@@ -10,6 +10,8 @@ objects:
     namespace: "${NAMESPACE}"
   spec:
     image: "${ADDRESS}"
+    secrets:
+    - "${SECRET}"  
     displayName: "${DISPLAYNAME}"
     icon:
       base64data: ""
@@ -26,3 +28,4 @@ parameters:
 - name: DISPLAYNAME
 - name: PUBLISHER
 - name: SOURCETYPE
+- name: SECRET

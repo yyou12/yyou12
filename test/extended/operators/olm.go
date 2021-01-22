@@ -27,8 +27,72 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	var oc = exutil.NewCLI("default-"+getRandomString(), exutil.KubeConfigPath())
 
 	// author: jiazha@redhat.com
+	// add `Serial` label since this etcd-operator are subscribed for cluster-scoped,
+	// that means may leads to other etcd-opertor subscription fail if in Parallel
+	g.It("High-37826-use an PullSecret for the private Catalog Source image [Serial]", func() {
+		g.By("1) Create a pull secert for CatalogSource")
+		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
+		dockerConfig := filepath.Join(buildPruningBaseDir, "dockerconfig.json")
+		_, err := oc.AsAdmin().WithoutNamespace().Run("create").Args("-n", "openshift-marketplace", "secret", "generic", "secret-37826", fmt.Sprintf("--from-file=.dockerconfigjson=%s", dockerConfig), "--type=kubernetes.io/dockerconfigjson").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("-n", "openshift-marketplace", "secret", "secret-37826").Execute()
+
+		g.By("2) Install this private CatalogSource in the openshift-marketplace project")
+		csImageTemplate := filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
+		cs := catalogSourceDescription{
+			name:        "cs-37826",
+			namespace:   "openshift-marketplace",
+			displayName: "OLM QE Operators",
+			publisher:   "Jian",
+			sourceType:  "grpc",
+			address:     "quay.io/olmqe/cs:private",
+			template:    csImageTemplate,
+			secret:      "secret-37826",
+		}
+		dr := make(describerResrouce)
+		itName := g.CurrentGinkgoTestDescription().TestText
+		dr.addIr(itName)
+		cs.create(oc, itName, dr)
+		defer cs.delete(itName, dr)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "READY", ok, []string{"catsrc", cs.name, "-n", "openshift-marketplace", "-o=jsonpath={.status..lastObservedState}"}).check(oc)
+
+		g.By("4) Install the etcdoperator v0.9.4 from this private image")
+		subTemplate := filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+		sub := subscriptionDescription{
+			subName:                "sub-37826",
+			namespace:              "openshift-operators",
+			catalogSourceName:      "cs-37826",
+			catalogSourceNamespace: "openshift-marketplace",
+			channel:                "clusterwide-alpha",
+			ipApproval:             "Automatic",
+			operatorPackage:        "etcd",
+			startingCSV:            "etcdoperator.v0.9.4-clusterwide",
+			singleNamespace:        true,
+			template:               subTemplate,
+		}
+		defer sub.delete(itName, dr)
+		sub.create(oc, itName, dr)
+		defer sub.getCSV().delete(itName, dr)
+
+		// get the InstallPlan name
+		ipName := getResource(oc, asAdmin, withoutNamespace, "sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.installplan.name}")
+		if strings.Contains(ipName, "NotFound") {
+			e2e.Failf("!!!Fail to get the InstallPlan of sub: %s/%s", sub.namespace, sub.subName)
+		}
+		// get the unpack job name
+		manifest := getResource(oc, asAdmin, withoutNamespace, "ip", "-n", sub.namespace, ipName, "-o=jsonpath={.status.plan[0].resource.manifest}")
+		valid := regexp.MustCompile(`name":"(\S+)","namespace"`)
+		job := valid.FindStringSubmatch(manifest)
+		g.By("5) Only check if the job pod works well")
+		// in this test case, we don't need to care about if the operator pods works well.
+		// more details: https://bugzilla.redhat.com/show_bug.cgi?id=1909992#c5
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"-n", "openshift-marketplace", "pods", "-l", fmt.Sprintf("job-name=%s", string(job[1])), "-o=jsonpath={.items[0].status.phase}"}).check(oc)
+
+	})
+
+	// author: jiazha@redhat.com
 	g.It("High-37442-create a Conditions CR for each Operator it installs", func() {
-		g.By("1) Install the OperatorGroup in a ramdom project")
+		g.By("1) Install the OperatorGroup in a random project")
 		dr := make(describerResrouce)
 		itName := g.CurrentGinkgoTestDescription().TestText
 		dr.addIr(itName)
@@ -84,7 +148,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 
 	// author: jiazha@redhat.com
 	g.It("Medium-37710-supports the Upgradeable Supported Condition", func() {
-		g.By("1) Install the OperatorGroup in a ramdom project")
+		g.By("1) Install the OperatorGroup in a random project")
 		dr := make(describerResrouce)
 		itName := g.CurrentGinkgoTestDescription().TestText
 		dr.addIr(itName)
@@ -169,7 +233,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 
 	// author: jiazha@redhat.com
 	g.It("Medium-37631-Allow cluster admin to overwrite the OperatorCondition", func() {
-		g.By("1) Install the OperatorGroup in a ramdom project")
+		g.By("1) Install the OperatorGroup in a random project")
 		dr := make(describerResrouce)
 		itName := g.CurrentGinkgoTestDescription().TestText
 		dr.addIr(itName)
