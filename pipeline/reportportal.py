@@ -426,6 +426,7 @@ class ReportPortalClient:
                 "team":     {"action": "add", "value":self.args.subteam},
                 "version":  {"action": "add", "value":self.args.version.replace(".", "_")},
                 "gbuildnum": {"action": "add", "value":self.args.buildnum},
+                "launchtype": {"action": "add", "value":"golang"},
                 }
             else:
                 attDict = {
@@ -433,6 +434,7 @@ class ReportPortalClient:
                 "team":     {"action": "add", "value":self.args.subteam},
                 "version":  {"action": "add", "value":self.args.version.replace(".", "_")},
                 "gbuildnum": {"action": "add", "value":self.args.buildnum},
+                "launchtype": {"action": "add", "value":"golang"},
                 "profilename": {"action": "add", "value":self.args.profilename},
                 }
                 if self.args.triallaunch == "yes":
