@@ -404,11 +404,17 @@ class ReportPortalClient:
         # print(import_url)
         try:
             files = {'file': (self.args.file, open(self.args.file,'rb'), 'application/zip')}
-            r = self.session.post(url=import_url, files=files)
+            r = self.session.post(url=import_url, files=files, timeout=120)
             # print(r.status_code)
             # print(r.text)
             if (r.status_code != 200):
                 raise Exception("import error: {0}".format(r.text))
+            # if (r.status_code != 200 and r.status_code != 504):
+            #     raise Exception("import error: {0}".format(r.text))
+            # if (r.status_code == 504 and ("server didn't respond in time" not in r.text)):
+            #     raise Exception("import error: {0}".format(r.text))
+            # if (r.status_code == 504 and ("server didn't respond in time" in r.text)):
+            #     pass
 
             id = self.getLaunchIdWithLaunchUuid(r.json()["message"].split("id =")[1].strip().split(" ")[0])
             if id == None:
