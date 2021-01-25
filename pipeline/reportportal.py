@@ -545,6 +545,13 @@ class ReportPortalClient:
             if len(retContent) == 0:
                 return {"LAUNCHRESULT": ["NEWLAUNCH"], "SUBMATCHRESULT": "NONE"}
 
+            hasGolangLaunch = False
+            for ret in retContent:
+                if self.isGolangLaunch(ret["attributes"]):
+                    hasGolangLaunch = True
+            if not hasGolangLaunch:
+                return {"LAUNCHRESULT": ["NEWGOLANGLAUNCH"], "SUBMATCHRESULT": "NONE"}
+
             subTeamList = self.parseScenarios(scenarios)
             if len(subTeamList) == 0:
                 return {"LAUNCHRESULT": ["NOSUBTEAMINSCENARIO"], "SUBMATCHRESULT": "NONE"}
@@ -554,6 +561,9 @@ class ReportPortalClient:
             for st in subTeamList:
                 matched = False
                 for ret in retContent:
+                    if not self.isGolangLaunch(ret["attributes"]):
+                        continue
+
                     buildnum = ""
                     for attr in ret["attributes"]:
                         if attr["key"] == "gbuildnum" and attr.get("value") != None:
@@ -582,6 +592,9 @@ class ReportPortalClient:
 
         if checkresult["LAUNCHRESULT"][0] == "NEWLAUNCH":
             return "\\nNOFOUND-NEWLAUNCH-NOREPLACE"
+
+        if checkresult["LAUNCHRESULT"][0] == "NEWGOLANGLAUNCH":
+            return "\\nNOFOUND-NEWGOLANGLAUNCH-NOREPLACE"
 
         if checkresult["LAUNCHRESULT"][0] == "NOSUBTEAMINSCENARIO":
             return "\\nNOFOUND-NOSUBTEAMINSCENARIO-NOREPLACE"
@@ -653,6 +666,14 @@ class ReportPortalClient:
             print(e)
             return returnString + "\\nEXCEPTION-NOREPLACE"
 
+    def isGolangLaunch(self, attrs):
+        isGolang = False
+        for attr in attrs:
+            if attr["key"] == "launchtype" and attr["value"] == "golang":
+            # in the future, maybe add launchtype=cucu and then add check attr["value"] != "cucu"
+                isGolang = True
+        return isGolang
+
     def getLaunchIdWithLaunchName(self, launchname, attrfilter=None):
         filter_url = self.launch_url + "?filter.eq.name=" + launchname
         # print(filter_url)
@@ -664,6 +685,9 @@ class ReportPortalClient:
                 raise Exception("get ID error: {0}".format(r.text))
             ids = []
             for ret in r.json()["content"]:
+                if not self.isGolangLaunch(ret["attributes"]):
+                    continue
+
                 if attrfilter == None:
                     ids.append(ret["id"])
                 else:
