@@ -1779,7 +1779,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		lines := strings.Split(pods, "\n")
 		for _, line := range lines {
 			e2e.Logf("line: %v", line)
-			if strings.Contains(line, "certified-operators") || strings.Contains(line, "community-operators") || strings.Contains(line, "marketplace-operator") || strings.Contains(line, "redhat-marketplace") || strings.Contains(line, "redhat-operators") {
+			if strings.Contains(line, "certified-operators") || strings.Contains(line, "community-operators") || strings.Contains(line, "marketplace-operator") || strings.Contains(line, "redhat-marketplace") || strings.Contains(line, "redhat-operators") && strings.Contains(line, "1/1") {
 				name := strings.Split(line, " ")
 				checkRel, err := oc.AsAdmin().WithoutNamespace().Run("exec").Args(name[0], "-n", "openshift-marketplace", "--", "cat", "/etc/redhat-release").Output()
 				o.Expect(err).NotTo(o.HaveOccurred())
