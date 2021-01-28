@@ -10,6 +10,7 @@ import os
 import yaml
 import xml.dom.minidom
 import re
+import urllib.parse
 
 class ReportPortalClient:
     subteam = [
@@ -675,7 +676,7 @@ class ReportPortalClient:
         return isGolang
 
     def getLaunchIdWithLaunchName(self, launchname, attrfilter=None):
-        filter_url = self.launch_url + "?filter.eq.name=" + launchname
+        filter_url = self.launch_url + "?page.page=1&page.size=150&filter.eq.name=" + launchname
         # print(filter_url)
         try:
             r = self.session.get(url=filter_url)
@@ -829,9 +830,95 @@ class ReportPortalClient:
             return ""
         return "|".join(nonSubTeam)
 
+    def existingGolangLaunchWithProfile(self, profilename, version):
+        attribute_url = self.launch_url + "?page.page=1&page.size=10&filter.has.attributeValue=" + urllib.parse.quote(profilename+","+version+",golang")
+        try:
+            r = self.session.get(url=attribute_url, timeout=180)
+            # print(r.status_code)
+            # print(r.text)
+            if (r.status_code != 200):
+                raise Exception("get attribute of profile {0} error: {1}".format(profilename, r.text))
+            launches = r.json()["content"]
+            if len(launches) == 0:
+                return None
+            return len(launches)
+        except BaseException as e:
+            print(e)
+            print("\\n")
+            return None
+
+    def getFakeGolangLaunchProfileList(self, launchname, version):
+        fake_launch_url = self.launch_url + "?page.page=1&page.size=150&filter.has.attributeValue=" + urllib.parse.quote(version+",golang")+"&filter.eq.name="+launchname
+        try:
+            r = self.session.get(url=fake_launch_url, timeout=180)
+            # print(r.status_code)
+            # print(r.text)
+            if (r.status_code != 200):
+                raise Exception("get fake launch with name {0} error: {1}".format(launchname, r.text))
+            profileList = []
+            for ret in r.json()["content"]:
+                for attr in ret["attributes"]:
+                    if attr["key"] == "profilename":
+                        profileList.append(attr["value"])
+            profileList = list(set(profileList))
+            # print(len(profileList))
+            return profileList
+        except BaseException as e:
+            print(e)
+            print("\\n")
+            return None
+
+    def putProfileLaunch(self):
+        pathToProfile = self.args.profilepath + self.args.version + "/"
+
+        #get current profile list
+        profileList = []
+        for f in os.listdir(pathToProfile):
+            # if f.endswith(".test_run.yaml") and (not f.endswith("destructive.test_run.yaml")) and os.path.isfile(os.path.join(pathToProfile, f)) and (not f.startswith("tmp")):
+            if f.endswith(".test_run.yaml") and (not f.endswith("destructive.test_run.yaml")) and os.path.isfile(os.path.join(pathToProfile, f)):
+                profileList.append(os.path.splitext(os.path.splitext(f)[0])[0])
+        # print(profileList)
+        # print(len(profileList))
+        if len(profileList) == 0:
+            print("NOTFOUNDPROFILELIST and no need to create fake profile")
+            return
+
+        #get fake launch profile list to delete launch if it does not exist in real profile
+        launchname = "00000000-00"+self.args.version.replace(".", "")
+        existingFakeLaunchProfileList = self.getFakeGolangLaunchProfileList(launchname, self.args.version.replace(".", "_"))
+        if existingFakeLaunchProfileList is not None:
+            for existingProfile in existingFakeLaunchProfileList:
+                if not (existingProfile in profileList):
+                    print("\n-----{0}--{1}-----".format(existingProfile, self.args.version.replace(".", "_")))
+                    print("profile is removed in repo and so delete fake launch")
+                    existinglaunch = self.getLaunchIdWithLaunchName(launchname, {"key": "profilename", "value":existingProfile})
+                    print(existinglaunch)
+                    if existinglaunch is not None:
+                        self.deleteLaunchById(existinglaunch[0])
+
+        for profile in profileList:
+            print("\n#####{0}##{1}#####".format(profile, self.args.version.replace(".", "_")))
+            existingGolangLaunch = self.existingGolangLaunchWithProfile(profile, self.args.version.replace(".", "_"))
+            if existingGolangLaunch is not None:
+                print("HAS launch, so no need to create fake launch")
+                if existingGolangLaunch > 1:
+                    print("    more than one launch")
+                    existinglaunch = self.getLaunchIdWithLaunchName(launchname, {"key": "profilename", "value":profile})
+                    print(existinglaunch)
+                    if existinglaunch is None:
+                        print("       no fake launch and so no neede to delete it.")
+                    if existinglaunch is not None:
+                        print("       delete fake launch")
+                        self.deleteLaunchById(existinglaunch[0])
+            else:
+                print("NO launch, so create fake launch")
+                self.args.profilename = profile
+                self.importResult()
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("reportportal.py")
-    parser.add_argument("-a","--action", default="import", choices={"import", "merge", "get", "delete", "attr", "getprofile", "getfcd"}, required=True)
+    parser.add_argument("-a","--action", default="import", choices={"import", "merge", "get", "delete", "attr", "getprofile", "getfcd", "putprofile"}, required=True)
     parser.add_argument("-e","--endpoint", default="https://reportportal-openshift.apps.ocp4.prod.psi.redhat.com/api")
     parser.add_argument("-t","--token", default="")
     parser.add_argument("-ta","--tatoken", default="")
@@ -885,5 +972,7 @@ if __name__ == "__main__":
             print("SUCCESS")
         else:
             print("FAIL")
+    if args.action == "putprofile":
+        rpc.putProfileLaunch()
     exit(0)
 

@@ -1,0 +1,24 @@
+#!/bin/bash
+set +x
+#put fake launch for each profile of one release
+
+WORKBUILDDIR=$1
+WORKSPACE=$2
+VERSION=$(echo $3 | tr -dc '0-9')
+LAUNCHVERSION=${VERSION}
+VERSION=${VERSION: 0:1}"."${VERSION: 1:1}
+
+cd ${WORKBUILDDIR}
+rm -fr reportportal.py && eval cp -fr ${WORKSPACE}"/private/pipeline/reportportal.py" .
+rm -fr 00000000-00.zip && eval cp -fr ${WORKSPACE}"/private/pipeline/00000000-00.zip" .
+
+rpmmtoken=`cat ${WORKSPACE}"/private/secrets/rp/openshift-qe-reportportal.json" | jq  -r ".ginkgo_rp_mmtoken"`
+rppmtoken=`cat ${WORKSPACE}"/private/secrets/rp/openshift-qe-reportportal.json" | jq  -r ".ginkgo_rp_pmtoken"`
+subteam="OLM"
+eval cp -fr 00000000-00.zip "00000000-00${LAUNCHVERSION}.zip"
+python3 reportportal.py -a putprofile -f "00000000-00${LAUNCHVERSION}.zip" -s "${subteam}" -v "${VERSION}"  -pp "../misc/jenkins/ci/" -t "${rpmmtoken}" -ta "${rppmtoken}" 2>&1
+# ret=`python3 reportportal.py -a putprofile -f "00000000-00${LAUNCHVERSION}.zip" -s "${subteam}" -v "${VERSION}"  -pp "../misc/jenkins/ci/" -t "${rpmmtoken}" -ta "${rppmtoken}" 2>&1 || true`
+# echo -E ${ret}
+eval rm -fr  "00000000-00${LAUNCHVERSION}.zip"
+
+set -x

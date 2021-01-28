@@ -19,6 +19,7 @@ function run {
   fi
   cd ${WORKBUILDDIR}
 
+  put_fake_launch_for_each_profile
   config_env_for_cluster
   id
   date
@@ -89,6 +90,13 @@ function select_fail_case_for_official_rerun {
     fi
   else
     echo "no launch name or invalid launch name, or not rerun pipeline build, and keep original ${SCENARIO}"
+  fi
+}
+
+function put_fake_launch_for_each_profile {
+  if [ "${SCENARIO}" == "putfakelaunchforeachprofile" ] ; then
+    ocpf ${WORKBUILDDIR} ${WORKSPACE} ${JENKINS_SLAVE}
+    exit 0
   fi
 }
 
