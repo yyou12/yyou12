@@ -840,6 +840,88 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	})
 
 	// author: bandrade@redhat.com
+	g.It("Medium-24886-OLM should support for user defined ServiceAccount permission changes", func() {
+		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
+		saRoles := filepath.Join(buildPruningBaseDir, "scoped-sa-etcd.yaml")
+		oc.SetupProject()
+		namespace := oc.Namespace()
+		ogTemplate := filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+		ogSAtemplate := filepath.Join(buildPruningBaseDir, "operatorgroup-serviceaccount.yaml")
+		subTemplate := filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+		csv := "etcdoperator.v0.9.4"
+		sa := "scoped-24886"
+
+		// create the openshift-storage project
+		project := projectDescription{
+			name: namespace,
+		}
+
+		// create the OperatorGroup resource
+		og := operatorGroupDescription{
+			name:      "test-og",
+			namespace: namespace,
+			template:  ogTemplate,
+		}
+
+		dr := make(describerResrouce)
+		itName := g.CurrentGinkgoTestDescription().TestText
+		dr.addIr(itName)
+
+		g.By("1) Create the openshift-storage project")
+		project.createwithCheck(oc, itName, dr)
+
+		g.By("2) Create the OperatorGroup without service account")
+		og.createwithCheck(oc, itName, dr)
+
+		g.By("3) Create a Subscription")
+		sub := subscriptionDescription{
+			subName:                "etcd",
+			namespace:              namespace,
+			catalogSourceName:      "community-operators",
+			catalogSourceNamespace: "openshift-marketplace",
+			channel:                "singlenamespace-alpha",
+			ipApproval:             "Automatic",
+			operatorPackage:        "etcd",
+			singleNamespace:        true,
+			template:               subTemplate,
+			startingCSV:            csv,
+		}
+		sub.create(oc, itName, dr)
+
+		g.By("4) Checking the state of CSV")
+		newCheck("expect", asUser, withNamespace, compare, "Succeeded", ok, []string{"csv", csv, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+
+		g.By("5) Delete the Operator Group")
+		og.delete(itName, dr)
+
+		// create the OperatorGroup resource
+		ogSA := operatorGroupDescription{
+			name:               "test-og",
+			namespace:          namespace,
+			serviceAccountName: sa,
+			template:           ogSAtemplate,
+		}
+		g.By("6) Create the OperatorGroup with service account")
+		ogSA.createwithCheck(oc, itName, dr)
+
+		g.By("7) Create the service account")
+		_, err := oc.WithoutNamespace().AsAdmin().Run("create").Args("sa", sa, "-n", namespace).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("9) Grant the proper permissions to the service account")
+		_, err = oc.WithoutNamespace().AsAdmin().Run("create").Args("-f", saRoles, "-n", namespace).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("10) Recreate the Subscription")
+		sub.delete(itName, dr)
+		sub.getCSV().delete(itName, dr)
+		sub.createWithoutCheck(oc, itName, dr)
+
+		g.By("11) Checking the state of CSV")
+		newCheck("expect", asUser, withNamespace, compare, "Succeeded", ok, []string{"csv", csv, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+
+	})
+	// author: bandrade@redhat.com
 	g.It("Medium-30765-Operator-version based dependencies metadata", func() {
 		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
 		csImageTemplate := filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")

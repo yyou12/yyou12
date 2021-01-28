@@ -45,6 +45,7 @@
 // test/extended/testdata/olm/operatorgroup-serviceaccount.yaml
 // test/extended/testdata/olm/operatorgroup.yaml
 // test/extended/testdata/olm/opsrc.yaml
+// test/extended/testdata/olm/scoped-sa-etcd.yaml
 // test/extended/testdata/olm/scoped-sa-fine-grained-roles.yaml
 // test/extended/testdata/olm/scoped-sa-roles.yaml
 // test/extended/testdata/olm/validatingwebhook-csv.yaml
@@ -7151,7 +7152,8 @@ var _testExtendedTestdataOlmDockerconfigJson = []byte(`{
 	"HttpHeaders": {
 		"User-Agent": "Docker-Client/19.03.9 (linux)"
 	}
-}`)
+}
+`)
 
 func testExtendedTestdataOlmDockerconfigJsonBytes() ([]byte, error) {
 	return _testExtendedTestdataOlmDockerconfigJson, nil
@@ -7657,6 +7659,70 @@ func testExtendedTestdataOlmOpsrcYaml() (*asset, error) {
 	}
 
 	info := bindataFileInfo{name: "test/extended/testdata/olm/opsrc.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataOlmScopedSaEtcdYaml = []byte(`apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: scoped-24886
+rules:
+  - apiGroups: ["operators.coreos.com"]
+    resources: ["subscriptions", "clusterserviceversions"]
+    verbs: ["get", "create", "update", "patch"]
+  - apiGroups: [""]
+    resources: ["services", "serviceaccounts"]
+    verbs: ["get", "create", "update", "patch"]
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["roles", "rolebindings"]
+    verbs: ["get", "create", "update", "patch"]
+  - apiGroups: ["etcd.database.coreos.com"]
+    resources: ["etcdbackups", "etcdclusters", "etcdrestores"]
+    verbs: ["*"]
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["*"]
+  - apiGroups: ["apiextensions.k8s.io"]
+    resources: ["customresourcedefinitions"]
+    verbs: ["*"]
+  - apiGroups: [""]
+    resources:
+      [
+        "pods",
+        "events",
+        "endpoints",
+        "persistentvolumeclaims",
+        "secrets",
+        "services",
+      ]
+    verbs: ["*"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: scoped-bindings-24886
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: scoped-24886
+subjects:
+  - kind: ServiceAccount
+    name: scoped-24886
+`)
+
+func testExtendedTestdataOlmScopedSaEtcdYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataOlmScopedSaEtcdYaml, nil
+}
+
+func testExtendedTestdataOlmScopedSaEtcdYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataOlmScopedSaEtcdYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/olm/scoped-sa-etcd.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -11682,6 +11748,7 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/olm/operatorgroup-serviceaccount.yaml":                      testExtendedTestdataOlmOperatorgroupServiceaccountYaml,
 	"test/extended/testdata/olm/operatorgroup.yaml":                                     testExtendedTestdataOlmOperatorgroupYaml,
 	"test/extended/testdata/olm/opsrc.yaml":                                             testExtendedTestdataOlmOpsrcYaml,
+	"test/extended/testdata/olm/scoped-sa-etcd.yaml":                                    testExtendedTestdataOlmScopedSaEtcdYaml,
 	"test/extended/testdata/olm/scoped-sa-fine-grained-roles.yaml":                      testExtendedTestdataOlmScopedSaFineGrainedRolesYaml,
 	"test/extended/testdata/olm/scoped-sa-roles.yaml":                                   testExtendedTestdataOlmScopedSaRolesYaml,
 	"test/extended/testdata/olm/validatingwebhook-csv.yaml":                             testExtendedTestdataOlmValidatingwebhookCsvYaml,
@@ -11842,6 +11909,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 					"operatorgroup-serviceaccount.yaml":     {testExtendedTestdataOlmOperatorgroupServiceaccountYaml, map[string]*bintree{}},
 					"operatorgroup.yaml":                    {testExtendedTestdataOlmOperatorgroupYaml, map[string]*bintree{}},
 					"opsrc.yaml":                            {testExtendedTestdataOlmOpsrcYaml, map[string]*bintree{}},
+					"scoped-sa-etcd.yaml":                   {testExtendedTestdataOlmScopedSaEtcdYaml, map[string]*bintree{}},
 					"scoped-sa-fine-grained-roles.yaml":     {testExtendedTestdataOlmScopedSaFineGrainedRolesYaml, map[string]*bintree{}},
 					"scoped-sa-roles.yaml":                  {testExtendedTestdataOlmScopedSaRolesYaml, map[string]*bintree{}},
 					"validatingwebhook-csv.yaml":            {testExtendedTestdataOlmValidatingwebhookCsvYaml, map[string]*bintree{}},
