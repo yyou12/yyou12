@@ -419,7 +419,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		subTemplate := filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
 		oc.SetupProject()
 		og := operatorGroupDescription{
-			name:      "test-og",
+			name:      "test-og-25922",
 			namespace: oc.Namespace(),
 			template:  ogSingleTemplate,
 		}
@@ -569,7 +569,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 
 		// create the OperatorGroup resource
 		og := operatorGroupDescription{
-			name:      "test-og",
+			name:      "test-og-33902",
 			namespace: "openshift-storage",
 			template:  ogSingleTemplate,
 		}
@@ -713,7 +713,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 
 		// create the OperatorGroup resource
 		og := operatorGroupDescription{
-			name:               "test-og",
+			name:               "test-og-24771",
 			namespace:          namespace,
 			serviceAccountName: sa,
 			template:           ogSAtemplate,
@@ -785,7 +785,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 
 		// create the OperatorGroup resource
 		og := operatorGroupDescription{
-			name:               "test-og",
+			name:               "test-og-24772",
 			namespace:          namespace,
 			serviceAccountName: sa,
 			template:           ogSAtemplate,
@@ -858,7 +858,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 
 		// create the OperatorGroup resource
 		og := operatorGroupDescription{
-			name:      "test-og",
+			name:      "test-og-24886",
 			namespace: namespace,
 			template:  ogTemplate,
 		}
@@ -896,7 +896,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 
 		// create the OperatorGroup resource
 		ogSA := operatorGroupDescription{
-			name:               "test-og",
+			name:               "test-og-24886",
 			namespace:          namespace,
 			serviceAccountName: sa,
 			template:           ogSAtemplate,
