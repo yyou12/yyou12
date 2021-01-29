@@ -706,7 +706,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		csv := "etcdoperator.v0.9.4"
 		sa := "scoped-24771"
 
-		// create the openshift-storage project
+		// create the namespace
 		project := projectDescription{
 			name: namespace,
 		}
@@ -723,7 +723,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		itName := g.CurrentGinkgoTestDescription().TestText
 		dr.addIr(itName)
 
-		g.By("1) Create the openshift-storage project")
+		g.By("1) Create the namespace")
 		project.createwithCheck(oc, itName, dr)
 
 		g.By("2) Create the OperatorGroup")
@@ -778,7 +778,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		csv := "etcdoperator.v0.9.4"
 		sa := "scoped-24772"
 
-		// create the openshift-storage project
+		// create the namespace
 		project := projectDescription{
 			name: namespace,
 		}
@@ -795,7 +795,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		itName := g.CurrentGinkgoTestDescription().TestText
 		dr.addIr(itName)
 
-		g.By("1) Create the openshift-storage project")
+		g.By("1) Create the namespace")
 		project.createwithCheck(oc, itName, dr)
 
 		g.By("2) Create the OperatorGroup")
@@ -851,7 +851,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		csv := "etcdoperator.v0.9.4"
 		sa := "scoped-24886"
 
-		// create the openshift-storage project
+		// create the namespace
 		project := projectDescription{
 			name: namespace,
 		}
@@ -867,7 +867,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		itName := g.CurrentGinkgoTestDescription().TestText
 		dr.addIr(itName)
 
-		g.By("1) Create the openshift-storage project")
+		g.By("1) Create the namespace")
 		project.createwithCheck(oc, itName, dr)
 
 		g.By("2) Create the OperatorGroup without service account")
