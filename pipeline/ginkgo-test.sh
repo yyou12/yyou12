@@ -74,7 +74,8 @@ function select_fail_case_for_official_rerun {
   #ROOT_BUILD_CAUSE=CIBUILDCAUSE,MANUALTRIGGER,DEEPLYNESTEDCAUSES
   if ((echo ${LAUNCH_NAME} | grep -E '^([0-9]{8})-([0-9]{4})$') || \
       (echo ${LAUNCH_NAME} | grep -E '^([0-9]{8})-([0-9]{4})_([0-9]{1,2})$')) && \
-      [[ "${ROOT_BUILD_CAUSE}" == *"MANUALTRIGGER"* ]] && [[ "${ROOT_BUILD_CAUSE}" == *"CIBUILDCAUSE"* ]] && \
+      (([[ "${ROOT_BUILD_CAUSE}" == *"MANUALTRIGGER"* ]] && [[ "${ROOT_BUILD_CAUSE}" == *"CIBUILDCAUSE"* ]]) || \
+       ([[ "${ROOT_BUILD_CAUSE}" == *"MANUALTRIGGER"* ]] && [[ "${ROOT_BUILD_CAUSE}" == *"TIMERTRIGGER"* ]])) && \
       # [[ "X${BUILD_CAUSE_MANUALTRIGGER}X" != "XX" ]] && [[ "${BUILD_CAUSE_MANUALTRIGGER}" == "true" ]] && \
       [[ "${TIERN_REPO_OWNER}" == "openshift" ]] && [[ "${REPO_OWNER}" == "openshift" ]]; then
     echo "valid launch name with reran pipeline build. Try to find fail case and update SCENARIO"
