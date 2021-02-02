@@ -182,24 +182,35 @@ var _ = g.Describe("[sig-operators] ISV_Operators [Suite:openshift/isv]", func()
 
 		packageName := "resource-locker-operator"
 		crdName := "ResourceLocker"
-		crName := "resourcelocker-example"
+		crName := "locked-configmap-foo-bar-configmap"
 		crFile := "resourcelocker-cr.yaml"
-		namespace := "resourcelocker"
-		jsonPath := "-o=json"
-		expectedMsg := "resourcelocker-example"
+		jsonPath := "-o=jsonpath={.status.conditions..reason}"
+		expectedMsg := "LastReconcileCycleSucceded"
+		rolesFile := "resourcelocker-role.yaml"
+		sa := "resource-locker-test-sa"
 
-		defer RemoveNamespace(namespace, oc)
 		g.By("install operator")
-		currentPackage := CreateSubscriptionSpecificNamespace(packageName, oc, true, true, namespace, INSTALLPLAN_AUTOMATIC_MODE)
+		currentPackage := CreateSubscription(packageName, oc, INSTALLPLAN_AUTOMATIC_MODE)
+		defer RemoveOperatorDependencies(currentPackage, oc, false)
+
+		defer oc.WithoutNamespace().AsAdmin().Run("delete").Args("sa", sa, "-n", currentPackage.Namespace).Output()
+
+		_, err := oc.WithoutNamespace().AsAdmin().Run("create").Args("sa", sa, "-n", currentPackage.Namespace).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
 		g.By("check deployment of operator")
 		CheckDeployment(currentPackage, oc)
+
 		g.By("create CR")
+		defer RemoveFromYAML(currentPackage, rolesFile, oc)
+		CreateFromYAML(currentPackage, rolesFile, oc)
 		CreateFromYAML(currentPackage, crFile, oc)
+
 		g.By("check CR")
 		CheckCR(currentPackage, crdName, crName, jsonPath, expectedMsg, oc)
-		g.By("remvoe operator")
+
+		g.By("remove CR")
 		RemoveCR(currentPackage, crdName, crName, oc)
-		RemoveOperatorDependencies(currentPackage, oc, false)
 
 	})
 
@@ -285,6 +296,14 @@ func CreateFromYAML(p Packagemanifest, filename string, oc *exutil.CLI) {
 	buildPruningBaseDir := exutil.FixturePath("testdata", "operators")
 	cr := filepath.Join(buildPruningBaseDir, filename)
 	err := oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", cr, "-n", p.Namespace).Execute()
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+//the method is to create CR with yaml file in the namespace of the installed operator
+func RemoveFromYAML(p Packagemanifest, filename string, oc *exutil.CLI) {
+	buildPruningBaseDir := exutil.FixturePath("testdata", "operators")
+	cr := filepath.Join(buildPruningBaseDir, filename)
+	err := oc.AsAdmin().WithoutNamespace().Run("delete").Args("-f", cr, "-n", p.Namespace).Execute()
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 

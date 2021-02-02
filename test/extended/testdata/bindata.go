@@ -61,6 +61,7 @@
 // test/extended/testdata/operators/operator_group.yaml
 // test/extended/testdata/operators/portworx-snode-cr.yaml
 // test/extended/testdata/operators/resourcelocker-cr.yaml
+// test/extended/testdata/operators/resourcelocker-role.yaml
 // test/extended/testdata/operators/spark-gcp-sparkapplication-cr.yaml
 // test/extended/testdata/operators/storageos-secret.yaml
 // test/extended/testdata/operators/storageoscluster-cr.yaml
@@ -8407,8 +8408,22 @@ func testExtendedTestdataOperatorsPortworxSnodeCrYaml() (*asset, error) {
 var _testExtendedTestdataOperatorsResourcelockerCrYaml = []byte(`apiVersion: redhatcop.redhat.io/v1alpha1
 kind: ResourceLocker
 metadata:
-  name: resourcelocker-example
-  namespace: resourcelocker
+  name: locked-configmap-foo-bar-configmap
+spec:
+  resources:
+    - excludedPaths:
+        - .metadata
+        - .status
+        - .spec.replicas
+      object:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: foo-bar-configmap
+        data:
+          foo: bar
+  serviceAccountRef:
+    name: resource-locker-test-sa
 `)
 
 func testExtendedTestdataOperatorsResourcelockerCrYamlBytes() ([]byte, error) {
@@ -8422,6 +8437,51 @@ func testExtendedTestdataOperatorsResourcelockerCrYaml() (*asset, error) {
 	}
 
 	info := bindataFileInfo{name: "test/extended/testdata/operators/resourcelocker-cr.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataOperatorsResourcelockerRoleYaml = []byte(`apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: resourcelocker-lock-configmaps
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+    verbs:
+      - list
+      - get
+      - watch
+      - create
+      - update
+      - patch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: resource-locker-test-sa-can-manage-configmaps
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: resourcelocker-lock-configmaps
+subjects:
+  - kind: ServiceAccount
+    name: resource-locker-test-sa
+`)
+
+func testExtendedTestdataOperatorsResourcelockerRoleYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataOperatorsResourcelockerRoleYaml, nil
+}
+
+func testExtendedTestdataOperatorsResourcelockerRoleYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataOperatorsResourcelockerRoleYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/operators/resourcelocker-role.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -11764,6 +11824,7 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/operators/operator_group.yaml":                              testExtendedTestdataOperatorsOperator_groupYaml,
 	"test/extended/testdata/operators/portworx-snode-cr.yaml":                           testExtendedTestdataOperatorsPortworxSnodeCrYaml,
 	"test/extended/testdata/operators/resourcelocker-cr.yaml":                           testExtendedTestdataOperatorsResourcelockerCrYaml,
+	"test/extended/testdata/operators/resourcelocker-role.yaml":                         testExtendedTestdataOperatorsResourcelockerRoleYaml,
 	"test/extended/testdata/operators/spark-gcp-sparkapplication-cr.yaml":               testExtendedTestdataOperatorsSparkGcpSparkapplicationCrYaml,
 	"test/extended/testdata/operators/storageos-secret.yaml":                            testExtendedTestdataOperatorsStorageosSecretYaml,
 	"test/extended/testdata/operators/storageoscluster-cr.yaml":                         testExtendedTestdataOperatorsStorageosclusterCrYaml,
@@ -11927,6 +11988,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 					"operator_group.yaml":                {testExtendedTestdataOperatorsOperator_groupYaml, map[string]*bintree{}},
 					"portworx-snode-cr.yaml":             {testExtendedTestdataOperatorsPortworxSnodeCrYaml, map[string]*bintree{}},
 					"resourcelocker-cr.yaml":             {testExtendedTestdataOperatorsResourcelockerCrYaml, map[string]*bintree{}},
+					"resourcelocker-role.yaml":           {testExtendedTestdataOperatorsResourcelockerRoleYaml, map[string]*bintree{}},
 					"spark-gcp-sparkapplication-cr.yaml": {testExtendedTestdataOperatorsSparkGcpSparkapplicationCrYaml, map[string]*bintree{}},
 					"storageos-secret.yaml":              {testExtendedTestdataOperatorsStorageosSecretYaml, map[string]*bintree{}},
 					"storageoscluster-cr.yaml":           {testExtendedTestdataOperatorsStorageosclusterCrYaml, map[string]*bintree{}},
