@@ -29,7 +29,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	// author: jiazha@redhat.com
 	// add `Serial` label since this etcd-operator are subscribed for cluster-scoped,
 	// that means may leads to other etcd-opertor subscription fail if in Parallel
-	g.It("High-37826-use an PullSecret for the private Catalog Source image [Serial]", func() {
+	g.It("ConnectedOnly-High-37826-use an PullSecret for the private Catalog Source image [Serial]", func() {
 		g.By("1) Create a pull secert for CatalogSource")
 		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
 		dockerConfig := filepath.Join(buildPruningBaseDir, "dockerconfig.json")
@@ -293,7 +293,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	})
 
 	// author: jiazha@redhat.com
-	g.It("Medium-33450-Operator upgrades can delete existing CSV before completion", func() {
+	g.It("ConnectedOnly-Medium-33450-Operator upgrades can delete existing CSV before completion", func() {
 		g.By("1) Install a customization CatalogSource CR")
 		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
 		csImageTemplate := filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
@@ -361,7 +361,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	})
 
 	// author: jiazha@redhat.com
-	g.It("High-37260-should allow to create the default CatalogSource [Disruptive]", func() {
+	g.It("ConnectedOnly-High-37260-should allow to create the default CatalogSource [Disruptive]", func() {
 		g.By("1) Disable the default OperatorHub")
 		patchResource(oc, asAdmin, withoutNamespace, "operatorhub", "cluster", "-p", "{\"spec\": {\"disableAllDefaultSources\": true}}", "--type=merge")
 		defer patchResource(oc, asAdmin, withoutNamespace, "operatorhub", "cluster", "-p", "{\"spec\": {\"disableAllDefaultSources\": false}}", "--type=merge")
@@ -436,7 +436,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 			namespace:              oc.Namespace(),
 			catalogSourceName:      "community-operators",
 			catalogSourceNamespace: "openshift-marketplace",
-			channel:                "alpha",
+			channel:                "singlenamespace-alpha",
 			ipApproval:             "Automatic",
 			operatorPackage:        "etcd",
 			singleNamespace:        true,
@@ -455,7 +455,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		cm.create(oc, itName, dr)
 
 		g.By("4) Patch this ConfigMap a volume")
-		sub.patch(oc, "{\"spec\": {\"channel\":\"alpha\",\"config\":{\"volumeMounts\":[{\"mountPath\":\"/test\",\"name\":\"config-volume\"}],\"volumes\":[{\"configMap\":{\"name\":\"special-config\"},\"name\":\"config-volume\"}]},\"name\":\"etcd\",\"source\":\"community-operators\",\"sourceNamespace\":\"openshift-marketplace\"}}")
+		sub.patch(oc, "{\"spec\": {\"channel\":\"singlenamespace-alpha\",\"config\":{\"volumeMounts\":[{\"mountPath\":\"/test\",\"name\":\"config-volume\"}],\"volumes\":[{\"configMap\":{\"name\":\"special-config\"},\"name\":\"config-volume\"}]},\"name\":\"etcd\",\"source\":\"community-operators\",\"sourceNamespace\":\"openshift-marketplace\"}}")
 		err := wait.Poll(10*time.Second, 180*time.Second, func() (bool, error) {
 			podName, err := oc.AsAdmin().Run("get").Args("pods", "-l", "name=etcd-operator-alm-owned", "-o=jsonpath={.items[0].metadata.name}").Output()
 			o.Expect(err).NotTo(o.HaveOccurred())
@@ -470,7 +470,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		})
 		o.Expect(err).NotTo(o.HaveOccurred())
 		g.By("5) Patch a non-exist volume")
-		sub.patch(oc, "{\"spec\":{\"channel\":\"alpha\",\"config\":{\"volumeMounts\":[{\"mountPath\":\"/test\",\"name\":\"volume1\"}],\"volumes\":[{\"persistentVolumeClaim\":{\"claimName\":\"claim1\"},\"name\":\"volume1\"}]},\"name\":\"etcd\",\"source\":\"community-operators\",\"sourceNamespace\":\"openshift-marketplace\"}}")
+		sub.patch(oc, "{\"spec\":{\"channel\":\"singlenamespace-alpha\",\"config\":{\"volumeMounts\":[{\"mountPath\":\"/test\",\"name\":\"volume1\"}],\"volumes\":[{\"persistentVolumeClaim\":{\"claimName\":\"claim1\"},\"name\":\"volume1\"}]},\"name\":\"etcd\",\"source\":\"community-operators\",\"sourceNamespace\":\"openshift-marketplace\"}}")
 		err = wait.Poll(10*time.Second, 180*time.Second, func() (bool, error) {
 			for i := 0; i < 2; i++ {
 				g.By("5-1) Check the pods status")
@@ -545,7 +545,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 
 	})
 	// author: jiazha@redhat.com
-	g.It("Medium-33902-Catalog Weighting", func() {
+	g.It("ConnectedOnly-Medium-33902-Catalog Weighting", func() {
 		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
 		csImageTemplate := filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
 		ogSingleTemplate := filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
@@ -654,7 +654,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	})
 
 	// author: jiazha@redhat.com
-	g.It("Medium-32560-Unpacking bundle in InstallPlan fails", func() {
+	g.It("ConnectedOnly-Medium-32560-Unpacking bundle in InstallPlan fails", func() {
 		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
 		csImageTemplate := filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
 		subTemplate := filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
@@ -999,6 +999,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 
 	})
 
+	// author: bandrade@redhat.com
 	g.It("Medium-24916-Operators in AllNamespaces should be granted namespace list", func() {
 		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
 		subTemplate := filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
@@ -1083,6 +1084,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		}
 	})
 
+	// author: jiazha@redhat.com
 	g.It("Critical-22070-support grpc sourcetype [Serial]", func() {
 		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
 		csTemplate := filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
@@ -1096,8 +1098,9 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 			displayName: "OLM QE",
 			publisher:   "OLM QE",
 			sourceType:  "grpc",
-			address:     "quay.io/olmqe/catalogsource:etcd-auto",
-			template:    csTemplate,
+			// use the quay.io/openshifttest/etcd-index:latest as index image
+			address:  "quay.io/openshifttest/etcd-index@sha256:a57a5e0d869ff22c04078c529cb78d581af4a9b617c54dc669fda0a40ffd99fd",
+			template: csTemplate,
 		}
 
 		dr := make(describerResrouce)
@@ -1105,10 +1108,9 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		dr.addIr(itName)
 		cs.create(oc, itName, dr)
 		defer cs.delete(itName, dr)
-
 		newCheck("expect", asAdmin, withoutNamespace, compare, "READY", ok, []string{"catsrc", cs.name, "-n", cs.namespace, "-o=jsonpath={.status..lastObservedState}"}).check(oc)
 
-		g.By("Start to subscribe this etcd-atuo operator")
+		g.By("Start to subscribe this etcd operator")
 		sub := subscriptionDescription{
 			subName:                "sub-22070",
 			namespace:              "openshift-operators",
@@ -1116,7 +1118,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 			catalogSourceNamespace: "openshift-marketplace",
 			channel:                "clusterwide-alpha",
 			ipApproval:             "Automatic",
-			operatorPackage:        "etcd-auto",
+			operatorPackage:        "etcd",
 			singleNamespace:        false,
 			template:               subTemplate,
 		}

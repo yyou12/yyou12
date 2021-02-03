@@ -40,6 +40,8 @@ var _ = g.Describe("[sig-operators] OLM opm should", func() {
 		}
 
 	})
+
+	// author: bandrade@redhat.com
 	g.It("Medium-34016-opm can prune operators from catalog", func() {
 		opmBaseDir := exutil.FixturePath("testdata", "opm")
 		indexDB := filepath.Join(opmBaseDir, "index_34016.db")
