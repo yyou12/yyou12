@@ -2062,7 +2062,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle common object", f
 	})
 
 	// It will cover test case: OCP-24076, author: kuiwang@redhat.com
-	g.It("Medium-24076-check the version of olm operator is appropriate in ClusterOperator", func() {
+	g.It("StagerunBoth-Medium-24076-check the version of olm operator is appropriate in ClusterOperator", func() {
 		var (
 			olmClusterOperatorName = "operator-lifecycle-manager"
 		)
