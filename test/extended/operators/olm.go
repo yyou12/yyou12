@@ -503,7 +503,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		o.Expect(msg).To(o.ContainSubstring("redhat-operators"))
 	})
 	// author: bandrade@redhat.com
-	g.It("Medium-31693-Check CSV information on the PackageManifest", func() {
+	g.It("ConnectedOnly-Medium-31693-Check CSV information on the PackageManifest", func() {
 		g.By("1) The relatedImages should exist")
 		msg, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("packagemanifest", "prometheus", "-o=jsonpath={.status.channels[?(.name=='beta')].currentCSVDesc.relatedImages}").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -922,7 +922,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 
 	})
 	// author: bandrade@redhat.com
-	g.It("Medium-30765-Operator-version based dependencies metadata", func() {
+	g.It("ConnectedOnly-Medium-30765-Operator-version based dependencies metadata", func() {
 		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
 		csImageTemplate := filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
 
@@ -956,7 +956,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	})
 
 	// author: bandrade@redhat.com
-	g.It("Medium-27680-OLM Bundle support for Prometheus Types", func() {
+	g.It("ConnectedOnly-Medium-27680-OLM Bundle support for Prometheus Types", func() {
 		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
 		csImageTemplate := filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
 
@@ -1164,7 +1164,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	})
 
 	// author: bandrade@redhat.com
-	g.It("High-32613-Operators won't install if the CSV dependency is already installed", func() {
+	g.It("ConnectedOnly-High-32613-Operators won't install if the CSV dependency is already installed", func() {
 
 		namespace := "kogito"
 		infinispanPackage := CreateSubscriptionSpecificNamespace("infinispan", oc, true, true, namespace, INSTALLPLAN_AUTOMATIC_MODE)
@@ -1179,7 +1179,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	})
 
 	// author: bandrade@redhat.com
-	g.It("Low-24055-Check for defaultChannel mandatory field when having multiple channels", func() {
+	g.It("ConnectedOnly-Low-24055-Check for defaultChannel mandatory field when having multiple channels", func() {
 		olmBaseDir := exutil.FixturePath("testdata", "olm")
 		cmMapWithoutDefaultChannel := filepath.Join(olmBaseDir, "configmap-without-defaultchannel.yaml")
 		cmMapWithDefaultChannel := filepath.Join(olmBaseDir, "configmap-with-defaultchannel.yaml")
