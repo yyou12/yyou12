@@ -87,9 +87,9 @@ function handle_and_filter {
   value="$(echo $1 | grep -Eo '[a-zA-Z0-9]{1,}')"
 
   if [ "W${action}W" == "WW" ]; then
-    cat ./case_selected | grep -i -E "${value}" > ./case_selected_and
+    cat ./case_selected | grep -E "${value}" > ./case_selected_and
   else
-    cat ./case_selected | grep -i -v -E "${value}" > ./case_selected_and
+    cat ./case_selected | grep -v -E "${value}" > ./case_selected_and
   fi
   [ -e ./case_selected_and ] && cp -fr ./case_selected_and ./case_selected && rm -fr ./case_selected_and
 }
@@ -98,9 +98,9 @@ function handle_or_filter {
   value="$(echo $1 | grep -Eo '[a-zA-Z0-9]{1,}')"
 
   if [ "W${action}W" == "WW" ]; then
-    cat ./case_selected | grep -i -E "${value}" >> ./case_selected_or
+    cat ./case_selected | grep -E "${value}" >> ./case_selected_or
   else
-    cat ./case_selected | grep -i -v -E "${value}" >> ./case_selected_or
+    cat ./case_selected | grep -v -E "${value}" >> ./case_selected_or
   fi
 }
 run "$1" "$2" "$3" "$4"
