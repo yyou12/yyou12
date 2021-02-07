@@ -39,6 +39,12 @@ else
   buildtype="-ND"
 fi
 
+if [[ "${FILTERSO}" == *"Stagerun&"* ]] && [[ "${FILTERSO}" != *"~Stagerun"* ]]; then
+  profiletype="stage"
+else
+  profiletype="ci"
+fi
+
 cd ${WORKBUILDDIR}
 resultfile=`ls -rt -1 junit_e2e_* 2>&1 || true`
 echo $resultfile
@@ -59,7 +65,7 @@ if [ "X${LAUNCHID}X" != "XX" ]; then
   else
     LAUNCHIDVALID=false
   fi
-  existing=`ls ${WORKSPACE}"/misc/jenkins/ci/"${VERSION}"/"|grep "${PROFILENAME}"".test"|grep "test_run.yaml"|wc -l|xargs`
+  existing=`ls ${WORKSPACE}"/misc/jenkins/"${profiletype}"/"${VERSION}"/"|grep "${PROFILENAME}"".test"|grep "test_run.yaml"|wc -l|xargs`
   if [ "X${existing}X" == "X1X" ]; then
     PROFILENAMEVALID=true
   else
@@ -85,7 +91,7 @@ if [ "X${LAUNCHID}X" != "XX" ]; then
   for subteamfile in `ls import-*.xml`; do
     subteam=${subteamfile:7:-4}
     eval zip -r "${LAUNCHID}.zip" "${subteamfile}"
-    ret=`python3 reportportal.py -a import -f "${LAUNCHID}.zip" -s "${subteam}" -v "${VERSION}" -bn "${BUILDNUM}""${buildtype}" -pn "${PROFILENAME}" -pp "../misc/jenkins/ci/" -t "${rpmmtoken}" -ta "${rppmtoken}" -trial "${LAUNCHTRIAL}" 2>&1 || true`
+    ret=`python3 reportportal.py -a import -f "${LAUNCHID}.zip" -s "${subteam}" -v "${VERSION}" -bn "${BUILDNUM}""${buildtype}" -pn "${PROFILENAME}" -pp "../misc/jenkins/"${profiletype}"/" -t "${rpmmtoken}" -ta "${rppmtoken}" -trial "${LAUNCHTRIAL}" 2>&1 || true`
     eval rm -fr  "${LAUNCHID}.zip"
     result=`echo -e ${ret} | tail -1|xargs`
     if ! [ "X${result}X" == "XSUCCESSX" ]; then
