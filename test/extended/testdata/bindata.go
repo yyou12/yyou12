@@ -1242,7 +1242,7 @@ func testExtendedTestdataOauthserverOauthSaYaml() (*asset, error) {
 	return a, nil
 }
 
-var _testExtendedTestdataOlmApiserviceYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataOlmApiserviceYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   name: apiservice-template
@@ -1282,7 +1282,7 @@ func testExtendedTestdataOlmApiserviceYaml() (*asset, error) {
 	return a, nil
 }
 
-var _testExtendedTestdataOlmCatalogsourceAddressYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataOlmCatalogsourceAddressYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   name: catalogsource-template
@@ -1324,7 +1324,7 @@ func testExtendedTestdataOlmCatalogsourceAddressYaml() (*asset, error) {
 	return a, nil
 }
 
-var _testExtendedTestdataOlmCatalogsourceConfigmapYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataOlmCatalogsourceConfigmapYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   name: catalogsource-template
@@ -1366,7 +1366,7 @@ func testExtendedTestdataOlmCatalogsourceConfigmapYaml() (*asset, error) {
 	return a, nil
 }
 
-var _testExtendedTestdataOlmCatalogsourceImageYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataOlmCatalogsourceImageYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   name: catalogsource-image-template
@@ -1442,7 +1442,7 @@ func testExtendedTestdataOlmCatalogsourceNamespaceYaml() (*asset, error) {
 	return a, nil
 }
 
-var _testExtendedTestdataOlmCm25644EtcdCsvYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataOlmCm25644EtcdCsvYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   name: cm-etd-csv-template
@@ -1824,7 +1824,7 @@ func testExtendedTestdataOlmCm25644EtcdCsvYaml() (*asset, error) {
 	return a, nil
 }
 
-var _testExtendedTestdataOlmCmCertutilReadytestYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataOlmCmCertutilReadytestYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   name: cm-cert-readytest-template
@@ -2057,7 +2057,7 @@ func testExtendedTestdataOlmCmCertutilReadytestYaml() (*asset, error) {
 	return a, nil
 }
 
-var _testExtendedTestdataOlmCmCertutilReadytestsYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataOlmCmCertutilReadytestsYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   name: cm-cert-readytests-template
@@ -2290,7 +2290,7 @@ func testExtendedTestdataOlmCmCertutilReadytestsYaml() (*asset, error) {
 	return a, nil
 }
 
-var _testExtendedTestdataOlmCmCsvEtcdYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataOlmCmCsvEtcdYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   name: cm-csv-etcd-template
@@ -3171,7 +3171,7 @@ func testExtendedTestdataOlmCmCsvEtcdYaml() (*asset, error) {
 	return a, nil
 }
 
-var _testExtendedTestdataOlmCmLearnV1Yaml = []byte(`apiVersion: v1
+var _testExtendedTestdataOlmCmLearnV1Yaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   name: cm-learn-v1-template
@@ -3390,7 +3390,7 @@ func testExtendedTestdataOlmCmLearnV1Yaml() (*asset, error) {
 	return a, nil
 }
 
-var _testExtendedTestdataOlmCmLearnV2Yaml = []byte(`apiVersion: v1
+var _testExtendedTestdataOlmCmLearnV2Yaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   name: cm-learn-v2-template
@@ -3752,7 +3752,7 @@ func testExtendedTestdataOlmCmLearnV2Yaml() (*asset, error) {
 	return a, nil
 }
 
-var _testExtendedTestdataOlmCmLightbendYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataOlmCmLightbendYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   name: cm-lightbend-template
@@ -4029,7 +4029,7 @@ func testExtendedTestdataOlmCmLightbendYaml() (*asset, error) {
 	return a, nil
 }
 
-var _testExtendedTestdataOlmCmNamespaceconfigYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataOlmCmNamespaceconfigYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   name: cm-namespaceconfig-template
@@ -4634,7 +4634,7 @@ func testExtendedTestdataOlmCmNamespaceconfigYaml() (*asset, error) {
 	return a, nil
 }
 
-var _testExtendedTestdataOlmCmTemplateYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataOlmCmTemplateYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   name: cm-sub-template
@@ -4667,7 +4667,7 @@ func testExtendedTestdataOlmCmTemplateYaml() (*asset, error) {
 	return a, nil
 }
 
-var _testExtendedTestdataOlmConfigmapEctdAlphaBetaYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataOlmConfigmapEctdAlphaBetaYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   name: cm-bad-operator-template
@@ -5344,7 +5344,7 @@ func testExtendedTestdataOlmConfigmapEctdAlphaBetaYaml() (*asset, error) {
 	return a, nil
 }
 
-var _testExtendedTestdataOlmConfigmapEtcdYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataOlmConfigmapEtcdYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   name: cm-bad-operator-template
@@ -7034,7 +7034,7 @@ func testExtendedTestdataOlmConfigmapWithoutDefaultchannelYaml() (*asset, error)
 	return a, nil
 }
 
-var _testExtendedTestdataOlmCrWebhooktestYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataOlmCrWebhooktestYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   name: WebhookTest-template
@@ -7067,7 +7067,7 @@ func testExtendedTestdataOlmCrWebhooktestYaml() (*asset, error) {
 	return a, nil
 }
 
-var _testExtendedTestdataOlmCsWithoutImageYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataOlmCsWithoutImageYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   name: catalogsource-image-template
@@ -7107,7 +7107,7 @@ func testExtendedTestdataOlmCsWithoutImageYaml() (*asset, error) {
 	return a, nil
 }
 
-var _testExtendedTestdataOlmCscYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataOlmCscYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   name: opsrc-template
@@ -7171,7 +7171,7 @@ func testExtendedTestdataOlmDockerconfigJson() (*asset, error) {
 	return a, nil
 }
 
-var _testExtendedTestdataOlmEtcdClusterYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataOlmEtcdClusterYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   name: etcdCluster-template
@@ -7230,7 +7230,7 @@ func testExtendedTestdataOlmEtcdCustomCscYaml() (*asset, error) {
 	return a, nil
 }
 
-var _testExtendedTestdataOlmEtcdSubscriptionManualYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataOlmEtcdSubscriptionManualYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   name: subscription-template
@@ -7275,7 +7275,7 @@ func testExtendedTestdataOlmEtcdSubscriptionManualYaml() (*asset, error) {
 	return a, nil
 }
 
-var _testExtendedTestdataOlmEtcdSubscriptionYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataOlmEtcdSubscriptionYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   name: subscription-template
@@ -7320,7 +7320,7 @@ func testExtendedTestdataOlmEtcdSubscriptionYaml() (*asset, error) {
 	return a, nil
 }
 
-var _testExtendedTestdataOlmMutatingwebhookCsvYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataOlmMutatingwebhookCsvYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   name: validatingwebhook-csv-template
@@ -7440,7 +7440,7 @@ func testExtendedTestdataOlmMutatingwebhookCsvYaml() (*asset, error) {
 	return a, nil
 }
 
-var _testExtendedTestdataOlmOgAllnsYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataOlmOgAllnsYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   name: operatorgroup-allns-template
@@ -7471,7 +7471,7 @@ func testExtendedTestdataOlmOgAllnsYaml() (*asset, error) {
 	return a, nil
 }
 
-var _testExtendedTestdataOlmOgMultinsYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataOlmOgMultinsYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   name: operatorgroup-multins-template
@@ -7506,7 +7506,7 @@ func testExtendedTestdataOlmOgMultinsYaml() (*asset, error) {
 	return a, nil
 }
 
-var _testExtendedTestdataOlmOlmSubscriptionYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataOlmOlmSubscriptionYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   name: sub-template
@@ -7552,7 +7552,7 @@ func testExtendedTestdataOlmOlmSubscriptionYaml() (*asset, error) {
 	return a, nil
 }
 
-var _testExtendedTestdataOlmOperatorgroupServiceaccountYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataOlmOperatorgroupServiceaccountYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   name: operatorgroup-template
@@ -7587,7 +7587,7 @@ func testExtendedTestdataOlmOperatorgroupServiceaccountYaml() (*asset, error) {
 	return a, nil
 }
 
-var _testExtendedTestdataOlmOperatorgroupYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataOlmOperatorgroupYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   name: operatorgroup-template
@@ -7622,7 +7622,7 @@ func testExtendedTestdataOlmOperatorgroupYaml() (*asset, error) {
 	return a, nil
 }
 
-var _testExtendedTestdataOlmOpsrcYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataOlmOpsrcYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   name: opsrc-template
@@ -7829,7 +7829,7 @@ func testExtendedTestdataOlmScopedSaRolesYaml() (*asset, error) {
 	return a, nil
 }
 
-var _testExtendedTestdataOlmValidatingwebhookCsvYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataOlmValidatingwebhookCsvYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   name: validatingwebhook-csv-template
@@ -7949,7 +7949,7 @@ func testExtendedTestdataOlmValidatingwebhookCsvYaml() (*asset, error) {
 	return a, nil
 }
 
-var _testExtendedTestdataOlmVpaCrdYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataOlmVpaCrdYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   name: vpa-template
