@@ -41,6 +41,7 @@
 // test/extended/testdata/olm/mutatingwebhook-csv.yaml
 // test/extended/testdata/olm/og-allns.yaml
 // test/extended/testdata/olm/og-multins.yaml
+// test/extended/testdata/olm/olm-proxy-subscription.yaml
 // test/extended/testdata/olm/olm-subscription.yaml
 // test/extended/testdata/olm/operatorgroup-serviceaccount.yaml
 // test/extended/testdata/olm/operatorgroup.yaml
@@ -7506,6 +7507,66 @@ func testExtendedTestdataOlmOgMultinsYaml() (*asset, error) {
 	return a, nil
 }
 
+var _testExtendedTestdataOlmOlmProxySubscriptionYaml = []byte(`apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: sub-template
+objects:
+- apiVersion: operators.coreos.com/v1alpha1
+  kind: Subscription
+  metadata:
+    name: "${SUBNAME}"
+    namespace: "${SUBNAMESPACE}"
+  spec:
+    config:
+      env:
+      - name: HTTP_PROXY
+        value: ${SUBHTTPPROXY}
+      - name: HTTPS_PROXY
+        value: ${SUBHTTPSPROXY}
+      - name: NO_PROXY
+        value: ${SUBNOPROXY}
+    channel: "${CHANNEL}"
+    installPlanApproval: "${APPROVAL}"
+    name: "${OPERATORNAME}"
+    source: "${SOURCENAME}"
+    sourceNamespace: "${SOURCENAMESPACE}"
+    startingCSV: "${STARTINGCSV}"
+parameters:
+- name: SUBNAME
+- name: SUBNAMESPACE
+- name: CHANNEL
+- name: APPROVAL
+  value: "Automatic"
+- name: OPERATORNAME
+- name: SOURCENAME
+- name: SOURCENAMESPACE
+  value: "openshift-marketplace"
+- name: STARTINGCSV
+  value: ""
+- name: SUBHTTPPROXY
+  value: ""
+- name: SUBHTTPSPROXY
+  value: ""
+- name: SUBNOPROXY
+  value: ""
+`)
+
+func testExtendedTestdataOlmOlmProxySubscriptionYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataOlmOlmProxySubscriptionYaml, nil
+}
+
+func testExtendedTestdataOlmOlmProxySubscriptionYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataOlmOlmProxySubscriptionYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/olm/olm-proxy-subscription.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
 var _testExtendedTestdataOlmOlmSubscriptionYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
@@ -11804,6 +11865,7 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/olm/mutatingwebhook-csv.yaml":                               testExtendedTestdataOlmMutatingwebhookCsvYaml,
 	"test/extended/testdata/olm/og-allns.yaml":                                          testExtendedTestdataOlmOgAllnsYaml,
 	"test/extended/testdata/olm/og-multins.yaml":                                        testExtendedTestdataOlmOgMultinsYaml,
+	"test/extended/testdata/olm/olm-proxy-subscription.yaml":                            testExtendedTestdataOlmOlmProxySubscriptionYaml,
 	"test/extended/testdata/olm/olm-subscription.yaml":                                  testExtendedTestdataOlmOlmSubscriptionYaml,
 	"test/extended/testdata/olm/operatorgroup-serviceaccount.yaml":                      testExtendedTestdataOlmOperatorgroupServiceaccountYaml,
 	"test/extended/testdata/olm/operatorgroup.yaml":                                     testExtendedTestdataOlmOperatorgroupYaml,
@@ -11966,6 +12028,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 					"mutatingwebhook-csv.yaml":              {testExtendedTestdataOlmMutatingwebhookCsvYaml, map[string]*bintree{}},
 					"og-allns.yaml":                         {testExtendedTestdataOlmOgAllnsYaml, map[string]*bintree{}},
 					"og-multins.yaml":                       {testExtendedTestdataOlmOgMultinsYaml, map[string]*bintree{}},
+					"olm-proxy-subscription.yaml":           {testExtendedTestdataOlmOlmProxySubscriptionYaml, map[string]*bintree{}},
 					"olm-subscription.yaml":                 {testExtendedTestdataOlmOlmSubscriptionYaml, map[string]*bintree{}},
 					"operatorgroup-serviceaccount.yaml":     {testExtendedTestdataOlmOperatorgroupServiceaccountYaml, map[string]*bintree{}},
 					"operatorgroup.yaml":                    {testExtendedTestdataOlmOperatorgroupYaml, map[string]*bintree{}},

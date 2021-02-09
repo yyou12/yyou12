@@ -228,6 +228,33 @@ func (sub *subscriptionDescription) patch(oc *exutil.CLI, patch string) {
 	patchResource(oc, asAdmin, withoutNamespace, "sub", sub.subName, "-n", sub.namespace, "--type", "merge", "-p", patch)
 }
 
+type subscriptionDescriptionProxy struct {
+	subscriptionDescription
+	httpProxy  string
+	httpsProxy string
+	noProxy    string
+}
+
+//the method is to just create sub with proxy, and save it to dr, do not check its state.
+func (sub *subscriptionDescriptionProxy) createWithoutCheck(oc *exutil.CLI, itName string, dr describerResrouce) {
+	e2e.Logf("install subscriptionDescriptionProxy")
+	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", sub.template, "-p", "SUBNAME="+sub.subName, "SUBNAMESPACE="+sub.namespace, "CHANNEL="+sub.channel,
+		"APPROVAL="+sub.ipApproval, "OPERATORNAME="+sub.operatorPackage, "SOURCENAME="+sub.catalogSourceName, "SOURCENAMESPACE="+sub.catalogSourceNamespace, "STARTINGCSV="+sub.startingCSV,
+		"SUBHTTPPROXY="+sub.httpProxy, "SUBHTTPSPROXY="+sub.httpsProxy, "SUBNOPROXY="+sub.noProxy)
+
+	o.Expect(err).NotTo(o.HaveOccurred())
+	dr.getIr(itName).add(newResource(oc, "sub", sub.subName, requireNS, sub.namespace))
+}
+
+func (sub *subscriptionDescriptionProxy) create(oc *exutil.CLI, itName string, dr describerResrouce) {
+	sub.createWithoutCheck(oc, itName, dr)
+	if strings.Compare(sub.ipApproval, "Automatic") == 0 {
+		sub.findInstalledCSV(oc, itName, dr)
+	} else {
+		newCheck("expect", asAdmin, withoutNamespace, compare, "UpgradePending", ok, []string{"sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.state}"}).check(oc)
+	}
+}
+
 type crdDescription struct {
 	name     string
 	template string

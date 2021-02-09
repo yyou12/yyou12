@@ -4006,6 +4006,120 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		g.By("SUCCESS")
 	})
 
+	// Test case: OCP-24566, author:xzha@redhat.com
+	g.It("ConnectedOnly-Proxyonly-Medium-24566-OLM automatically configures operators with global proxy config", func() {
+		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
+		ogSingleTemplate := filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+		subTemplate := filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+		subTemplateProxy := filepath.Join(buildPruningBaseDir, "olm-proxy-subscription.yaml")
+		oc.SetupProject()
+		var (
+			og = operatorGroupDescription{
+				name:      "test-og",
+				namespace: oc.Namespace(),
+				template:  ogSingleTemplate,
+			}
+			sub = subscriptionDescription{
+				subName:                "etcd-sub",
+				namespace:              oc.Namespace(),
+				catalogSourceName:      "community-operators",
+				catalogSourceNamespace: "openshift-marketplace",
+				channel:                "alpha",
+				ipApproval:             "Automatic",
+				operatorPackage:        "etcd",
+				singleNamespace:        true,
+				template:               subTemplate,
+			}
+			subP = subscriptionDescription{subName: "etcd-sub",
+				namespace:              oc.Namespace(),
+				catalogSourceName:      "community-operators",
+				catalogSourceNamespace: "openshift-marketplace",
+				channel:                "alpha",
+				ipApproval:             "Automatic",
+				operatorPackage:        "etcd",
+				singleNamespace:        true,
+				template:               subTemplateProxy}
+			subProxyTest = subscriptionDescriptionProxy{
+				subscriptionDescription: subP,
+				httpProxy:               "test_http_proxy",
+				httpsProxy:              "test_https_proxy",
+				noProxy:                 "test_no_proxy",
+			}
+			subProxyFake = subscriptionDescriptionProxy{
+				subscriptionDescription: subP,
+				httpProxy:               "fake_http_proxy",
+				httpsProxy:              "fake_https_proxy",
+				noProxy:                 "fake_no_proxy",
+			}
+			subProxyEmpty = subscriptionDescriptionProxy{
+				subscriptionDescription: subP,
+				httpProxy:               "",
+				httpsProxy:              "",
+				noProxy:                 "",
+			}
+		)
+
+		dr := make(describerResrouce)
+		itName := g.CurrentGinkgoTestDescription().TestText
+		dr.addIr(itName)
+		//oc get proxy cluster
+		g.By(fmt.Sprintf("0) check the cluster is proxied"))
+		httpProxy := getResource(oc, asAdmin, withoutNamespace, "proxy", "cluster", "-o=jsonpath={.status.httpProxy}")
+		httpsProxy := getResource(oc, asAdmin, withoutNamespace, "proxy", "cluster", "-o=jsonpath={.status.httpsProxy}")
+		noProxy := getResource(oc, asAdmin, withoutNamespace, "proxy", "cluster", "-o=jsonpath={.status.noProxy}")
+		o.Expect(httpProxy).NotTo(o.BeEmpty())
+		o.Expect(httpsProxy).NotTo(o.BeEmpty())
+		o.Expect(noProxy).NotTo(o.BeEmpty())
+		g.By(fmt.Sprintf("1) create the OperatorGroup in project: %s", oc.Namespace()))
+		og.createwithCheck(oc, itName, dr)
+
+		g.By("2) install etcd operator and check the proxy")
+		sub.create(oc, itName, dr)
+		g.By("install etcd operator SUCCESS")
+		nodeHTTPProxy := getResource(oc, asAdmin, withoutNamespace, "deployment", fmt.Sprintf("--selector=olm.owner=%s", sub.installedCSV), "-n", sub.namespace, "-o=jsonpath={..spec.template.spec.containers[?(.name==\"etcd-operator\")].env[?(.name==\"HTTP_PROXY\")].value}")
+		o.Expect(nodeHTTPProxy).To(o.Equal(httpProxy))
+		nodeHTTPSProxy := getResource(oc, asAdmin, withoutNamespace, "deployment", fmt.Sprintf("--selector=olm.owner=%s", sub.installedCSV), "-n", sub.namespace, "-o=jsonpath={..spec.template.spec.containers[?(.name==\"etcd-operator\")].env[?(.name==\"HTTPS_PROXY\")].value}")
+		o.Expect(nodeHTTPSProxy).To(o.Equal(httpsProxy))
+		nodeNoProxy := getResource(oc, asAdmin, withoutNamespace, "deployment", fmt.Sprintf("--selector=olm.owner=%s", sub.installedCSV), "-n", sub.namespace, "-o=jsonpath={..spec.template.spec.containers[?(.name==\"etcd-operator\")].env[?(.name==\"NO_PROXY\")].value}")
+		o.Expect(nodeNoProxy).To(o.Equal(noProxy))
+		g.By("CHECK proxy configure SUCCESS")
+		sub.delete(itName, dr)
+		sub.getCSV().delete(itName, dr)
+
+		g.By("3) create subscription and set variables ( HTTP_PROXY, HTTPS_PROXY and NO_PROXY ) with non-empty values. ")
+		subProxyTest.create(oc, itName, dr)
+		nodeHTTPProxy = getResource(oc, asAdmin, withoutNamespace, "deployment", fmt.Sprintf("--selector=olm.owner=%s", sub.installedCSV), "-n", sub.namespace, "-o=jsonpath={..spec.template.spec.containers[?(.name==\"etcd-operator\")].env[?(.name==\"HTTP_PROXY\")].value}")
+		o.Expect(nodeHTTPProxy).To(o.Equal("test_http_proxy"))
+		nodeHTTPSProxy = getResource(oc, asAdmin, withoutNamespace, "deployment", fmt.Sprintf("--selector=olm.owner=%s", sub.installedCSV), "-n", sub.namespace, "-o=jsonpath={..spec.template.spec.containers[?(.name==\"etcd-operator\")].env[?(.name==\"HTTPS_PROXY\")].value}")
+		o.Expect(nodeHTTPSProxy).To(o.Equal("test_https_proxy"))
+		nodeNoProxy = getResource(oc, asAdmin, withoutNamespace, "deployment", fmt.Sprintf("--selector=olm.owner=%s", sub.installedCSV), "-n", sub.namespace, "-o=jsonpath={..spec.template.spec.containers[?(.name==\"etcd-operator\")].env[?(.name==\"NO_PROXY\")].value}")
+		o.Expect(nodeNoProxy).To(o.Equal("test_no_proxy"))
+		subProxyTest.delete(itName, dr)
+		subProxyTest.getCSV().delete(itName, dr)
+
+		g.By("4) Create a new subscription and set variables ( HTTP_PROXY, HTTPS_PROXY and NO_PROXY ) with a fake value.")
+		subProxyFake.create(oc, itName, dr)
+		nodeHTTPProxy = getResource(oc, asAdmin, withoutNamespace, "deployment", fmt.Sprintf("--selector=olm.owner=%s", sub.installedCSV), "-n", sub.namespace, "-o=jsonpath={..spec.template.spec.containers[?(.name==\"etcd-operator\")].env[?(.name==\"HTTP_PROXY\")].value}")
+		o.Expect(nodeHTTPProxy).To(o.Equal("fake_http_proxy"))
+		nodeHTTPSProxy = getResource(oc, asAdmin, withoutNamespace, "deployment", fmt.Sprintf("--selector=olm.owner=%s", sub.installedCSV), "-n", sub.namespace, "-o=jsonpath={..spec.template.spec.containers[?(.name==\"etcd-operator\")].env[?(.name==\"HTTPS_PROXY\")].value}")
+		o.Expect(nodeHTTPSProxy).To(o.Equal("fake_https_proxy"))
+		nodeNoProxy = getResource(oc, asAdmin, withoutNamespace, "deployment", fmt.Sprintf("--selector=olm.owner=%s", sub.installedCSV), "-n", sub.namespace, "-o=jsonpath={..spec.template.spec.containers[?(.name==\"etcd-operator\")].env[?(.name==\"NO_PROXY\")].value}")
+		o.Expect(nodeNoProxy).To(o.Equal("fake_no_proxy"))
+		subProxyFake.delete(itName, dr)
+		subProxyFake.getCSV().delete(itName, dr)
+
+		g.By("5) Create a new subscription and set variables ( HTTP_PROXY, HTTPS_PROXY and NO_PROXY ) with an empty value.")
+		subProxyEmpty.create(oc, itName, dr)
+		nodeHTTPProxy = getResource(oc, asAdmin, withoutNamespace, "deployment", fmt.Sprintf("--selector=marketplace.operatorSource=%s", sub.installedCSV), "-n", sub.namespace, "-o=jsonpath={.spec.template.spec.containers[?(.name==\"etcd-operator\")].env[?(.name==\"HTTP_PROXY\")].value}")
+		o.Expect(nodeHTTPProxy).To(o.BeEmpty())
+		nodeHTTPSProxy = getResource(oc, asAdmin, withoutNamespace, "deployment", fmt.Sprintf("--selector=marketplace.operatorSource=%s", sub.installedCSV), "-n", sub.namespace, "-o=jsonpath={.spec.template.spec.containers[?(.name==\"etcd-operator\")].env[?(.name==\"HTTPS_PROXY\")].value}")
+		o.Expect(nodeHTTPSProxy).To(o.BeEmpty())
+		nodeNoProxy = getResource(oc, asAdmin, withoutNamespace, "deployment", fmt.Sprintf("--selector=marketplace.operatorSource=%s", sub.installedCSV), "-n", sub.namespace, "-o=jsonpath={.spec.template.spec.containers[?(.name==\"etcd-operator\")].env[?(.name==\"NO_PROXY\")].value}")
+		o.Expect(nodeNoProxy).To(o.BeEmpty())
+		subProxyEmpty.delete(itName, dr)
+		subProxyEmpty.getCSV().delete(itName, dr)
+	})
+
 })
 
 var _ = g.Describe("[sig-operators] OLM for an end user handle to support", func() {
