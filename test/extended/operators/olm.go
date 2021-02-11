@@ -3830,23 +3830,20 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 				channel:                "alpha",
 				operatorPackage:        "etcd",
 				startingCSV:            "etcdoperator.v0.9.2",
-				installedCSV:           "",
+				installedCSV:           "etcdoperator.v0.9.2",
 				singleNamespace:        true,
 			}
 		)
 
 		g.By("Create og-allnamespace, cm etcd, catalog source")
 		ogAll.create(oc, itName, dr)
-		msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("og", "-n", oc.Namespace(), ogName).Output()
-		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("og", ogName, "-n", oc.Namespace()).Execute()
-		o.Expect(err).NotTo(o.HaveOccurred())
+		msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("og", "-n", oc.Namespace()).Output()
+		e2e.Logf("og: %v, %v", msg, og.name)
 
 		cm.create(oc, itName, dr)
-		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("cm", cmName, "-n", oc.Namespace()).Execute()
-
+		
 		catsrc.create(oc, itName, dr)
-		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("catsrc", cmName, "-n", oc.Namespace()).Execute()
-
+		
 		g.By("Wait for cm pod")
 		waitErr := wait.Poll(3*time.Second, 180*time.Second, func() (bool, error) {
 			msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-n", oc.Namespace(), cmSelector).Output()
@@ -3911,18 +3908,17 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		e2e.Logf(" %v\n", msg)
 		o.Expect(strings.Contains(msg, "InstallModeType not supported") || strings.Contains(msg, "csv in namespace with no operatorgroup")).To(o.BeTrue())
 
-		g.By("Get prometheus token, OLM pod name and check metrics")
-		// TK=$(oc sa get-token prometheus-k8s -n openshift-monitoring)
-		// olm_pod=$(oc get pods -n openshift-operator-lifecycle-manager --selector=app=olm-operator | awk '/olm-operator/{print $1}')
+		g.By("Get prometheus token")
 		olmToken, err = oc.AsAdmin().WithoutNamespace().Run("sa").Args("get-token", "prometheus-k8s", "-n", "openshift-monitoring").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(olmToken).NotTo(o.BeEmpty())
 
+		g.By("get OLM pod name")
 		olmPodname, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-n", "openshift-operator-lifecycle-manager", "--selector=app=olm-operator", "-o=jsonpath={.items..metadata.name}").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(olmPodname).NotTo(o.BeEmpty())
 
-		// oc  -n openshift-operator-lifecycle-manager exec $olm_pod  -it -- curl -k -H "Authorization: Bearer $TK" https://localhost:8081/metrics
+		g.By("check metrics")
 		metrics, err = oc.AsAdmin().WithoutNamespace().Run("exec").Args(olmPodname, "-n", "openshift-operator-lifecycle-manager", "-i", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", olmToken), "https://localhost:8081/metrics").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(metrics).NotTo(o.BeEmpty())
@@ -3936,15 +3932,20 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 				next = true
 			}
 		}
-		e2e.Logf("\n\nVar %v %v\n\n", metricsVar, metricsVal)
+		e2e.Logf("\nMetrics\n    %v == %v\n", metricsVar, metricsVal)
 		o.Expect(metricsVal).NotTo(o.BeEmpty())
 
-		g.By("reset og to single namespace and wait for csv to recreate")
-		err = oc.AsAdmin().WithoutNamespace().Run("delete").Args("og", ogName, "-n", oc.Namespace()).Execute()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		csvName = ""
+		g.By("reset og to single namespace")
+		og.delete(itName, dr)
+		msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("og", "-n", oc.Namespace()).Output()
+		e2e.Logf("og deleted:%v", msg)
+
 		og.create(oc, itName, dr)
-		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("og", ogName, "-n", oc.Namespace()).Execute()
+		msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("og", "-n", oc.Namespace(), "--no-headers").Output()
+		e2e.Logf("og created:%v", msg)
+
+		g.By("Wait for csv to recreate")
+		csvName = ""
 		waitErr = wait.Poll(5*time.Second, 120*time.Second, func() (bool, error) {
 			msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", "-n", oc.Namespace(), "--no-headers=true").Output()
 			o.Expect(err).NotTo(o.HaveOccurred())
@@ -3972,10 +3973,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		e2e.Logf(" %v\n", msg)
 		o.Expect(strings.Contains(msg, "completed with no errors")).To(o.BeTrue())
 
-		g.By("Make sure pods are fully running and check new metrics")
-		next = false
-		metricsVar = ""
-		metricsVal = ""
+		g.By("Make sure pods are fully running")
 		waitErr = wait.Poll(5*time.Second, 120*time.Second, func() (bool, error) {
 			msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-n", oc.Namespace()).Output()
 			o.Expect(err).NotTo(o.HaveOccurred())
@@ -3986,6 +3984,11 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		})
 		e2e.Logf("\nPods\n%v", msg)
 		o.Expect(waitErr).NotTo(o.HaveOccurred())
+
+		g.By("check new metrics")
+		next = false
+		metricsVar = ""
+		metricsVal = ""
 		metrics, err = oc.AsAdmin().WithoutNamespace().Run("exec").Args(olmPodname, "-n", "openshift-operator-lifecycle-manager", "-i", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", olmToken), "https://localhost:8081/metrics").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(metrics).NotTo(o.BeEmpty())
@@ -3999,11 +4002,12 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 				next = true
 			}
 		}
-		e2e.Logf("\n\n%v   %v\n\n", metricsVar, metricsVal)
+		e2e.Logf("\nMetrics\n%v ==  %v\n", metricsVar, metricsVal)
 		o.Expect(metricsVar).NotTo(o.BeEmpty())
 		o.Expect(metricsVal).NotTo(o.BeEmpty())
 
 		g.By("SUCCESS")
+		
 	})
 
 	// Test case: OCP-24566, author:xzha@redhat.com
