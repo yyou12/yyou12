@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+	"encoding/json"
 
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -4123,6 +4124,216 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		subProxyEmpty.delete(itName, dr)
 		subProxyEmpty.getCSV().delete(itName, dr)
 	})
+
+	// author: tbuskey@redhat.com, test case OCP-21080
+	g.It("High-21080-OLM Check OLM metrics", func() {
+		
+		type metrics struct {
+			csv_count 				int
+			csv_upgrade_count 		int
+			catalog_source_count	int
+			install_plan_count		int
+			subscription_count		int
+			subscription_sync_total int
+		}
+
+		var (
+			itName              = g.CurrentGinkgoTestDescription().TestText
+			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
+			ogTemplate          = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+			subFile             = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+			catPodname			string
+			csvName				= ""
+			data				PrometheusQueryResult
+			err					error
+			i                   int
+			metricsBefore		metrics
+			metricsAfter		metrics
+			msg      			string
+			ogName   			= "test-21080-group"
+			olmPodname			string		
+			olmToken			string
+			subSync				PrometheusQueryResult
+			waitErr				error
+			etcAvailable		= true
+		)
+
+		oc.SetupProject()
+		generatedNamespace := oc.Namespace()
+
+		var (
+			og = operatorGroupDescription{
+				name:      ogName,
+				namespace: oc.Namespace(),
+				template:  ogTemplate,
+			}
+			sub = subscriptionDescription{
+				subName:                "etcd-21080",
+				namespace:              oc.Namespace(),
+				catalogSourceName:      "community-operators",
+				catalogSourceNamespace: "openshift-marketplace",
+				ipApproval:             "Automatic",		
+				channel:                "singlenamespace-alpha",
+				operatorPackage:        "etcd",
+				startingCSV:            "etcdoperator.v0.9.2",
+				installedCSV: 			"etcdoperator.v0.9.4",
+				singleNamespace: 		true,
+				template:               subFile,
+			}
+		)
+
+		g.By("Check etcd availability")
+		msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("packagemanifest", "-n", "openshift-marketplace", "etcd", "--no-headers").Output()
+		if err != nil {
+			etcAvailable = false
+			e2e.Logf("!!! Could not query packagemanifest for etcd operator, probably will fail: %v %v\n", err, msg)
+		}
+		if  !strings.Contains(msg, "Community Operators") {
+			e2e.Logf("!!! Could not find etcd operator in Community Operators, probably will fail: %v %v\n", err, msg)
+			etcAvailable = false
+		}
+		defer e2e.Logf("\n\netcd availability was %v\n", etcAvailable)
+
+
+		g.By("Get token & pods")
+		og.create(oc, itName, dr)
+		olmToken, err = oc.AsAdmin().WithoutNamespace().Run("sa").Args("get-token", "prometheus-k8s", "-n", "openshift-monitoring").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(olmToken).NotTo(o.BeEmpty())
+
+		olmPodname, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-n", "openshift-operator-lifecycle-manager", "--selector=app=olm-operator", "-o=jsonpath={.items..metadata.name}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(olmPodname).NotTo(o.BeEmpty())
+
+		catPodname, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-n", "openshift-operator-lifecycle-manager", "--selector=app=catalog-operator", "-o=jsonpath={.items..metadata.name}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(catPodname).NotTo(o.BeEmpty())
+
+		g.By("collect olm metrics before")
+		msg, _,  err = oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-operator-lifecycle-manager", olmPodname, "-i", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", olmToken), "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query=csv_count").Outputs()
+		o.Expect(msg).NotTo(o.BeEmpty())
+		json.Unmarshal([]byte(msg), &data)
+		metricsBefore.csv_count, err = strconv.Atoi(data.Data.Result[0].Value[1].(string))
+
+		msg, _,  err = oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-operator-lifecycle-manager", olmPodname, "-i", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", olmToken), "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query=csv_upgrade_count").Outputs()
+		o.Expect(msg).NotTo(o.BeEmpty())
+		json.Unmarshal([]byte(msg), &data)
+		metricsBefore.csv_upgrade_count, err = strconv.Atoi(data.Data.Result[0].Value[1].(string))
+		
+		msg, _,  err = oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-operator-lifecycle-manager", catPodname, "-i", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", olmToken), "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query=catalog_source_count").Outputs()
+		o.Expect(msg).NotTo(o.BeEmpty())
+		json.Unmarshal([]byte(msg), &data)
+		metricsBefore.catalog_source_count, err = strconv.Atoi(data.Data.Result[0].Value[1].(string))
+		
+		msg, _,  err = oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-operator-lifecycle-manager", catPodname, "-i", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", olmToken), "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query=install_plan_count").Outputs()
+		o.Expect(msg).NotTo(o.BeEmpty())
+		json.Unmarshal([]byte(msg), &data)
+		metricsBefore.install_plan_count, err = strconv.Atoi(data.Data.Result[0].Value[1].(string))
+
+		msg, _,  err = oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-operator-lifecycle-manager", catPodname, "-i", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", olmToken), "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query=subscription_count").Outputs()
+		o.Expect(msg).NotTo(o.BeEmpty())
+		json.Unmarshal([]byte(msg), &data)
+		metricsBefore.subscription_count, err = strconv.Atoi(data.Data.Result[0].Value[1].(string))
+
+		metricsBefore.subscription_sync_total = 0
+
+		msg, _,  err = oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-operator-lifecycle-manager", catPodname, "-i", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", olmToken), "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query=subscription_sync_total").Outputs()
+		o.Expect(msg).NotTo(o.BeEmpty())
+		json.Unmarshal([]byte(msg), &subSync)
+		for i, _ = range subSync.Data.Result {
+			if strings.Contains(subSync.Data.Result[i].Metric.SrcName, sub.subName) {
+				metricsBefore.subscription_sync_total, err = strconv.Atoi(subSync.Data.Result[i].Value[1].(string))
+			}
+		}
+
+		e2e.Logf("\nbefore {csv_count, csv_upgrade_count, catalog_source_count, install_plan_count, subscription_count, subscription_sync_total}\n%v", metricsBefore)
+
+		g.By("Subscribe")
+		sub.createWithoutCheck(oc, itName, dr)  // check kept timing out
+				
+		g.By("wait for csv")
+		waitErr = wait.Poll(15*time.Second, 360*time.Second, func() (bool, error) {
+			msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", "-n", generatedNamespace, "--no-headers").Output()
+				if strings.Contains(msg, sub.installedCSV) {
+					e2e.Logf("%v", msg)
+					msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", sub.installedCSV, "-n", generatedNamespace, "-o=jsonpath={.status.phase}").Output()
+					e2e.Logf("%v ", msg)
+					o.Expect(err).NotTo(o.HaveOccurred())
+					if strings.Contains(msg, "Succeeded") {
+						csvName = msg
+						return true, nil
+					}
+				}	
+			return false, nil	
+		})
+		o.Expect(waitErr).NotTo(o.HaveOccurred())
+		o.Expect(csvName).NotTo(o.BeEmpty())
+
+		
+		g.By("Collect olm metrics after")
+		msg, _,  err = oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-operator-lifecycle-manager", olmPodname, "-i", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", olmToken), "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query=csv_count").Outputs()
+		o.Expect(msg).NotTo(o.BeEmpty())	
+		json.Unmarshal([]byte(msg), &data)
+		metricsAfter.csv_count, err = strconv.Atoi(data.Data.Result[0].Value[1].(string))
+
+		msg, _,  err = oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-operator-lifecycle-manager", olmPodname, "-i", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", olmToken), "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query=csv_upgrade_count").Outputs()
+		o.Expect(msg).NotTo(o.BeEmpty())	
+		json.Unmarshal([]byte(msg), &data)
+		metricsAfter.csv_upgrade_count, err = strconv.Atoi(data.Data.Result[0].Value[1].(string))
+		
+		msg, _,  err = oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-operator-lifecycle-manager", catPodname, "-i", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", olmToken), "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query=catalog_source_count").Outputs()
+		o.Expect(msg).NotTo(o.BeEmpty())	
+		json.Unmarshal([]byte(msg), &data)
+		metricsAfter.catalog_source_count, err = strconv.Atoi(data.Data.Result[0].Value[1].(string))
+		
+		msg, _,  err = oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-operator-lifecycle-manager", catPodname, "-i", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", olmToken), "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query=install_plan_count").Outputs()
+		o.Expect(msg).NotTo(o.BeEmpty())	
+		json.Unmarshal([]byte(msg), &data)
+		metricsAfter.install_plan_count, err = strconv.Atoi(data.Data.Result[0].Value[1].(string))
+
+		msg, _,  err = oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-operator-lifecycle-manager", catPodname, "-i", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", olmToken), "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query=subscription_count").Outputs()
+		o.Expect(msg).NotTo(o.BeEmpty())	
+		json.Unmarshal([]byte(msg), &data)
+		metricsAfter.subscription_count, err = strconv.Atoi(data.Data.Result[0].Value[1].(string))
+
+		metricsAfter.subscription_sync_total = 0
+		msg, _,  err = oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-operator-lifecycle-manager", catPodname, "-i", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", olmToken), "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query=subscription_sync_total").Outputs()
+		o.Expect(msg).NotTo(o.BeEmpty())	
+		json.Unmarshal([]byte(msg), &subSync)
+		for i, _ = range subSync.Data.Result {
+			if strings.Contains(subSync.Data.Result[i].Metric.SrcName, sub.subName) {
+				metricsAfter.subscription_sync_total, err = strconv.Atoi(subSync.Data.Result[i].Value[1].(string))
+			}
+		}
+
+		g.By("Results")
+		e2e.Logf("{csv_count csv_upgrade_count catalog_source_count install_plan_count subscription_count subscription_sync_total}")
+		e2e.Logf("before    %v", metricsBefore)
+		e2e.Logf("after     %v", metricsAfter)
+
+		g.By("Check Results")
+		o.Expect(metricsBefore.csv_count               <=  metricsAfter.csv_count).To(o.BeTrue())
+		e2e.Logf("PASS csv_count is equal or greater")
+
+		o.Expect(metricsBefore.csv_upgrade_count       <=  metricsAfter.csv_upgrade_count).To(o.BeTrue())
+		e2e.Logf("PASS csv_upgrade_count is equal or greater")
+
+		o.Expect(metricsBefore.catalog_source_count    <= metricsAfter.catalog_source_count).To(o.BeTrue())
+		e2e.Logf("PASS catalog_source_count is equal or greater")
+
+		o.Expect(metricsBefore.install_plan_count      <=  metricsAfter.install_plan_count).To(o.BeTrue())
+		e2e.Logf("PASS install_plan_count is equal or greater")
+
+		o.Expect(metricsBefore.subscription_count      <=  metricsAfter.subscription_count).To(o.BeTrue())
+		e2e.Logf("PASS subscription_count is equal or greater")
+
+		o.Expect(metricsBefore.subscription_sync_total <=  metricsAfter.subscription_sync_total).To(o.BeTrue())
+		e2e.Logf("PASS subscription_sync_total is equal or greater")
+		e2e.Logf("All PASS\n")
+
+		g.By("DONE")
+
+	})	
 
 })
 

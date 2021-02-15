@@ -61,6 +61,33 @@ type subscriptionDescription struct {
 	ipCsv                  string
 }
 
+// tbuskey@redhat.com for OCP-21080
+type PrometheusQueryResult struct {
+	Data struct {
+		Result []struct {
+			Metric struct {
+				Name      string `json:"__name__"`
+				Approval  string `json:"approval"`
+				Channel   string `json:"channel"`
+				Container string `json:"container"`
+				Endpoint  string `json:"endpoint"`
+				Installed string `json:"installed"`
+				Instance  string `json:"instance"`
+				Job       string `json:"job"`
+				SrcName   string `json:"name"`
+				Namespace string `json:"namespace"`
+				Package   string `json:"package"`
+				Pod       string `json:"pod"`
+				Service   string `json:"service"`
+			} `json:"metric"`
+			Value []interface{} `json:"value"`
+		} `json:"result"`
+		ResultType string `json:"resultType"`
+	} `json:"data"`
+	Status string `json:"status"`
+}
+
+
 //the method is to create sub, and save the sub resrouce into dr. and more create csv possible depending on sub.ipApproval
 //if sub.ipApproval is Automatic, it will wait the sub's state become AtLatestKnown and get installed csv as sub.installedCSV, and save csv into dr
 //if sub.ipApproval is not Automatic, it will just wait sub's state become UpgradePending
