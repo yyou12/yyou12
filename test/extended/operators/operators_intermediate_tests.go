@@ -142,7 +142,7 @@ var _ = g.Describe("[sig-operators] ISV_Operators [Suite:openshift/isv]", func()
 		packageName := "spark-gcp" // spark-operator in OperatorHub
 		namespace := "spark-gcp"
 		crFile := "spark-gcp-sparkapplication-cr.yaml"
-		sparkgcpCR := "SparkApplication"
+		sparkgcpCR := "sparkapp"
 		sparkgcpName := "spark-pi"
 		crPodname := "spark-pi-driver"
 		jsonPath := "-o=jsonpath={.status.applicationState.state}"
@@ -156,7 +156,7 @@ var _ = g.Describe("[sig-operators] ISV_Operators [Suite:openshift/isv]", func()
 		msg, err := oc.WithoutNamespace().AsAdmin().Run("logs").Args(crPodname, "-n", namespace).Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(msg).To(o.ContainSubstring(searchMsg))
-		// e2e.Logf("DEBUG", "Found it", "DEBUG finish")
+		e2e.Logf("STEP PASS %v", searchMsg)
 		RemoveCR(currentPackage, sparkgcpCR, sparkgcpName, oc)
 		RemoveOperatorDependencies(currentPackage, oc, false)
 	})
