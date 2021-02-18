@@ -9774,7 +9774,7 @@ func testExtendedTestdataSecurityandcomplianceAideConfRhel8Err() (*asset, error)
 	return a, nil
 }
 
-var _testExtendedTestdataSecurityandcomplianceCatalogsourceImageYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataSecurityandcomplianceCatalogsourceImageYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   name: isc-catalogsource-image-template
@@ -9820,7 +9820,7 @@ func testExtendedTestdataSecurityandcomplianceCatalogsourceImageYaml() (*asset, 
 	return a, nil
 }
 
-var _testExtendedTestdataSecurityandcomplianceCompliancescanYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataSecurityandcomplianceCompliancescanYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   name: compliancescan-template
@@ -9869,7 +9869,7 @@ func testExtendedTestdataSecurityandcomplianceCompliancescanYaml() (*asset, erro
 	return a, nil
 }
 
-var _testExtendedTestdataSecurityandcomplianceCompliancescanstorageclassYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataSecurityandcomplianceCompliancescanstorageclassYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   name: compliancescan-template
@@ -9923,7 +9923,7 @@ func testExtendedTestdataSecurityandcomplianceCompliancescanstorageclassYaml() (
 	return a, nil
 }
 
-var _testExtendedTestdataSecurityandcomplianceCompliancescantaintYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataSecurityandcomplianceCompliancescantaintYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   name: compliancescan-template
@@ -9980,7 +9980,7 @@ func testExtendedTestdataSecurityandcomplianceCompliancescantaintYaml() (*asset,
 	return a, nil
 }
 
-var _testExtendedTestdataSecurityandcomplianceCompliancescantaintsYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataSecurityandcomplianceCompliancescantaintsYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   name: compliancescan-template
@@ -10044,7 +10044,7 @@ func testExtendedTestdataSecurityandcomplianceCompliancescantaintsYaml() (*asset
 	return a, nil
 }
 
-var _testExtendedTestdataSecurityandcomplianceCompliancesuiteYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataSecurityandcomplianceCompliancesuiteYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   name: compliancesuite-template
@@ -10103,7 +10103,7 @@ func testExtendedTestdataSecurityandcomplianceCompliancesuiteYaml() (*asset, err
 	return a, nil
 }
 
-var _testExtendedTestdataSecurityandcomplianceCompliancesuitestorageclassYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataSecurityandcomplianceCompliancesuitestorageclassYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   name: compliancesuite-template
@@ -10167,7 +10167,7 @@ func testExtendedTestdataSecurityandcomplianceCompliancesuitestorageclassYaml() 
 	return a, nil
 }
 
-var _testExtendedTestdataSecurityandcomplianceCompliancesuitenodesYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataSecurityandcomplianceCompliancesuitenodesYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   name: compliancesuite-template
@@ -10214,7 +10214,7 @@ func testExtendedTestdataSecurityandcomplianceCompliancesuitenodesYaml() (*asset
 	return a, nil
 }
 
-var _testExtendedTestdataSecurityandcomplianceCompliancesuitetaintYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataSecurityandcomplianceCompliancesuitetaintYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   name: compliancesuite-template
@@ -10278,7 +10278,7 @@ func testExtendedTestdataSecurityandcomplianceCompliancesuitetaintYaml() (*asset
 	return a, nil
 }
 
-var _testExtendedTestdataSecurityandcomplianceCompliancesuitetpconfmapYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataSecurityandcomplianceCompliancesuitetpconfmapYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   name: compliancesuite-template
@@ -10338,7 +10338,7 @@ func testExtendedTestdataSecurityandcomplianceCompliancesuitetpconfmapYaml() (*a
 	return a, nil
 }
 
-var _testExtendedTestdataSecurityandcomplianceFileintegrityYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataSecurityandcomplianceFileintegrityYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   name: fileintegrity-template
@@ -10384,7 +10384,7 @@ func testExtendedTestdataSecurityandcomplianceFileintegrityYaml() (*asset, error
 	return a, nil
 }
 
-var _testExtendedTestdataSecurityandcomplianceOperatorGroupYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataSecurityandcomplianceOperatorGroupYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   name: isc-operatorgroup-template
@@ -10419,7 +10419,7 @@ func testExtendedTestdataSecurityandcomplianceOperatorGroupYaml() (*asset, error
 	return a, nil
 }
 
-var _testExtendedTestdataSecurityandcompliancePod_modifyYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataSecurityandcompliancePod_modifyYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   name: pod-modify-template
@@ -10508,7 +10508,7 @@ func testExtendedTestdataSecurityandcompliancePvExtractPodYaml() (*asset, error)
 	return a, nil
 }
 
-var _testExtendedTestdataSecurityandcomplianceScansettingYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataSecurityandcomplianceScansettingYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   name: scansetting-template
@@ -10557,7 +10557,7 @@ func testExtendedTestdataSecurityandcomplianceScansettingYaml() (*asset, error) 
 	return a, nil
 }
 
-var _testExtendedTestdataSecurityandcomplianceScansettingbindingYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataSecurityandcomplianceScansettingbindingYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   name: scansettingbinding-template
@@ -10606,7 +10606,7 @@ func testExtendedTestdataSecurityandcomplianceScansettingbindingYaml() (*asset, 
 	return a, nil
 }
 
-var _testExtendedTestdataSecurityandcomplianceStorage_classYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataSecurityandcomplianceStorage_classYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   name: storageclass-Template 
@@ -10641,7 +10641,7 @@ func testExtendedTestdataSecurityandcomplianceStorage_classYaml() (*asset, error
 	return a, nil
 }
 
-var _testExtendedTestdataSecurityandcomplianceSubscriptionYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataSecurityandcomplianceSubscriptionYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   name: isc-sub-template
@@ -10685,7 +10685,7 @@ func testExtendedTestdataSecurityandcomplianceSubscriptionYaml() (*asset, error)
 	return a, nil
 }
 
-var _testExtendedTestdataSecurityandcomplianceTailoredprofileWithoutvariableYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataSecurityandcomplianceTailoredprofileWithoutvariableYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   name: tailoredprofile-template
@@ -10735,7 +10735,7 @@ func testExtendedTestdataSecurityandcomplianceTailoredprofileWithoutvariableYaml
 	return a, nil
 }
 
-var _testExtendedTestdataSecurityandcomplianceTailoredprofileYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataSecurityandcomplianceTailoredprofileYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   name: tailoredprofile-template
