@@ -1,4 +1,5 @@
 reviewers:
+  - Xia-Zhao-rh
   - kuiwang02
   - bandrade
   - akostadinov
@@ -9,6 +10,7 @@ reviewers:
   - mfojtik
   - shawn-hurley
 approvers:
+  - Xia-Zhao-rh
   - kuiwang02
   - bandrade
   - akostadinov
