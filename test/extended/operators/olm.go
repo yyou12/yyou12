@@ -12,10 +12,10 @@ import (
 	g "github.com/onsi/ginkgo"
 	o "github.com/onsi/gomega"
 
+	"encoding/json"
 	"path/filepath"
 	"strings"
 	"time"
-	"encoding/json"
 
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -3842,9 +3842,9 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		e2e.Logf("og: %v, %v", msg, og.name)
 
 		cm.create(oc, itName, dr)
-		
+
 		catsrc.create(oc, itName, dr)
-		
+
 		g.By("Wait for cm pod")
 		waitErr := wait.Poll(3*time.Second, 180*time.Second, func() (bool, error) {
 			msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-n", oc.Namespace(), cmSelector).Output()
@@ -4008,11 +4008,11 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		o.Expect(metricsVal).NotTo(o.BeEmpty())
 
 		g.By("SUCCESS")
-		
+
 	})
 
 	// Test case: OCP-24566, author:xzha@redhat.com
-	g.It("ConnectedOnly-Proxyonly-Medium-24566-OLM automatically configures operators with global proxy config", func() {
+	g.It("ConnectedOnly-Medium-24566-OLM automatically configures operators with global proxy config", func() {
 		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
 		ogSingleTemplate := filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
 		subTemplate := filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
@@ -4063,77 +4063,91 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 				noProxy:                 "",
 			}
 		)
-
-		dr := make(describerResrouce)
 		itName := g.CurrentGinkgoTestDescription().TestText
-		dr.addIr(itName)
+
 		//oc get proxy cluster
 		g.By(fmt.Sprintf("0) check the cluster is proxied"))
 		httpProxy := getResource(oc, asAdmin, withoutNamespace, "proxy", "cluster", "-o=jsonpath={.status.httpProxy}")
 		httpsProxy := getResource(oc, asAdmin, withoutNamespace, "proxy", "cluster", "-o=jsonpath={.status.httpsProxy}")
 		noProxy := getResource(oc, asAdmin, withoutNamespace, "proxy", "cluster", "-o=jsonpath={.status.noProxy}")
-		o.Expect(httpProxy).NotTo(o.BeEmpty())
-		o.Expect(httpsProxy).NotTo(o.BeEmpty())
-		o.Expect(noProxy).NotTo(o.BeEmpty())
 		g.By(fmt.Sprintf("1) create the OperatorGroup in project: %s", oc.Namespace()))
 		og.createwithCheck(oc, itName, dr)
 
-		g.By("2) install etcd operator and check the proxy")
-		sub.create(oc, itName, dr)
-		g.By("install etcd operator SUCCESS")
-		nodeHTTPProxy := getResource(oc, asAdmin, withoutNamespace, "deployment", fmt.Sprintf("--selector=olm.owner=%s", sub.installedCSV), "-n", sub.namespace, "-o=jsonpath={..spec.template.spec.containers[?(.name==\"etcd-operator\")].env[?(.name==\"HTTP_PROXY\")].value}")
-		o.Expect(nodeHTTPProxy).To(o.Equal(httpProxy))
-		nodeHTTPSProxy := getResource(oc, asAdmin, withoutNamespace, "deployment", fmt.Sprintf("--selector=olm.owner=%s", sub.installedCSV), "-n", sub.namespace, "-o=jsonpath={..spec.template.spec.containers[?(.name==\"etcd-operator\")].env[?(.name==\"HTTPS_PROXY\")].value}")
-		o.Expect(nodeHTTPSProxy).To(o.Equal(httpsProxy))
-		nodeNoProxy := getResource(oc, asAdmin, withoutNamespace, "deployment", fmt.Sprintf("--selector=olm.owner=%s", sub.installedCSV), "-n", sub.namespace, "-o=jsonpath={..spec.template.spec.containers[?(.name==\"etcd-operator\")].env[?(.name==\"NO_PROXY\")].value}")
-		o.Expect(nodeNoProxy).To(o.Equal(noProxy))
-		g.By("CHECK proxy configure SUCCESS")
-		sub.delete(itName, dr)
-		sub.getCSV().delete(itName, dr)
+		if httpProxy == "" {
+			g.By("2) install etcd operator and check the proxy is empty")
+			sub.create(oc, itName, dr)
+			g.By("install etcd operator SUCCESS")
+			nodeHTTPProxy := getResource(oc, asAdmin, withoutNamespace, "deployment", fmt.Sprintf("--selector=olm.owner=%s", sub.installedCSV), "-n", sub.namespace, "-o=jsonpath={..spec.template.spec.containers[?(.name==\"etcd-operator\")].env[?(.name==\"HTTP_PROXY\")].value}")
+			o.Expect(nodeHTTPProxy).To(o.BeEmpty())
+			nodeHTTPSProxy := getResource(oc, asAdmin, withoutNamespace, "deployment", fmt.Sprintf("--selector=olm.owner=%s", sub.installedCSV), "-n", sub.namespace, "-o=jsonpath={..spec.template.spec.containers[?(.name==\"etcd-operator\")].env[?(.name==\"HTTPS_PROXY\")].value}")
+			o.Expect(nodeHTTPSProxy).To(o.BeEmpty())
+			nodeNoProxy := getResource(oc, asAdmin, withoutNamespace, "deployment", fmt.Sprintf("--selector=olm.owner=%s", sub.installedCSV), "-n", sub.namespace, "-o=jsonpath={..spec.template.spec.containers[?(.name==\"etcd-operator\")].env[?(.name==\"NO_PROXY\")].value}")
+			o.Expect(nodeNoProxy).To(o.BeEmpty())
+			g.By("CHECK proxy configure SUCCESS")
+			sub.delete(itName, dr)
+			sub.getCSV().delete(itName, dr)
+		} else {
+			o.Expect(httpProxy).NotTo(o.BeEmpty())
+			o.Expect(httpsProxy).NotTo(o.BeEmpty())
+			o.Expect(noProxy).NotTo(o.BeEmpty())
 
-		g.By("3) create subscription and set variables ( HTTP_PROXY, HTTPS_PROXY and NO_PROXY ) with non-empty values. ")
-		subProxyTest.create(oc, itName, dr)
-		nodeHTTPProxy = getResource(oc, asAdmin, withoutNamespace, "deployment", fmt.Sprintf("--selector=olm.owner=%s", sub.installedCSV), "-n", sub.namespace, "-o=jsonpath={..spec.template.spec.containers[?(.name==\"etcd-operator\")].env[?(.name==\"HTTP_PROXY\")].value}")
-		o.Expect(nodeHTTPProxy).To(o.Equal("test_http_proxy"))
-		nodeHTTPSProxy = getResource(oc, asAdmin, withoutNamespace, "deployment", fmt.Sprintf("--selector=olm.owner=%s", sub.installedCSV), "-n", sub.namespace, "-o=jsonpath={..spec.template.spec.containers[?(.name==\"etcd-operator\")].env[?(.name==\"HTTPS_PROXY\")].value}")
-		o.Expect(nodeHTTPSProxy).To(o.Equal("test_https_proxy"))
-		nodeNoProxy = getResource(oc, asAdmin, withoutNamespace, "deployment", fmt.Sprintf("--selector=olm.owner=%s", sub.installedCSV), "-n", sub.namespace, "-o=jsonpath={..spec.template.spec.containers[?(.name==\"etcd-operator\")].env[?(.name==\"NO_PROXY\")].value}")
-		o.Expect(nodeNoProxy).To(o.Equal("test_no_proxy"))
-		subProxyTest.delete(itName, dr)
-		subProxyTest.getCSV().delete(itName, dr)
+			g.By("2) install etcd operator and check the proxy")
+			sub.create(oc, itName, dr)
+			g.By("install etcd operator SUCCESS")
+			nodeHTTPProxy := getResource(oc, asAdmin, withoutNamespace, "deployment", fmt.Sprintf("--selector=olm.owner=%s", sub.installedCSV), "-n", sub.namespace, "-o=jsonpath={..spec.template.spec.containers[?(.name==\"etcd-operator\")].env[?(.name==\"HTTP_PROXY\")].value}")
+			o.Expect(nodeHTTPProxy).To(o.Equal(httpProxy))
+			nodeHTTPSProxy := getResource(oc, asAdmin, withoutNamespace, "deployment", fmt.Sprintf("--selector=olm.owner=%s", sub.installedCSV), "-n", sub.namespace, "-o=jsonpath={..spec.template.spec.containers[?(.name==\"etcd-operator\")].env[?(.name==\"HTTPS_PROXY\")].value}")
+			o.Expect(nodeHTTPSProxy).To(o.Equal(httpsProxy))
+			nodeNoProxy := getResource(oc, asAdmin, withoutNamespace, "deployment", fmt.Sprintf("--selector=olm.owner=%s", sub.installedCSV), "-n", sub.namespace, "-o=jsonpath={..spec.template.spec.containers[?(.name==\"etcd-operator\")].env[?(.name==\"NO_PROXY\")].value}")
+			o.Expect(nodeNoProxy).To(o.Equal(noProxy))
+			g.By("CHECK proxy configure SUCCESS")
+			sub.delete(itName, dr)
+			sub.getCSV().delete(itName, dr)
 
-		g.By("4) Create a new subscription and set variables ( HTTP_PROXY, HTTPS_PROXY and NO_PROXY ) with a fake value.")
-		subProxyFake.create(oc, itName, dr)
-		nodeHTTPProxy = getResource(oc, asAdmin, withoutNamespace, "deployment", fmt.Sprintf("--selector=olm.owner=%s", sub.installedCSV), "-n", sub.namespace, "-o=jsonpath={..spec.template.spec.containers[?(.name==\"etcd-operator\")].env[?(.name==\"HTTP_PROXY\")].value}")
-		o.Expect(nodeHTTPProxy).To(o.Equal("fake_http_proxy"))
-		nodeHTTPSProxy = getResource(oc, asAdmin, withoutNamespace, "deployment", fmt.Sprintf("--selector=olm.owner=%s", sub.installedCSV), "-n", sub.namespace, "-o=jsonpath={..spec.template.spec.containers[?(.name==\"etcd-operator\")].env[?(.name==\"HTTPS_PROXY\")].value}")
-		o.Expect(nodeHTTPSProxy).To(o.Equal("fake_https_proxy"))
-		nodeNoProxy = getResource(oc, asAdmin, withoutNamespace, "deployment", fmt.Sprintf("--selector=olm.owner=%s", sub.installedCSV), "-n", sub.namespace, "-o=jsonpath={..spec.template.spec.containers[?(.name==\"etcd-operator\")].env[?(.name==\"NO_PROXY\")].value}")
-		o.Expect(nodeNoProxy).To(o.Equal("fake_no_proxy"))
-		subProxyFake.delete(itName, dr)
-		subProxyFake.getCSV().delete(itName, dr)
+			g.By("3) create subscription and set variables ( HTTP_PROXY, HTTPS_PROXY and NO_PROXY ) with non-empty values. ")
+			subProxyTest.create(oc, itName, dr)
+			nodeHTTPProxy = getResource(oc, asAdmin, withoutNamespace, "deployment", fmt.Sprintf("--selector=olm.owner=%s", sub.installedCSV), "-n", sub.namespace, "-o=jsonpath={..spec.template.spec.containers[?(.name==\"etcd-operator\")].env[?(.name==\"HTTP_PROXY\")].value}")
+			o.Expect(nodeHTTPProxy).To(o.Equal("test_http_proxy"))
+			nodeHTTPSProxy = getResource(oc, asAdmin, withoutNamespace, "deployment", fmt.Sprintf("--selector=olm.owner=%s", sub.installedCSV), "-n", sub.namespace, "-o=jsonpath={..spec.template.spec.containers[?(.name==\"etcd-operator\")].env[?(.name==\"HTTPS_PROXY\")].value}")
+			o.Expect(nodeHTTPSProxy).To(o.Equal("test_https_proxy"))
+			nodeNoProxy = getResource(oc, asAdmin, withoutNamespace, "deployment", fmt.Sprintf("--selector=olm.owner=%s", sub.installedCSV), "-n", sub.namespace, "-o=jsonpath={..spec.template.spec.containers[?(.name==\"etcd-operator\")].env[?(.name==\"NO_PROXY\")].value}")
+			o.Expect(nodeNoProxy).To(o.Equal("test_no_proxy"))
+			subProxyTest.delete(itName, dr)
+			subProxyTest.getCSV().delete(itName, dr)
 
-		g.By("5) Create a new subscription and set variables ( HTTP_PROXY, HTTPS_PROXY and NO_PROXY ) with an empty value.")
-		subProxyEmpty.create(oc, itName, dr)
-		nodeHTTPProxy = getResource(oc, asAdmin, withoutNamespace, "deployment", fmt.Sprintf("--selector=marketplace.operatorSource=%s", sub.installedCSV), "-n", sub.namespace, "-o=jsonpath={.spec.template.spec.containers[?(.name==\"etcd-operator\")].env[?(.name==\"HTTP_PROXY\")].value}")
-		o.Expect(nodeHTTPProxy).To(o.BeEmpty())
-		nodeHTTPSProxy = getResource(oc, asAdmin, withoutNamespace, "deployment", fmt.Sprintf("--selector=marketplace.operatorSource=%s", sub.installedCSV), "-n", sub.namespace, "-o=jsonpath={.spec.template.spec.containers[?(.name==\"etcd-operator\")].env[?(.name==\"HTTPS_PROXY\")].value}")
-		o.Expect(nodeHTTPSProxy).To(o.BeEmpty())
-		nodeNoProxy = getResource(oc, asAdmin, withoutNamespace, "deployment", fmt.Sprintf("--selector=marketplace.operatorSource=%s", sub.installedCSV), "-n", sub.namespace, "-o=jsonpath={.spec.template.spec.containers[?(.name==\"etcd-operator\")].env[?(.name==\"NO_PROXY\")].value}")
-		o.Expect(nodeNoProxy).To(o.BeEmpty())
-		subProxyEmpty.delete(itName, dr)
-		subProxyEmpty.getCSV().delete(itName, dr)
+			g.By("4) Create a new subscription and set variables ( HTTP_PROXY, HTTPS_PROXY and NO_PROXY ) with a fake value.")
+			subProxyFake.create(oc, itName, dr)
+			nodeHTTPProxy = getResource(oc, asAdmin, withoutNamespace, "deployment", fmt.Sprintf("--selector=olm.owner=%s", sub.installedCSV), "-n", sub.namespace, "-o=jsonpath={..spec.template.spec.containers[?(.name==\"etcd-operator\")].env[?(.name==\"HTTP_PROXY\")].value}")
+			o.Expect(nodeHTTPProxy).To(o.Equal("fake_http_proxy"))
+			nodeHTTPSProxy = getResource(oc, asAdmin, withoutNamespace, "deployment", fmt.Sprintf("--selector=olm.owner=%s", sub.installedCSV), "-n", sub.namespace, "-o=jsonpath={..spec.template.spec.containers[?(.name==\"etcd-operator\")].env[?(.name==\"HTTPS_PROXY\")].value}")
+			o.Expect(nodeHTTPSProxy).To(o.Equal("fake_https_proxy"))
+			nodeNoProxy = getResource(oc, asAdmin, withoutNamespace, "deployment", fmt.Sprintf("--selector=olm.owner=%s", sub.installedCSV), "-n", sub.namespace, "-o=jsonpath={..spec.template.spec.containers[?(.name==\"etcd-operator\")].env[?(.name==\"NO_PROXY\")].value}")
+			o.Expect(nodeNoProxy).To(o.Equal("fake_no_proxy"))
+			subProxyFake.delete(itName, dr)
+			subProxyFake.getCSV().delete(itName, dr)
+
+			g.By("5) Create a new subscription and set variables ( HTTP_PROXY, HTTPS_PROXY and NO_PROXY ) with an empty value.")
+			subProxyEmpty.create(oc, itName, dr)
+			nodeHTTPProxy = getResource(oc, asAdmin, withoutNamespace, "deployment", fmt.Sprintf("--selector=marketplace.operatorSource=%s", sub.installedCSV), "-n", sub.namespace, "-o=jsonpath={.spec.template.spec.containers[?(.name==\"etcd-operator\")].env[?(.name==\"HTTP_PROXY\")].value}")
+			o.Expect(nodeHTTPProxy).To(o.BeEmpty())
+			nodeHTTPSProxy = getResource(oc, asAdmin, withoutNamespace, "deployment", fmt.Sprintf("--selector=marketplace.operatorSource=%s", sub.installedCSV), "-n", sub.namespace, "-o=jsonpath={.spec.template.spec.containers[?(.name==\"etcd-operator\")].env[?(.name==\"HTTPS_PROXY\")].value}")
+			o.Expect(nodeHTTPSProxy).To(o.BeEmpty())
+			nodeNoProxy = getResource(oc, asAdmin, withoutNamespace, "deployment", fmt.Sprintf("--selector=marketplace.operatorSource=%s", sub.installedCSV), "-n", sub.namespace, "-o=jsonpath={.spec.template.spec.containers[?(.name==\"etcd-operator\")].env[?(.name==\"NO_PROXY\")].value}")
+			o.Expect(nodeNoProxy).To(o.BeEmpty())
+			subProxyEmpty.delete(itName, dr)
+			subProxyEmpty.getCSV().delete(itName, dr)
+		}
 	})
 
 	// author: tbuskey@redhat.com, test case OCP-21080
 	g.It("High-21080-OLM Check OLM metrics", func() {
-		
+
 		type metrics struct {
-			csv_count 				int
-			csv_upgrade_count 		int
-			catalog_source_count	int
-			install_plan_count		int
-			subscription_count		int
+			csv_count               int
+			csv_upgrade_count       int
+			catalog_source_count    int
+			install_plan_count      int
+			subscription_count      int
 			subscription_sync_total int
 		}
 
@@ -4142,20 +4156,20 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
 			ogTemplate          = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
 			subFile             = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
-			catPodname			string
-			csvName				= ""
-			data				PrometheusQueryResult
-			err					error
+			catPodname          string
+			csvName             = ""
+			data                PrometheusQueryResult
+			err                 error
 			i                   int
-			metricsBefore		metrics
-			metricsAfter		metrics
-			msg      			string
-			ogName   			= "test-21080-group"
-			olmPodname			string		
-			olmToken			string
-			subSync				PrometheusQueryResult
-			waitErr				error
-			etcAvailable		= true
+			metricsBefore       metrics
+			metricsAfter        metrics
+			msg                 string
+			ogName              = "test-21080-group"
+			olmPodname          string
+			olmToken            string
+			subSync             PrometheusQueryResult
+			waitErr             error
+			etcAvailable        = true
 		)
 
 		oc.SetupProject()
@@ -4172,12 +4186,12 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 				namespace:              oc.Namespace(),
 				catalogSourceName:      "community-operators",
 				catalogSourceNamespace: "openshift-marketplace",
-				ipApproval:             "Automatic",		
+				ipApproval:             "Automatic",
 				channel:                "singlenamespace-alpha",
 				operatorPackage:        "etcd",
 				startingCSV:            "etcdoperator.v0.9.2",
-				installedCSV: 			"etcdoperator.v0.9.4",
-				singleNamespace: 		true,
+				installedCSV:           "etcdoperator.v0.9.4",
+				singleNamespace:        true,
 				template:               subFile,
 			}
 		)
@@ -4188,12 +4202,11 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 			etcAvailable = false
 			e2e.Logf("!!! Could not query packagemanifest for etcd operator, probably will fail: %v %v\n", err, msg)
 		}
-		if  !strings.Contains(msg, "Community Operators") {
+		if !strings.Contains(msg, "Community Operators") {
 			e2e.Logf("!!! Could not find etcd operator in Community Operators, probably will fail: %v %v\n", err, msg)
 			etcAvailable = false
 		}
 		defer e2e.Logf("\n\netcd availability was %v\n", etcAvailable)
-
 
 		g.By("Get token & pods")
 		og.create(oc, itName, dr)
@@ -4210,34 +4223,34 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		o.Expect(catPodname).NotTo(o.BeEmpty())
 
 		g.By("collect olm metrics before")
-		msg, _,  err = oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-operator-lifecycle-manager", olmPodname, "-i", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", olmToken), "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query=csv_count").Outputs()
+		msg, _, err = oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-operator-lifecycle-manager", olmPodname, "-i", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", olmToken), "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query=csv_count").Outputs()
 		o.Expect(msg).NotTo(o.BeEmpty())
 		json.Unmarshal([]byte(msg), &data)
 		metricsBefore.csv_count, err = strconv.Atoi(data.Data.Result[0].Value[1].(string))
 
-		msg, _,  err = oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-operator-lifecycle-manager", olmPodname, "-i", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", olmToken), "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query=csv_upgrade_count").Outputs()
+		msg, _, err = oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-operator-lifecycle-manager", olmPodname, "-i", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", olmToken), "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query=csv_upgrade_count").Outputs()
 		o.Expect(msg).NotTo(o.BeEmpty())
 		json.Unmarshal([]byte(msg), &data)
 		metricsBefore.csv_upgrade_count, err = strconv.Atoi(data.Data.Result[0].Value[1].(string))
-		
-		msg, _,  err = oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-operator-lifecycle-manager", catPodname, "-i", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", olmToken), "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query=catalog_source_count").Outputs()
+
+		msg, _, err = oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-operator-lifecycle-manager", catPodname, "-i", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", olmToken), "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query=catalog_source_count").Outputs()
 		o.Expect(msg).NotTo(o.BeEmpty())
 		json.Unmarshal([]byte(msg), &data)
 		metricsBefore.catalog_source_count, err = strconv.Atoi(data.Data.Result[0].Value[1].(string))
-		
-		msg, _,  err = oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-operator-lifecycle-manager", catPodname, "-i", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", olmToken), "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query=install_plan_count").Outputs()
+
+		msg, _, err = oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-operator-lifecycle-manager", catPodname, "-i", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", olmToken), "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query=install_plan_count").Outputs()
 		o.Expect(msg).NotTo(o.BeEmpty())
 		json.Unmarshal([]byte(msg), &data)
 		metricsBefore.install_plan_count, err = strconv.Atoi(data.Data.Result[0].Value[1].(string))
 
-		msg, _,  err = oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-operator-lifecycle-manager", catPodname, "-i", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", olmToken), "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query=subscription_count").Outputs()
+		msg, _, err = oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-operator-lifecycle-manager", catPodname, "-i", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", olmToken), "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query=subscription_count").Outputs()
 		o.Expect(msg).NotTo(o.BeEmpty())
 		json.Unmarshal([]byte(msg), &data)
 		metricsBefore.subscription_count, err = strconv.Atoi(data.Data.Result[0].Value[1].(string))
 
 		metricsBefore.subscription_sync_total = 0
 
-		msg, _,  err = oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-operator-lifecycle-manager", catPodname, "-i", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", olmToken), "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query=subscription_sync_total").Outputs()
+		msg, _, err = oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-operator-lifecycle-manager", catPodname, "-i", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", olmToken), "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query=subscription_sync_total").Outputs()
 		o.Expect(msg).NotTo(o.BeEmpty())
 		json.Unmarshal([]byte(msg), &subSync)
 		for i, _ = range subSync.Data.Result {
@@ -4249,56 +4262,55 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		e2e.Logf("\nbefore {csv_count, csv_upgrade_count, catalog_source_count, install_plan_count, subscription_count, subscription_sync_total}\n%v", metricsBefore)
 
 		g.By("Subscribe")
-		sub.createWithoutCheck(oc, itName, dr)  // check kept timing out
-				
+		sub.createWithoutCheck(oc, itName, dr) // check kept timing out
+
 		g.By("wait for csv")
 		waitErr = wait.Poll(15*time.Second, 360*time.Second, func() (bool, error) {
 			msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", "-n", generatedNamespace, "--no-headers").Output()
-				if strings.Contains(msg, sub.installedCSV) {
-					e2e.Logf("%v", msg)
-					msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", sub.installedCSV, "-n", generatedNamespace, "-o=jsonpath={.status.phase}").Output()
-					e2e.Logf("%v ", msg)
-					o.Expect(err).NotTo(o.HaveOccurred())
-					if strings.Contains(msg, "Succeeded") {
-						csvName = msg
-						return true, nil
-					}
-				}	
-			return false, nil	
+			if strings.Contains(msg, sub.installedCSV) {
+				e2e.Logf("%v", msg)
+				msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", sub.installedCSV, "-n", generatedNamespace, "-o=jsonpath={.status.phase}").Output()
+				e2e.Logf("%v ", msg)
+				o.Expect(err).NotTo(o.HaveOccurred())
+				if strings.Contains(msg, "Succeeded") {
+					csvName = msg
+					return true, nil
+				}
+			}
+			return false, nil
 		})
 		o.Expect(waitErr).NotTo(o.HaveOccurred())
 		o.Expect(csvName).NotTo(o.BeEmpty())
 
-		
 		g.By("Collect olm metrics after")
-		msg, _,  err = oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-operator-lifecycle-manager", olmPodname, "-i", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", olmToken), "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query=csv_count").Outputs()
-		o.Expect(msg).NotTo(o.BeEmpty())	
+		msg, _, err = oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-operator-lifecycle-manager", olmPodname, "-i", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", olmToken), "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query=csv_count").Outputs()
+		o.Expect(msg).NotTo(o.BeEmpty())
 		json.Unmarshal([]byte(msg), &data)
 		metricsAfter.csv_count, err = strconv.Atoi(data.Data.Result[0].Value[1].(string))
 
-		msg, _,  err = oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-operator-lifecycle-manager", olmPodname, "-i", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", olmToken), "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query=csv_upgrade_count").Outputs()
-		o.Expect(msg).NotTo(o.BeEmpty())	
+		msg, _, err = oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-operator-lifecycle-manager", olmPodname, "-i", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", olmToken), "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query=csv_upgrade_count").Outputs()
+		o.Expect(msg).NotTo(o.BeEmpty())
 		json.Unmarshal([]byte(msg), &data)
 		metricsAfter.csv_upgrade_count, err = strconv.Atoi(data.Data.Result[0].Value[1].(string))
-		
-		msg, _,  err = oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-operator-lifecycle-manager", catPodname, "-i", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", olmToken), "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query=catalog_source_count").Outputs()
-		o.Expect(msg).NotTo(o.BeEmpty())	
+
+		msg, _, err = oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-operator-lifecycle-manager", catPodname, "-i", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", olmToken), "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query=catalog_source_count").Outputs()
+		o.Expect(msg).NotTo(o.BeEmpty())
 		json.Unmarshal([]byte(msg), &data)
 		metricsAfter.catalog_source_count, err = strconv.Atoi(data.Data.Result[0].Value[1].(string))
-		
-		msg, _,  err = oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-operator-lifecycle-manager", catPodname, "-i", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", olmToken), "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query=install_plan_count").Outputs()
-		o.Expect(msg).NotTo(o.BeEmpty())	
+
+		msg, _, err = oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-operator-lifecycle-manager", catPodname, "-i", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", olmToken), "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query=install_plan_count").Outputs()
+		o.Expect(msg).NotTo(o.BeEmpty())
 		json.Unmarshal([]byte(msg), &data)
 		metricsAfter.install_plan_count, err = strconv.Atoi(data.Data.Result[0].Value[1].(string))
 
-		msg, _,  err = oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-operator-lifecycle-manager", catPodname, "-i", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", olmToken), "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query=subscription_count").Outputs()
-		o.Expect(msg).NotTo(o.BeEmpty())	
+		msg, _, err = oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-operator-lifecycle-manager", catPodname, "-i", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", olmToken), "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query=subscription_count").Outputs()
+		o.Expect(msg).NotTo(o.BeEmpty())
 		json.Unmarshal([]byte(msg), &data)
 		metricsAfter.subscription_count, err = strconv.Atoi(data.Data.Result[0].Value[1].(string))
 
 		metricsAfter.subscription_sync_total = 0
-		msg, _,  err = oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-operator-lifecycle-manager", catPodname, "-i", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", olmToken), "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query=subscription_sync_total").Outputs()
-		o.Expect(msg).NotTo(o.BeEmpty())	
+		msg, _, err = oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-operator-lifecycle-manager", catPodname, "-i", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", olmToken), "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query=subscription_sync_total").Outputs()
+		o.Expect(msg).NotTo(o.BeEmpty())
 		json.Unmarshal([]byte(msg), &subSync)
 		for i, _ = range subSync.Data.Result {
 			if strings.Contains(subSync.Data.Result[i].Metric.SrcName, sub.subName) {
@@ -4312,28 +4324,28 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		e2e.Logf("after     %v", metricsAfter)
 
 		g.By("Check Results")
-		o.Expect(metricsBefore.csv_count               <=  metricsAfter.csv_count).To(o.BeTrue())
+		o.Expect(metricsBefore.csv_count <= metricsAfter.csv_count).To(o.BeTrue())
 		e2e.Logf("PASS csv_count is equal or greater")
 
-		o.Expect(metricsBefore.csv_upgrade_count       <=  metricsAfter.csv_upgrade_count).To(o.BeTrue())
+		o.Expect(metricsBefore.csv_upgrade_count <= metricsAfter.csv_upgrade_count).To(o.BeTrue())
 		e2e.Logf("PASS csv_upgrade_count is equal or greater")
 
-		o.Expect(metricsBefore.catalog_source_count    <= metricsAfter.catalog_source_count).To(o.BeTrue())
+		o.Expect(metricsBefore.catalog_source_count <= metricsAfter.catalog_source_count).To(o.BeTrue())
 		e2e.Logf("PASS catalog_source_count is equal or greater")
 
-		o.Expect(metricsBefore.install_plan_count      <=  metricsAfter.install_plan_count).To(o.BeTrue())
+		o.Expect(metricsBefore.install_plan_count <= metricsAfter.install_plan_count).To(o.BeTrue())
 		e2e.Logf("PASS install_plan_count is equal or greater")
 
-		o.Expect(metricsBefore.subscription_count      <=  metricsAfter.subscription_count).To(o.BeTrue())
+		o.Expect(metricsBefore.subscription_count <= metricsAfter.subscription_count).To(o.BeTrue())
 		e2e.Logf("PASS subscription_count is equal or greater")
 
-		o.Expect(metricsBefore.subscription_sync_total <=  metricsAfter.subscription_sync_total).To(o.BeTrue())
+		o.Expect(metricsBefore.subscription_sync_total <= metricsAfter.subscription_sync_total).To(o.BeTrue())
 		e2e.Logf("PASS subscription_sync_total is equal or greater")
 		e2e.Logf("All PASS\n")
 
 		g.By("DONE")
 
-	})	
+	})
 
 })
 
