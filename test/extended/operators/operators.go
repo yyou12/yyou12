@@ -48,7 +48,6 @@ var CaseIDCertifiedOperators = map[string]string{
 	"argocd-operator":                           "27312",
 	"cert-utils-operator":                       "26058",
 	"couchbase-enterprise-certified":            "25414",
-	"dotscience-operator":                       "28694",
 	"federatorai-certified":                     "25444",
 	"jaeger-product":                            "26057",
 	"keycloak-operator":                         "26945",
