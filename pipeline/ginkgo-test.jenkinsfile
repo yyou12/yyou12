@@ -1,0 +1,417 @@
+// rename build
+def userId = currentBuild.rawBuild.getCause(hudson.model.Cause$UserIdCause)?.userId
+if (userId) {
+  currentBuild.displayName = "${userId}-${currentBuild.number}"
+}
+
+pipeline {
+  agent {
+    kubernetes {
+      cloud 'PSI OpenShift v4.5 agents'
+      yaml """\
+        apiVersion: v1
+        kind: Pod
+        metadata:
+          labels:
+            label: ${JENKINS_AGENT}
+        spec:
+          containers:
+          - name: "jnlp"
+            image: "docker-registry.upshift.redhat.com/aosqe/cucushift:${JENKINS_AGENT}"
+            resources:
+              requests:
+                memory: "8Gi"
+                cpu: "2"
+              limits:
+                memory: "8Gi"
+                cpu: "2"
+            imagePullPolicy: Always
+            workingDir: "/home/jenkins/ws"
+            tty: true
+        """.stripIndent()
+    }
+  }
+
+  options {
+    skipDefaultCheckout()
+    timeout(time: 24, unit: 'HOURS')
+  }
+
+  parameters{
+    string(name: 'SCENARIO',
+      defaultValue: '23170|20979', 
+      description: '''
+It is mandatory<br />
+<h3><font color="red">It is case sensitive </font></h3><br />''')
+
+    choice(name: 'IMPORTANCE',
+      choices: ["all","Critical","High","Medium", "Low","High|Medium|Low"], 
+      description: '''
+it means case IMPORTANCE.<br />
+Critical mean it will execute Critical case. so is High, Medium and Low<br />
+all mean it will execute all IMPORTANCE level case"<br />''')
+
+    string(name: 'FILTERS',
+      defaultValue: '', 
+      description: '''
+It is filter to select case based on some case attribution which is in case title.<br />
+It is <b>optional</b>.<br />
+The format of filter: '^[~]?[a-zA-Z0-9]{1,}[&]?$'. <br />
+Here [a-zA-Z0-9]{1,} must be from the value of yellow and blue part of Naming Rule
+<a href="https://docs.google.com/document/d/1k761p65J0Ig81hwZWaw73QJV6SBa7kPxbjuTEBlBbF4">Trigger golang based automation testing execution automatically</a>
+<br /><br />
+
+For exmaple:<br />
+Suppose there is "DisconnectedOnly" in your case title based on naming rule. It means the case only is executed in Disconnected cluster.<br />
+&nbsp;&nbsp;If you select cases which include cases with DisconnectedOnly or not, you do not need add the filter for it.<br />
+&nbsp;&nbsp;If you want to only select case with DisconnectedOnly, the filter is "DisconnectedOnly" <br />
+&nbsp;&nbsp;If you do not want to select case with DisconnectedOnly, the filter is "~DisconnectedOnly" <br />
+
+<br /><br />
+The filters are splited by semicolon.<br />
+If you want to let the filter is OR with other filters, no anything at the end of the filter. <br />
+If you want to let the filter is AND with other filters, Need to add & at end of filter, like "Disconnected&". <br />
+<br />
+For example:<br />
+&nbsp;&nbsp;We want to select case which support DisconnectedOnly or Disruptive, the filters is "DisconnectedOnly;Disruptive" <br />
+&nbsp;&nbsp;We want to select case which support DisconnectedOnly and Disruptive, the filters is "DisconnectedOnly&;Disruptive&" <br />
+&nbsp;&nbsp;We want to select case which support not DisconnectedOnly and not Disruptive, the filters is "~DisconnectedOnly&;~Disruptive&" <br />
+      ''')
+
+    string(name: 'LAUNCH_NAME',
+      defaultValue: '', 
+      description: '''
+It is used to send result to report portal. Actually it should be test runid from pipeline.<br />
+It is <b>optional</b>.<br />
+<h3><font color="red">It is optional. If you do not want to put result to reportportal, please leave it empty,
+  for example you rebuild some builds for your personal testing!!!!!!</font></h3>
+If it is <font color="red">empty</font>, it will not send the result to report portal.<br />
+&nbsp;&nbsp;&nbsp;&nbsp;For example, normally you start personal build, just leave it empty.<br />
+If it <font color="red">follows the test runid format</font>, it will send result to report portal and it will be collected as official result. <br />
+&nbsp;&nbsp;&nbsp;&nbsp;The format: '^([0-9]{8})-([0-9]{4})$'. <br />
+If it <font color="red">does not follow the test runid format</font>, it will not be collected as official result although it is sent to report portal. <br />
+&nbsp;&nbsp;&nbsp;&nbsp;You could get it by version=personalbuild in the filter of report portal. <br />
+''')
+
+    string(name: 'PROFILE_NAME',
+      defaultValue: '', 
+      description: '''
+It is used to get attrbution from profile file when sending result to report portal.<br />
+It is <b>optional</b>.<br />
+If LAUNCH_NAME is empty, you do not need it <br />
+If LAUNCH_NAME follow test runid format, please intput the correct profile name, for example "44_UPI on GCP with RHCOS & XPN & private cluster", Or else it will be not treated as official result. <br /> 
+If LAUNCH_NAME does not follow test runid format, you could input it or not because it is not treated as official result. <br /> 
+''')
+
+    string(name: 'FLEXY_BUILD',
+      defaultValue: '97473', 
+      description: '''
+it is flexy build number, like 92586
+if your cluster is built with flexy, please input build number
+''')
+
+    string(name: 'TIERN_REPO_OWNER',
+      defaultValue: 'openshift', 
+      description: '''
+The github id for tierN repo https://github.com/THE_GITHUB_ID/openshift-tests-private
+<h3><font color="red">IT IS MANDATORY. If you do not specify it, please take default value </font></h3>
+''')
+
+    string(name: 'TIERN_REPO_BRANCH',
+      defaultValue: 'master', 
+      description: '''
+The branch name for tierN repo https://github.com/THE_GITHUB_ID/openshift-tests-private
+<h3><font color="red">IT IS MANDATORY. If you do not specify it, please take default value </font></h3>
+''')
+
+    string(name: 'REPO_OWNER',
+      defaultValue: 'openshift', 
+      description: '''
+The github id for repo https://github.com/THE_GITHUB_ID/openshift-tests
+<h3><font color="red">IT IS MANDATORY. If you do not specify it, please take default value </font></h3>
+''')
+
+    string(name: 'BRANCH',
+      defaultValue: 'master', 
+      description: '''
+The branch name for repo https://github.com/THE_GITHUB_ID/openshift-tests
+<h3><font color="red">IT IS MANDATORY. If you do not specify it, please take default value </font></h3>
+''')
+
+    string(name: 'JENKINS_AGENT',
+      defaultValue: 'goc47', 
+      description: '''
+please input correct label for agent.
+for example:
+if you execute case on 4.6 cluster, you need input goc46
+if you execute case on 4.5 cluster, you need input goc45
+if you execute case on 4.4 cluster, you need input goc44''')
+
+    text(name: 'CONFIG',
+      defaultValue: '', 
+      description: '''
+Use this to  support to configure env for testing with YAML format.
+
+Currently it supports kubeconfig if the cluster is not created by flexy, so set it kubecofig url directly here
+(if the cluster is created by flex, please take parameter FLEXY_BUILD which will set kuebeconfig automatically).
+
+for example:<br />
+-- <br />
+<b>environments:</b><br />
+&nbsp;&nbsp;ocp4: <br />
+&nbsp;&nbsp;&nbsp;&nbsp;admin_creds_spec: "the_kubeconfig_url"<br />
+--''')
+
+    string(name: 'HOSTS',
+      defaultValue: '', 
+      description: '''
+it is reserved. currently we use FLEXY_BUILD to replace it.''')
+
+    string(name: 'USERS',
+      defaultValue: '', 
+      description: '''
+it is reserved. currently we use FLEXY_BUILD to replace it.''')
+    }
+
+  stages {
+    stage('check input parameter') {
+      steps{
+        script{
+          if (params.SCENARIO == ""){
+            println "please input value for SCENARIO"
+            error "please input value for SCENARIO"
+          }
+          if ("${JENKINS_AGENT}" ==~ '^goc([0-9]{2})$'){
+            println "use agent node ${JENKINS_AGENT}"
+          }else{
+            println "wrong agent node ${JENKINS_AGENT}"
+            error "wrong agent node ${JENKINS_AGENT}"
+          }
+        }
+      }
+    }
+
+    stage('clone repos') {
+      steps {
+        checkout changelog: false,
+          poll: false,
+          scm: [
+            $class: 'GitSCM',
+            branches: [[name: "${BRANCH}"]],
+            doGenerateSubmoduleConfigurations: false,
+            extensions: [
+              [$class: 'CloneOption', noTags: true, reference: '', shallow: true],
+              [$class: 'PruneStaleBranch'],
+              [$class: 'CleanCheckout'],
+              [$class: 'LocalBranch', localBranch: "${BRANCH}"]
+            ],
+            submoduleCfg: [],
+            userRemoteConfigs: [[
+              credentialsId: 'e2f7029f-ab8d-4987-8950-39feb80d5fbd',
+              url: "git@github.com:${REPO_OWNER}/openshift-tests.git"
+            ]]
+          ]
+
+        checkout changelog: false,
+          poll: false,
+          scm: [
+            $class: 'GitSCM',
+            branches: [[name: "${TIERN_REPO_BRANCH}"]],
+            doGenerateSubmoduleConfigurations: false,
+            extensions: [
+              [$class: 'CloneOption', noTags: true, reference: '', shallow: true],
+              [$class: 'PruneStaleBranch'],
+              [$class: 'CleanCheckout'],
+              [$class: 'IgnoreNotifyCommit'],
+              [$class: 'RelativeTargetDirectory', relativeTargetDir: 'private'],
+              [$class: 'LocalBranch', localBranch: "${TIERN_REPO_BRANCH}"]
+            ],
+            submoduleCfg: [],
+            userRemoteConfigs: [[
+              credentialsId: 'e2f7029f-ab8d-4987-8950-39feb80d5fbd',
+              url: 'git@github.com:${TIERN_REPO_OWNER}/openshift-tests-private.git'
+            ]]
+          ]
+
+        checkout changelog: false,
+          poll: false,
+          scm: [
+            $class: 'GitSCM',
+            branches: [[name: '*/master']],
+            doGenerateSubmoduleConfigurations: false,
+            extensions: [
+              [$class: 'CloneOption', noTags: true, reference: '', shallow: true],
+              [$class: 'PruneStaleBranch'],
+              [$class: 'CleanCheckout'],
+              [$class: 'IgnoreNotifyCommit'],
+              [$class: 'RelativeTargetDirectory', relativeTargetDir: 'internal']
+            ],
+            submoduleCfg: [],
+            userRemoteConfigs: [[
+              credentialsId: 'c9fb86e4-bd29-425f-a834-16ef21009d84',
+              name: 'origin',
+              refspec: '+refs/heads/master:refs/remotes/origin/master',
+              url: 'ssh://openshift-jenkins@code.engineering.redhat.com:22/cucushift-internal'
+            ]]
+          ]
+        checkout changelog: false,
+          poll: false,
+          scm: [
+            $class: 'GitSCM',
+            branches: [[name: '*/master']],
+            doGenerateSubmoduleConfigurations: false,
+            extensions: [
+              [$class: 'CloneOption', noTags: true, reference: '', shallow: true],
+              [$class: 'PruneStaleBranch'],
+              [$class: 'CleanCheckout'],
+              [$class: 'IgnoreNotifyCommit'],
+              [$class: 'RelativeTargetDirectory', relativeTargetDir: 'misc']
+            ],
+            submoduleCfg: [],
+            userRemoteConfigs: [[
+              credentialsId: 'c9fb86e4-bd29-425f-a834-16ef21009d84',
+              name: 'origin',
+              refspec: '+refs/heads/master:refs/remotes/origin/master',
+              url: 'ssh://openshift-jenkins@code.engineering.redhat.com:22/openshift-misc'
+            ]]
+          ]
+      }
+    }
+
+    stage('test execution') {
+      steps {
+        script {
+          env.IS_REBUILD_CAUSE = 'no'
+          env.IS_UPSTREAM_CAUSE = 'no'
+          def causes = currentBuild.getBuildCauses()
+          println causes
+          for(cause in causes) {
+              if (cause._class.toString().contains("UpstreamCause")) {
+                env.IS_UPSTREAM_CAUSE = 'yes'
+                println "This job was caused by job " + cause.upstreamProject
+              }
+              if (cause._class.toString().contains("RebuildCause")) {
+                env.IS_REBUILD_CAUSE = 'yes'
+                println "This job was rebuild by job " + cause.upstreamProject
+              }
+          }
+        }
+        sh '''
+#!/bin/bash
+set -e
+env
+
+function run {
+  PIPELINESCRIPT_DIR=${WORKSPACE}"/private/pipeline" && export PATH=${PIPELINESCRIPT_DIR}:$PATH
+  if [ ${REPO_OWNER} == "openshift" ]; then
+    WORKBUILDDIR=${WORKSPACE}"/private"
+  else
+    WORKBUILDDIR=${WORKSPACE}"/public"
+  fi
+  cd ${WORKBUILDDIR}
+
+  put_fake_launch_for_each_profile
+  config_env_for_cluster
+  id
+  date
+  select_fail_case_for_official_rerun
+  execute
+  result_report
+}
+
+function config_env_for_cluster {
+  mkdir -p /home/jenkins/kubeconf && mkdir -p /home/jenkins/azureauth && \
+  echo "export KUBECONFIG=/home/jenkins/kubeconf/kubeconfig" >> ~/.bash_profile && \
+  echo "export AZURE_AUTH_LOCATION=/home/jenkins/azureauth/azure_auth.json" >> ~/.bash_profile && \
+  echo 'export GOROOT=/usr/local/go' >> ~/.bash_profile && \
+  echo 'export GOPATH=/goproject' >> ~/.bash_profile && \
+  echo 'export GOCACHE=/gocache' >> ~/.bash_profile && \
+  echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.bash_profile && \
+  source ~/.bash_profile
+  echo "configure kubeconfig, azure authentication or client proxy for the cluster"
+  source ${PIPELINESCRIPT_DIR}"/occe4c" ${WORKSPACE} "null"${FLEXY_BUILD} "${CONFIG}"
+}
+function result_report {
+  echo "get result and parse it"
+  LAUNCHTRIAL="yes"
+  if [ "${TIERN_REPO_OWNER}" == "kuiwang02" ]; then
+    ocgr ${WORKBUILDDIR} ${WORKSPACE} ${JENKINS_AGENT} "null"${LAUNCH_NAME} "null""${PROFILE_NAME}" "null""${LAUNCHTRIAL}" "openshift-""${REPO_OWNER}"             ${BUILD_NUMBER} "null""${FILTERS}"
+  else
+    ocgr ${WORKBUILDDIR} ${WORKSPACE} ${JENKINS_AGENT} "null"${LAUNCH_NAME} "null""${PROFILE_NAME}" "null""${LAUNCHTRIAL}" "${TIERN_REPO_OWNER}""-""${REPO_OWNER}" ${BUILD_NUMBER} "null""${FILTERS}"
+  fi
+}
+
+function execute {
+  echo "the scenario is \"${SCENARIO}\", and the importance is \"${IMPORTANCE}\""
+  eval rm -fr ${WORKSPACE}"/private/junit_e2e_*.xml" ${WORKSPACE}"/public/junit_e2e_*.xml"
+  cd ${WORKBUILDDIR}
+
+  case "$REPO_OWNER" in
+    openshift)
+      echo "run case with oropenshift-tests-private under openshift or your account. similar to ocrd"
+      echo "ocr ${TIERN_REPO_OWNER} \"${SCENARIO}\" ${IMPORTANCE} \"null${FILTERS}\""
+      ocr ${TIERN_REPO_OWNER} "${SCENARIO}" ${IMPORTANCE} "null${FILTERS}" || true
+      ;;
+    *)
+      echo "run case with oropenshift-tests under your account. similar to ocru"
+      echo "ocr null \"${SCENARIO}\" ${IMPORTANCE} \"null${FILTERS}\""
+      ocr "null" "${SCENARIO}" ${IMPORTANCE} "null${FILTERS}"|| true
+      ;;
+  esac
+}
+
+function select_fail_case_for_official_rerun {
+  echo "cause by rebuild is ${IS_REBUILD_CAUSE}"
+  echo "cause by upstream is ${IS_UPSTREAM_CAUSE}"
+  if ((echo ${LAUNCH_NAME} | grep -E '^([0-9]{8})-([0-9]{4})$') || \
+      (echo ${LAUNCH_NAME} | grep -E '^([0-9]{8})-([0-9]{4})_([0-9]{1,2})$')) && \
+      ([[ "${IS_REBUILD_CAUSE}" == "yes" ]] && [[ "${IS_UPSTREAM_CAUSE}" == "yes" ]]) && \
+      ([[ "${TIERN_REPO_OWNER}" == "openshift" ]] || [[ "${TIERN_REPO_OWNER}" == "kuiwang02" ]]) && [[ "${REPO_OWNER}" == "openshift" ]]; then
+    echo "valid launch name with reran pipeline build. Try to find fail case and update SCENARIO"
+    failcaseid=`ocgfc ${WORKBUILDDIR} ${WORKSPACE} ${LAUNCH_NAME} "${SCENARIO}" ${BUILD_NUMBER} "null""${FILTERS}" 2>&1 || true`
+    echo -e "${failcaseid}"
+    result=`echo -e ${failcaseid} | tail -1|xargs`
+    if [ "X${result}X" != "XX" ] && [ "X${result}X" != "XNOREPLACEX" ] && [ "X${result}X" != "XNORERUNX" ]; then
+      echo -e "Found fail case ID: ${result}"
+      SCENARIO="${result}"
+    elif [ "X${result}X" == "XNORERUNX" ]; then
+      echo "No need to rerun it"
+      exit 0
+    fi
+  else
+    echo "no launch name or invalid launch name, or not rerun pipeline build, and keep original ${SCENARIO}"
+  fi
+  
+  echo -e "the scenario:\n${SCENARIO}"
+}
+
+function put_fake_launch_for_each_profile {
+  if [ "${SCENARIO}" == "putfakelaunchforeachprofile" ] ; then
+    ocpf ${WORKBUILDDIR} ${WORKSPACE} ${JENKINS_AGENT}
+    exit 0
+  fi
+}
+
+run
+'''
+      }
+    }
+  }
+
+  post {
+    always {
+      archiveArtifacts artifacts: '*/junit_e2e_*.xml',
+        fingerprint: true,
+        allowEmptyArchive: true,
+        caseSensitive: true,
+        defaultExcludes: true
+    }
+    failure {
+      emailext body: '$DEFAULT_CONTENT',
+        replyTo: '$DEFAULT_REPLYTO', 
+        subject: '$DEFAULT_SUBJECT', 
+        to: 'xzha@redhat.com,kuiwang@redhat.com'
+
+    }
+  }
+}

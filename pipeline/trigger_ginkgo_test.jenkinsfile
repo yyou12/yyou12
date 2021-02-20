@@ -1,0 +1,34 @@
+
+
+pipeline {
+    agent any
+    parameters {
+      string(name: 'JOB_NAME', defaultValue: 'ocp-common/ginkgo-test-v1')
+      string(name: 'SCENARIO', defaultValue: '23170|20979')
+      string(name: 'ginkgo_filters', defaultValue: 'ConnectedOnly')
+      string(name: 'flexybuild_number', defaultValue: '139514')
+      string(name: 'LAUNCH_NAME', defaultValue: '20210218-0941')
+      string(name: 'PROFILE_NAME', defaultValue: '01_Disconnected IPI on AWS with RHCOS & http_proxy')
+      string(name: 'JENKINS_AGENT', defaultValue: 'goc47')
+    }
+    stages {
+        stage('normal ginkgo tests') {
+            steps {
+                script {
+                  build job: "${JOB_NAME}",
+                      parameters: [
+                        [$class: 'StringParameterValue', name: 'SCENARIO', value: "${SCENARIO}"],
+                        [$class: 'StringParameterValue', name: 'FILTERS', value: "${ginkgo_filters}"],
+                        [$class: 'StringParameterValue', name: 'LAUNCH_NAME', value: "${LAUNCH_NAME}"],
+                        [$class: 'StringParameterValue', name: 'PROFILE_NAME', value: "${PROFILE_NAME}"],
+                        [$class: 'StringParameterValue', name: 'FLEXY_BUILD', value: "${flexybuild_number}"],
+                        [$class: 'StringParameterValue', name: 'JENKINS_AGENT', value: "${JENKINS_AGENT}"]
+                      ],
+                      propagate: false,
+                      wait: false
+                }
+            }
+        }
+    }
+}
+
