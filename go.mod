@@ -4,6 +4,7 @@ go 1.13
 
 require (
 	github.com/RangelReale/osincli v0.0.0-20160924135400-fababb0555f2
+	github.com/blang/semver v3.5.0+incompatible
 	github.com/coreos/rkt v1.30.0 // indirect
 	github.com/davecgh/go-spew v1.1.1
 	github.com/fsouza/go-dockerclient v0.0.0-20171004212419-da3951ba2e9e

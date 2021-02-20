@@ -383,8 +383,8 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		oc.SetupProject()
 		cs := catalogSourceDescription{
 			name:        "redhat-operators",
-			namespace:   oc.Namespace(),
-			displayName: "Red Hat Operators",
+			namespace:   "openshift-marketplace",
+			displayName: "OLM QE",
 			publisher:   "OLM QE",
 			sourceType:  "grpc",
 			address:     "quay.io/openshift-qe-optional-operators/ocp4-index:latest",
@@ -396,21 +396,31 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		cs.create(oc, itName, dr)
 		newCheck("expect", asAdmin, withoutNamespace, compare, "READY", ok, []string{"catsrc", cs.name, "-n", cs.namespace, "-o=jsonpath={.status..lastObservedState}"}).check(oc)
 
-		g.By("4) Enable the default OperatorHub")
-		patchResource(oc, true, true, "operatorhub", "cluster", "-p", "{\"spec\": {\"disableAllDefaultSources\": false}}", "--type=merge")
-
-		g.By("5) Check if the default CatalogSource resource are back")
-		newCheck("expect", asAdmin, withoutNamespace, compare, "READY", ok, []string{"catsrc", "redhat-operators", "-n", "openshift-marketplace", "-o=jsonpath={.status..lastObservedState}"}).check(oc)
-
-		g.By("6) Check if the custom CatalogSource resource are removed")
+		g.By("4) Check if this custom CatalogSource resource works well")
 		err1 := wait.Poll(10*time.Second, 180*time.Second, func() (bool, error) {
-			res, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("catalogsource", "redhat-operators", "-n", cs.namespace).Output()
-			if strings.Contains(res, "not found") {
+			res, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("packagemanifest").Output()
+			if strings.Contains(res, "OLM QE") {
 				return true, nil
 			}
 			return false, nil
 		})
 		o.Expect(err1).NotTo(o.HaveOccurred())
+
+		g.By("5) Enable the default OperatorHub")
+		patchResource(oc, true, true, "operatorhub", "cluster", "-p", "{\"spec\": {\"disableAllDefaultSources\": false}}", "--type=merge")
+
+		g.By("6) Check if the default CatalogSource resource are back")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "READY", ok, []string{"catsrc", "redhat-operators", "-n", "openshift-marketplace", "-o=jsonpath={.status..lastObservedState}"}).check(oc)
+
+		g.By("7) Check if the default CatalogSource works and the custom one are removed")
+		err2 := wait.Poll(10*time.Second, 180*time.Second, func() (bool, error) {
+			res, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("packagemanifest").Output()
+			if strings.Contains(res, "Red Hat Operators") && !strings.Contains(res, "OLM QE") {
+				return true, nil
+			}
+			return false, nil
+		})
+		o.Expect(err2).NotTo(o.HaveOccurred())
 	})
 
 	// author: jiazha@redhat.com
