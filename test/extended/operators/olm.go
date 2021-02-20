@@ -384,7 +384,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		cs := catalogSourceDescription{
 			name:        "redhat-operators",
 			namespace:   "openshift-marketplace",
-			displayName: "Red Hat Operators",
+			displayName: "OLM QE",
 			publisher:   "OLM QE",
 			sourceType:  "grpc",
 			address:     "quay.io/openshift-qe-optional-operators/ocp4-index:latest",
