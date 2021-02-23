@@ -11090,7 +11090,7 @@ func testExtendedTestdataWincWindows_web_server_no_taintYaml() (*asset, error) {
 	return a, nil
 }
 
-var _testExtendedTestdataWorkloadsDeploy_nodeaffinityYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataWorkloadsDeploy_nodeaffinityYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   name: deploy-nodeaffinity-template
@@ -11153,7 +11153,7 @@ func testExtendedTestdataWorkloadsDeploy_nodeaffinityYaml() (*asset, error) {
 	return a, nil
 }
 
-var _testExtendedTestdataWorkloadsDeploy_nodeselectYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataWorkloadsDeploy_nodeselectYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   name: deploy-nodeselect-template
@@ -11206,7 +11206,7 @@ func testExtendedTestdataWorkloadsDeploy_nodeselectYaml() (*asset, error) {
 	return a, nil
 }
 
-var _testExtendedTestdataWorkloadsDeploy_single_ptsYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataWorkloadsDeploy_single_ptsYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   name: deploy-single-pts-template
@@ -11266,7 +11266,7 @@ func testExtendedTestdataWorkloadsDeploy_single_ptsYaml() (*asset, error) {
 	return a, nil
 }
 
-var _testExtendedTestdataWorkloadsPod_multiptsYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataWorkloadsPod_multiptsYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   name: pod-multiple-pts-template
@@ -11323,7 +11323,7 @@ func testExtendedTestdataWorkloadsPod_multiptsYaml() (*asset, error) {
 	return a, nil
 }
 
-var _testExtendedTestdataWorkloadsPod_nodeselectYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataWorkloadsPod_nodeselectYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   name: pod-nodeselector-template
@@ -11365,7 +11365,7 @@ func testExtendedTestdataWorkloadsPod_nodeselectYaml() (*asset, error) {
 	return a, nil
 }
 
-var _testExtendedTestdataWorkloadsPod_pts_nodeaffinity_requiredYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataWorkloadsPod_pts_nodeaffinity_requiredYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   name: pod-pts-nodeaffinity-template
@@ -11435,7 +11435,7 @@ func testExtendedTestdataWorkloadsPod_pts_nodeaffinity_requiredYaml() (*asset, e
 	return a, nil
 }
 
-var _testExtendedTestdataWorkloadsPod_single_nodeaffinity_requiredYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataWorkloadsPod_single_nodeaffinity_requiredYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   name: pod-single-nodeaffinity-template
@@ -11496,7 +11496,7 @@ func testExtendedTestdataWorkloadsPod_single_nodeaffinity_requiredYaml() (*asset
 	return a, nil
 }
 
-var _testExtendedTestdataWorkloadsPod_singleptsYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataWorkloadsPod_singleptsYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   name: pod-sigle-pts-template
@@ -11544,7 +11544,7 @@ func testExtendedTestdataWorkloadsPod_singleptsYaml() (*asset, error) {
 	return a, nil
 }
 
-var _testExtendedTestdataWorkloadsPod_singlepts_nodeselectYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataWorkloadsPod_singlepts_nodeselectYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   name: pod-sigle-pts-nodeselector-template
@@ -11596,7 +11596,7 @@ func testExtendedTestdataWorkloadsPod_singlepts_nodeselectYaml() (*asset, error)
 	return a, nil
 }
 
-var _testExtendedTestdataWorkloadsPod_singlepts_preferYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataWorkloadsPod_singlepts_preferYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   name: pod-affinity-preferred-sigle-pts-template
@@ -11662,7 +11662,7 @@ func testExtendedTestdataWorkloadsPod_singlepts_preferYaml() (*asset, error) {
 	return a, nil
 }
 
-var _testExtendedTestdataWorkloadsPod_singlepts_requiredYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataWorkloadsPod_singlepts_requiredYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   name: pod-affinity-required-sigle-pts-template
@@ -11725,7 +11725,7 @@ func testExtendedTestdataWorkloadsPod_singlepts_requiredYaml() (*asset, error) {
 	return a, nil
 }
 
-var _testExtendedTestdataWorkloadsPod_tolerationsecondsYaml = []byte(`apiVersion: v1
+var _testExtendedTestdataWorkloadsPod_tolerationsecondsYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   name: pod-toleration-template
