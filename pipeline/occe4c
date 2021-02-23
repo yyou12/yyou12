@@ -45,6 +45,20 @@ else
   ret_code=`curl -s -k ${CLIENT_PROXY_SETTING_SH} -o ./client_proxy_setting.sh  -w "%{http_code}"`
   if [ "${ret_code}" == "200" ]; then
     source ./client_proxy_setting.sh
+  elif [ "${ret_code}" == "404" ]; then
+    CLIENT_PROXY_SETTING_JSON=${FLEXYURLBASE}${BUILD_NUM_FOR_CONF}"/artifact/workdir/install-dir/client_proxy_setting.json"
+    ret_code=`curl -s -k ${CLIENT_PROXY_SETTING_JSON} -o ./client_proxy_setting.json  -w "%{http_code}"`
+    if [ "${ret_code}" == "200" ]; then
+      https_proxy_value=`cat ./client_proxy_setting.json | jq -r .https_proxy`
+      if [ "${https_proxy_value}" != "null" ]; then
+        export https_proxy=${https_proxy_value}
+      fi
+      http_proxy_value=`cat ./client_proxy_setting.json | jq -r .http_proxy`
+      if [ "${http_proxy_value}" != "null" ]; then
+        export http_proxy=${http_proxy_value}
+      fi
+      echo $https_proxy_value $http_proxy_value
+    fi
   fi
 fi
 eval export GOOGLE_APPLICATION_CREDENTIALS=${WORKDIRBASE}"/private/secrets/gce/aos-qe-sa.json"
