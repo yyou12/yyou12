@@ -138,7 +138,27 @@ $ git status
 	new file:   test/extended/testdata/olm/etcd-subscription-manual.yaml
 ```
 
-## Running on GCE
+### How to run the ginkgo-test job with your branch
+You can take the [ginkgo-test job](https://mastern-jenkins-csb-openshift-qe.cloud.paas.psi.redhat.com/job/ocp-common/job/ginkgo-test/) to run your test case with your repo. As follows:
+
+Here are the parameters:  
+> - SCENARIO: input your case ID  
+> - FLEXY_BUILD: the [Launch Environment Flexy](https://mastern-jenkins-csb-openshift-qe.cloud.paas.psi.redhat.com/job/Launch%20Environment%20Flexy/) build ID to build the cluster you use  
+> - TIERN_REPO_OWNER: your GitHub account  
+> - TIERN_REPO_BRANCH: your branch for the debug case code  
+> - JENKINS_SLAVE: gocxx, xx is your cluster relase version, for example, goc47 for 4.7 cluster  
+> - For other parameters, please take default value.  
+
+Here are the procedures:
+1. push the case code into your repo with your branch. For example, [example-branch](https://github.com/exampleaccount/openshift-tests-private/tree/examplebranch)
+2. launch build with parameters. For example, push the code of case which ID is `12345` into [example-branch](https://github.com/exampleaccount/openshift-tests-private/tree/examplebranch), and your Flexy job is `6789` with using 4.7 release. After you push code to your repo, you could launch a `ginkgo-test` job, as follows:
+> - SCENARIO: 12345  
+> - FLEXY_BUILD: 6789  
+> - TIERN_REPO_OWNER: exampleaccount  
+> - TIERN_REPO_BRANCH: examplebranch  
+> - JENKINS_SLAVE: goc47  
+
+### Running test cases on GCP
 You will get the below error when running the test cases on GCP platform. 
 ```
 E0628 22:11:41.236497   25735 test_context.go:447] Failed to setup provider config for "gce": Error building GCE/GKE provider: google: could not find default credentials. See https://developers.google.com/accounts/docs/application-default-credentials for more information.
@@ -147,8 +167,7 @@ E0628 22:11:41.236497   25735 test_context.go:447] Failed to setup provider conf
 ```
 $ export GOOGLE_APPLICATION_CREDENTIALS=`pwd`/secrets/gce/aos-qe-sa.json
 ```
-
-### Update the GCE SA
+#### How to update the GCP SA
 You may get `400 Bad Request` error even if you have `export` the above values. This error means it's time to update the SA.
 ```
 E0628 22:18:22.290137   26212 gce.go:876] error fetching initial token: oauth2: cannot fetch token: 400 Bad Request
@@ -160,40 +179,27 @@ You can update the SA by following this [authentication](https://cloud.google.co
 3. In the `Service account` name field, enter a name.
 4. Click `Create`. A JSON file that contains your key downloads to your computer.
 
-## AZURE_AUTH_LOCATION issue when debugging case on AZURE
-In order to execute case on the cluster built on AZURE, you have to configure AZURE_AUTH_LOCATION to the file which includes AZURE subscriptionId, clientId, and clientSecret etc.
-So, if you want to debug case on azure in local env, you need to get it at config/credentials/azure.json in private repo cucushift-internal to your local env.
-and
+### Running test cases on Azure
+In order to execute case on the cluster built on Azure platform, you have to configure the `AZURE_AUTH_LOCATION` env variable which includes Azure subscriptionId, clientId, and clientSecret etc. You can get the `config/credentials/azure.json` from the private repo: `cucushift-internal`and run: 
 ```
 export AZURE_AUTH_LOCATION=<path to azure.json>
 ```
-But maybe you can not get the azure.json file from cucushift-internal repo because of permission.  
-So, **suggest you debug your case on other platform, for example aws, or gcp etc**.
-
-If you have to debug case on azure, **suggest you to take [ginkgo-test job](https://mastern-jenkins-csb-openshift-qe.cloud.paas.psi.redhat.com/job/ginkgo-test/) to run your case with your repo**.
-Here is the parameters:  
-> - SCENARIO: input your case ID  
-> - FLEXY_BUILD: the [Launch Environment Flexy](https://mastern-jenkins-csb-openshift-qe.cloud.paas.psi.redhat.com/job/Launch%20Environment%20Flexy/) build ID to build the cluster you use  
-> - TIERN_REPO_OWNER: your GitHub account  
-> - TIERN_REPO_BRANCH: your branch for the debug case code  
-> - JENKINS_SLAVE: gocxx, xx is your cluster relase version, for example, goc47 for 4.7 cluster  
-> - For other parameters, please take default value.  
-
-So, here is the procedure:
-1. push the case code into your repo with your branch.
-   For example, https://github.com/exampleaccount/openshift-tests-private/tree/examplebranch
-2. launch build with parameters
-
-For example, you push the code of case which ID is 12345 into https://github.com/exampleaccount/openshift-tests-private/tree/examplebranch,
-             and your cluster is built by Flexy job 6789 and the cluster is 4.7 release.  
-
-After you push code, you could launch ginkgo-test job with the paramters as the example
-> - SCENARIO: 12345  
-> - FLEXY_BUILD: 6789  
-> - TIERN_REPO_OWNER: exampleaccount  
-> - TIERN_REPO_BRANCH: examplebranch  
-> - JENKINS_SLAVE: goc47  
-
+#### The steps to get the Azure secret
+- Add your ssh key to https://code.engineering.redhat.com/gerrit/#/settings/ssh-keys
+- Clone the repo: ssh://<your-kerberos-id>@code.engineering.redhat.com:22/cucushift-internal, for example,
+```console
+[root@preserve-olm-env data]# git clone ssh://jiazha@code.engineering.redhat.com:22/cucushift-internal
+Cloning into 'cucushift-internal'...
+remote: Total 1367 (delta 0), reused 1367 (delta 0)
+Receiving objects: 100% (1367/1367), 263.87 KiB | 0 bytes/s, done.
+Resolving deltas: 100% (516/516), done.
+[root@preserve-olm-env data]# cd cucushift-internal/
+[root@preserve-olm-env cucushift-internal]# ls config/credentials/
+azure.json  crw                                  gce.json      micro_eng                      openshift-qe-regional_v4.json    ssp
+ccx-qe      deprecated.openshift-qe-gce_v4.json  gce-ocf.json  msg-client-aos-automation.pem  openshift-qe-shared-vpc_v4.json  vmc.json
+cfme        dockerhub                            gce_v4.json   openshift-qe-gce_v4.json       perf-eng
+```
+If you cannot get the Azure secret successfully, you can still debug/run your test cases via the Ginkgo job. See: [running your test case via Ginkgo job doc](https://github.com/jianzhangbjz/openshift-tests-private/tree/azure#how-to-run-the-ginkgo-test-job-with-your-branch).
 
 ## Run Certified Operators test
 
