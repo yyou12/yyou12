@@ -512,7 +512,6 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 		g.By("patch the tolerations and compare again")
 		patch := fmt.Sprintf("{\"spec\":{\"tolerations\":[{\"effect\":\"NoSchedule\",\"key\":\"key1\",\"operator\":\"Equal\",\"value\":\"value1\"}]}}")
 		patchResource(oc, asAdmin, withoutNamespace, "fileintegrity", fi1.name, "-n", fi1.namespace, "--type", "merge", "-p", patch)
-		fi1.recreateFileintegrity(oc)
 		fi1.checkFileintegrityStatus(oc, "running")
 		fi1.checkPodNumerEqualNodeNumber(oc, "node-role.kubernetes.io/worker=")
 
@@ -529,7 +528,6 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 		g.By("patch the tolerations and compare again")
 		patch = fmt.Sprintf("{\"spec\":{\"tolerations\":[{\"effect\":\"NoSchedule\",\"key\":\"key1\",\"operator\":\"Exists\"}]}}")
 		patchResource(oc, asAdmin, withoutNamespace, "fileintegrity", fi1.name, "-n", fi1.namespace, "--type", "merge", "-p", patch)
-		fi1.recreateFileintegrity(oc)
 		fi1.checkFileintegrityStatus(oc, "running")
 		fi1.checkPodNumerEqualNodeNumber(oc, "node-role.kubernetes.io/worker=")
 	})
@@ -577,7 +575,6 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 		g.By("patch the tolerations and compare again")
 		patch := fmt.Sprintf("{\"spec\":{\"tolerations\":[{\"effect\":\"NoSchedule\",\"key\":\"key1\",\"operator\":\"Equal\",\"value\":\"value1\"},{\"effect\":\"NoExecute\",\"key\":\"key2\",\"operator\":\"Equal\",\"value\":\"value2\"}]}}")
 		patchResource(oc, asAdmin, withoutNamespace, "fileintegrity", fi1.name, "-n", fi1.namespace, "--type", "merge", "-p", patch)
-		fi1.recreateFileintegrity(oc)
 		fi1.checkFileintegrityStatus(oc, "running")
 		fi1.checkPodNumerEqualNodeNumber(oc, "node-role.kubernetes.io/worker=")
 	})

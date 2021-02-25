@@ -214,7 +214,7 @@ func (fi1 *fileintegrity) checkFileintegritynodestatus(oc *exutil.CLI, nodeName 
 			return false, nil
 		}
 		output, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("fileintegritynodestatuses", "-n", fi1.namespace, fileintegrityName,
-			"-o=jsonpath={.results[-1].condition}").Output()
+			"-o=jsonpath={.lastResult.condition}").Output()
 		e2e.Logf("the result of checkFileintegritynodestatus:%v", output)
 		if strings.Contains(output, expected) {
 			return true, nil
