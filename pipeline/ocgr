@@ -12,6 +12,7 @@ LAUNCHTRIAL=$6
 TWOREPOOWNER=$7
 BUILDNUM=$8
 FILTERSO=$9
+BUILDVERSION=${10}
 if [ "${LAUNCHID}" == "null" ]; then
   LAUNCHID=""
 else
@@ -31,6 +32,11 @@ if [ "X${LAUNCHTRIAL}X" == "XnullyesX" ]; then
   LAUNCHTRIAL="yes"
 else
   LAUNCHTRIAL="no"
+fi
+if [ "X${BUILDVERSION}X" == "XnullX" ] || [ "X${BUILDVERSION}X" == "XX" ]; then
+  BUILDVERSION="none"
+else
+  BUILDVERSION=${BUILDVERSION:4}
 fi
 
 if [[ "${FILTERSO}" == *"Disruptive"* ]] && [[ "${FILTERSO}" != *"~Disruptive"* ]]; then
@@ -91,7 +97,7 @@ if [ "X${LAUNCHID}X" != "XX" ]; then
   for subteamfile in `ls import-*.xml`; do
     subteam=${subteamfile:7:-4}
     eval zip -r "${LAUNCHID}.zip" "${subteamfile}"
-    ret=`python3 reportportal.py -a import -f "${LAUNCHID}.zip" -s "${subteam}" -v "${VERSION}" -bn "${BUILDNUM}""${buildtype}" -pn "${PROFILENAME}" -pp "../misc/jenkins/"${profiletype}"/" -t "${rpmmtoken}" -ta "${rppmtoken}" -trial "${LAUNCHTRIAL}" 2>&1 || true`
+    ret=`python3 reportportal.py -a import -f "${LAUNCHID}.zip" -s "${subteam}" -v "${VERSION}" -bv "${BUILDVERSION}" -bn "${BUILDNUM}""${buildtype}" -pn "${PROFILENAME}" -pp "../misc/jenkins/"${profiletype}"/" -t "${rpmmtoken}" -ta "${rppmtoken}" -trial "${LAUNCHTRIAL}" 2>&1 || true`
     eval rm -fr  "${LAUNCHID}.zip"
     result=`echo -e ${ret} | tail -1|xargs`
     if ! [ "X${result}X" == "XSUCCESSX" ]; then
