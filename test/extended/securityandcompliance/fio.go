@@ -593,8 +593,6 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 		sub.catalogSourceNamespace = catsrc.namespace
 		fi1.namespace = oc.Namespace()
 		fi1.debug = false
-		fi1.nodeselectorkey = "node-role.kubernetes.io/worker"
-		fi1.nodeselectorvalue = ""
 
 		g.By("Create catsrc")
 		catsrc.create(oc, itName, dr)
@@ -609,44 +607,29 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 		sub.checkPodFioStatus(oc, "running")
 
 		g.By("Create fileintegrity with aide config and compare Aide-scan pod number and Node number")
-		fi1.configname = "myconf"
-		fi1.configkey = "aide-conf"
-		fi1.createConfigmapFromFile(oc, itName, dr, fi1.configname, fi1.configkey, configFile, "created")
-		fi1.checkConfigmapCreated(oc)
+		fi1.nodeselectorkey = "node.openshift.io/os_id"
+		fi1.nodeselectorvalue = "rhcos"
 		fi1.createFIOWithConfig(oc, itName, dr)
 		fi1.checkFileintegrityStatus(oc, "running")
-		fi1.checkPodNumerEqualNodeNumber(oc, "node-role.kubernetes.io/worker=")
+		fi1.checkPodNumerEqualNodeNumber(oc, "node.openshift.io/os_id=rhcos")
 
-		g.By("Rereate fileintegrity with a new nodeselector and compare Aide-scan pod number and Node number")
-		fi1.removeFileintegrity(oc, "deleted")
-		fi1.nodeselectorkey = "node-role.kubernetes.io/worker"
-		fi1.nodeselectorvalue = ""
-		g.By("Create fileintegrity with aide config and compare Aide-scan pod number and Node number")
-		fi1.createFIOWithConfig(oc, itName, dr)
+		g.By("Patch fileintegrity with a new nodeselector and compare Aide-scan pod number and Node number")
+		patch := fmt.Sprintf("[{\"op\":\"remove\",\"path\":\"/spec/nodeSelector/node.openshift.io~1os_id\"},{\"op\":\"add\",\"path\":\"/spec/nodeSelector/node-role.kubernetes.io~1master\",\"value\":\"\"}]")
+		patchResource(oc, asAdmin, withoutNamespace, "fileintegrity", fi1.name, "-n", fi1.namespace, "--type", "json", "-p", patch)
 		fi1.checkFileintegrityStatus(oc, "running")
 		fi1.checkPodNumerEqualNodeNumber(oc, "node-role.kubernetes.io/master=")
 
-		g.By("Rereate fileintegrity with a new nodeselector and compare Aide-scan pod number and Node number")
-		fi1.removeFileintegrity(oc, "deleted")
-		fi1.nodeselectorkey = "node.openshift.io/os_id"
-		fi1.nodeselectorvalue = "rhel"
-		fi1.createFIOWithConfig(oc, itName, dr)
-		if getNodeNumberPerLabel(oc, "node.openshift.io/os_id=rhel") != 0 {
-			fi1.checkFileintegrityStatus(oc, "running")
-			fi1.checkPodNumerEqualNodeNumber(oc, "node.openshift.io/os_id=rhel")
-		}
-
-		g.By("Label specific nodeName to node-role.kubernetes.io/test1= !!!\n")
-		nodeName := getOneWorkerNodeName(oc)
-		defer setLabelToSpecificNode(oc, nodeName, "node-role.kubernetes.io/test1-")
-		setLabelToSpecificNode(oc, nodeName, "node-role.kubernetes.io/test1=")
-		fi1.removeFileintegrity(oc, "deleted")
-		g.By("Rereate fileintegrity with a new nodeselector and compare Aide-scan pod number and Node number")
-		fi1.nodeselectorkey = "node-role.kubernetes.io/test1"
-		fi1.nodeselectorvalue = ""
-		fi1.createFIOWithConfig(oc, itName, dr)
+		g.By("Patch fileintegrity with another nodeselector and compare Aide-scan pod number and Node number")
+		patch = fmt.Sprintf("[{\"op\":\"remove\",\"path\":\"/spec/nodeSelector/node-role.kubernetes.io~1master\"},{\"op\":\"add\",\"path\":\"/spec/nodeSelector/node-role.kubernetes.io~1worker\",\"value\":\"\"}]")
+		patchResource(oc, asAdmin, withoutNamespace, "fileintegrity", fi1.name, "-n", fi1.namespace, "--type", "json", "-p", patch)
 		fi1.checkFileintegrityStatus(oc, "running")
-		fi1.checkPodNumerEqualNodeNumber(oc, "node-role.kubernetes.io/test1=")
+		fi1.checkPodNumerEqualNodeNumber(oc, "node-role.kubernetes.io/worker=")
+
+		g.By("Remove nodeselector and compare Aide-scan pod number and Node number")
+		patch = fmt.Sprintf("[{\"op\":\"remove\",\"path\":\"/spec/nodeSelector/node-role.kubernetes.io~1worker\"}]")
+		patchResource(oc, asAdmin, withoutNamespace, "fileintegrity", fi1.name, "-n", fi1.namespace, "--type", "json", "-p", patch)
+		fi1.checkFileintegrityStatus(oc, "running")
+		fi1.checkPodNumerEqualNodeNumber(oc, "node.openshift.io/os_id=rhcos")
 	})
 
 	//author: xiyuan@redhat.com
