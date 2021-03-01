@@ -10,7 +10,7 @@ else
   BUILD_NUM_FOR_CONF=${BUILD_NUM_FOR_CONF:4}
 fi
 
-FLEXYURLBASE="https://mastern-jenkins-csb-openshift-qe.cloud.paas.psi.redhat.com/job/ocp-common/job/Flexy-install/"
+FLEXYURLBASE="https://mastern-jenkins-csb-openshift-qe.apps.ocp4.prod.psi.redhat.com/job/ocp-common/job/Flexy-install/"
 KUBECONFIG_FILE=""
 if [ "${CONTENT_FOR_CONF}" != "" ] ; then
   rm -fr handleconfig.py && eval cp -fr ${WORKDIRBASE}"/private/pipeline/handleconfig.py" .
