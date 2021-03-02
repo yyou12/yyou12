@@ -23,7 +23,7 @@ fi
 
 eval "$(ssh-agent -s)"
 #addsshkey
-FLEXYURLBASE="https://mastern-jenkins-csb-openshift-qe.cloud.paas.psi.redhat.com/job/Launch%20Environment%20Flexy/"
+FLEXYURLBASE=${JENKINS_URL}"job/ocp-common/job/Flexy-install/"
 if [ "${KUBECONFIG_FILE}" != "" ]; then # configure kubeconfig  directly, and does not support azure authentication and client proxy automatcially
   ck "${KUBECONFIG_FILE}"
 else #configure kubeconfig from flexy, and support azure authentication and client proxy automatcially if necessary
