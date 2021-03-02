@@ -1117,8 +1117,8 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		dr := make(describerResrouce)
 		itName := g.CurrentGinkgoTestDescription().TestText
 		dr.addIr(itName)
-		cs.create(oc, itName, dr)
 		defer cs.delete(itName, dr)
+		cs.create(oc, itName, dr)
 		newCheck("expect", asAdmin, withoutNamespace, compare, "READY", ok, []string{"catsrc", cs.name, "-n", cs.namespace, "-o=jsonpath={.status..lastObservedState}"}).check(oc)
 
 		g.By("Start to subscribe this etcd operator")
@@ -1133,9 +1133,9 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 			singleNamespace:        false,
 			template:               subTemplate,
 		}
-		sub.create(oc, itName, dr)
 		defer sub.delete(itName, dr)
 		defer sub.getCSV().delete(itName, dr)
+		sub.create(oc, itName, dr)
 		newCheck("expect", asAdmin, withNamespace, compare, "Succeeded", ok, []string{"csv", sub.installedCSV, "-o=jsonpath={.status.phase}"}).check(oc)
 
 		g.By("Assert that etcd dependency is resolved")
