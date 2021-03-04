@@ -421,12 +421,21 @@ class ReportPortalClient:
             if id == None:
                 raise Exception("can not get id for new launch")
             attMap = self.getProfileAttr()
+
+            buildVersion = self.getAttrOption("build_version")
+            if buildVersion == None or buildVersion == "":
+                buildVersion = "nobuildversion"
+            pipelineType = self.getAttrOption("pipeline_type")
+            if pipelineType == None or pipelineType == "":
+                pipelineType = "notpipeline"
+
             if attMap == None:
                 attDict = {
                 "name":     {"action": "add", "value":os.path.splitext(os.path.basename(self.args.file))[0]},
                 "team":     {"action": "add", "value":self.args.subteam},
                 "version":  {"action": "add", "value":self.args.version.replace(".", "_")},
-                "build_version":  {"action": "add", "value":self.args.buildversion},
+                "build_version":  {"action": "add", "value":buildVersion},
+                "pipeline_type":  {"action": "add", "value":pipelineType},
                 "gbuildnum": {"action": "add", "value":self.args.buildnum},
                 "launchtype": {"action": "add", "value":"golang"},
                 }
@@ -435,7 +444,8 @@ class ReportPortalClient:
                 "name":     {"action": "add", "value":os.path.splitext(os.path.basename(self.args.file))[0]},
                 "team":     {"action": "add", "value":self.args.subteam},
                 "version":  {"action": "add", "value":self.args.version.replace(".", "_")},
-                "build_version":  {"action": "add", "value":self.args.buildversion},
+                "build_version":  {"action": "add", "value":buildVersion},
+                "pipeline_type":  {"action": "add", "value":pipelineType},
                 "gbuildnum": {"action": "add", "value":self.args.buildnum},
                 "launchtype": {"action": "add", "value":"golang"},
                 "profilename": {"action": "add", "value":self.args.profilename},
@@ -809,6 +819,20 @@ class ReportPortalClient:
             print("\\n")
             return None
 
+    def getAttrOption(self, name):
+        if self.args.attroption == "":
+            return None
+        try:
+            attrvalue = yaml.safe_load(self.args.attroption)
+            namepath = name.split(":")
+            for i in namepath:
+                attrvalue = attrvalue[i]
+            return attrvalue
+        except BaseException as e:
+            print(e)
+            print("\\n")
+            return None
+
     def parseScenarios(self, scenarios):
         valideSubTeam = []
         scenarioList = scenarios.split("|")
@@ -929,7 +953,7 @@ if __name__ == "__main__":
     parser.add_argument("-f","--file", default="")
     parser.add_argument("-s","--subteam", default="")
     parser.add_argument("-v","--version", default="")
-    parser.add_argument("-bv","--buildversion", default="none")
+    parser.add_argument("-ao","--attroption", default="")
     parser.add_argument("-pn","--profilename", default="09_Disconnected UPI on Azure with RHCOS & Private Cluster")
     parser.add_argument("-pp","--profilepath", default="../misc/jenkins/ci/")
     #merge, getwithlanuchname, delete, getfcd

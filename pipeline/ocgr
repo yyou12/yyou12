@@ -12,7 +12,7 @@ LAUNCHTRIAL=$6
 TWOREPOOWNER=$7
 BUILDNUM=$8
 FILTERSO=$9
-BUILDVERSION=${10}
+ATTRIBUTIONOPTION=${10}
 if [ "${LAUNCHID}" == "null" ]; then
   LAUNCHID=""
 else
@@ -33,10 +33,10 @@ if [ "X${LAUNCHTRIAL}X" == "XnullyesX" ]; then
 else
   LAUNCHTRIAL="no"
 fi
-if [ "X${BUILDVERSION}X" == "XnullX" ] || [ "X${BUILDVERSION}X" == "XX" ]; then
-  BUILDVERSION="none"
+if [ "X${ATTRIBUTIONOPTION}X" == "XnullX" ] || [ "X${ATTRIBUTIONOPTION}X" == "XX" ]; then
+  ATTRIBUTIONOPTION=""
 else
-  BUILDVERSION=${BUILDVERSION:4}
+  ATTRIBUTIONOPTION=${ATTRIBUTIONOPTION:4}
 fi
 
 if [[ "${FILTERSO}" == *"Disruptive"* ]] && [[ "${FILTERSO}" != *"~Disruptive"* ]]; then
@@ -45,9 +45,19 @@ else
   buildtype="-ND"
 fi
 
-if [[ "${FILTERSO}" == *"Stagerun&"* ]] && [[ "${FILTERSO}" != *"~Stagerun"* ]]; then
-  profiletype="stage"
+rm -fr handleattribution.py && eval cp -fr ${WORKSPACE}"/private/pipeline/handleattribution.py" .
+pipelinetype=`python3 handleattribution.py -a get -y "${ATTRIBUTIONOPTION}" -p pipeline_type || true `
+if [ "${pipelinetype}" != "None" ] && [ "${pipelinetype}" != "failtogetvalue" ] && [ "${pipelinetype}" != "" ]; then
+  echo ${pipelinetype}
+  if [ "${pipelinetype}" == "stagepipeline" ]; then
+    echo "it is stage pipeline"
+    profiletype="stage"
+  else
+    echo "it is prerelease pipeline"
+    profiletype="ci"
+  fi
 else
+  echo "can not get pipeline_type, treat it as default type prereleasepipeline"
   profiletype="ci"
 fi
 
@@ -97,7 +107,7 @@ if [ "X${LAUNCHID}X" != "XX" ]; then
   for subteamfile in `ls import-*.xml`; do
     subteam=${subteamfile:7:-4}
     eval zip -r "${LAUNCHID}.zip" "${subteamfile}"
-    ret=`python3 reportportal.py -a import -f "${LAUNCHID}.zip" -s "${subteam}" -v "${VERSION}" -bv "${BUILDVERSION}" -bn "${BUILDNUM}""${buildtype}" -pn "${PROFILENAME}" -pp "../misc/jenkins/"${profiletype}"/" -t "${rpmmtoken}" -ta "${rppmtoken}" -trial "${LAUNCHTRIAL}" 2>&1 || true`
+    ret=`python3 reportportal.py -a import -f "${LAUNCHID}.zip" -s "${subteam}" -v "${VERSION}" -ao "${ATTRIBUTIONOPTION}" -bn "${BUILDNUM}""${buildtype}" -pn "${PROFILENAME}" -pp "../misc/jenkins/"${profiletype}"/" -t "${rpmmtoken}" -ta "${rppmtoken}" -trial "${LAUNCHTRIAL}" 2>&1 || true`
     eval rm -fr  "${LAUNCHID}.zip"
     result=`echo -e ${ret} | tail -1|xargs`
     if ! [ "X${result}X" == "XSUCCESSX" ]; then
