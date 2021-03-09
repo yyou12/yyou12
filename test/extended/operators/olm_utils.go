@@ -87,7 +87,6 @@ type PrometheusQueryResult struct {
 	Status string `json:"status"`
 }
 
-
 //the method is to create sub, and save the sub resrouce into dr. and more create csv possible depending on sub.ipApproval
 //if sub.ipApproval is Automatic, it will wait the sub's state become AtLatestKnown and get installed csv as sub.installedCSV, and save csv into dr
 //if sub.ipApproval is not Automatic, it will just wait sub's state become UpgradePending
@@ -989,6 +988,7 @@ func expectedResource(oc *exutil.CLI, asAdmin bool, withoutNamespace bool, isCom
 		}
 		return ret
 	}
+	e2e.Logf("Running: oc get asAdmin(%t) withoutNamespace(%t) %s", asAdmin, withoutNamespace, strings.Join(parameters, " "))
 	return wait.Poll(3*time.Second, 150*time.Second, func() (bool, error) {
 		output, err := doAction(oc, "get", asAdmin, withoutNamespace, parameters...)
 		if err != nil {
