@@ -61,6 +61,8 @@
 // test/extended/testdata/operators/mongodb-ops-manager-secret.yaml
 // test/extended/testdata/operators/operator_group.yaml
 // test/extended/testdata/operators/portworx-snode-cr.yaml
+// test/extended/testdata/operators/radanalytics-spark-sparkapplication-cr.yaml
+// test/extended/testdata/operators/radanalytics-spark-sparkcluster-cr.yaml
 // test/extended/testdata/operators/resourcelocker-cr.yaml
 // test/extended/testdata/operators/resourcelocker-role.yaml
 // test/extended/testdata/operators/spark-gcp-sparkapplication-cr.yaml
@@ -8466,6 +8468,81 @@ func testExtendedTestdataOperatorsPortworxSnodeCrYaml() (*asset, error) {
 	return a, nil
 }
 
+var _testExtendedTestdataOperatorsRadanalyticsSparkSparkapplicationCrYaml = []byte(`apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: SparkApplication-template
+objects:
+  - apiVersion: radanalytics.io/v1
+    kind: SparkApplication
+    metadata:
+      name: "${NAME}"
+      namespace: "${NAMESPACE}"
+    spec:
+      driver:
+        coreLimit: 500m
+        cores: 0.2
+      executor:
+        coreLimit: 1000m
+        cores: 1
+        instances: 2
+      mainApplicationFile: local:///opt/spark/examples/jars/spark-examples_2.11-2.4.5.jar
+      mainClass: org.apache.spark.examples.SparkPi
+parameters:
+  - name: NAME
+  - name: NAMESPACE
+`)
+
+func testExtendedTestdataOperatorsRadanalyticsSparkSparkapplicationCrYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataOperatorsRadanalyticsSparkSparkapplicationCrYaml, nil
+}
+
+func testExtendedTestdataOperatorsRadanalyticsSparkSparkapplicationCrYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataOperatorsRadanalyticsSparkSparkapplicationCrYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/operators/radanalytics-spark-sparkapplication-cr.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataOperatorsRadanalyticsSparkSparkclusterCrYaml = []byte(`apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: sparkCluster-template
+objects:
+  - apiVersion: radanalytics.io/v1
+    kind: SparkCluster
+    metadata:
+      name: "${NAME}"
+      namespace: "${NAMESPACE}"
+    spec:
+      master:
+        instances: "1"
+      worker:
+        instances: "2"
+parameters:
+  - name: NAME
+  - name: NAMESPACE
+`)
+
+func testExtendedTestdataOperatorsRadanalyticsSparkSparkclusterCrYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataOperatorsRadanalyticsSparkSparkclusterCrYaml, nil
+}
+
+func testExtendedTestdataOperatorsRadanalyticsSparkSparkclusterCrYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataOperatorsRadanalyticsSparkSparkclusterCrYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/operators/radanalytics-spark-sparkcluster-cr.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
 var _testExtendedTestdataOperatorsResourcelockerCrYaml = []byte(`apiVersion: redhatcop.redhat.io/v1alpha1
 kind: ResourceLocker
 metadata:
@@ -11885,6 +11962,8 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/operators/mongodb-ops-manager-secret.yaml":                  testExtendedTestdataOperatorsMongodbOpsManagerSecretYaml,
 	"test/extended/testdata/operators/operator_group.yaml":                              testExtendedTestdataOperatorsOperator_groupYaml,
 	"test/extended/testdata/operators/portworx-snode-cr.yaml":                           testExtendedTestdataOperatorsPortworxSnodeCrYaml,
+	"test/extended/testdata/operators/radanalytics-spark-sparkapplication-cr.yaml":      testExtendedTestdataOperatorsRadanalyticsSparkSparkapplicationCrYaml,
+	"test/extended/testdata/operators/radanalytics-spark-sparkcluster-cr.yaml":          testExtendedTestdataOperatorsRadanalyticsSparkSparkclusterCrYaml,
 	"test/extended/testdata/operators/resourcelocker-cr.yaml":                           testExtendedTestdataOperatorsResourcelockerCrYaml,
 	"test/extended/testdata/operators/resourcelocker-role.yaml":                         testExtendedTestdataOperatorsResourcelockerRoleYaml,
 	"test/extended/testdata/operators/spark-gcp-sparkapplication-cr.yaml":               testExtendedTestdataOperatorsSparkGcpSparkapplicationCrYaml,
@@ -12040,24 +12119,26 @@ var _bintree = &bintree{nil, map[string]*bintree{
 					"vpa-crd.yaml":                          {testExtendedTestdataOlmVpaCrdYaml, map[string]*bintree{}},
 				}},
 				"operators": {nil, map[string]*bintree{
-					"argocd-cr.yaml":                     {testExtendedTestdataOperatorsArgocdCrYaml, map[string]*bintree{}},
-					"couchbase-enterprise-cr.yaml":       {testExtendedTestdataOperatorsCouchbaseEnterpriseCrYaml, map[string]*bintree{}},
-					"jaeger.yaml":                        {testExtendedTestdataOperatorsJaegerYaml, map[string]*bintree{}},
-					"kafka.yaml":                         {testExtendedTestdataOperatorsKafkaYaml, map[string]*bintree{}},
-					"keycloak-cr.yaml":                   {testExtendedTestdataOperatorsKeycloakCrYaml, map[string]*bintree{}},
-					"kiali-cr.yaml":                      {testExtendedTestdataOperatorsKialiCrYaml, map[string]*bintree{}},
-					"mongodb-ops-manager-cr.yaml":        {testExtendedTestdataOperatorsMongodbOpsManagerCrYaml, map[string]*bintree{}},
-					"mongodb-ops-manager-secret.yaml":    {testExtendedTestdataOperatorsMongodbOpsManagerSecretYaml, map[string]*bintree{}},
-					"operator_group.yaml":                {testExtendedTestdataOperatorsOperator_groupYaml, map[string]*bintree{}},
-					"portworx-snode-cr.yaml":             {testExtendedTestdataOperatorsPortworxSnodeCrYaml, map[string]*bintree{}},
-					"resourcelocker-cr.yaml":             {testExtendedTestdataOperatorsResourcelockerCrYaml, map[string]*bintree{}},
-					"resourcelocker-role.yaml":           {testExtendedTestdataOperatorsResourcelockerRoleYaml, map[string]*bintree{}},
-					"spark-gcp-sparkapplication-cr.yaml": {testExtendedTestdataOperatorsSparkGcpSparkapplicationCrYaml, map[string]*bintree{}},
-					"storageos-secret.yaml":              {testExtendedTestdataOperatorsStorageosSecretYaml, map[string]*bintree{}},
-					"storageoscluster-cr.yaml":           {testExtendedTestdataOperatorsStorageosclusterCrYaml, map[string]*bintree{}},
-					"storageosupgrade-cr.yaml":           {testExtendedTestdataOperatorsStorageosupgradeCrYaml, map[string]*bintree{}},
-					"strimzi-cr.yaml":                    {testExtendedTestdataOperatorsStrimziCrYaml, map[string]*bintree{}},
-					"subscription.yaml":                  {testExtendedTestdataOperatorsSubscriptionYaml, map[string]*bintree{}},
+					"argocd-cr.yaml":                              {testExtendedTestdataOperatorsArgocdCrYaml, map[string]*bintree{}},
+					"couchbase-enterprise-cr.yaml":                {testExtendedTestdataOperatorsCouchbaseEnterpriseCrYaml, map[string]*bintree{}},
+					"jaeger.yaml":                                 {testExtendedTestdataOperatorsJaegerYaml, map[string]*bintree{}},
+					"kafka.yaml":                                  {testExtendedTestdataOperatorsKafkaYaml, map[string]*bintree{}},
+					"keycloak-cr.yaml":                            {testExtendedTestdataOperatorsKeycloakCrYaml, map[string]*bintree{}},
+					"kiali-cr.yaml":                               {testExtendedTestdataOperatorsKialiCrYaml, map[string]*bintree{}},
+					"mongodb-ops-manager-cr.yaml":                 {testExtendedTestdataOperatorsMongodbOpsManagerCrYaml, map[string]*bintree{}},
+					"mongodb-ops-manager-secret.yaml":             {testExtendedTestdataOperatorsMongodbOpsManagerSecretYaml, map[string]*bintree{}},
+					"operator_group.yaml":                         {testExtendedTestdataOperatorsOperator_groupYaml, map[string]*bintree{}},
+					"portworx-snode-cr.yaml":                      {testExtendedTestdataOperatorsPortworxSnodeCrYaml, map[string]*bintree{}},
+					"radanalytics-spark-sparkapplication-cr.yaml": {testExtendedTestdataOperatorsRadanalyticsSparkSparkapplicationCrYaml, map[string]*bintree{}},
+					"radanalytics-spark-sparkcluster-cr.yaml":     {testExtendedTestdataOperatorsRadanalyticsSparkSparkclusterCrYaml, map[string]*bintree{}},
+					"resourcelocker-cr.yaml":                      {testExtendedTestdataOperatorsResourcelockerCrYaml, map[string]*bintree{}},
+					"resourcelocker-role.yaml":                    {testExtendedTestdataOperatorsResourcelockerRoleYaml, map[string]*bintree{}},
+					"spark-gcp-sparkapplication-cr.yaml":          {testExtendedTestdataOperatorsSparkGcpSparkapplicationCrYaml, map[string]*bintree{}},
+					"storageos-secret.yaml":                       {testExtendedTestdataOperatorsStorageosSecretYaml, map[string]*bintree{}},
+					"storageoscluster-cr.yaml":                    {testExtendedTestdataOperatorsStorageosclusterCrYaml, map[string]*bintree{}},
+					"storageosupgrade-cr.yaml":                    {testExtendedTestdataOperatorsStorageosupgradeCrYaml, map[string]*bintree{}},
+					"strimzi-cr.yaml":                             {testExtendedTestdataOperatorsStrimziCrYaml, map[string]*bintree{}},
+					"subscription.yaml":                           {testExtendedTestdataOperatorsSubscriptionYaml, map[string]*bintree{}},
 				}},
 				"opm": {nil, map[string]*bintree{
 					"index_34016.db": {testExtendedTestdataOpmIndex_34016Db, map[string]*bintree{}},

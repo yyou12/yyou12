@@ -2,6 +2,7 @@ package operators
 
 import (
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -159,6 +160,153 @@ var _ = g.Describe("[sig-operators] ISV_Operators [Suite:openshift/isv]", func()
 		e2e.Logf("STEP PASS %v", searchMsg)
 		RemoveCR(currentPackage, sparkgcpCR, sparkgcpName, oc)
 		RemoveOperatorDependencies(currentPackage, oc, false)
+	})
+
+	// author: tbuskey@redhat.com OCPQE-2169-Intermediate
+	g.It(TestCaseName("radanalytics-spark", "Medium-"+CaseIDCertifiedOperators["radanalytics-spark"]+"-"+intermediateTestsSufix), func() {
+		var (
+			itName                   = g.CurrentGinkgoTestDescription().TestText
+			buildPruningBaseDir      = exutil.FixturePath("testdata", "olm")
+			ogTemplate               = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+			subFile                  = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+			buildIntermediateBaseDir = exutil.FixturePath("testdata", "operators")
+			radSparkCluster          = filepath.Join(buildIntermediateBaseDir, "radanalytics-spark-sparkcluster-cr.yaml")
+			radSparkApplication      = filepath.Join(buildIntermediateBaseDir, "radanalytics-spark-sparkapplication-cr.yaml")
+
+			appPodName   = ""
+			csvName      = ""
+			caseID       = CaseIDCertifiedOperators["radanalytics-spark"]
+			err          error
+			msg          string
+			packageName  = "radanalytics-spark" // spark-operator in OperatorHub
+			pkgAvailable = true
+			re           = regexp.MustCompile(`Pi is roughly 3\.[0-9]+`)
+			searchMsg    = "Pi is roughly "
+			waitErr      error
+		)
+
+		oc.SetupProject()
+
+		var (
+			og = operatorGroupDescription{
+				name:      packageName + "-" + caseID,
+				namespace: oc.Namespace(),
+				template:  ogTemplate,
+			}
+			sub = subscriptionDescription{
+				subName:                packageName + "-" + caseID,
+				namespace:              oc.Namespace(),
+				catalogSourceName:      "community-operators",
+				catalogSourceNamespace: "openshift-marketplace",
+				ipApproval:             "Automatic",
+				channel:                "alpha",
+				operatorPackage:        packageName,
+				startingCSV:            "sparkoperator.v1.1.0",
+				installedCSV:           "sparkoperator.v1.1.0",
+				singleNamespace:        true,
+				template:               subFile,
+			}
+			clusterCrd = customResourceDescription{
+				name:      "my-sparkcluster",
+				namespace: oc.Namespace(),
+				typename:  "SparkCluster",
+				template:  radSparkCluster,
+			}
+			appCrd = customResourceDescription{
+				name:      "my-spark-app",
+				namespace: oc.Namespace(),
+				typename:  "SparkApplication",
+				template:  radSparkApplication,
+			}
+		)
+
+		dr := make(describerResrouce)
+		itName = g.CurrentGinkgoTestDescription().TestText
+		dr.addIr(itName)
+
+		g.By("Check " + packageName + " availability")
+		msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("packagemanifest", "-n", "openshift-marketplace", packageName, "--no-headers").Output()
+		if err != nil {
+			pkgAvailable = false
+			e2e.Logf("!!! Could not query packagemanifest for %v operator, probably will fail: %v %v\n", packageName, err, msg)
+		}
+		if !strings.Contains(msg, "Community Operators") {
+			e2e.Logf("!!! Could not find %v operator in Community Operators, probably will fail: %v %v\n", packageName, err, msg)
+			pkgAvailable = false
+		}
+		if pkgAvailable {
+			e2e.Logf("Package %v is available", packageName)
+		} else {
+			e2e.Logf("\n\nFAIL: %v was not available. \n", packageName)
+			o.Expect(pkgAvailable)
+		}
+
+		g.By("Create og")
+		og.createwithCheck(oc, itName, dr)
+
+		g.By("Create sub")
+		sub.createWithoutCheck(oc, itName, dr)
+
+		g.By("Wait for csv")
+		waitErr = wait.Poll(15*time.Second, 360*time.Second, func() (bool, error) {
+			msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", "-n", oc.Namespace(), "--no-headers").Output()
+			if strings.Contains(msg, sub.installedCSV) {
+				e2e.Logf("found csv %v", msg)
+				msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", sub.installedCSV, "-n", oc.Namespace(), "-o=jsonpath={.status.phase}").Output()
+				o.Expect(err).NotTo(o.HaveOccurred())
+				if strings.Contains(msg, "Succeeded") {
+					csvName = sub.installedCSV
+					return true, nil
+				}
+			}
+			return false, nil
+		})
+		o.Expect(waitErr).NotTo(o.HaveOccurred())
+		o.Expect(csvName).NotTo(o.BeEmpty())
+
+		g.By("Create Sparkcluster")
+		clusterCrd.create(oc, itName, dr)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "ready", ok, []string{clusterCrd.typename, clusterCrd.name, "-n", oc.Namespace(), "-o=jsonpath={.status.state}"}).check(oc)
+
+		g.By("Create SparkApplication")
+		appCrd.create(oc, itName, dr)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "ready", ok, []string{appCrd.typename, appCrd.name, "-n", oc.Namespace(), "-o=jsonpath={.status.state}"}).check(oc)
+
+		g.By("Wait for application pod to appear")
+		waitErr = wait.Poll(15*time.Second, 360*time.Second, func() (bool, error) {
+			msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-n", oc.Namespace(), "--no-headers").Output()
+			if strings.Contains(msg, "my-spark-app") {
+				if strings.Contains(msg, "driver") {
+					appPodName, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-n", oc.Namespace(), "--selector=spark-role=driver", "-o=jsonpath={.items..metadata.name}").Output()
+					e2e.Logf("found app pod %v", appPodName)
+					return true, nil
+				}
+			}
+			return false, nil
+		})
+		o.Expect(waitErr).NotTo(o.HaveOccurred())
+		o.Expect(appPodName).NotTo(o.BeEmpty())
+
+		g.By("Wait for SparkApplication to finish")
+		waitErr = wait.Poll(15*time.Second, 360*time.Second, func() (bool, error) {
+			msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-n", oc.Namespace(), appPodName, "--no-headers").Output()
+			e2e.Logf("%v", msg)
+			if strings.Contains(msg, "Completed") {
+				return true, nil
+			}
+			return false, nil
+		})
+		o.Expect(waitErr).NotTo(o.HaveOccurred())
+		o.Expect(msg).NotTo(o.BeEmpty())
+
+		g.By("Check the answer in logs")
+		msg, err = oc.AsAdmin().WithoutNamespace().Run("logs").Args(appPodName, "-n", oc.Namespace()).Output()
+		o.Expect(waitErr).NotTo(o.HaveOccurred())
+		o.Expect(msg).To(o.ContainSubstring(searchMsg))
+
+		g.By("DONE")
+		e2e.Logf("%v\n\n", re.FindString(msg))
+
 	})
 
 	g.It(TestCaseName("strimzi-kafka-operator", "Medium-"+CaseIDCertifiedOperators["strimzi-kafka-operator"]+"-"+intermediateTestsSufix), func() {
