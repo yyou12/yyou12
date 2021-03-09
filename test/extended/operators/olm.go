@@ -3565,6 +3565,81 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 
 	})
 
+	// It will cover test case: OCP-39897, author: kuiwang@redhat.com
+	//Set it as serial because it will delete CRD of teiid. It potential impact other cases if it is in parallel.
+	g.It("ConnectedOnly-Medium-39897-operator objects should not be recreated after all other associated resources have been deleted [Serial]", func() {
+		var (
+			itName              = g.CurrentGinkgoTestDescription().TestText
+			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
+			ogSingleTemplate    = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+			subTemplate         = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+			catsrcImageTemplate = filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
+			og                  = operatorGroupDescription{
+				name:      "og-singlenamespace",
+				namespace: "",
+				template:  ogSingleTemplate,
+			}
+			catsrc = catalogSourceDescription{
+				name:        "catsrc-39897-operator",
+				namespace:   "",
+				displayName: "Test Catsrc 39897 Operators",
+				publisher:   "Red Hat",
+				sourceType:  "grpc",
+				address:     "quay.io/olmqe/olm-dep:vteiid-1899588",
+				template:    catsrcImageTemplate,
+			}
+			subTeiid = subscriptionDescription{
+				subName:                "teiid39897",
+				namespace:              "",
+				channel:                "alpha",
+				ipApproval:             "Automatic",
+				operatorPackage:        "teiid",
+				catalogSourceName:      catsrc.name,
+				catalogSourceNamespace: "",
+				startingCSV:            "teiid.v0.3.0", //get it from package based on currentCSV if ipApproval is Automatic
+				currentCSV:             "",
+				installedCSV:           "",
+				template:               subTemplate,
+				singleNamespace:        false,
+			}
+			crd = crdDescription{
+				name: "virtualdatabases.teiid.io",
+			}
+		)
+
+		oc.SetupProject() //project and its resource are deleted automatically when out of It, so no need derfer or AfterEach
+		og.namespace = oc.Namespace()
+		catsrc.namespace = oc.Namespace()
+		subTeiid.namespace = oc.Namespace()
+		subTeiid.catalogSourceNamespace = catsrc.namespace
+
+		g.By("create catalog source")
+		catsrc.create(oc, itName, dr)
+
+		g.By("Create og")
+		og.create(oc, itName, dr)
+
+		g.By("install Teiid")
+		subTeiid.create(oc, itName, dr)
+		defer doAction(oc, "delete", asAdmin, withoutNamespace, "operator", subTeiid.operatorPackage+"."+subTeiid.namespace)
+
+		g.By("Check the resources via operators")
+		newCheck("expect", asAdmin, withoutNamespace, contain, "CustomResourceDefinition", ok, []string{"operator", subTeiid.operatorPackage + "." + subTeiid.namespace, "-o=jsonpath={.status.components.refs[*].kind}"}).check(oc)
+
+		g.By("delete operator and Operator still exists because of crd")
+		subTeiid.delete(itName, dr)
+		_, err := doAction(oc, "delete", asAdmin, withoutNamespace, "csv", subTeiid.installedCSV, "-n", subTeiid.namespace)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		newCheck("expect", asAdmin, withoutNamespace, contain, "CustomResourceDefinition", ok, []string{"operator", subTeiid.operatorPackage + "." + subTeiid.namespace, "-o=jsonpath={.status.components.refs[*].kind}"}).check(oc)
+
+		g.By("delete crd")
+		crd.delete(oc)
+
+		g.By("delete Operator resource to check if it is recreated")
+		doAction(oc, "delete", asAdmin, withoutNamespace, "operator", subTeiid.operatorPackage+"."+subTeiid.namespace)
+		newCheck("present", asAdmin, withoutNamespace, notPresent, "", ok, []string{"operator", subTeiid.operatorPackage + "." + subTeiid.namespace}).check(oc)
+	})
+
 	// It will cover test case: OCP-24917, author: tbuskey@redhat.com
 	g.It("Medium-24917-Operators in SingleNamespace should not be granted namespace list [Disruptive]", func() {
 		var (
