@@ -20,7 +20,7 @@ var _ = g.Describe("[sig-apps] Workloads", func() {
 	var (
 		oc = exutil.NewCLI("default-"+getRandomString(), exutil.KubeConfigPath())
 	)
-	g.It("Medium-29780-Controller metrics reported from openshift-controller-manager", func() {
+	g.It("Author:wewang-Medium-29780-Controller metrics reported from openshift-controller-manager", func() {
 		g.By("check controller metrics")
 		token, err := oc.AsAdmin().WithoutNamespace().Run("sa").Args("-n", "openshift-monitoring", "get-token", "prometheus-k8s").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())

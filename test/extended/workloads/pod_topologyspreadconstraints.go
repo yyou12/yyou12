@@ -20,7 +20,7 @@ var _ = g.Describe("[sig-scheduling] Workloads", func() {
 	var oc = exutil.NewCLI("default-"+getRandomString(), exutil.KubeConfigPath())
 
 	// author: yinzhou@redhat.com
-	g.It("Critical-33836-Critical-33845-High-33767-Check Validate Pod with only one TopologySpreadConstraint topologyKey node", func() {
+	g.It("Author:yinzhou-Critical-33836-Critical-33845-High-33767-Check Validate Pod with only one TopologySpreadConstraint topologyKey node", func() {
 		buildPruningBaseDir := exutil.FixturePath("testdata", "workloads")
 		podSelectorT := filepath.Join(buildPruningBaseDir, "pod_nodeselect.yaml")
 		podSinglePtsT := filepath.Join(buildPruningBaseDir, "pod_singlepts.yaml")
@@ -213,7 +213,7 @@ var _ = g.Describe("[sig-scheduling] Workloads", func() {
 		o.Expect(pod337672nodename).NotTo(o.Equal(pod337671nodename))
 	})
 	// author: yinzhou@redhat.com
-	g.It("High-34019-Check validate TopologySpreadConstraints ignored the node without the label", func() {
+	g.It("Author:yinzhou-High-34019-Check validate TopologySpreadConstraints ignored the node without the label", func() {
 		buildPruningBaseDir := exutil.FixturePath("testdata", "workloads")
 		deploySinglePtsT := filepath.Join(buildPruningBaseDir, "deploy_single_pts.yaml")
 		var ktz = "testzone"
@@ -295,7 +295,7 @@ var _ = g.Describe("[sig-scheduling] Workloads", func() {
 	})
 
 	// author: yinzhou@redhat.com
-	g.It("Medium-33824-Check Validate TopologySpreadConstraint with podAffinity and podAntiAffinity", func() {
+	g.It("Author:yinzhou-Medium-33824-Check Validate TopologySpreadConstraint with podAffinity and podAntiAffinity", func() {
 		buildPruningBaseDir := exutil.FixturePath("testdata", "workloads")
 		podSelectorT := filepath.Join(buildPruningBaseDir, "pod_nodeselect.yaml")
 		podAffinityPreferredPtsT := filepath.Join(buildPruningBaseDir, "pod_singlepts_prefer.yaml")
@@ -425,7 +425,7 @@ var _ = g.Describe("[sig-scheduling] Workloads", func() {
 	})
 
         // author: knarra@redhat.com
-	g.It("High-34017-TopologySpreadConstraints do not work on cross namespaced pods", func() {
+	g.It("Author:knarra-High-34017-TopologySpreadConstraints do not work on cross namespaced pods", func() {
 		buildPruningBaseDir := exutil.FixturePath("testdata", "workloads")
 		podSelectorT := filepath.Join(buildPruningBaseDir, "pod_nodeselect.yaml")
 		podNodeAffinityRequiredPtsT := filepath.Join(buildPruningBaseDir, "pod_pts_nodeaffinity_required.yaml")
@@ -517,7 +517,7 @@ var _ = g.Describe("[sig-scheduling] Workloads", func() {
 	})
 
 	// author: knarra@redhat.com
-	g.It("High-34014-Validate TopologySpreadConstraints with NodeAffinity", func() {
+	g.It("Author:knarra-High-34014-Validate TopologySpreadConstraints with NodeAffinity", func() {
 		buildPruningBaseDir := exutil.FixturePath("testdata", "workloads")
 		podSingleNodeAffinityRequiredPtsT := filepath.Join(buildPruningBaseDir, "pod_single_nodeaffinity_required.yaml")
 

@@ -35,7 +35,7 @@ var _ = g.Describe("[sig-windows] Windows_Containers", func() {
 	})
 
 	// author: sgao@redhat.com
-	g.It("Critical-33612-Windows node basic check", func() {
+	g.It("Author:sgao-Critical-33612-Windows node basic check", func() {
 		g.By("Check Windows worker nodes run the same kubelet version as other Linux worker nodes")
 		linuxKubeletVersion, err := oc.WithoutNamespace().Run("get").Args("nodes", "-l=kubernetes.io/os=linux", "-o=jsonpath={.items[0].status.nodeInfo.kubeletVersion}").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -75,7 +75,7 @@ var _ = g.Describe("[sig-windows] Windows_Containers", func() {
 		}
 	})
 	// author: sgao@redhat.com
-	g.It("Critical-28423-Dockerfile prepare required binaries in operator image", func() {
+	g.It("Author:sgao-Critical-28423-Dockerfile prepare required binaries in operator image", func() {
 		checkFolders := []struct {
 			folder   string
 			expected string
@@ -109,7 +109,7 @@ var _ = g.Describe("[sig-windows] Windows_Containers", func() {
 		}
 	})
 	// author: sgao@redhat.com
-	g.It("Critical-32615-Generate userData secret [Serial]", func() {
+	g.It("Author:sgao-Critical-32615-Generate userData secret [Serial]", func() {
 		g.By("Check secret windows-user-data generated and contain correct public key")
 		output, err := exec.Command("bash", "-c", "cat "+publicKey+"").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -163,7 +163,7 @@ var _ = g.Describe("[sig-windows] Windows_Containers", func() {
 		}
 	})
 	// author: sgao@redhat.com
-	g.It("Low-32554-WMCO run in a pod with HostNetwork", func() {
+	g.It("Author:sgao-Low-32554-WMCO run in a pod with HostNetwork", func() {
 		winInternalIP := getWindowsInternalIPs(oc)[0]
 		curlDest := winInternalIP + ":22"
 		command := []string{"exec", "-n", "openshift-windows-machine-config-operator", "deployment.apps/windows-machine-config-operator", "--", "curl", curlDest}
@@ -173,7 +173,7 @@ var _ = g.Describe("[sig-windows] Windows_Containers", func() {
 		}
 	})
 	// author: sgao@redhat.com
-	g.It("Critical-32856-WMCO watch machineset with Windows label", func() {
+	g.It("Author:sgao-Critical-32856-WMCO watch machineset with Windows label", func() {
 		// Note: Create machineset with Windows label covered in Flexy post action
 		g.By("Check create machineset without Windows label")
 		windowsMachineSetName := ""
@@ -231,7 +231,7 @@ var _ = g.Describe("[sig-windows] Windows_Containers", func() {
 		}
 	})
 	// author: sgao@redhat.com
-	g.It("Critical-29411-Reconcile Windows node [Serial]", func() {
+	g.It("Author:sgao-Critical-29411-Reconcile Windows node [Serial]", func() {
 		windowsMachineSetName := ""
 		if iaasPlatform == "aws" {
 			// TODO: Get Windows machineset via oc command
@@ -283,7 +283,7 @@ var _ = g.Describe("[sig-windows] Windows_Containers", func() {
 		}
 	})
 	// author: sgao@redhat.com
-	g.It("Critical-28632-Windows and Linux east-west network during a long time [Serial]", func() {
+	g.It("Author:sgao-Critical-28632-Windows and Linux east-west network during a long time [Serial]", func() {
 		// Note: Duplicate with Case 31276, run again in [Serial]
 		if !checkWindowsWorkloadCreated(oc) {
 			createWindowsWorkload(oc)
@@ -312,7 +312,7 @@ var _ = g.Describe("[sig-windows] Windows_Containers", func() {
 		}
 	})
 	// author: sgao@redhat.com
-	g.It("Critical-32273-Configure kube-proxy and external networking check", func() {
+	g.It("Author:sgao-Critical-32273-Configure kube-proxy and external networking check", func() {
 		if !checkWindowsWorkloadCreated(oc) {
 			createWindowsWorkload(oc)
 		}
@@ -338,7 +338,7 @@ var _ = g.Describe("[sig-windows] Windows_Containers", func() {
 		}
 	})
 	// author: sgao@redhat.com
-	g.It("Critical-31276-Configure CNI and internal networking check", func() {
+	g.It("Author:sgao-Critical-31276-Configure CNI and internal networking check", func() {
 		if !checkWindowsWorkloadCreated(oc) {
 			createWindowsWorkload(oc)
 		}
@@ -406,7 +406,7 @@ var _ = g.Describe("[sig-windows] Windows_Containers", func() {
 			e2e.Failf("Failed to curl Windows web server from Windows pod in the same node")
 		}
 	})
-	g.It("Critical-25593-Prevent scheduling non-Windows workloads on Windows nodes", func() {
+	g.It("Author:sgao-Critical-25593-Prevent scheduling non-Windows workloads on Windows nodes", func() {
 		g.By("Check Windows node have a taint 'os=Windows:NoSchedule'")
 		msg, err := oc.WithoutNamespace().Run("get").Args("nodes", "-l=kubernetes.io/os=windows", "-o=jsonpath={.items[0].spec.taints[0].key}={.items[0].spec.taints[0].value}:{.items[0].spec.taints[0].effect}").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())

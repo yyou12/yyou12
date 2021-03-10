@@ -100,7 +100,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 	})
 
 	// It will cover test case: OCP-34388 & OCP-27760 , author: xiyuan@redhat.com
-	g.It("Critical-34388-High-27760-check file-integrity-operator could report failure and persist the failure logs on to a ConfigMap [Serial]", func() {
+	g.It("Author:xiyuan-Critical-34388-High-27760-check file-integrity-operator could report failure and persist the failure logs on to a ConfigMap [Serial]", func() {
 		var itName = g.CurrentGinkgoTestDescription().TestText
 		oc.SetupProject()
 		catsrc.namespace = oc.Namespace()
@@ -145,7 +145,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 	})
 
 	//author: xiyuan@redhat.com
-	g.It("Medium-31979-the enabling debug flag of the logcollector should work [Serial]", func() {
+	g.It("Author:xiyuan-Medium-31979-the enabling debug flag of the logcollector should work [Serial]", func() {
 		var itName = g.CurrentGinkgoTestDescription().TestText
 		oc.SetupProject()
 		catsrc.namespace = oc.Namespace()
@@ -186,7 +186,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 	})
 
 	//author: xiyuan@redhat.com
-	g.It("Medium-31933-the disabling debug flag of the logcollector should work [Serial]", func() {
+	g.It("Author:xiyuan-Medium-31933-the disabling debug flag of the logcollector should work [Serial]", func() {
 		var itName = g.CurrentGinkgoTestDescription().TestText
 		oc.SetupProject()
 		catsrc.namespace = oc.Namespace()
@@ -227,7 +227,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 	})
 
 	//author: xiyuan@redhat.com
-	g.It("Medium-31873-check the gracePeriod is configurable [Serial]", func() {
+	g.It("Author:xiyuan-Medium-31873-check the gracePeriod is configurable [Serial]", func() {
 		var itName = g.CurrentGinkgoTestDescription().TestText
 		oc.SetupProject()
 		catsrc.namespace = oc.Namespace()
@@ -282,7 +282,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 	})
 
 	//author: xiyuan@redhat.com
-	g.It("Medium-28524-adding invalid configuration should report failure [Serial]", func() {
+	g.It("Author:xiyuan-Medium-28524-adding invalid configuration should report failure [Serial]", func() {
 		var itName = g.CurrentGinkgoTestDescription().TestText
 		oc.SetupProject()
 		catsrc.namespace = oc.Namespace()
@@ -328,7 +328,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 	})
 
 	//author: xiyuan@redhat.com
-	g.It("Medium-33177-only one long-running daemonset should be created by FIO", func() {
+	g.It("Author:xiyuan-Medium-33177-only one long-running daemonset should be created by FIO", func() {
 		var itName = g.CurrentGinkgoTestDescription().TestText
 		oc.SetupProject()
 		catsrc.namespace = oc.Namespace()
@@ -367,7 +367,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 	})
 
 	//author: xiyuan@redhat.com
-	g.It("Medium-33853-check whether aide will not reinit when a fileintegrity recreated after deleted [Serial]", func() {
+	g.It("Author:xiyuan-Medium-33853-check whether aide will not reinit when a fileintegrity recreated after deleted [Serial]", func() {
 		var itName = g.CurrentGinkgoTestDescription().TestText
 		oc.SetupProject()
 		catsrc.namespace = oc.Namespace()
@@ -424,7 +424,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 	})
 
 	//author: xiyuan@redhat.com
-	g.It("Medium-33332-The fileintegritynodestatuses should show status summary for FIO [Serial]", func() {
+	g.It("Author:xiyuan-Medium-33332-The fileintegritynodestatuses should show status summary for FIO [Serial]", func() {
 		var itName = g.CurrentGinkgoTestDescription().TestText
 		oc.SetupProject()
 		catsrc.namespace = oc.Namespace()
@@ -465,7 +465,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 	})
 
 	//author: xiyuan@redhat.com
-	g.It("High-33226-enable configuring tolerations in FileIntegrities [Serial]", func() {
+	g.It("Author:xiyuan-High-33226-enable configuring tolerations in FileIntegrities [Serial]", func() {
 		var itName = g.CurrentGinkgoTestDescription().TestText
 		oc.SetupProject()
 		catsrc.namespace = oc.Namespace()
@@ -533,7 +533,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 	})
 
 	//author: xiyuan@redhat.com
-	g.It("Medium-33254-enable configuring tolerations in FileIntegrities when there is more than one taint on one node [Serial]", func() {
+	g.It("Author:xiyuan-Medium-33254-enable configuring tolerations in FileIntegrities when there is more than one taint on one node [Serial]", func() {
 		var itName = g.CurrentGinkgoTestDescription().TestText
 		oc.SetupProject()
 		catsrc.namespace = oc.Namespace()
@@ -580,7 +580,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 	})
 
 	//author: xiyuan@redhat.com
-	g.It("Medium-27755-check nodeSelector works for operator file-integrity-operator", func() {
+	g.It("Author:xiyuan-Medium-27755-check nodeSelector works for operator file-integrity-operator", func() {
 		var itName = g.CurrentGinkgoTestDescription().TestText
 		oc.SetupProject()
 		catsrc.namespace = oc.Namespace()
@@ -630,7 +630,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 	})
 
 	//author: xiyuan@redhat.com
-	g.It("Medium-31862-check whether aide config change from non-empty to empty will trigger a re-initialization of the aide database or not", func() {
+	g.It("Author:xiyuan-Medium-31862-check whether aide config change from non-empty to empty will trigger a re-initialization of the aide database or not", func() {
 		var itName = g.CurrentGinkgoTestDescription().TestText
 		oc.SetupProject()
 		catsrc.namespace = oc.Namespace()
@@ -670,7 +670,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 	})
 
 	//author: xiyuan@redhat.com
-	g.It("High-29782-aide config change will trigger a re-initialization of the aide database [Serial]", func() {
+	g.It("Author:xiyuan-High-29782-aide config change will trigger a re-initialization of the aide database [Serial]", func() {
 		var itName = g.CurrentGinkgoTestDescription().TestText
 		oc.SetupProject()
 		catsrc.namespace = oc.Namespace()

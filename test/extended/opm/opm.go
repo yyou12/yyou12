@@ -17,7 +17,7 @@ var _ = g.Describe("[sig-operators] OLM opm should", func() {
 	var opmCLI = NewOpmCLI()
 
 	// author: jiazha@redhat.com
-	g.It("Medium-27620-Validate operator bundle Image and Contents", func() {
+	g.It("Author:jiazha-Medium-27620-Validate operator bundle Image and Contents", func() {
 
 		bundleImages := []struct {
 			image  string
@@ -42,7 +42,7 @@ var _ = g.Describe("[sig-operators] OLM opm should", func() {
 	})
 
 	// author: bandrade@redhat.com
-	g.It("Medium-34016-opm can prune operators from catalog", func() {
+	g.It("Author:bandrade-Medium-34016-opm can prune operators from catalog", func() {
 		opmBaseDir := exutil.FixturePath("testdata", "opm")
 		indexDB := filepath.Join(opmBaseDir, "index_34016.db")
 		output, err := opmCLI.Run("registry").Args("prune", "-d", indexDB, "-p", "lib-bucket-provisioner").Output()

@@ -19,7 +19,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
     var oc = exutil.NewCLIWithoutNamespace("default")
 
     // author: jfan@redhat.com
-    g.It("Medium-35458-SDK run bundle create registry image pod", func() {
+    g.It("Author:jfan-Medium-35458-SDK run bundle create registry image pod", func() {
 
         bundleImages := []struct {
             image  string
@@ -42,7 +42,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
     })
     
     // author: jfan@redhat.com
-    g.It("High-37465-SDK olm improve olm related sub commands", func() {
+    g.It("Author:jfan-High-37465-SDK olm improve olm related sub commands", func() {
 
         operatorsdkCLI.showInfo = true
         g.By("check the olm status")
@@ -51,7 +51,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
     })
 
     // author: jfan@redhat.com
-    g.It("High-37312-SDK olm improve manage operator bundles in new manifests metadata format", func() {
+    g.It("Author:jfan-High-37312-SDK olm improve manage operator bundles in new manifests metadata format", func() {
 
         operatorsdkCLI.showInfo = true
         exec.Command("bash", "-c", "mkdir /tmp/memcached-operator-37312 && cd /tmp/memcached-operator-37312 && operator-sdk init --project-version 3-alpha --plugins ansible.sdk.operatorframework.io/v1 --domain example.com --group cache --version v1alpha1 --kind Memcached --generate-playbook").Output()
@@ -62,7 +62,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
     })
 
     // author: jfan@redhat.com
-    g.It("High-37141-SDK Helm support simple structural schema generation for Helm CRDs", func() {
+    g.It("Author:jfan-High-37141-SDK Helm support simple structural schema generation for Helm CRDs", func() {
 
         operatorsdkCLI.showInfo = true
         exec.Command("bash", "-c", "mkdir /tmp/nginx-operator-37141 && cd /tmp/nginx-operator-37141 && operator-sdk init --project-name nginx-operator --plugins helm.sdk.operatorframework.io/v1").Output()
@@ -76,7 +76,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
     })
 
     // author: jfan@redhat.com
-    g.It("High-37311-SDK ansible valid structural schemas for ansible based operators", func() {
+    g.It("Author:jfan-High-37311-SDK ansible valid structural schemas for ansible based operators", func() {
         operatorsdkCLI.showInfo = true
         exec.Command("bash", "-c", "mkdir /tmp/ansible-operator-37311 && cd /tmp/ansible-operator-37311 && operator-sdk init --project-name nginx-operator --plugins ansible.sdk.operatorframework.io/v1").Output()
         defer exec.Command("bash", "-c", "rm -rf /tmp/ansible-operator-37311").Output()
@@ -88,7 +88,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
     })
 
     // author: jfan@redhat.com
-    g.It("High-37627-SDK run bundle upgrade test", func() {
+    g.It("Author:jfan-High-37627-SDK run bundle upgrade test", func() {
         operatorsdkCLI.showInfo = true
         oc.SetupProject()
         output, err := operatorsdkCLI.Run("run").Args("bundle", "quay.io/olmqe/etcd-bundle:0.9.2-share", "-n", oc.Namespace()).Output()
@@ -110,7 +110,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
 
 
     // author: jfan@redhat.com
-    g.It("Medium-38054-SDK run bundle create pods and csv", func() {
+    g.It("Author:jfan-Medium-38054-SDK run bundle create pods and csv", func() {
         operatorsdkCLI.showInfo = true
         oc.SetupProject()
         output, err := operatorsdkCLI.Run("run").Args("bundle", "quay.io/olmqe/etcd-bundle:0.9.2-share", "-n", oc.Namespace()).Output()
@@ -130,7 +130,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
     })
 
     // author: jfan@redhat.com
-    g.It("High-38060-SDK run bundle detail message about failed", func() {
+    g.It("Author:jfan-High-38060-SDK run bundle detail message about failed", func() {
         operatorsdkCLI.showInfo = true
         oc.SetupProject()
         output, _ := operatorsdkCLI.Run("run").Args("bundle", "quay.io/olmqe/etcd-bundle:0.0.1", "-n", oc.Namespace()).Output()
@@ -138,28 +138,28 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
     })
 
     // author: chuo@redhat.com
-    g.It("Medium-27718-scorecard remove version flag", func() {
+    g.It("Author:chuo-Medium-27718-scorecard remove version flag", func() {
         operatorsdkCLI.showInfo = true
         output, _ := operatorsdkCLI.Run("scorecard").Args("--version").Output()
         o.Expect(output).To(o.ContainSubstring("unknown flag: --version"))               
     })
     
     // author: chuo@redhat.com
-    g.It("Critical-37655-run bundle upgrade connect to the Operator SDK CLI", func() {
+    g.It("Author:chuo-Critical-37655-run bundle upgrade connect to the Operator SDK CLI", func() {
         operatorsdkCLI.showInfo = true
         output, _ := operatorsdkCLI.Run("run").Args("bundle-upgrade", "-h").Output()
         o.Expect(output).To(o.ContainSubstring("Upgrade an Operator previously installed in the bundle format with OLM"))		
     })
 
     // author: chuo@redhat.com
-    g.It("Medium-34945-ansible Add flag metricsaddr for ansible operator", func() {
+    g.It("Author:chuo-Medium-34945-ansible Add flag metricsaddr for ansible operator", func() {
         operatorsdkCLI.showInfo = true
         result, err := exec.Command("bash", "-c", "ansible-operator run --help").Output()
         o.Expect(err).NotTo(o.HaveOccurred())
         o.Expect(result).To(o.ContainSubstring("--metrics-addr"))	
     })
     // author: chuo@redhat.com
-    g.It("High-37914-Bump k8s in SDK to v1.19 and controller-runtime to 0.7.0", func() {
+    g.It("Author:chuo-High-37914-Bump k8s in SDK to v1.19 and controller-runtime to 0.7.0", func() {
         operatorsdkCLI.showInfo = true
         output, _ := operatorsdkCLI.Run("version").Args().Output()
         o.Expect(output).To(o.ContainSubstring("v1.19.4"))

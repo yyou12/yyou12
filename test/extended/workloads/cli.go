@@ -18,7 +18,7 @@ var _ = g.Describe("[sig-cli] Workloads", func() {
 		oc = exutil.NewCLI("oc", exutil.KubeConfigPath())
 	)
 
-	g.It("Medium-28007-Checking oc version show clean as gitTreeState value", func() {
+	g.It("Author:yinzhou-Medium-28007-Checking oc version show clean as gitTreeState value", func() {
 		out, err := oc.Run("version").Args("-o", "json").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		versionInfo := &VersionInfo{}

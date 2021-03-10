@@ -18,11 +18,10 @@ const DEFAULT_EXPECTED_BEHAVIOR = "Ready"
 
 var _ = g.Describe("[sig-operators] ISV_Operators [Suite:openshift/isv]", func() {
 	var (
-		oc                     = exutil.NewCLI("operators", exutil.KubeConfigPath())
-		intermediateTestsSufix = "[Intermediate]"
+		oc = exutil.NewCLI("operators", exutil.KubeConfigPath())
 	)
 
-	g.It(TestCaseName("amq-streams", "Medium-"+CaseIDCertifiedOperators["amq-streams"]+"-"+intermediateTestsSufix), func() {
+	g.It("Author:bandrade-Medium-23955-[Intermediate] Operator amq-streams should work properly", func() {
 
 		kafkaCR := "Kafka"
 		kafkaClusterName := "my-cluster"
@@ -39,7 +38,7 @@ var _ = g.Describe("[sig-operators] ISV_Operators [Suite:openshift/isv]", func()
 
 	})
 
-	g.It(TestCaseName("mongodb-enterprise", "Medium-"+CaseIDCertifiedOperators["mongodb-enterprise"]+"-"+intermediateTestsSufix), func() {
+	g.It("Author:bandrade-Medium-24064-[Intermediate] Operator mongodb-enterprise should work properly", func() {
 
 		mongodbPackageName := "mongodb-enterprise"
 		mongodbOpsManagerCR := "opsmanagers"
@@ -60,7 +59,7 @@ var _ = g.Describe("[sig-operators] ISV_Operators [Suite:openshift/isv]", func()
 
 	})
 
-	g.It(TestCaseName("portworx-certified", "Medium-"+CaseIDCertifiedOperators["portworx-certified"]+"-"+intermediateTestsSufix), func() {
+	g.It("Author:kuiwang-Medium-25880-[Intermediate] Operator portworx-certified should work properly", func() {
 
 		packageName := "portworx-certified"
 		crdName := "storagenode"
@@ -85,7 +84,7 @@ var _ = g.Describe("[sig-operators] ISV_Operators [Suite:openshift/isv]", func()
 
 	})
 
-	g.It(TestCaseName("couchbase-enterprise-certified", "Medium-"+CaseIDCertifiedOperators["couchbase-enterprise-certified"]+"-"+intermediateTestsSufix), func() {
+	g.It("Author:kuiwang-Medium-25414-[Intermediate] Operator couchbase-enterprise-certified should work properly", func() {
 
 		packageName := "couchbase-enterprise-certified"
 		crdName := "CouchbaseCluster"
@@ -105,7 +104,7 @@ var _ = g.Describe("[sig-operators] ISV_Operators [Suite:openshift/isv]", func()
 
 	})
 
-	g.It(TestCaseName("jaeger-product", "Medium-"+CaseIDCertifiedOperators["jaeger-product"]+"-"+intermediateTestsSufix), func() {
+	g.It("Author:bandrade-Medium-26057-[Intermediate] Operator jaeger-product should work properly", func() {
 
 		jaegerPackageName := "jaeger-product"
 		jaegerCR := "Jaeger"
@@ -122,7 +121,7 @@ var _ = g.Describe("[sig-operators] ISV_Operators [Suite:openshift/isv]", func()
 
 	})
 
-	g.It(TestCaseName("keycloak-operator", "Medium-"+CaseIDCertifiedOperators["keycloak-operator"]+"-"+intermediateTestsSufix), func() {
+	g.It("Author:bandrade-Medium-26945-[Intermediate] Operator keycloak-operator should work properly", func() {
 
 		keycloakCR := "Keycloak"
 		keycloakCRName := "example-keycloak"
@@ -139,7 +138,7 @@ var _ = g.Describe("[sig-operators] ISV_Operators [Suite:openshift/isv]", func()
 
 	})
 
-	g.It(TestCaseName("spark-gcp", "Medium-"+CaseIDCertifiedOperators["spark-gcp"]+"-"+intermediateTestsSufix), func() {
+	g.It("Author:tbuskey-Medium-26944-[Intermediate] Operator spark-gcp should work properly", func() {
 		packageName := "spark-gcp" // spark-operator in OperatorHub
 		namespace := "spark-gcp"
 		crFile := "spark-gcp-sparkapplication-cr.yaml"
@@ -163,7 +162,7 @@ var _ = g.Describe("[sig-operators] ISV_Operators [Suite:openshift/isv]", func()
 	})
 
 	// author: tbuskey@redhat.com OCPQE-2169-Intermediate
-	g.It(TestCaseName("radanalytics-spark", "Medium-"+CaseIDCertifiedOperators["radanalytics-spark"]+"-"+intermediateTestsSufix), func() {
+	g.It("Author:tbuskey-Medium-27313-[Intermediate] Operator radanalytics-spark should work properly", func() {
 		var (
 			itName                   = g.CurrentGinkgoTestDescription().TestText
 			buildPruningBaseDir      = exutil.FixturePath("testdata", "olm")
@@ -309,7 +308,7 @@ var _ = g.Describe("[sig-operators] ISV_Operators [Suite:openshift/isv]", func()
 
 	})
 
-	g.It(TestCaseName("strimzi-kafka-operator", "Medium-"+CaseIDCertifiedOperators["strimzi-kafka-operator"]+"-"+intermediateTestsSufix), func() {
+	g.It("Author:bandrade-Medium-26056-[Intermediate] Operator strimzi-kafka-operator should work properly", func() {
 
 		strimziCR := "Kafka"
 		strimziClusterName := "my-cluster"
@@ -326,7 +325,7 @@ var _ = g.Describe("[sig-operators] ISV_Operators [Suite:openshift/isv]", func()
 
 	})
 
-	g.It(TestCaseName("resource-locker-operator", "Medium-"+CaseIDCertifiedOperators["resource-locker-operator"]+"-"+intermediateTestsSufix), func() {
+	g.It("Author:bandrade-Medium-27311-[Intermediate] Operator resource-locker-operator should work properly", func() {
 
 		packageName := "resource-locker-operator"
 		crdName := "ResourceLocker"
@@ -362,7 +361,7 @@ var _ = g.Describe("[sig-operators] ISV_Operators [Suite:openshift/isv]", func()
 
 	})
 
-	g.It(TestCaseName("storageos2", "Medium-"+CaseIDCertifiedOperators["storageos2"]+"-"+intermediateTestsSufix), func() {
+	g.It("Author:kuiwang-Medium-25885-[Intermediate] Operator storageos2 should work properly", func() {
 
 		packageName := "storageos2"
 		crdName1 := "StorageOSCluster"
@@ -404,7 +403,7 @@ var _ = g.Describe("[sig-operators] ISV_Operators [Suite:openshift/isv]", func()
 
 	})
 
-	g.It("Medium-27312-[Intermediate] Operator argocd-operator should work properly", func() {
+	g.It("Author:bandrade-Medium-27312-[Intermediate] Operator argocd-operator should work properly", func() {
 		argoCR := "ArgoCD"
 		argoCRName := "example-argocd"
 		argoPackageName := "argocd-operator"
@@ -420,7 +419,7 @@ var _ = g.Describe("[sig-operators] ISV_Operators [Suite:openshift/isv]", func()
 
 	})
 
-	g.It("Medium-27301-[Intermediate] Operator kiali-ossm should work properly", func() {
+	g.It("Author:bandrade-Medium-27301-[Intermediate] Operator kiali-ossm should work properly", func() {
 		kialiCR := "Kiali"
 		kialiCRName := "kiali-27301"
 		kialiPackageName := "kiali-ossm"

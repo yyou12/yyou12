@@ -122,7 +122,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 	})
 
 	// author: pdhamdhe@redhat.com
-	g.It("Critical-34378-Install the Compliance Operator through olm using CatalogSource and Subscription", func() {
+	g.It("Author:pdhamdhe-Critical-34378-Install the Compliance Operator through olm using CatalogSource and Subscription", func() {
 
 		var itName = g.CurrentGinkgoTestDescription().TestText
 		oc.SetupProject()
@@ -242,7 +242,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		})
 
 		// author: pdhamdhe@redhat.com
-		g.It("Critical-27649-The ComplianceSuite reports the scan result as Compliant or Non-Compliant", func() {
+		g.It("Author:pdhamdhe-Critical-27649-The ComplianceSuite reports the scan result as Compliant or Non-Compliant", func() {
 
 			var (
 				csuiteD = complianceSuiteDescription{
@@ -317,7 +317,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		})
 
 		// author: pdhamdhe@redhat.com
-		g.It("Medium-32082-The ComplianceSuite shows the scan result NOT-APPLICABLE after all rules are skipped to scan", func() {
+		g.It("Author:pdhamdhe-Medium-32082-The ComplianceSuite shows the scan result NOT-APPLICABLE after all rules are skipped to scan", func() {
 
 			var (
 				csuite = complianceSuiteDescription{
@@ -365,7 +365,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		})
 
 		// author: pdhamdhe@redhat.com
-		g.It("High-33398-The Compliance Operator supports to variables in tailored profile", func() {
+		g.It("Author:pdhamdhe-High-33398-The Compliance Operator supports to variables in tailored profile", func() {
 
 			var (
 				tprofileD = tailoredProfileDescription{
@@ -408,7 +408,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		})
 
 		// author: pdhamdhe@redhat.com
-		g.It("High-32840-The ComplianceSuite generates through ScanSetting CR", func() {
+		g.It("Author:pdhamdhe-High-32840-The ComplianceSuite generates through ScanSetting CR", func() {
 
 			var (
 				tprofileD = tailoredProfileDescription{
@@ -498,7 +498,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		})
 
 		// author: pdhamdhe@redhat.com
-		g.It("Medium-33381-Verify the ComplianceSuite could be generated from Tailored profiles", func() {
+		g.It("Author:pdhamdhe-Medium-33381-Verify the ComplianceSuite could be generated from Tailored profiles", func() {
 
 			var (
 				tprofileD = tailoredProfileDescription{
@@ -566,7 +566,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 
 		})
 		// author: xiyuan@redhat.com
-		g.It("Medium-33611-Verify the tolerations could work for compliancescan when there is more than one taint on node [Serial]", func() {
+		g.It("Author:xiyuan-Medium-33611-Verify the tolerations could work for compliancescan when there is more than one taint on node [Serial]", func() {
 			var (
 				cscanD = complianceScanDescription{
 					name:         "example-compliancescan3",
@@ -627,7 +627,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		})
 
 		// author: xiyuan@redhat.com
-		g.It("High-37121-The ComplianceSuite generates through ScanSettingBinding CR with cis profile and default scansetting", func() {
+		g.It("Author:xiyuan-High-37121-The ComplianceSuite generates through ScanSettingBinding CR with cis profile and default scansetting", func() {
 			var (
 				ssb = scanSettingBindingDescription{
 					name:            "cis-test",
@@ -670,7 +670,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		})
 
 		// author: pdhamdhe@redhat.com
-		g.It("Medium-33713-The ComplianceSuite reports the scan result as Error", func() {
+		g.It("Author:pdhamdhe-Medium-33713-The ComplianceSuite reports the scan result as Error", func() {
 
 			var (
 				csuiteD = complianceSuiteDescription{
@@ -716,7 +716,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		})
 
 		// author: pdhamdhe@redhat.com
-		g.It("Critical-27705-The ComplianceScan reports the scan result Compliant or Non-Compliant", func() {
+		g.It("Author:pdhamdhe-Critical-27705-The ComplianceScan reports the scan result Compliant or Non-Compliant", func() {
 
 			var (
 				cscanD = complianceScanDescription{
@@ -787,7 +787,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		})
 
 		// author: pdhamdhe@redhat.com
-		g.It("Medium-27762-The ComplianceScan reports the scan result Error", func() {
+		g.It("Author:pdhamdhe-Medium-27762-The ComplianceScan reports the scan result Error", func() {
 
 			var (
 				cscanD = complianceScanDescription{
@@ -831,7 +831,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		})
 
 		// author: pdhamdhe@redhat.com
-		g.It("Medium-27968-Perform scan only on a subset of nodes using ComplianceScan object", func() {
+		g.It("Author:pdhamdhe-Medium-27968-Perform scan only on a subset of nodes using ComplianceScan object", func() {
 
 			var (
 				cscanMD = complianceScanDescription{
@@ -872,7 +872,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		})
 
 		// author: pdhamdhe@redhat.com
-		g.It("High-33230-The compliance-operator raw result storage size is configurable", func() {
+		g.It("Author:pdhamdhe-High-33230-The compliance-operator raw result storage size is configurable", func() {
 
 			var (
 				csuiteD = complianceSuiteDescription{
@@ -953,7 +953,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		})
 
 		// author: pdhamdhe@redhat.com
-		g.It("High-33609-Verify the tolerations could work for compliancesuite [Serial]", func() {
+		g.It("Author:pdhamdhe-High-33609-Verify the tolerations could work for compliancesuite [Serial]", func() {
 
 			var (
 				csuiteD = complianceSuiteDescription{
@@ -1072,7 +1072,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		})
 
 		// author: pdhamdhe@redhat.com
-		g.It("High-33610-Verify the tolerations could work for compliancescan [Serial]", func() {
+		g.It("Author:pdhamdhe-High-33610-Verify the tolerations could work for compliancescan [Serial]", func() {
 
 			var (
 				cscanD = complianceScanDescription{
@@ -1182,7 +1182,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		})
 
 		// author: pdhamdhe@redhat.com
-		g.It("Critical-28949-The complianceSuite and ComplianeScan perform scan using Platform scan type", func() {
+		g.It("Author:pdhamdhe-Critical-28949-The complianceSuite and ComplianeScan perform scan using Platform scan type", func() {
 
 			var (
 				csuiteD = complianceSuiteDescription{
@@ -1251,7 +1251,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		})
 
 		// author: pdhamdhe@redhat.com
-		g.It("Critical-36988-The ComplianceScan could be triggered for cis profile for platform scanType", func() {
+		g.It("Author:pdhamdhe-Critical-36988-The ComplianceScan could be triggered for cis profile for platform scanType", func() {
 
 			var (
 				cscanMD = complianceScanDescription{
@@ -1291,7 +1291,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		})
 
 		// author: pdhamdhe@redhat.com
-		g.It("Critical-36990-The ComplianceSuite could be triggered for cis profiles for platform scanType", func() {
+		g.It("Author:pdhamdhe-Critical-36990-The ComplianceSuite could be triggered for cis profiles for platform scanType", func() {
 
 			var (
 				csuiteD = complianceSuiteDescription{
@@ -1334,7 +1334,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		})
 
 		// author: pdhamdhe@redhat.com
-		g.It("Critical-37063-The ComplianceSuite could be triggered for cis profiles for node scanType", func() {
+		g.It("Author:pdhamdhe-Critical-37063-The ComplianceSuite could be triggered for cis profiles for node scanType", func() {
 
 			var (
 				csuiteD = complianceSuiteDescription{
@@ -1449,7 +1449,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		})
 
 		// author: pdhamdhe@redhat.com
-		g.It("High-32120-The ComplianceSuite performs schedule scan for Platform scan type", func() {
+		g.It("Author:pdhamdhe-High-32120-The ComplianceSuite performs schedule scan for Platform scan type", func() {
 
 			var (
 				csuiteD = complianceSuiteDescription{
@@ -1516,7 +1516,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		})
 
 		// author: pdhamdhe@redhat.com
-		g.It("High-33418-The ComplianceSuite performs the schedule scan through cron job", func() {
+		g.It("Author:pdhamdhe-High-33418-The ComplianceSuite performs the schedule scan through cron job", func() {
 
 			var (
 				csuiteD = complianceSuiteDescription{
@@ -1585,7 +1585,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		})
 
 		// author: xiyuan@redhat.com
-		g.It("Medium-33456-The Compliance-Operator edits the scheduled cron job to scan from ComplianceSuite", func() {
+		g.It("Author:xiyuan-Medium-33456-The Compliance-Operator edits the scheduled cron job to scan from ComplianceSuite", func() {
 
 			var (
 				csuiteD = complianceSuiteDescription{
@@ -1658,7 +1658,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		})
 
 		// author: pdhamdhe@redhat.com
-		g.It("High-33453-The Compliance Operator rotates the raw scan results", func() {
+		g.It("Author:pdhamdhe-High-33453-The Compliance Operator rotates the raw scan results", func() {
 
 			var (
 				csuiteD = complianceSuiteDescription{
@@ -1755,7 +1755,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		})
 
 		// author: pdhamdhe@redhat.com
-		g.It("High-33660-Verify the differences in nodes from the same role could be handled [Serial]", func() {
+		g.It("Author:pdhamdhe-High-33660-Verify the differences in nodes from the same role could be handled [Serial]", func() {
 
 			var (
 				csuiteD = complianceSuiteDescription{
@@ -1815,7 +1815,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		})
 
 		// author: pdhamdhe@redhat.com
-		g.It("Medium-32814-The compliance operator by default creates ProfileBundles", func() {
+		g.It("Author:pdhamdhe-Medium-32814-The compliance operator by default creates ProfileBundles", func() {
 			g.By("Check default profilebundles name and status.. !!!\n")
 			subD.getProfileBundleNameandStatus(oc, "ocp4")
 			subD.getProfileBundleNameandStatus(oc, "rhcos4")
@@ -1832,7 +1832,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		})
 
 		// author: pdhamdhe@redhat.com
-		g.It("Medium-33431-Verify compliance check result shows in ComplianceCheckResult label for compliancesuite", func() {
+		g.It("Author:pdhamdhe-Medium-33431-Verify compliance check result shows in ComplianceCheckResult label for compliancesuite", func() {
 
 			var (
 				csuiteD = complianceSuiteDescription{
@@ -1886,7 +1886,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		})
 
 		// author: pdhamdhe@redhat.com
-		g.It("Medium-33435-Verify the compliance scan result shows in ComplianceCheckResult label for compliancescan", func() {
+		g.It("Author:pdhamdhe-Medium-33435-Verify the compliance scan result shows in ComplianceCheckResult label for compliancescan", func() {
 
 			var (
 				cscanD = complianceScanDescription{
@@ -1938,7 +1938,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		})
 
 		// author: pdhamdhe@redhat.com
-		g.It("Medium-33449-The compliance-operator raw results store in ARF format on a PVC", func() {
+		g.It("Author:pdhamdhe-Medium-33449-The compliance-operator raw results store in ARF format on a PVC", func() {
 
 			var (
 				csuiteD = complianceSuiteDescription{
@@ -1990,7 +1990,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		})
 
 		// author: xiyuan@redhat.com
-		g.It("Medium-37171-Check compliancesuite status when there are multiple rhcos4 profiles added in scansettingbinding object", func() {
+		g.It("Author:xiyuan-Medium-37171-Check compliancesuite status when there are multiple rhcos4 profiles added in scansettingbinding object", func() {
 			var (
 				ssb = scanSettingBindingDescription{
 					name:            "rhcos4",
@@ -2033,7 +2033,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		})
 
 		// author: xiyuan@redhat.com
-		g.It("High-37084-The ComplianceSuite generates through ScanSettingBinding CR with tailored cis profile", func() {
+		g.It("Author:xiyuan-High-37084-The ComplianceSuite generates through ScanSettingBinding CR with tailored cis profile", func() {
 			var (
 				tp = tailoredProfileWithoutVarDescription{
 					name:         "ocp4-cis-custom",
@@ -2112,7 +2112,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		})
 
 		// author: pdhamdhe@redhat.com
-		g.It("High-34928-Storage class and access modes are configurable through ComplianceSuite and ComplianceScan", func() {
+		g.It("Author:pdhamdhe-High-34928-Storage class and access modes are configurable through ComplianceSuite and ComplianceScan", func() {
 
 			var (
 				csuiteD = complianceSuiteDescription{

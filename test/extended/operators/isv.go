@@ -15,7 +15,7 @@ var _ = g.Describe("[Suite:openshift/isv] ISV_Operators", func() {
 
 	for i := range CertifiedOperators {
 		operator := CertifiedOperators[i]
-		g.It(TestCaseName(operator, "Medium-"+CaseIDCertifiedOperators[operator]+"-"+BasicPrefix), func() {
+		g.It(TestCaseName(operator, "Author:bandrade-Medium-"+CaseIDCertifiedOperators[operator]+"-"+BasicPrefix), func() {
 			g.By("by installing", func() {
 				currentPackage = CreateSubscription(operator, oc, INSTALLPLAN_AUTOMATIC_MODE)
 				CheckDeployment(currentPackage, oc)

@@ -20,7 +20,7 @@ var _ = g.Describe("[sig-api-machinery] Apiserver_and_Auth", func() {
 	var oc = exutil.NewCLIWithoutNamespace("default")
 
 	// author: kewang@redhat.com
-	g.It("Medium-32383-bug 1793694 init container setup should have the proper securityContext", func() {
+	g.It("Author:kewang-Medium-32383-bug 1793694 init container setup should have the proper securityContext", func() {
 		checkItems := []struct {
 			namespace string
 			container string
@@ -63,7 +63,7 @@ var _ = g.Describe("[sig-api-machinery] Apiserver_and_Auth", func() {
 
 	// author: xxia@redhat.com
 	// It is destructive case, will make kube-apiserver roll out, so adding [Disruptive]. One rollout costs about 25mins, so adding [Slow]
-	g.It("Medium-25806-Force encryption key rotation for etcd datastore [Slow][Disruptive]", func() {
+	g.It("Author:xxia-Medium-25806-Force encryption key rotation for etcd datastore [Slow][Disruptive]", func() {
 		// only run this case in Etcd Encryption On cluster
 		g.By("Check if cluster is Etcd Encryption On")
 		output, err := oc.WithoutNamespace().Run("get").Args("apiserver/cluster", "-o=jsonpath={.spec.encryption.type}").Output()
@@ -149,7 +149,7 @@ spec:
 
 	// author: xxia@redhat.com
 	// It is destructive case, will make kube-apiserver roll out, so adding [Disruptive]. One rollout costs about 25mins, so adding [Slow]
-	g.It("Medium-25811-Etcd encrypted cluster could self-recover when related encryption configuration is deleted [Slow][Disruptive]", func() {
+	g.It("Author:xxia-Medium-25811-Etcd encrypted cluster could self-recover when related encryption configuration is deleted [Slow][Disruptive]", func() {
 		// only run this case in Etcd Encryption On cluster
 		g.By("Check if cluster is Etcd Encryption On")
 		output, err := oc.WithoutNamespace().Run("get").Args("apiserver/cluster", "-o=jsonpath={.spec.encryption.type}").Output()
@@ -235,7 +235,7 @@ spec:
 	// author: xxia@redhat.com
 	// It is destructive case, will make openshift-kube-apiserver and openshift-apiserver namespaces deleted, so adding [Disruptive].
 	// In test the recovery costs about 22mins in max, so adding [Slow]
-	g.It("Medium-36801-Etcd encrypted cluster could self-recover when related encryption namespaces are deleted [Slow][Disruptive]", func() {
+	g.It("Author:xxia-Medium-36801-Etcd encrypted cluster could self-recover when related encryption namespaces are deleted [Slow][Disruptive]", func() {
 		// only run this case in Etcd Encryption On cluster
 		g.By("Check if cluster is Etcd Encryption On")
 		encryptionType, err := oc.WithoutNamespace().Run("get").Args("apiserver/cluster", "-o=jsonpath={.spec.encryption.type}").Output()

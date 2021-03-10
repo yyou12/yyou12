@@ -22,7 +22,7 @@ var _ = g.Describe("[sig-auth] Apiserver_and_Auth", func() {
 
 	// author: xxia@redhat.com
 	// It is destructive case, will make co/authentical Available=False for a while, so adding [Disruptive]
-	g.It("Medium-29917-Deleted authentication resources can come back immediately [Disruptive]", func() {
+	g.It("Author:xxia-Medium-29917-Deleted authentication resources can come back immediately [Disruptive]", func() {
 		g.By("Delete namespace openshift-authentication")
 		err := oc.WithoutNamespace().Run("delete").Args("ns", "openshift-authentication").Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -131,7 +131,7 @@ var _ = g.Describe("[sig-auth] Apiserver_and_Auth", func() {
 	// author: pmali@redhat.com
 	// It is destructive case, will make co/authentical Available=False for a while, so adding [Disruptive]
 
-	g.It("High-33390-Network Stability check every level of a managed route [Disruptive]", func() {
+	g.It("Author:pmali-High-33390-Network Stability check every level of a managed route [Disruptive]", func() {
 		g.By("Check pods under openshift-authentication namespace is available")
 		err := wait.Poll(1*time.Second, 60*time.Second, func() (bool, error) {
 			output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-n", "openshift-authentication").Output()

@@ -20,7 +20,7 @@ var _ = g.Describe("[sig-apps] Workloads", func() {
 
 	// author: yinzhou@redhat.com
 	//It is destructive case, will make kube-scheduler roll out, so adding [Disruptive]. One rollout costs about 5mins, so adding [Slow]
-	g.It("Medium-31939-Verify logLevel settings in kube scheduler operator [Disruptive][Slow]", func() {
+	g.It("Author:yinzhou-Medium-31939-Verify logLevel settings in kube scheduler operator [Disruptive][Slow]", func() {
 		patchYamlToRestore := `[{"op": "replace", "path": "/spec/logLevel", "value":"Normal"}]`
 
 		g.By("Set the loglevel to TraceAll")
@@ -185,4 +185,3 @@ var _ = g.Describe("[sig-apps] Workloads", func() {
 		}
 	})
 })
-
