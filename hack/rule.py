@@ -13,8 +13,8 @@ subTeamList = subTeam.replace(' ', '').split(",")
 
 importance = ["Critical","High","Medium","Low"]
 
-patternDescribe = re.compile('\+.*g.Describe\(\"(\[(.*)\]\s(.*)\")')
-patternIt = re.compile('\+\s+g.It\(\".*\"')
+patternDescribe = re.compile('\n\+.*g.Describe\(\"(\[(.*)\]\s(.*)\")')
+patternIt = re.compile('\n\+\s+g.It\(\".*\"')
 
 itContent = patternIt.findall(content)
 desContent = patternDescribe.findall(content)
