@@ -38,27 +38,6 @@ var _ = g.Describe("[sig-operators] ISV_Operators [Suite:openshift/isv]", func()
 
 	})
 
-	g.It("Author:bandrade-Medium-24064-[Intermediate] Operator mongodb-enterprise should work properly", func() {
-
-		mongodbPackageName := "mongodb-enterprise"
-		mongodbOpsManagerCR := "opsmanagers"
-		mongodbOpsManagerClusterName := "ops-manager"
-		namespace := "mongodb"
-
-		defer RemoveNamespace(namespace, oc)
-		currentPackage := CreateSubscriptionSpecificNamespace(mongodbPackageName, oc, true, true, namespace, INSTALLPLAN_AUTOMATIC_MODE)
-		CheckDeployment(currentPackage, oc)
-		CreateFromYAML(currentPackage, "mongodb-ops-manager-secret.yaml", oc)
-		CreateFromYAML(currentPackage, "mongodb-ops-manager-cr.yaml", oc)
-		CheckCR(currentPackage, mongodbOpsManagerCR, mongodbOpsManagerClusterName,
-			"-o=jsonpath={.status.applicationDatabase.phase}", "Running", oc)
-		CheckCR(currentPackage, mongodbOpsManagerCR, mongodbOpsManagerClusterName,
-			"-o=jsonpath={.status.opsManager.phase}", "Running", oc)
-		RemoveCR(currentPackage, mongodbOpsManagerCR, mongodbOpsManagerClusterName, oc)
-		RemoveOperatorDependencies(currentPackage, oc, false)
-
-	})
-
 	g.It("Author:kuiwang-Medium-25880-[Intermediate] Operator portworx-certified should work properly", func() {
 
 		packageName := "portworx-certified"
