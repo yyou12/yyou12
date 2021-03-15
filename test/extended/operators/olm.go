@@ -3652,11 +3652,14 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 
 		var (
 			next       = false
-			podName    = ""
-			s          = ""
+			err        error
+			waitErr    error
+			msg        string
+			podName    string
+			s          string
 			secretName = ""
 			token      = ""
-			kToken     = ""
+			kToken     string
 			og         = operatorGroupDescription{
 				name:      oc.Namespace(),
 				namespace: oc.Namespace(),
@@ -3667,9 +3670,6 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 				namespace:              oc.Namespace(),
 				catalogSourceName:      "redhat-operators",
 				catalogSourceNamespace: "openshift-marketplace",
-				startingCSV:            "amqstreams.v1.5.3",
-				currentCSV:             "amqstreams.v1.5.3",
-				installedCSV:           "amqstreams.v1.5.3",
 				singleNamespace:        true,
 				channel:                "stable",
 				ipApproval:             "Automatic",
@@ -3682,7 +3682,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		nameSpace := oc.Namespace()
 
 		g.By("Create og")
-		msg, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("ns", nameSpace).Output()
+		msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("ns", nameSpace).Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(msg).NotTo(o.BeEmpty())
 
@@ -3693,7 +3693,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		newCheck("expect", asAdmin, withoutNamespace, compare, "AtLatestKnown", ok, []string{"sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.state}"}).check(oc)
 
 		g.By("Wait for pod")
-		waitErr := wait.Poll(3*time.Second, 180*time.Second, func() (bool, error) {
+		waitErr = wait.Poll(3*time.Second, 180*time.Second, func() (bool, error) {
 			msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-n", sub.namespace).Output()
 			o.Expect(err).NotTo(o.HaveOccurred())
 			o.Expect(msg).NotTo(o.BeEmpty())
