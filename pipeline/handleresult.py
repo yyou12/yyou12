@@ -60,12 +60,13 @@ class TestResult:
             if failure:
                 result="FAIL"
             caseids = re.findall(r'\d{5,}-', name)
+            authorname = self.getAuthorName(name)
             if len(caseids) == 0:
                 tmpname = name.replace("'","")
                 if "[Suite:openshift/" in tmpname:
-                    testsummary["No-CASEID  so take title:"+tmpname.split("[Suite:openshift/")[-2]] = {"result":result, "title":""}
+                    testsummary["No-CASEID Author:"+authorname+" "+tmpname.split("[Suite:openshift/")[-2]] = {"result":result, "title":"", "author":""}
                 else:
-                    testsummary["No-CASEID  so take title:"+tmpname] = {"result":result, "title":""}
+                    testsummary["No-CASEID Author:"+authorname+" "+tmpname] = {"result":result, "title":"", "author":""}
             else:
                 casetitle = name.split(caseids[-1])[1]
                 if "[Suite:openshift/" in casetitle:
@@ -79,11 +80,11 @@ class TestResult:
                         if ("PASS" in testsummary[id]["result"]) and (result == "SKIP"):
                             result = testsummary[id]["result"]
                             casetitle = testsummary[id]["title"]
-                    testsummary[id] = {"result":result, "title":casetitle.replace("'","")}
+                    testsummary[id] = {"result":result, "title":casetitle.replace("'",""), "author":authorname}
         print("The Case Execution Summary:\\n")
         output = ""
         for k in sorted(testsummary.keys()):
-            output += " "+testsummary[k]["result"]+"  "+k.replace("'","")+"  "+testsummary[k]["title"]+"\\n"
+            output += " "+testsummary[k]["result"]+"  "+k.replace("'","")+"  Author:"+testsummary[k]["author"]+"  "+testsummary[k]["title"]+"\\n"
         print(output)
 
     def generateRP(self, input, output, scenario):
@@ -98,24 +99,25 @@ class TestResult:
         for case in cases:
             name = case.getAttribute("name")
             caseids = re.findall(r'\d{5,}-', name)
+            authorname = self.getAuthorName(name)
             if len(caseids) == 0:
                 # print("No Case ID")
                 tmpname = name.replace("'","")
                 if "[Suite:openshift/" in tmpname:
-                    case.setAttribute("name", "No-CASEID:" + tmpname.split("[Suite:openshift/")[-2])
+                    case.setAttribute("name", "No-CASEID:"+authorname+":" + tmpname.split("[Suite:openshift/")[-2])
                 else:
-                    case.setAttribute("name", "No-CASEID:" + tmpname)
+                    case.setAttribute("name", "No-CASEID:"+authorname+":" + tmpname)
             else:
                 # print("Case ID exists")
                 casetitle = name.split(caseids[-1])[1].replace("'","")
                 if "[Suite:openshift/" in casetitle:
                     casetitle = casetitle.split("[Suite:openshift/")[0]
                 if len(caseids) == 1:
-                    case.setAttribute("name", "OCP-"+caseids[0][:-1]+":"+casetitle)
+                    case.setAttribute("name", "OCP-"+caseids[0][:-1]+":"+authorname+":"+casetitle)
                 else:
                     toBeRemove.append(case)
                     for i in caseids:
-                        casename = "OCP-"+i[:-1]+":"+casetitle
+                        casename = "OCP-"+i[:-1]+":"+authorname+":"+casetitle
                         dupcase = case.cloneNode(True)
                         dupcase.setAttribute("name", casename)
                         toBeAdd.append(dupcase)
@@ -219,26 +221,35 @@ class TestResult:
     def getNames(self, name):
         names = []
         caseids = re.findall(r'\d{5,}-', name)
+        authorname = self.getAuthorName(name)
         if len(caseids) == 0:
             # print("No Case ID")
             tmpname = name.replace("'","")
             if "[Suite:openshift/" in tmpname:
-                names.append("No-CASEID:" + tmpname.split("[Suite:openshift/")[-2])
+                names.append("No-CASEID:"+authorname+":" + tmpname.split("[Suite:openshift/")[-2])
             else:
-                names.append("No-CASEID:" + tmpname)
+                names.append("No-CASEID:"+authorname+":" + tmpname)
         else:
             # print("Case ID exists")
             casetitle = name.split(caseids[-1])[1].replace("'","")
             if "[Suite:openshift/" in casetitle:
                 casetitle = casetitle.split("[Suite:openshift/")[0]
             for i in caseids:
-                names.append("OCP-"+i[:-1]+":"+casetitle)
+                names.append("OCP-"+i[:-1]+":"+authorname+":"+casetitle)
         return names
+
+    def getAuthorName(self, name):
+        authors = "unknown"
+        authorfilter = re.findall(r'Author:\w+-', name)
+        if len(authorfilter) != 0:
+            authors = authorfilter[0][:-1].split(":")[1]
+        # print(authors)
+        return authors
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("handleresult.py")
     parser.add_argument("-a","--action", default="get", choices={"replace", "get", "generate", "split"}, required=True)
-    parser.add_argument("-in","--input", default="", required=True)
+    parser.add_argument("-i","--input", default="", required=True)
     parser.add_argument("-o","--output", default="")
     parser.add_argument("-s","--scenario", default="")
     args=parser.parse_args()
