@@ -7,6 +7,7 @@ require (
 	github.com/blang/semver v3.5.0+incompatible
 	github.com/coreos/rkt v1.30.0 // indirect
 	github.com/davecgh/go-spew v1.1.1
+	github.com/docker/docker v0.7.3-0.20190327010347-be7ac8be2ae0
 	github.com/fsouza/go-dockerclient v0.0.0-20171004212419-da3951ba2e9e
 	github.com/google/go-github v17.0.0+incompatible
 	github.com/onsi/ginkgo v1.10.1

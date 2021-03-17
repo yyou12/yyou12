@@ -4,9 +4,13 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"math/rand"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime/debug"
 	"strings"
+	"time"
 
 	g "github.com/onsi/ginkgo"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
@@ -14,18 +18,19 @@ import (
 
 // CLI provides function to call the OPM CLI
 type CLI struct {
-	execPath    string
-	verb        string
-	username    string
-	globalArgs  []string
-	commandArgs []string
-	finalArgs   []string
-	stdin       *bytes.Buffer
-	stdout      io.Writer
-	stderr      io.Writer
-	verbose     bool
-	showInfo    bool
-	skipTLS     bool
+	execPath        string
+	execCommandPath string
+	verb            string
+	username        string
+	globalArgs      []string
+	commandArgs     []string
+	finalArgs       []string
+	stdin           *bytes.Buffer
+	stdout          io.Writer
+	stderr          io.Writer
+	verbose         bool
+	showInfo        bool
+	skipTLS         bool
 }
 
 // NewOpmCLI initialize the OPM framework
@@ -41,9 +46,10 @@ func NewOpmCLI() *CLI {
 func (c *CLI) Run(commands ...string) *CLI {
 	in, out, errout := &bytes.Buffer{}, &bytes.Buffer{}, &bytes.Buffer{}
 	opm := &CLI{
-		execPath: c.execPath,
-		verb:     commands[0],
-		username: c.username,
+		execPath:        c.execPath,
+		verb:            commands[0],
+		username:        c.username,
+		execCommandPath: c.execCommandPath,
 	}
 	if c.skipTLS {
 		opm.globalArgs = append([]string{"--skip-tls=true"}, commands...)
@@ -91,6 +97,10 @@ func (c *CLI) Output() (string, error) {
 		e2e.Logf("DEBUG: opm %s\n", c.printCmd())
 	}
 	cmd := exec.Command(c.execPath, c.finalArgs...)
+	if c.execCommandPath != "" {
+		e2e.Logf("set exec command path is %s\n", c.execCommandPath)
+		cmd.Dir = c.execCommandPath
+	}
 	cmd.Stdin = c.stdin
 	if c.showInfo {
 		e2e.Logf("Running '%s %s'", c.execPath, strings.Join(c.finalArgs, " "))
@@ -109,4 +119,42 @@ func (c *CLI) Output() (string, error) {
 		// unreachable code
 		return "", nil
 	}
+}
+
+func GetDirPath(filePathStr string, filePre string) string {
+	if !strings.Contains(filePathStr, "/") || filePathStr == "/" {
+		return ""
+	}
+	dir, file := filepath.Split(filePathStr)
+	if strings.HasPrefix(file, filePre) {
+		return filePathStr
+	} else {
+		return GetDirPath(filepath.Dir(dir), filePre)
+	}
+}
+
+func DeleteDir(filePathStr string, filePre string) bool {
+	filePathToDelete := GetDirPath(filePathStr, filePre)
+	if filePathToDelete == "" || !strings.Contains(filePathToDelete, filePre) {
+		e2e.Logf("there is no such dir %s", filePre)
+		return false
+	} else {
+		e2e.Logf("remove dir %s", filePathToDelete)
+		os.RemoveAll(filePathToDelete)
+		if _, err := os.Stat(filePathToDelete); err == nil {
+			e2e.Logf("delele dir %s failed", filePathToDelete)
+			return false
+		}
+		return true
+	}
+}
+
+func getRandomString() string {
+	chars := "abcdefghijklmnopqrstuvwxyz0123456789"
+	seed := rand.New(rand.NewSource(time.Now().UnixNano()))
+	buffer := make([]byte, 8)
+	for index := range buffer {
+		buffer[index] = chars[seed.Intn(len(chars))]
+	}
+	return string(buffer)
 }
