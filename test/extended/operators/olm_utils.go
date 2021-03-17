@@ -248,6 +248,9 @@ func (sub *subscriptionDescription) createInstance(oc *exutil.CLI, instance stri
 func (sub *subscriptionDescription) delete(itName string, dr describerResrouce) {
 	dr.getIr(itName).remove(sub.subName, "sub", sub.namespace)
 }
+func (sub *subscriptionDescription) deleteCSV(itName string, dr describerResrouce) {
+	dr.getIr(itName).remove(sub.installedCSV, "csv", sub.namespace)
+}
 
 //the method is to patch sub object
 func (sub *subscriptionDescription) patch(oc *exutil.CLI, patch string) {
