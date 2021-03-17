@@ -53,6 +53,7 @@
 // test/extended/testdata/olm/vpa-crd.yaml
 // test/extended/testdata/operators/argocd-cr.yaml
 // test/extended/testdata/operators/couchbase-enterprise-cr.yaml
+// test/extended/testdata/operators/crunchy-cr.yaml
 // test/extended/testdata/operators/jaeger.yaml
 // test/extended/testdata/operators/kafka.yaml
 // test/extended/testdata/operators/keycloak-cr.yaml
@@ -8236,6 +8237,50 @@ func testExtendedTestdataOperatorsCouchbaseEnterpriseCrYaml() (*asset, error) {
 	return a, nil
 }
 
+var _testExtendedTestdataOperatorsCrunchyCrYaml = []byte(`apiVersion: crunchydata.com/v1
+kind: Pgcluster
+metadata:
+  name: example
+  labels:
+    archive: 'false'
+  namespace: crunchy
+spec:
+  port: '5432'
+  exporterport: '9187'
+  clustername: example
+  usersecretname: example-primaryuser
+  pgbadgerport: '10000'
+  userlabels:
+    archive: 'false'
+  name: example
+  ccpimage: crunchy-postgres-ha
+  ccpimagetag: ubi7-12.4-4.5.0
+  PrimaryStorage:
+    accessmode: ReadWriteOnce
+    size: 1G
+    storageclass: standard
+    storagetype: dynamic
+  database: example
+  primarysecretname: example-primaryuser
+  rootsecretname: example-postgresuser
+
+`)
+
+func testExtendedTestdataOperatorsCrunchyCrYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataOperatorsCrunchyCrYaml, nil
+}
+
+func testExtendedTestdataOperatorsCrunchyCrYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataOperatorsCrunchyCrYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/operators/crunchy-cr.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
 var _testExtendedTestdataOperatorsJaegerYaml = []byte(`apiVersion: jaegertracing.io/v1
 kind: Jaeger
 metadata:
@@ -12411,6 +12456,7 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/olm/vpa-crd.yaml":                                                                  testExtendedTestdataOlmVpaCrdYaml,
 	"test/extended/testdata/operators/argocd-cr.yaml":                                                          testExtendedTestdataOperatorsArgocdCrYaml,
 	"test/extended/testdata/operators/couchbase-enterprise-cr.yaml":                                            testExtendedTestdataOperatorsCouchbaseEnterpriseCrYaml,
+	"test/extended/testdata/operators/crunchy-cr.yaml":                                                         testExtendedTestdataOperatorsCrunchyCrYaml,
 	"test/extended/testdata/operators/jaeger.yaml":                                                             testExtendedTestdataOperatorsJaegerYaml,
 	"test/extended/testdata/operators/kafka.yaml":                                                              testExtendedTestdataOperatorsKafkaYaml,
 	"test/extended/testdata/operators/keycloak-cr.yaml":                                                        testExtendedTestdataOperatorsKeycloakCrYaml,
@@ -12583,6 +12629,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 				"operators": {nil, map[string]*bintree{
 					"argocd-cr.yaml":                              {testExtendedTestdataOperatorsArgocdCrYaml, map[string]*bintree{}},
 					"couchbase-enterprise-cr.yaml":                {testExtendedTestdataOperatorsCouchbaseEnterpriseCrYaml, map[string]*bintree{}},
+					"crunchy-cr.yaml":                             {testExtendedTestdataOperatorsCrunchyCrYaml, map[string]*bintree{}},
 					"jaeger.yaml":                                 {testExtendedTestdataOperatorsJaegerYaml, map[string]*bintree{}},
 					"kafka.yaml":                                  {testExtendedTestdataOperatorsKafkaYaml, map[string]*bintree{}},
 					"keycloak-cr.yaml":                            {testExtendedTestdataOperatorsKeycloakCrYaml, map[string]*bintree{}},

@@ -415,6 +415,23 @@ var _ = g.Describe("[sig-operators] ISV_Operators [Suite:openshift/isv]", func()
 		RemoveOperatorDependencies(currentPackage, oc, false)
 
 	})
+
+	g.It("Author:scolange:Medium-27782-[Intermediate] Operator crunchy ossm should work properly", func() {
+		crunchyCR := "Pgcluster"
+		crunchyCRName := "example"
+		crunchyPackageName := "crunchy-postgres-operator"
+		crunchyFile := "crunchy-cr.yaml"
+		namespace := "crunchy"
+		//CreateNamespaceWithoutPrefix(namespace, oc)
+		defer RemoveNamespace(namespace, oc)
+		currentPackage := CreateSubscriptionSpecificNamespace(crunchyPackageName, oc, true, true, namespace, INSTALLPLAN_AUTOMATIC_MODE)
+		CheckDeployment(currentPackage, oc)
+		CreateFromYAML(currentPackage, crunchyFile, oc)
+		CheckCR(currentPackage, crunchyCR, crunchyCRName, "-o=jsonpath={.status.state}", "pgcluster Processed", oc)
+		RemoveCR(currentPackage, crunchyCR, crunchyCRName, oc)
+		RemoveOperatorDependencies(currentPackage, oc, false)
+	
+	})
 })
 
 //the method is to create CR with yaml file in the namespace of the installed operator
