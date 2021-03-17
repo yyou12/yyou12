@@ -1160,7 +1160,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 			template:               subTemplate,
 		}
 		defer sub.delete(itName, dr)
-		defer sub.getCSV().delete(itName, dr)
+		defer sub.deleteCSV(itName, dr)
 		sub.create(oc, itName, dr)
 		newCheck("expect", asAdmin, withNamespace, compare, "Succeeded", ok, []string{"csv", sub.installedCSV, "-o=jsonpath={.status.phase}"}).check(oc)
 
