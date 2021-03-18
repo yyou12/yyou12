@@ -73,7 +73,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		}
 		defer sub.delete(itName, dr)
 		sub.create(oc, itName, dr)
-		defer sub.getCSV().delete(itName, dr)
+		defer sub.deleteCSV(itName, dr)
 
 		// get the InstallPlan name
 		ipName := getResource(oc, asAdmin, withoutNamespace, "sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.installplan.name}")
@@ -138,7 +138,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 
 		g.By("4) Uninstall the operator")
 		sub.delete(itName, dr)
-		sub.getCSV().delete(itName, dr)
+		sub.deleteCSV(itName, dr)
 
 		g.By("5) Check if the related resources are removed successfully")
 		newCheck("present", asAdmin, withoutNamespace, notPresent, "", ok, []string{"operatorcondition", "etcdoperator.v0.9.4", "-n", oc.Namespace()}).check(oc)
@@ -669,7 +669,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 
 		g.By(fmt.Sprintf("8) Remove subscription:%s, %s", sub.subName, depSub.subName))
 		sub.delete(itName, dr)
-		sub.getCSV().delete(itName, dr)
+		sub.deleteCSV(itName, dr)
 		depSub.delete(itName, dr)
 		depSub.getCSV().delete(itName, dr)
 
@@ -728,7 +728,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 
 		g.By("Remove catalog and sub")
 		sub.delete(itName, dr)
-		sub.getCSV().delete(itName, dr)
+		sub.deleteCSV(itName, dr)
 		cs.delete(itName, dr)
 	})
 
@@ -796,7 +796,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 
 		g.By("7) Recreate the Subscription")
 		sub.delete(itName, dr)
-		sub.getCSV().delete(itName, dr)
+		sub.deleteCSV(itName, dr)
 		sub.createWithoutCheck(oc, itName, dr)
 
 		g.By("8) Checking the state of CSV")
@@ -868,7 +868,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 
 		g.By("7) Recreate the Subscription")
 		sub.delete(itName, dr)
-		sub.getCSV().delete(itName, dr)
+		sub.deleteCSV(itName, dr)
 		sub.createWithoutCheck(oc, itName, dr)
 
 		g.By("8) Checking the state of CSV")
@@ -951,7 +951,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 
 		g.By("10) Recreate the Subscription")
 		sub.delete(itName, dr)
-		sub.getCSV().delete(itName, dr)
+		sub.deleteCSV(itName, dr)
 		sub.createWithoutCheck(oc, itName, dr)
 
 		g.By("11) Checking the state of CSV")
@@ -1059,7 +1059,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		defer sub.delete(itName, dr)
 
 		sub.create(oc, itName, dr)
-		defer sub.getCSV().delete(itName, dr)
+		defer sub.deleteCSV(itName, dr)
 		newCheck("expect", asAdmin, withNamespace, compare, "Succeeded", ok, []string{"csv", sub.installedCSV, "-o=jsonpath={.status.phase}"}).check(oc)
 		msg, err := oc.AsAdmin().WithoutNamespace().Run("policy").Args("who-can", "list", "namespaces").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -2585,7 +2585,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 
 			g.By("Remove catalog and sub")
 			sub.delete(itName, dr)
-			sub.getCSV().delete(itName, dr)
+			sub.deleteCSV(itName, dr)
 			catsrc.delete(itName, dr)
 			if i < repeatedCount-1 {
 				time.Sleep(20 * time.Second)
@@ -4196,7 +4196,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 			o.Expect(nodeNoProxy).To(o.BeEmpty())
 			g.By("CHECK proxy configure SUCCESS")
 			sub.delete(itName, dr)
-			sub.getCSV().delete(itName, dr)
+			sub.deleteCSV(itName, dr)
 		} else {
 			o.Expect(httpProxy).NotTo(o.BeEmpty())
 			o.Expect(httpsProxy).NotTo(o.BeEmpty())
@@ -4213,7 +4213,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 			o.Expect(nodeNoProxy).To(o.Equal(noProxy))
 			g.By("CHECK proxy configure SUCCESS")
 			sub.delete(itName, dr)
-			sub.getCSV().delete(itName, dr)
+			sub.deleteCSV(itName, dr)
 
 			g.By("3) create subscription and set variables ( HTTP_PROXY, HTTPS_PROXY and NO_PROXY ) with non-empty values. ")
 			subProxyTest.create(oc, itName, dr)
@@ -4594,7 +4594,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle to support", func
 
 		g.By("Remove sub and csv and update the minKubeVersion to orignl")
 		sub.delete(itName, dr)
-		sub.getCSV().delete(itName, dr)
+		sub.deleteCSV(itName, dr)
 		cm.patch(oc, fmt.Sprintf("{\"data\": {\"clusterServiceVersions\": %s}}", csvDesc))
 
 		g.By("Create sub with orignal KubeVersion")
