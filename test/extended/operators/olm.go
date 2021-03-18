@@ -2012,6 +2012,62 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 
 	})
 
+	// author: scolange@redhat.com OCP-40316
+    g.It("Author:scolange-Medium-40316-OLM enters infinite loop if Pending CSV replaces itself [Serial]", func() {
+
+		var buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
+		var operatorGroup = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+		var pkgServer = filepath.Join(buildPruningBaseDir, "packageserver.yaml")
+		//var operatorWait = 180 * time.Second
+		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("ns", "test40316").Execute()
+
+		g.By("create new namespace")
+		var err = oc.AsAdmin().WithoutNamespace().Run("create").Args("ns", "test40316").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("create new OperatorGroup")
+		ogFile, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", operatorGroup, "-p", "NAME=test-operator", "NAMESPACE=test40316").OutputToFile("config-40316.json")
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", ogFile).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		configFile, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", pkgServer, "-p", "NAME=packageserver", "NAMESPACE=test40316").OutputToFile("config-40316.json")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", configFile).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		
+		statusCsv, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", "-n", "test40316").Output()
+		e2e.Logf("CSV prometheus %v", statusCsv)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		pods, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-n", "openshift-operator-lifecycle-manager").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf(pods)
+
+		lines := strings.Split(pods, "\n")
+		for _, line := range lines {
+			e2e.Logf("line: %v", line)
+			if strings.Contains(line, "olm-operator") {
+				name := strings.Split(line, " ")
+				checkRel, err := oc.AsAdmin().WithoutNamespace().Run("adm").Args("top" ,"pods",name[0], "-n", "openshift-operator-lifecycle-manager").Output()
+				o.Expect(err).NotTo(o.HaveOccurred())
+				lines1 := strings.Split(checkRel, " ")
+				for _, line1 := range lines1 {
+					if strings.Contains(line1, "m") {
+						e2e.Logf("line1: %v", line1)
+						cpu := strings.Split(line1, "m")
+						if cpu[0] > "98"  {
+							e2e.Logf("cpu: %v", cpu[0])
+							e2e.Failf("CPU Limit usate more the 99%: %v", checkRel, line1, cpu[0])
+						}
+					}
+				}
+
+			}
+		}
+    })
+
 })
 
 var _ = g.Describe("[sig-operators] OLM for an end user use", func() {
