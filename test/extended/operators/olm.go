@@ -2077,6 +2077,62 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	
 	})
 
+	// author: scolange@redhat.com
+	g.It("Author:scolange-Medium-21126-OLM Subscription status says 'CSV is installed' when it is not ", func() {
+		
+		 var buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
+		 var operatorGroup = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+		 var etcdSubManual = filepath.Join(buildPruningBaseDir, "etcd-subscription-manual.yaml")
+		 var operatorWait = 180 * time.Second
+		 defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("ns", "test21126").Execute()
+		
+		 g.By("create new namespace")
+		 var err = oc.AsAdmin().WithoutNamespace().Run("create").Args("ns", "test21126").Execute()
+		 o.Expect(err).NotTo(o.HaveOccurred())
+		
+		 g.By("create new OperatorGroup")
+		 ogFile, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", operatorGroup, "-p", "NAME=test-operator", "NAMESPACE=test21126").OutputToFile("config-21126.json")
+		 o.Expect(err).NotTo(o.HaveOccurred())
+		
+		 err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", ogFile).Execute()
+		 o.Expect(err).NotTo(o.HaveOccurred())
+		
+		 configFile, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", etcdSubManual, "-p", "NAME=test-operator-21126", "NAMESPACE=test21126", "INSTALLPLAN=Manual", "SOURCENAME=test-operator", "SOURCENAMESPACE=openshift-marketplace").OutputToFile("config-21126.json")
+		 o.Expect(err).NotTo(o.HaveOccurred())
+		 err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", configFile).Execute()
+		 o.Expect(err).NotTo(o.HaveOccurred())
+		
+		 err = wait.Poll(30*time.Second, operatorWait, func() (bool, error) {
+		 	inst, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("sub", "-n", "test21126","-o", "jsonpath={.items[*].spec.installPlanApproval}").Output()
+		 	o.Expect(err).NotTo(o.HaveOccurred())
+		
+		 	if inst == "Manual" {
+		 		e2e.Logf("Install Approval Manual")
+		 		return true, nil
+		 	} else {
+		 		e2e.Logf("Error Install Approval ")
+		 		return false, nil
+		 	}
+    	 })
+		 o.Expect(err).NotTo(o.HaveOccurred())
+	 
+		 instCsv, err1 := oc.AsAdmin().WithoutNamespace().Run("get").Args("sub", "-n", "test21126", "-o", "jsonpath={.items[*].status.installedCSV}").Output()
+		 o.Expect(err1).NotTo(o.HaveOccurred())
+		 if instCsv == "" {
+		 	e2e.Logf("NO CSV Inside subscription")
+		 } else {
+		 	e2e.Failf("2 No packages for evaluating installedCSV if package namespace is not NULL")
+		 }
+	 
+		 msgcsv, err2 := oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", "-n", "test21126").Output()
+		 o.Expect(err2).NotTo(o.HaveOccurred())
+		 if msgcsv == "No resources found." {
+		 	e2e.Logf("NO CSV Installed")
+		 } else {
+		 	e2e.Failf("3 No packages for evaluating if package namespace is not NULL")
+		 }
+    })
+
 })
 
 var _ = g.Describe("[sig-operators] OLM for an end user use", func() {
