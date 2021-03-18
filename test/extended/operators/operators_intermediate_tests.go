@@ -416,7 +416,7 @@ var _ = g.Describe("[sig-operators] ISV_Operators [Suite:openshift/isv]", func()
 
 	})
 
-	g.It("Author:scolange:Medium-27782-[Intermediate] Operator crunchy ossm should work properly", func() {
+	g.It("Author:scolange-Medium-27782-[Intermediate] Operator crunchy ossm should work properly", func() {
 		crunchyCR := "Pgcluster"
 		crunchyCRName := "example"
 		crunchyPackageName := "crunchy-postgres-operator"
@@ -430,7 +430,7 @@ var _ = g.Describe("[sig-operators] ISV_Operators [Suite:openshift/isv]", func()
 		CheckCR(currentPackage, crunchyCR, crunchyCRName, "-o=jsonpath={.status.state}", "pgcluster Processed", oc)
 		RemoveCR(currentPackage, crunchyCR, crunchyCRName, oc)
 		RemoveOperatorDependencies(currentPackage, oc, false)
-	
+
 	})
 })
 
