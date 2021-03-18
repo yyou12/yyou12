@@ -22,7 +22,7 @@ func contains(s []string, e string) bool {
 
 // DockerCLI provides function to run the docker command
 type DockerCLI struct {
-	cli *client.Client
+	CLI *client.Client
 }
 
 // NewDockerCLI initialize the docker cli framework
@@ -32,7 +32,7 @@ func NewDockerCLI() *DockerCLI {
 	if err != nil {
 		e2e.Failf("get docker client failed")
 	}
-	newclient.cli = cli
+	newclient.CLI = cli
 	return newclient
 }
 
@@ -40,7 +40,7 @@ func NewDockerCLI() *DockerCLI {
 func (c *DockerCLI) GetImageID(imageTag string) (string, error) {
 	imageID := ""
 	ctx := context.Background()
-	images, err := c.cli.ImageList(ctx, types.ImageListOptions{})
+	images, err := c.CLI.ImageList(ctx, types.ImageListOptions{})
 	if err != nil {
 		e2e.Logf("get docker image list failed")
 		return imageID, err
@@ -67,7 +67,7 @@ func (c *DockerCLI) RemoveImage(imageIndex string) (bool, error) {
 		return true, nil
 	}
 	e2e.Logf("delete image %s\n", imageID)
-	_, err = c.cli.ImageRemove(ctx, imageID, types.ImageRemoveOptions{Force: true})
+	_, err = c.CLI.ImageRemove(ctx, imageID, types.ImageRemoveOptions{Force: true})
 	if err != nil {
 		e2e.Logf("remove docker image %s failed", imageID)
 		return false, err
@@ -81,7 +81,7 @@ func (c *DockerCLI) GetImageList() ([]string, error) {
 	var imageList []string
 	ctx := context.Background()
 
-	images, err := c.cli.ImageList(ctx, types.ImageListOptions{})
+	images, err := c.CLI.ImageList(ctx, types.ImageListOptions{})
 	if err != nil {
 		e2e.Logf("get docker image list failed")
 		return imageList, err
