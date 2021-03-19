@@ -1060,3 +1060,21 @@ func doAction(oc *exutil.CLI, action string, asAdmin bool, withoutNamespace bool
 	}
 	return "", nil
 }
+
+
+func clusterPackageExists(oc *exutil.CLI, sub subscriptionDescription) (bool, error) {
+	found := false
+	var v []string
+	msg, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("packagemanifest", "-n", "openshift-marketplace", "-o=jsonpath={range .items[*]}{@.metadata.name}{\",\"}{@.metadata.labels.catalog}{\"\\n\"}{end}").Output()
+	if err == nil {
+		for _, s := range strings.Fields(msg) {
+			v = strings.Split(s, ",")
+			if v[0] == sub.operatorPackage && v[1] == sub.catalogSourceName {
+				found = true
+				e2e.Logf("%v matches: %v", s, sub.operatorPackage)
+				break
+			}
+		}
+	}
+	return found, err
+}

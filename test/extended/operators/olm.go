@@ -3799,7 +3799,9 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 
 		var (
 			next       = false
+			csvName    = ""
 			err        error
+			exists     bool
 			waitErr    error
 			msg        string
 			podName    string
@@ -3828,6 +3830,15 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		itName := g.CurrentGinkgoTestDescription().TestText
 		nameSpace := oc.Namespace()
 
+		g.By("check for operator")
+		e2e.Logf("Check if %v exists in the %v catalog", sub.operatorPackage, sub.catalogSourceName)
+		exists, err = clusterPackageExists(oc, sub)
+		if ! exists {
+			e2e.Failf("FAIL:PackageMissing %v does not exist in catalog %v", sub.operatorPackage, sub.catalogSourceName)
+		}
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(exists).To(o.BeTrue())
+
 		g.By("Create og")
 		msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("ns", nameSpace).Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -3836,8 +3847,23 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		og.createwithCheck(oc, itName, dr)
 
 		g.By("Create sub")
-		sub.create(oc, itName, dr)
+		sub.createWithoutCheck(oc, itName, dr)
 		newCheck("expect", asAdmin, withoutNamespace, compare, "AtLatestKnown", ok, []string{"sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.state}"}).check(oc)
+		csvName = getResource(oc, asAdmin, withoutNamespace, "sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.installedCSV}")
+		// e2e.Logf("csvName %v", csvName)
+		o.Expect(csvName).NotTo(o.BeEmpty())
+
+		g.By("Wait for CSV")
+		waitErr = wait.Poll(5*time.Second, 240*time.Second, func() (bool, error) {	
+			msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", "-n", oc.Namespace(), "--no-headers", csvName).Output()
+			if strings.Contains(msg, "Succeeded") {
+				return true, nil
+			}
+			return false, nil
+		})
+		e2e.Logf("csvName %v, err %v, msg %v", csvName, waitErr, msg)
+		o.Expect(waitErr).NotTo(o.HaveOccurred())
+		o.Expect(err).NotTo(o.HaveOccurred())
 
 		g.By("Wait for pod")
 		waitErr = wait.Poll(3*time.Second, 180*time.Second, func() (bool, error) {
@@ -4067,7 +4093,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 				singleNamespace:        true,
 			}
 		)
-
+		
 		g.By("Create og-allnamespace, cm etcd, catalog source")
 		ogAll.create(oc, itName, dr)
 		msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("og", "-n", oc.Namespace()).Output()
@@ -4391,6 +4417,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 			catPodname          string
 			data                PrometheusQueryResult
 			err                 error
+			exists              bool			
 			i                   int
 			metricsBefore       metrics
 			metricsAfter        metrics
@@ -4398,7 +4425,6 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 			olmPodname          string
 			olmToken            string
 			subSync             PrometheusQueryResult
-			etcAvailable        = true
 		)
 
 		oc.SetupProject()
@@ -4422,17 +4448,15 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 			}
 		)
 
-		g.By("Check etcd availability")
-		msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("packagemanifest", "-n", "openshift-marketplace", "etcd", "--no-headers").Output()
-		if err != nil {
-			etcAvailable = false
-			e2e.Logf("!!! Could not query packagemanifest for etcd operator, probably will fail: %v %v\n", err, msg)
+
+		g.By("check for operator")
+		e2e.Logf("Check if %v exists in the %v catalog", sub.operatorPackage, sub.catalogSourceName)
+		exists, err = clusterPackageExists(oc, sub)
+		if ! exists {
+			e2e.Failf("FAIL:PackageMissing %v does not exist in catalog %v", sub.operatorPackage, sub.catalogSourceName)
 		}
-		if !strings.Contains(msg, "Community Operators") {
-			e2e.Logf("!!! Could not find etcd operator in Community Operators, probably will fail: %v %v\n", err, msg)
-			etcAvailable = false
-		}
-		defer e2e.Logf("\n\netcd availability was %v\n", etcAvailable)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(exists).To(o.BeTrue())
 
 		g.By("Get token & pods")
 		og.create(oc, itName, dr)
