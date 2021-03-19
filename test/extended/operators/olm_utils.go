@@ -799,10 +799,8 @@ func newResource(oc *exutil.CLI, kind string, name string, nsflag bool, namespac
 //the method is to delete resource.
 func (r resourceDescription) delete() {
 	if r.withoutNamespace && r.requireNS {
-		e2e.Logf("delete %s %s, ns %s, withoutNamespace is %v", r.kind, r.name, r.namespace, r.withoutNamespace)
 		removeResource(r.oc, r.asAdmin, r.withoutNamespace, r.kind, r.name, "-n", r.namespace)
 	} else {
-		e2e.Logf("delete %s %s, withoutNamespace is %v", r.kind, r.name, r.withoutNamespace)
 		removeResource(r.oc, r.asAdmin, r.withoutNamespace, r.kind, r.name)
 	}
 }
