@@ -49,15 +49,22 @@ rm -fr handleattribution.py && eval cp -fr ${WORKSPACE}"/private/pipeline/handle
 pipelinetype=`python3 handleattribution.py -a get -y "${ATTRIBUTIONOPTION}" -p pipeline_type || true `
 if [ "${pipelinetype}" != "None" ] && [ "${pipelinetype}" != "failtogetvalue" ] && [ "${pipelinetype}" != "" ]; then
   echo ${pipelinetype}
-  if [ "${pipelinetype}" == "stagepipeline" ]; then
-    echo "it is stage pipeline"
-    profiletype="stage"
-  else
-    echo "it is prerelease pipeline"
-    profiletype="ci"
-  fi
+  case ${pipelinetype} in
+    stagepipeline)
+      echo "it is stage pipeline"
+      profiletype="stage"
+      ;;
+    prodpipeline)
+      echo "it is prod pipeline"
+      profiletype="prod"
+      ;;
+    *)
+      echo "it is prerelease pipeline"
+      profiletype="ci"
+      ;;
+  esac
 else
-  echo "can not get pipeline_type, treat it as default type prereleasepipeline"
+  echo "can not get pipeline_type, try to get profile from ci"
   profiletype="ci"
 fi
 
