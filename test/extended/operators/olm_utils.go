@@ -45,6 +45,7 @@ type csvDescription struct {
 
 // the method is to delete csv.
 func (csv csvDescription) delete(itName string, dr describerResrouce) {
+	e2e.Logf("remove %s, ns %s", csv.name, csv.namespace)
 	dr.getIr(itName).remove(csv.name, "csv", csv.namespace)
 }
 
@@ -118,6 +119,7 @@ func (sub *subscriptionDescription) createWithoutCheck(oc *exutil.CLI, itName st
 	//	o.Expect(sub.startingCSV).NotTo(o.BeEmpty())
 	//}
 
+	e2e.Logf("create sub %s", sub.subName)
 	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", sub.template, "-p", "SUBNAME="+sub.subName, "SUBNAMESPACE="+sub.namespace, "CHANNEL="+sub.channel,
 		"APPROVAL="+sub.ipApproval, "OPERATORNAME="+sub.operatorPackage, "SOURCENAME="+sub.catalogSourceName, "SOURCENAMESPACE="+sub.catalogSourceNamespace, "STARTINGCSV="+sub.startingCSV)
 
@@ -221,6 +223,7 @@ func (sub *subscriptionDescription) approveSpecificIP(oc *exutil.CLI, itName str
 
 //the method is to construct one csv object.
 func (sub *subscriptionDescription) getCSV() csvDescription {
+	e2e.Logf("csv is %s, namespace is %s", sub.installedCSV, sub.namespace)
 	return csvDescription{sub.installedCSV, sub.namespace}
 }
 
@@ -235,6 +238,7 @@ func (sub *subscriptionDescription) getInstanceVersion(oc *exutil.CLI) string {
 		}
 	}
 	o.Expect(version).NotTo(o.BeEmpty())
+	e2e.Logf("sub cr version is %s", version)
 	return version
 }
 
@@ -249,9 +253,11 @@ func (sub *subscriptionDescription) createInstance(oc *exutil.CLI, instance stri
 
 //the method is to delete sub which is saved when calling sub.create() or sub.createWithoutCheck()
 func (sub *subscriptionDescription) delete(itName string, dr describerResrouce) {
+	e2e.Logf("remove sub %s, ns is %s", sub.subName, sub.namespace)
 	dr.getIr(itName).remove(sub.subName, "sub", sub.namespace)
 }
 func (sub *subscriptionDescription) deleteCSV(itName string, dr describerResrouce) {
+	e2e.Logf("remove csv %s, ns is %s", sub.installedCSV, sub.namespace)
 	dr.getIr(itName).remove(sub.installedCSV, "csv", sub.namespace)
 }
 
@@ -276,6 +282,7 @@ func (sub *subscriptionDescriptionProxy) createWithoutCheck(oc *exutil.CLI, itNa
 
 	o.Expect(err).NotTo(o.HaveOccurred())
 	dr.getIr(itName).add(newResource(oc, "sub", sub.subName, requireNS, sub.namespace))
+	e2e.Logf("install subscriptionDescriptionProxy %s SUCCESS", sub.subName)
 }
 
 func (sub *subscriptionDescriptionProxy) create(oc *exutil.CLI, itName string, dr describerResrouce) {
@@ -297,10 +304,12 @@ func (crd *crdDescription) create(oc *exutil.CLI, itName string, dr describerRes
 	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", crd.template, "-p", "NAME="+crd.name)
 	o.Expect(err).NotTo(o.HaveOccurred())
 	dr.getIr(itName).add(newResource(oc, "crd", crd.name, notRequireNS, ""))
+	e2e.Logf("create crd %s SUCCESS", crd.name)
 }
 
 //the method is to delete CRD.
 func (crd *crdDescription) delete(oc *exutil.CLI) {
+	e2e.Logf("remove crd %s, withoutNamespace is %v", crd.name, withoutNamespace)
 	removeResource(oc, asAdmin, withoutNamespace, "crd", crd.name)
 }
 
@@ -315,6 +324,7 @@ func (cm *configMapDescription) create(oc *exutil.CLI, itName string, dr describ
 	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", cm.template, "-p", "NAME="+cm.name, "NAMESPACE="+cm.namespace)
 	o.Expect(err).NotTo(o.HaveOccurred())
 	dr.getIr(itName).add(newResource(oc, "cm", cm.name, requireNS, cm.namespace))
+	e2e.Logf("create cm %s SUCCESS", cm.name)
 }
 
 //the method is to patch cm.
@@ -341,10 +351,12 @@ func (catsrc *catalogSourceDescription) create(oc *exutil.CLI, itName string, dr
 		"DISPLAYNAME="+"\""+catsrc.displayName+"\"", "PUBLISHER="+"\""+catsrc.publisher+"\"", "SOURCETYPE="+catsrc.sourceType)
 	o.Expect(err).NotTo(o.HaveOccurred())
 	dr.getIr(itName).add(newResource(oc, "catsrc", catsrc.name, requireNS, catsrc.namespace))
+	e2e.Logf("create catsrc %s SUCCESS", catsrc.name)
 }
 
 //the method is to delete catalogsource.
 func (catsrc *catalogSourceDescription) delete(itName string, dr describerResrouce) {
+	e2e.Logf("delete carsrc %s, ns is %s", catsrc.name, catsrc.namespace)
 	dr.getIr(itName).remove(catsrc.name, "catsrc", catsrc.namespace)
 }
 
@@ -361,10 +373,12 @@ func (crinstance *customResourceDescription) create(oc *exutil.CLI, itName strin
 		"-p", "NAME="+crinstance.name, "NAMESPACE="+crinstance.namespace)
 	o.Expect(err).NotTo(o.HaveOccurred())
 	dr.getIr(itName).add(newResource(oc, crinstance.typename, crinstance.name, requireNS, crinstance.namespace))
+	e2e.Logf("create CR %s SUCCESS", crinstance.name)
 }
 
 //the method is to delete CR
 func (crinstance *customResourceDescription) delete(itName string, dr describerResrouce) {
+	e2e.Logf("delete crinstance %s, type is %s, ns is %s", crinstance.name, crinstance.typename, crinstance.namespace)
 	dr.getIr(itName).remove(crinstance.name, crinstance.typename, crinstance.namespace)
 }
 
@@ -406,10 +420,12 @@ func (og *operatorGroupDescription) create(oc *exutil.CLI, itName string, dr des
 	}
 	o.Expect(err).NotTo(o.HaveOccurred())
 	dr.getIr(itName).add(newResource(oc, "og", og.name, requireNS, og.namespace))
+	e2e.Logf("create og %s success", og.name)
 }
 
 //the method is to delete og
 func (og *operatorGroupDescription) delete(itName string, dr describerResrouce) {
+	e2e.Logf("delete og %s, ns is %s", og.name, og.namespace)
 	dr.getIr(itName).remove(og.name, "og", og.namespace)
 }
 
@@ -430,20 +446,24 @@ func (osrc *operatorSourceDescription) create(oc *exutil.CLI, itName string, dr 
 		"NAMELABEL="+osrc.namelabel, "REGISTRYNAMESPACE="+osrc.registrynamespace, "DISPLAYNAME="+osrc.displayname, "PUBLISHER="+osrc.publisher)
 	o.Expect(err).NotTo(o.HaveOccurred())
 	dr.getIr(itName).add(newResource(oc, "opsrc", osrc.name, requireNS, osrc.namespace))
+	e2e.Logf("create operatorSource %s success", osrc.name)
 }
 
 func (osrc *operatorSourceDescription) delete(itName string, dr describerResrouce) {
+	e2e.Logf("delete operatorSource %s, ns is %s", osrc.name, osrc.namespace)
 	dr.getIr(itName).remove(osrc.name, "opsrc", osrc.namespace)
 }
 
 func (osrc *operatorSourceDescription) getRunningNodes(oc *exutil.CLI) string {
 	nodesNames := getResource(oc, asAdmin, withoutNamespace, "pod", fmt.Sprintf("--selector=marketplace.operatorSource=%s", osrc.name), "-n", osrc.namespace, "-o=jsonpath={.items[*]..nodeName}")
 	o.Expect(nodesNames).NotTo(o.BeEmpty())
+	e2e.Logf("getRunningNodes: nodesNames %s", nodesNames)
 	return nodesNames
 }
 func (osrc *operatorSourceDescription) getDeployment(oc *exutil.CLI) {
 	output := getResource(oc, asAdmin, withoutNamespace, "deployment", fmt.Sprintf("--selector=opsrc-owner-name=%s", osrc.name), "-n", osrc.namespace, "-o=jsonpath={.items[0].metadata.name}")
 	o.Expect(output).NotTo(o.BeEmpty())
+	e2e.Logf("getDeployment: deploymentName %s", output)
 	osrc.deploymentName = output
 }
 func (osrc *operatorSourceDescription) patchDeployment(oc *exutil.CLI, content string) {
@@ -481,9 +501,11 @@ func (csc *catalogSourceConfigDescription) create(oc *exutil.CLI, itName string,
 		"PACKAGES="+csc.packages, "TARGETNAMESPACE="+csc.targetnamespace, "SOURCE="+csc.source)
 	o.Expect(err).NotTo(o.HaveOccurred())
 	dr.getIr(itName).add(newResource(oc, "csc", csc.name, requireNS, csc.namespace))
+	e2e.Logf("create catalogSourceConfig %s success", csc.name)
 }
 
 func (csc *catalogSourceConfigDescription) delete(itName string, dr describerResrouce) {
+	e2e.Logf("delete catalogSourceConfig %s, ns is %s", csc.name, csc.namespace)
 	dr.getIr(itName).remove(csc.name, "csc", csc.namespace)
 }
 
@@ -551,11 +573,13 @@ func (sa *serviceAccountDescription) getDefinition(oc *exutil.CLI) {
 	parameters := []string{"sa", sa.name, "-n", sa.namespace, "-o=json"}
 	definitionfile, err := oc.AsAdmin().WithoutNamespace().Run("get").Args(parameters...).OutputToFile("sa-config.json")
 	o.Expect(err).NotTo(o.HaveOccurred())
+	e2e.Logf("getDefinition: definitionfile is %s", definitionfile)
 	sa.definitionfile = definitionfile
 }
 
 //the method is to delete sa
 func (sa *serviceAccountDescription) delete(oc *exutil.CLI) {
+	e2e.Logf("delete sa %s, ns is %s", sa.name, sa.namespace)
 	_, err := doAction(oc, "delete", asAdmin, withoutNamespace, "sa", sa.name, "-n", sa.namespace)
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
@@ -775,8 +799,10 @@ func newResource(oc *exutil.CLI, kind string, name string, nsflag bool, namespac
 //the method is to delete resource.
 func (r resourceDescription) delete() {
 	if r.withoutNamespace && r.requireNS {
+		e2e.Logf("delete %s %s, ns %s, withoutNamespace is %v", r.kind, r.name, r.namespace, r.withoutNamespace)
 		removeResource(r.oc, r.asAdmin, r.withoutNamespace, r.kind, r.name, "-n", r.namespace)
 	} else {
+		e2e.Logf("delete %s %s, withoutNamespace is %v", r.kind, r.name, r.withoutNamespace)
 		removeResource(r.oc, r.asAdmin, r.withoutNamespace, r.kind, r.name)
 	}
 }
