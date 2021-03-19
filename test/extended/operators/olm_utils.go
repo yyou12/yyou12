@@ -1,11 +1,14 @@
 package operators
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 
 	g "github.com/onsi/ginkgo"
 	o "github.com/onsi/gomega"
+	"golang.org/x/oauth2"
 
 	"io/ioutil"
 	"math/rand"
@@ -1061,7 +1064,6 @@ func doAction(oc *exutil.CLI, action string, asAdmin bool, withoutNamespace bool
 	return "", nil
 }
 
-
 func clusterPackageExists(oc *exutil.CLI, sub subscriptionDescription) (bool, error) {
 	found := false
 	var v []string
@@ -1077,4 +1079,14 @@ func clusterPackageExists(oc *exutil.CLI, sub subscriptionDescription) (bool, er
 		}
 	}
 	return found, err
+}
+
+// Return a github client
+func githubClient() (context.Context, *http.Client) {
+	ctx := context.Background()
+	ts := oauth2.StaticTokenSource(
+		&oauth2.Token{AccessToken: "91b3eac7455e8a7245dadce0de9e7d60f097a9a9"},
+	)
+	tc := oauth2.NewClient(ctx, ts)
+	return ctx, tc
 }

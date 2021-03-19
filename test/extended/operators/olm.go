@@ -1,7 +1,6 @@
 package operators
 
 import (
-	"context"
 	"fmt"
 	"math/rand"
 	"os/exec"
@@ -1296,8 +1295,9 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 			if sameCommit == "" {
 				sameCommit = gitCommitID
 				g.By("checking this commitID in the operator-lifecycle-manager repo")
-				client := github.NewClient(nil)
-				_, _, err := client.Git.GetCommit(context.Background(), "operator-framework", "operator-lifecycle-manager", gitCommitID)
+				ctx, tc := githubClient()
+				client := github.NewClient(tc)
+				_, _, err := client.Git.GetCommit(ctx, "operator-framework", "operator-lifecycle-manager", gitCommitID)
 				if err != nil {
 					e2e.Failf("Git.GetCommit returned error: %v", err)
 				}
@@ -3833,7 +3833,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		g.By("check for operator")
 		e2e.Logf("Check if %v exists in the %v catalog", sub.operatorPackage, sub.catalogSourceName)
 		exists, err = clusterPackageExists(oc, sub)
-		if ! exists {
+		if !exists {
 			e2e.Failf("FAIL:PackageMissing %v does not exist in catalog %v", sub.operatorPackage, sub.catalogSourceName)
 		}
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -3854,7 +3854,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		o.Expect(csvName).NotTo(o.BeEmpty())
 
 		g.By("Wait for CSV")
-		waitErr = wait.Poll(5*time.Second, 240*time.Second, func() (bool, error) {	
+		waitErr = wait.Poll(5*time.Second, 240*time.Second, func() (bool, error) {
 			msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", "-n", oc.Namespace(), "--no-headers", csvName).Output()
 			if strings.Contains(msg, "Succeeded") {
 				return true, nil
@@ -4093,7 +4093,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 				singleNamespace:        true,
 			}
 		)
-		
+
 		g.By("Create og-allnamespace, cm etcd, catalog source")
 		ogAll.create(oc, itName, dr)
 		msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("og", "-n", oc.Namespace()).Output()
@@ -4417,7 +4417,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 			catPodname          string
 			data                PrometheusQueryResult
 			err                 error
-			exists              bool			
+			exists              bool
 			i                   int
 			metricsBefore       metrics
 			metricsAfter        metrics
@@ -4448,11 +4448,10 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 			}
 		)
 
-
 		g.By("check for operator")
 		e2e.Logf("Check if %v exists in the %v catalog", sub.operatorPackage, sub.catalogSourceName)
 		exists, err = clusterPackageExists(oc, sub)
-		if ! exists {
+		if !exists {
 			e2e.Failf("FAIL:PackageMissing %v does not exist in catalog %v", sub.operatorPackage, sub.catalogSourceName)
 		}
 		o.Expect(err).NotTo(o.HaveOccurred())

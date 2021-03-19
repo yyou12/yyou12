@@ -23,6 +23,7 @@ require (
 	github.com/spf13/cobra v1.0.0
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/stew v0.0.0-20130812190256-80ef0842b48b
+	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45
 	k8s.io/api v0.17.1
 	k8s.io/apimachinery v0.17.1
 	k8s.io/apiserver v0.17.1
