@@ -585,8 +585,13 @@ class ReportPortalClient:
                     for attr in ret["attributes"]:
                         if attr["key"] == "team" and attr["value"] == st and buildnum != "":
                             for bid in buildnum.split(","):
-                                if bid.replace(" ", "").split("-")[1] == self.args.buildnum.split("-")[1]:
-                                    # launch, team and buildtype already exist
+                                bidType = bid.replace(" ", "").split("_")[0].split("-")[1]
+                                bidJobName = "ginkgo-test" # old build num format, take default value
+                                if len(bid.replace(" ", "").split("_")) > 1:
+                                    bidJobName = bid.replace(" ", "").split("_")[1] # new build num format
+                                if (bidJobName == self.args.buildnum.split("_")[1] and
+                                    bidType == self.args.buildnum.split("_")[0].split("-")[1]):
+                                    # launch, team, build job_name, and  buildtype already exist
                                     ids.append(ret["id"])
                                     matched = True
                 if not matched:
@@ -767,11 +772,16 @@ class ReportPortalClient:
                 #build id already exists
                 return True
 
-            buildType = self.args.buildnum.split("-")[1]
+            buildType = self.args.buildnum.split("_")[0].split("-")[1]
+            buildJobName = self.args.buildnum.split("_")[1]
+
             for bid in existingattrvalue.split(","):
-                bidType = bid.replace(" ", "").split("-")[1]
-                if bidType == buildType:
-                    #same build type already exist
+                bidType = bid.replace(" ", "").split("_")[0].split("-")[1]
+                bidJobName = "ginkgo-test" # old build num format, take default value
+                if len(bid.replace(" ", "").split("_")) > 1:
+                    bidJobName = bid.replace(" ", "").split("_")[1] # new build num format
+                if bidType == buildType and bidJobName == buildJobName:
+                    #same build type and build job name already exist
                     return True
 
             newattrvalue = existingattrvalue + "," + self.args.buildnum

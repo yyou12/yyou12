@@ -114,7 +114,7 @@ if [ "X${LAUNCHID}X" != "XX" ]; then
   for subteamfile in `ls import-*.xml`; do
     subteam=${subteamfile:7:-4}
     eval zip -r "${LAUNCHID}.zip" "${subteamfile}"
-    ret=`python3 reportportal.py -a import -f "${LAUNCHID}.zip" -s "${subteam}" -v "${VERSION}" -ao "${ATTRIBUTIONOPTION}" -bn "${BUILDNUM}""${buildtype}" -pn "${PROFILENAME}" -pp "../misc/jenkins/"${profiletype}"/" -t "${rpmmtoken}" -ta "${rppmtoken}" -trial "${LAUNCHTRIAL}" 2>&1 || true`
+    ret=`python3 reportportal.py -a import -f "${LAUNCHID}.zip" -s "${subteam}" -v "${VERSION}" -ao "${ATTRIBUTIONOPTION}" -bn "${BUILDNUM}""${buildtype}""_${JOB_BASE_NAME}" -pn "${PROFILENAME}" -pp "../misc/jenkins/"${profiletype}"/" -t "${rpmmtoken}" -ta "${rppmtoken}" -trial "${LAUNCHTRIAL}" 2>&1 || true`
     eval rm -fr  "${LAUNCHID}.zip"
     result=`echo -e ${ret} | tail -1|xargs`
     if ! [ "X${result}X" == "XSUCCESSX" ]; then
