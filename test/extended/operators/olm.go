@@ -2067,7 +2067,6 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	})
 
 	g.It("Author:scolange-Medium-24075-The couchbase packagemanifest labels provider value should not be MongoDB Inc ", func() {
-
 		NameCouchBase, err1 := oc.AsAdmin().WithoutNamespace().Run("get").Args("packagemanifest", "couchbase-enterprise-certified", "-n", "openshift-marketplace", "-o", "jsonpath={.status.provider.name}").Output()
 		e2e.Logf(NameCouchBase)
 		o.Expect(err1).NotTo(o.HaveOccurred())
@@ -2075,62 +2074,49 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 
 	})
 
-	// author: scolange@redhat.com
-	g.It("Author:scolange-Medium-21126-OLM Subscription status says CSV is installed when it is not", func() {
+	// author: jiazha@redhat.com
+	g.It("Author:jiazha-Medium-21126-OLM Subscription status says CSV is installed when it is not", func() {
+		g.By("1) Install the OperatorGroup in a random project")
+		dr := make(describerResrouce)
+		itName := g.CurrentGinkgoTestDescription().TestText
+		dr.addIr(itName)
 
-		var buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
-		var operatorGroup = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
-		var etcdSubManual = filepath.Join(buildPruningBaseDir, "etcd-subscription-manual.yaml")
-		var operatorWait = 180 * time.Second
-		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("ns", "test21126").Execute()
-
-		g.By("create new namespace")
-		var err = oc.AsAdmin().WithoutNamespace().Run("create").Args("ns", "test21126").Execute()
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		g.By("create new OperatorGroup")
-		ogFile, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", operatorGroup, "-p", "NAME=test-operator", "NAMESPACE=test21126").OutputToFile("config-21126.json")
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", ogFile).Execute()
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		configFile, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", etcdSubManual, "-p", "NAME=test-operator-21126", "NAMESPACE=test21126", "INSTALLPLAN=Manual", "SOURCENAME=test-operator", "SOURCENAMESPACE=openshift-marketplace").OutputToFile("config-21126.json")
-		o.Expect(err).NotTo(o.HaveOccurred())
-		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", configFile).Execute()
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		err = wait.Poll(30*time.Second, operatorWait, func() (bool, error) {
-			inst, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("sub", "-n", "test21126", "-o", "jsonpath={.items[*].spec.installPlanApproval}").Output()
-			o.Expect(err).NotTo(o.HaveOccurred())
-
-			if inst == "Manual" {
-				e2e.Logf("Install Approval Manual")
-				return true, nil
-			} else {
-				e2e.Logf("Error Install Approval ")
-				return false, nil
-			}
-		})
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		instCsv, err1 := oc.AsAdmin().WithoutNamespace().Run("get").Args("sub", "-n", "test21126", "-o", "jsonpath={.items[*].status.installedCSV}").Output()
-		o.Expect(err1).NotTo(o.HaveOccurred())
-		if instCsv == "" {
-			e2e.Logf("NO CSV Inside subscription")
-		} else {
-			e2e.Failf("2 No packages for evaluating installedCSV if package namespace is not NULL")
+		oc.SetupProject()
+		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
+		ogSingleTemplate := filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+		og := operatorGroupDescription{
+			name:      "og-21126",
+			namespace: oc.Namespace(),
+			template:  ogSingleTemplate,
 		}
+		og.createwithCheck(oc, itName, dr)
 
-		msgcsv, err2 := oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", "-n", "test21126").Output()
-		o.Expect(err2).NotTo(o.HaveOccurred())
-		if msgcsv == "No resources found." {
-			e2e.Logf("NO CSV Installed")
-		} else {
-			e2e.Failf("3 No packages for evaluating if package namespace is not NULL")
+		g.By("2) Install the etcdoperator v0.9.4 with Manual approval")
+		subTemplate := filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+		sub := subscriptionDescription{
+			subName:                "sub-21126",
+			namespace:              oc.Namespace(),
+			catalogSourceName:      "community-operators",
+			catalogSourceNamespace: "openshift-marketplace",
+			channel:                "singlenamespace-alpha",
+			ipApproval:             "Manual",
+			operatorPackage:        "etcd",
+			startingCSV:            "etcdoperator.v0.9.4",
+			singleNamespace:        true,
+			template:               subTemplate,
 		}
+		defer sub.delete(itName, dr)
+		sub.create(oc, itName, dr)
+		g.By("3) Check the etcdoperator v0.9.4 related resources")
+		// the installedCSV should be NULL
+		newCheck("expect", asAdmin, withoutNamespace, compare, "", ok, []string{"sub", "sub-21126", "-n", oc.Namespace(), "-o=jsonpath={.status.installedCSV}"}).check(oc)
+		// the state should be UpgradePending
+		newCheck("expect", asAdmin, withoutNamespace, compare, "UpgradePending", ok, []string{"sub", "sub-21126", "-n", oc.Namespace(), "-o=jsonpath={.status.state}"}).check(oc)
+		// the InstallPlan should not approved
+		newCheck("expect", asAdmin, withoutNamespace, compare, "false", ok, []string{"ip", sub.getIP(oc), "-n", oc.Namespace(), "-o=jsonpath={.spec.approved}"}).check(oc)
+		// should no CSV found
+		newCheck("expect", asAdmin, withoutNamespace, contain, "No resources found", ok, []string{"csv", "-n", oc.Namespace()}).check(oc)
 	})
-
 })
 
 var _ = g.Describe("[sig-operators] OLM for an end user use", func() {

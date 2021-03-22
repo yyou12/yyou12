@@ -227,6 +227,11 @@ func (sub *subscriptionDescription) getCSV() csvDescription {
 	return csvDescription{sub.installedCSV, sub.namespace}
 }
 
+// get the reference InstallPlan
+func (sub *subscriptionDescription) getIP(oc *exutil.CLI) string {
+	return getResource(oc, asAdmin, withoutNamespace, "sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.installPlanRef.name}")
+}
+
 //the method is to get the CR version from alm-examples of csv if it exists
 func (sub *subscriptionDescription) getInstanceVersion(oc *exutil.CLI) string {
 	version := ""
