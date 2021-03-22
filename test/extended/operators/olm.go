@@ -132,7 +132,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		newCheck("expect", asAdmin, withoutNamespace, compare, "OperatorCondition", ok, []string{"role", "etcdoperator.v0.9.4", "-n", oc.Namespace(), "-o=jsonpath={.metadata.ownerReferences[0].kind}"}).check(oc)
 		// this etcdoperator.v0.9.4 role should be added to etcd-operator SA
 		newCheck("expect", asAdmin, withoutNamespace, compare, "etcd-operator", ok, []string{"rolebinding", "etcdoperator.v0.9.4", "-n", oc.Namespace(), "-o=jsonpath={.subjects[0].name}"}).check(oc)
-		
+
 		g.By("4) delete the operator so that can check the related resource in next step")
 		sub.delete(itName, dr)
 		sub.deleteCSV(itName, dr)
@@ -145,7 +145,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	})
 
 	// author: jiazha@redhat.com
-	g.It("Author:jiazha-Medium-37710-supports the Upgradeable Supported Condition", func() {
+	g.It("ConnectedOnly-Author:jiazha-Medium-37710-supports the Upgradeable Supported Condition", func() {
 		g.By("1) Install the OperatorGroup in a random project")
 		dr := make(describerResrouce)
 		itName := g.CurrentGinkgoTestDescription().TestText
@@ -204,7 +204,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		g.By("5) Patch the status of the Upgradeable to False")
 		// wait 3 seconds to waiting for the proxy server ready
 		time.Sleep(3 * time.Second)
-
+		// In proxy cluster, get ERROR: The requested URL could not be retrieved
 		serverPath := fmt.Sprintf("localhost:%d/apis/operators.coreos.com/v1/namespaces/%s/operatorconditions/etcdoperator.v0.9.2/status", port, oc.Namespace())
 		outPut, err := exec.Command("curl", "-X", "PATCH", "-H", "Content-Type: application/merge-patch+json", "--data", "{\"status\":{\"conditions\":[{\"lastTransitionTime\":\"2020-12-17T15:39:01Z\",\"message\":\"Test\",\"reason\":\"NotUpgradeable\",\"status\":\"False\",\"type\":\"Upgradeable\"}]}}", serverPath).CombinedOutput()
 		e2e.Logf("!!! command output:\n%s", string(outPut[:]))
