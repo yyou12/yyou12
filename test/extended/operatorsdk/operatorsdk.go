@@ -4,12 +4,15 @@ import (
     "fmt"
     "os/exec"
     "strings"
+    "time"
 
     g "github.com/onsi/ginkgo"
     o "github.com/onsi/gomega"
 
     exutil "github.com/openshift/openshift-tests-private/test/extended/util"
     e2e "k8s.io/kubernetes/test/e2e/framework"
+    "k8s.io/apimachinery/pkg/util/wait"
+    "path/filepath"
 )
 
 var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
@@ -19,7 +22,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
     var oc = exutil.NewCLIWithoutNamespace("default")
 
     // author: jfan@redhat.com
-    g.It("Author:jfan-Medium-35458-SDK run bundle create registry image pod", func() {
+    g.It("ConnectedOnly-Author:jfan-Medium-35458-SDK run bundle create registry image pod", func() {
 
         bundleImages := []struct {
             image  string
@@ -88,7 +91,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
     })
 
     // author: jfan@redhat.com
-    g.It("Author:jfan-High-37627-SDK run bundle upgrade test", func() {
+    g.It("ConnectedOnly-Author:jfan-High-37627-SDK run bundle upgrade test", func() {
         operatorsdkCLI.showInfo = true
         oc.SetupProject()
         output, err := operatorsdkCLI.Run("run").Args("bundle", "quay.io/olmqe/etcd-bundle:0.9.2-share", "-n", oc.Namespace()).Output()
@@ -108,9 +111,8 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
         
     })
 
-
     // author: jfan@redhat.com
-    g.It("Author:jfan-Medium-38054-SDK run bundle create pods and csv", func() {
+    g.It("ConnectedOnly-Author:jfan-Medium-38054-SDK run bundle create pods and csv", func() {
         operatorsdkCLI.showInfo = true
         oc.SetupProject()
         output, err := operatorsdkCLI.Run("run").Args("bundle", "quay.io/olmqe/etcd-bundle:0.9.2-share", "-n", oc.Namespace()).Output()
@@ -130,13 +132,135 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
     })
 
     // author: jfan@redhat.com
-    g.It("Author:jfan-High-38060-SDK run bundle detail message about failed", func() {
+    g.It("ConnectedOnly-Author:jfan-High-38060-SDK run bundle detail message about failed", func() {
         operatorsdkCLI.showInfo = true
         oc.SetupProject()
         output, _ := operatorsdkCLI.Run("run").Args("bundle", "quay.io/olmqe/etcd-bundle:0.0.1", "-n", oc.Namespace()).Output()
         o.Expect(output).To(o.ContainSubstring("quay.io/olmqe/etcd-bundle:0.0.1: not found"))  
     })
 
+    // author: jfan@redhat.com
+    g.It("ConnectedOnly-Author:jfan-High-27977-SDK ansible Implement default Ansible content path in watches.yaml", func() {
+        buildPruningBaseDir := exutil.FixturePath("testdata", "operatorsdk")
+        var memcached = filepath.Join(buildPruningBaseDir, "cache_v1_memcached.yaml")
+        operatorsdkCLI.showInfo = true
+        oc.SetupProject()
+        namespace := oc.Namespace()
+        _, err := operatorsdkCLI.Run("run").Args("bundle", "quay.io/olmqe/memcached-bundle:v4.8", "-n", namespace).Output()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        createMemcached, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", memcached, "-p", "NAME=memcached-sample").OutputToFile("config-27977.json")
+        o.Expect(err).NotTo(o.HaveOccurred())
+        err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", createMemcached, "-n", namespace).Execute()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        waitErr := wait.Poll(15*time.Second, 360*time.Second, func() (bool, error) {
+            msg, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-n", namespace, "--no-headers").Output()
+            if strings.Contains(msg, "memcached-sample") {
+                e2e.Logf("found pod memcached-sample")
+                return true, nil
+            }
+            return false, nil
+        })
+        o.Expect(waitErr).NotTo(o.HaveOccurred())
+    })
+
+    // author: jfan@redhat.com
+    g.It("ConnectedOnly-Author:jfan-High-34292-SDK ansible operator flags maxConcurrentReconciles by arg max concurrent reconciles", func() {
+        operatorsdkCLI.showInfo = true
+        oc.SetupProject()
+        namespace := oc.Namespace()
+        _, err := operatorsdkCLI.Run("run").Args("bundle", "quay.io/olmqe/memcached-bundle:v4.8", "-n", namespace).Output()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        g.By("Check the reconciles number in logs")
+        waitErr := wait.Poll(15*time.Second, 360*time.Second, func() (bool, error) {
+            msg, _ := oc.AsAdmin().WithoutNamespace().Run("logs").Args("deploy/memcached-operator-controller-manager", "-c", "manager", "-n", namespace).Output()
+            if strings.Contains(msg, "\"worker count\":4") {
+                e2e.Logf("found worker count:4")
+                return true, nil
+            }
+            return false, nil
+        })
+        o.Expect(waitErr).NotTo(o.HaveOccurred())  
+    })
+
+    // author: jfan@redhat.com
+    g.It("ConnectedOnly-Author:jfan-High-28157-SDK ansible blacklist supported in watches.yaml", func() {
+        buildPruningBaseDir := exutil.FixturePath("testdata", "operatorsdk")
+        var memcached = filepath.Join(buildPruningBaseDir, "cache_v1_memcached.yaml")
+        operatorsdkCLI.showInfo = true
+        oc.SetupProject()
+        namespace := oc.Namespace()
+        _, err := operatorsdkCLI.Run("run").Args("bundle", "quay.io/olmqe/memcached-bundle:v4.8", "-n", namespace).Output()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        createMemcached, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", memcached, "-p", "NAME=memcached-sample").OutputToFile("config-28157.json")
+        o.Expect(err).NotTo(o.HaveOccurred())
+        err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", createMemcached, "-n", namespace).Execute()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        waitErr := wait.Poll(15*time.Second, 360*time.Second, func() (bool, error) {
+            msg, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-n", namespace, "--no-headers").Output()
+            if strings.Contains(msg, "memcached-sample") {
+                e2e.Logf("found pod memcached-sample")
+                return true, nil
+            }
+            return false, nil
+        })
+        o.Expect(waitErr).NotTo(o.HaveOccurred())
+        msg, err := oc.AsAdmin().WithoutNamespace().Run("logs").Args("deploy/memcached-operator-controller-manager", "-c", "manager", "-n", namespace).Output()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        o.Expect(msg).To(o.ContainSubstring("Skipping cache lookup"))
+    })
+
+    // author: jfan@redhat.com
+    g.It("ConnectedOnly-Author:jfan-High-28586-SDK ansible Content Collections Support in watches.yaml", func() {
+        buildPruningBaseDir := exutil.FixturePath("testdata", "operatorsdk")
+        var collectiontest = filepath.Join(buildPruningBaseDir, "cache_v1_collectiontest.yaml")
+        operatorsdkCLI.showInfo = true
+        oc.SetupProject()
+        namespace := oc.Namespace()
+        _, err := operatorsdkCLI.Run("run").Args("bundle", "quay.io/olmqe/memcached-bundle:v4.8", "-n", namespace).Output()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        createCollection, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", collectiontest, "-p", "NAME=collectiontest").OutputToFile("config-28586.json")
+        o.Expect(err).NotTo(o.HaveOccurred())
+        err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", createCollection, "-n", namespace).Execute()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        waitErr := wait.Poll(15*time.Second, 360*time.Second, func() (bool, error) {
+            msg, _ := oc.AsAdmin().WithoutNamespace().Run("logs").Args("deploy/memcached-operator-controller-manager", "-c", "manager", "-n", namespace).Output()
+            if strings.Contains(msg, "dummy : Create ConfigMap") {
+                e2e.Logf("found dummy : Create ConfigMap")
+                return true, nil
+            }
+            return false, nil
+        })
+        o.Expect(waitErr).NotTo(o.HaveOccurred())
+    })
+
+    // author: jfan@redhat.com
+    g.It("ConnectedOnly-Author:jfan-High-29374-SDK ansible Migrate kubernetes Ansible modules to a collect", func() {
+        buildPruningBaseDir := exutil.FixturePath("testdata", "operatorsdk")
+        var memcached = filepath.Join(buildPruningBaseDir, "cache_v1_memcached.yaml")
+        operatorsdkCLI.showInfo = true
+        oc.SetupProject()
+        namespace := oc.Namespace()
+        _, err := operatorsdkCLI.Run("run").Args("bundle", "quay.io/olmqe/memcached-bundle:v4.8", "-n", namespace).Output()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        createMemcached, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", memcached, "-p", "NAME=memcached-sample").OutputToFile("config-29374.json")
+        o.Expect(err).NotTo(o.HaveOccurred())
+        err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", createMemcached, "-n", namespace).Execute()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        waitErr := wait.Poll(15*time.Second, 360*time.Second, func() (bool, error) {
+            msg, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-n", namespace, "--no-headers").Output()
+            if strings.Contains(msg, "memcached-sample") {
+                e2e.Logf("found pod memcached-sample")
+                return true, nil
+            }
+            return false, nil
+        })
+        o.Expect(waitErr).NotTo(o.HaveOccurred())
+        //oc get secret test-secret -o yaml
+        msg, err := oc.AsAdmin().Run("describe").Args("secret", "test-secret", "-n", namespace).Output()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        o.Expect(msg).To(o.ContainSubstring("test:  6 bytes"))
+    })
+   
     // author: chuo@redhat.com
     g.It("Author:chuo-Medium-27718-scorecard remove version flag", func() {
         operatorsdkCLI.showInfo = true
