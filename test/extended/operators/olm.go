@@ -126,16 +126,14 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 
 		g.By("3) Check if OperatorCondition generated well")
 		newCheck("expect", asAdmin, withoutNamespace, compare, "etcd-operator", ok, []string{"operatorcondition", "etcdoperator.v0.9.4", "-n", oc.Namespace(), "-o=jsonpath={.spec.deployments[0]}"}).check(oc)
-		for i := 0; i < 3; i++ {
-			newCheck("expect", asAdmin, withoutNamespace, compare, "OPERATOR_CONDITION_NAME", ok, []string{"deployment", "etcd-operator", "-n", oc.Namespace(), fmt.Sprintf("-o=jsonpath={.spec.template.spec.containers[%d].env[2].name}", i)}).check(oc)
-			newCheck("expect", asAdmin, withoutNamespace, compare, "etcdoperator.v0.9.4", ok, []string{"deployment", "etcd-operator", "-n", oc.Namespace(), fmt.Sprintf("-o=jsonpath={.spec.template.spec.containers[%d].env[2].value}", i)}).check(oc)
-		}
+		// three containers: etcd-operator etcd-backup-operator etcd-restore-operator
+		newCheck("expect", asAdmin, withoutNamespace, compare, "etcdoperator.v0.9.4 etcdoperator.v0.9.4 etcdoperator.v0.9.4", ok, []string{"deployment", "etcd-operator", "-n", oc.Namespace(), "-o=jsonpath={.spec.template.spec.containers[*].env[?(@.name==\"OPERATOR_CONDITION_NAME\")].value}"}).check(oc)
 		// this etcdoperator.v0.9.4 role should be owned by OperatorCondition
 		newCheck("expect", asAdmin, withoutNamespace, compare, "OperatorCondition", ok, []string{"role", "etcdoperator.v0.9.4", "-n", oc.Namespace(), "-o=jsonpath={.metadata.ownerReferences[0].kind}"}).check(oc)
 		// this etcdoperator.v0.9.4 role should be added to etcd-operator SA
 		newCheck("expect", asAdmin, withoutNamespace, compare, "etcd-operator", ok, []string{"rolebinding", "etcdoperator.v0.9.4", "-n", oc.Namespace(), "-o=jsonpath={.subjects[0].name}"}).check(oc)
-
-		g.By("4) Uninstall the operator")
+		
+		g.By("4) delete the operator so that can check the related resource in next step")
 		sub.delete(itName, dr)
 		sub.deleteCSV(itName, dr)
 
