@@ -3773,169 +3773,74 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 
 	// It will cover test case: OCP-24917, author: tbuskey@redhat.com
 	g.It("Author:tbuskey-Medium-24917-Operators in SingleNamespace should not be granted namespace list [Disruptive]", func() {
-		var (
-			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
-			ogSingleTemplate    = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
-			subTemplate         = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
-		)
+		g.By("1) Install the OperatorGroup in a random project")
+		dr := make(describerResrouce)
+		itName := g.CurrentGinkgoTestDescription().TestText
+		dr.addIr(itName)
 
 		oc.SetupProject()
-
-		var (
-			next       = false
-			csvName    = ""
-			err        error
-			exists     bool
-			waitErr    error
-			msg        string
-			podName    string
-			s          string
-			secretName = ""
-			token      = ""
-			kToken     string
-			og         = operatorGroupDescription{
-				name:      oc.Namespace(),
-				namespace: oc.Namespace(),
-				template:  ogSingleTemplate,
-			}
-			sub = subscriptionDescription{
-				subName:                "amq-streams",
-				namespace:              oc.Namespace(),
-				catalogSourceName:      "redhat-operators",
-				catalogSourceNamespace: "openshift-marketplace",
-				singleNamespace:        true,
-				channel:                "stable",
-				ipApproval:             "Automatic",
-				operatorPackage:        "amq-streams",
-				template:               subTemplate,
-			}
-		)
-
-		itName := g.CurrentGinkgoTestDescription().TestText
-		nameSpace := oc.Namespace()
-
-		g.By("check for operator")
-		e2e.Logf("Check if %v exists in the %v catalog", sub.operatorPackage, sub.catalogSourceName)
-		exists, err = clusterPackageExists(oc, sub)
-		if !exists {
-			e2e.Failf("FAIL:PackageMissing %v does not exist in catalog %v", sub.operatorPackage, sub.catalogSourceName)
+		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
+		ogSingleTemplate := filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+		og := operatorGroupDescription{
+			name:      "og-24917",
+			namespace: oc.Namespace(),
+			template:  ogSingleTemplate,
 		}
-		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(exists).To(o.BeTrue())
-
-		g.By("Create og")
-		msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("ns", nameSpace).Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(msg).NotTo(o.BeEmpty())
-
 		og.createwithCheck(oc, itName, dr)
 
-		g.By("Create sub")
-		sub.createWithoutCheck(oc, itName, dr)
-		newCheck("expect", asAdmin, withoutNamespace, compare, "AtLatestKnown", ok, []string{"sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.state}"}).check(oc)
-		csvName = getResource(oc, asAdmin, withoutNamespace, "sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.installedCSV}")
-		// e2e.Logf("csvName %v", csvName)
-		o.Expect(csvName).NotTo(o.BeEmpty())
-
-		g.By("Wait for CSV")
-		waitErr = wait.Poll(5*time.Second, 240*time.Second, func() (bool, error) {
-			msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", "-n", oc.Namespace(), "--no-headers", csvName).Output()
-			if strings.Contains(msg, "Succeeded") {
-				return true, nil
-			}
-			return false, nil
-		})
-		e2e.Logf("csvName %v, err %v, msg %v", csvName, waitErr, msg)
-		o.Expect(waitErr).NotTo(o.HaveOccurred())
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		g.By("Wait for pod")
-		waitErr = wait.Poll(3*time.Second, 180*time.Second, func() (bool, error) {
-			msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-n", sub.namespace).Output()
-			o.Expect(err).NotTo(o.HaveOccurred())
-			o.Expect(msg).NotTo(o.BeEmpty())
-			if strings.Contains(msg, "amq-streams-cluster-operator") {
-				return true, nil
-			}
-			return false, nil
-		})
-		o.Expect(waitErr).NotTo(o.HaveOccurred())
-
-		g.By("Get pod name")
-		podName, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "--selector=name=amq-streams-cluster-operator", "-n", sub.namespace, "-o=jsonpath={...metadata.name}").Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(podName).NotTo(o.BeEmpty())
-
-		newCheck("expect", asAdmin, withoutNamespace, contain, "Running,true", ok, []string{"pod", "-n", nameSpace, podName, "-o=jsonpath={.status.phase}{\",\"}{.status..ready}"}).check(oc)
-
-		g.By("Pod is up")
-		msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-n", sub.namespace, podName).Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(strings.Contains(msg, "amq")).To(o.BeTrue())
-
-		g.By("check that policy does not give strimzi-cluster-operator access ")
-		msg, err = oc.AsAdmin().WithoutNamespace().Run("policy").Args("who-can", "list", "namespaces").Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(strings.Contains(msg, "strimzi-cluster-operator")).To(o.BeFalse())
-
-		g.By("Find secret name in SA")
-		msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("sa", "strimzi-cluster-operator", "-n", nameSpace, "-o=jsonpath={.secrets..name}").Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(strings.Contains(msg, "strimzi-cluster-operator-token")).To(o.BeTrue())
-
-		for _, s = range strings.Fields(msg) {
-			if strings.Contains(s, "strimzi-cluster-operator-token") {
-				secretName = s
-			}
+		g.By("2) Install the etcdoperator v0.9.4 with Automatic approval")
+		subTemplate := filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+		sub := subscriptionDescription{
+			subName:                "sub-24917",
+			namespace:              oc.Namespace(),
+			catalogSourceName:      "community-operators",
+			catalogSourceNamespace: "openshift-marketplace",
+			channel:                "singlenamespace-alpha",
+			ipApproval:             "Automatic",
+			operatorPackage:        "etcd",
+			startingCSV:            "etcdoperator.v0.9.4",
+			singleNamespace:        true,
+			template:               subTemplate,
 		}
-		o.Expect(strings.Contains(secretName, "strimzi-cluster-operator-token")).To(o.BeTrue())
+		defer sub.delete(itName, dr)
+		defer sub.deleteCSV(itName, dr)
+		sub.create(oc, itName, dr)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", "etcdoperator.v0.9.4", "-n", oc.Namespace(), "-o=jsonpath={.status.phase}"}).check(oc)
 
-		g.By("Get the tokens")
-		kToken, err = oc.AsAdmin().WithoutNamespace().Run("whoami").Args("--show-token", "-n", "default").Output()
+		g.By("3) check if this operator's SA can list all namespaces")
+		expectedSA := fmt.Sprintf("system:serviceaccount:%s:etcd-operator", oc.Namespace())
+		msg, err := oc.AsAdmin().WithoutNamespace().Run("policy").Args("who-can", "list", "namespaces").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(kToken).NotTo(o.BeEmpty())
+		o.Expect(strings.Contains(msg, expectedSA)).To(o.BeFalse())
 
-		msg, err = oc.AsAdmin().WithoutNamespace().Run("describe").Args("secret", secretName, "-n", nameSpace).Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(msg).NotTo(o.BeEmpty())
-
-		for _, s = range strings.Fields(msg) {
-			if next {
-				token = s
-				break
-			}
-			if s == "token:" {
-				next = true
-			}
-		}
-		o.Expect(token).NotTo(o.BeEmpty())
-
-		g.By("login as strimzi-cluster-operator with token")
-		msg, err = oc.AsAdmin().WithoutNamespace().Run("login").Args(fmt.Sprintf("--token=%v", token)).Output()
-		/*
-			Logged into "https://...:6443" as "system:serviceaccount:test-operators:strimzi-cluster-operator" using the token provided.
-
-			You don't have any projects. Contact your system administrator to request a project.
-		*/
+		g.By("4) get the token of this operator's SA")
+		token, err := oc.AsAdmin().WithoutNamespace().Run("sa").Args("get-token", "etcd-operator", "-n", oc.Namespace()).Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		// make sure to relogin as admin after strimzi login
+		g.By("5) get the cluster server")
+		server, err := oc.AsAdmin().WithoutNamespace().Run("whoami").Args("--show-server").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		g.By("6) get the current context")
+		context, err := oc.AsAdmin().WithoutNamespace().Run("whoami").Args("--show-context").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		// make sure switch to the current cluster-admin role after finished
 		defer func() {
-			g.By("login as kubeadmin")
-			msg, err = oc.AsAdmin().WithoutNamespace().Run("login").Args(fmt.Sprintf("--token=%v", kToken)).Output()
+			g.By("9) Switch to the cluster-admin role")
+			_, err := oc.AsAdmin().WithoutNamespace().Run("config").Args("use-context", context).Output()
 			o.Expect(err).NotTo(o.HaveOccurred())
-			o.Expect(msg).NotTo(o.BeEmpty())
-			e2e.Logf("kubeadmin message: %v", msg)
-			o.Expect(strings.Contains(msg, "You can list all projects")).To(o.BeTrue())
-			e2e.Logf("SUCCESS - logged in as kubeadmin")
-
 		}()
 
-		o.Expect(msg).NotTo(o.BeEmpty())
-		e2e.Logf("login message: %v", msg)
-		o.Expect(strings.Contains(msg, "You don't have any projects")).To(o.BeTrue())
-		e2e.Logf("pass - logged in as strimzi-cluster-operator")
+		g.By("7) login the cluster with this token")
+		_, err = oc.AsAdmin().WithoutNamespace().Run("login").Args(server, "--token", token).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		whoami, err := oc.AsAdmin().WithoutNamespace().Run("whoami").Args("").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(strings.Contains(whoami, expectedSA)).To(o.BeTrue())
 
+		g.By("8) this SA user should NOT have the permission to list all namespaces")
+		ns, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("ns").Output()
+		o.Expect(strings.Contains(ns, "namespaces is forbidden")).To(o.BeTrue())
 	})
 
 	// author: tbuskey@redhat.com
