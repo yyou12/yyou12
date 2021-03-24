@@ -527,15 +527,21 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		e2e.Logf("Get the expected error: %s", msg)
 		o.Expect(msg).To(o.ContainSubstring("the server doesn't have a resource type"))
 
-		g.By("2) Check the default 4 CatalogSource CRs")
+		// for current disconnected env, only have the default community CatalogSource CRs
+		g.By("2) Check the default Community CatalogSource CRs")
 		msg, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("catalogsource", "-n", "openshift-marketplace").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
-		e2e.Logf("Get the 4 CatalogSource CRs:\n %s", msg)
-		o.Expect(msg).To(o.ContainSubstring("certified-operators"))
+		e2e.Logf("Get the installed CatalogSource CRs:\n %s", msg)
+		// o.Expect(msg).To(o.ContainSubstring("certified-operators"))
 		o.Expect(msg).To(o.ContainSubstring("community-operators"))
-		o.Expect(msg).To(o.ContainSubstring("redhat-marketplace"))
-		o.Expect(msg).To(o.ContainSubstring("redhat-operators"))
+		// o.Expect(msg).To(o.ContainSubstring("redhat-marketplace"))
+		// o.Expect(msg).To(o.ContainSubstring("redhat-operators"))
+		g.By("3) Check the Packagemanifest")
+		msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("packagemanifest").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(msg).NotTo(o.ContainSubstring("No resources found"))
 	})
+
 	// author: bandrade@redhat.com
 	g.It("ConnectedOnly-Author:bandrade-Medium-31693-Check CSV information on the PackageManifest", func() {
 		g.By("1) The relatedImages should exist")
@@ -1890,7 +1896,8 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	})
 
 	// author: scolange@redhat.com
-	g.It("Author:scolange-Medium-32862-Pods found with invalid container images not present in release payload", func() {
+	// only community operator ready for the disconnected env now
+	g.It("ConnectedOnly-Author:scolange-Medium-32862-Pods found with invalid container images not present in release payload", func() {
 
 		g.By("Verify the version of marketplace_operator")
 		pods, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-n", "openshift-marketplace", "--no-headers").Output()
