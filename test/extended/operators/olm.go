@@ -789,7 +789,15 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		sub.createWithoutCheck(oc, itName, dr)
 
 		g.By("5) The install plan is Failed")
-		installPlan := getResource(oc, asAdmin, withoutNamespace, "sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.installplan.name}")
+		var installPlan string
+		waitErr := wait.Poll(3*time.Second, 240*time.Second, func() (bool, error) {
+			installPlan, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.installplan.name}").Output()
+			if strings.Compare(installPlan, "") == 0 || err != nil {
+				return false, nil
+			}
+			return true, nil
+		})
+		o.Expect(waitErr).NotTo(o.HaveOccurred())
 		o.Expect(installPlan).NotTo(o.BeEmpty())
 		newCheck("expect", asAdmin, withoutNamespace, compare, "Failed", ok, []string{"ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
 
@@ -1047,7 +1055,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	})
 
 	// author: bandrade@redhat.com
-	g.It("Author:bandrade-Medium-24916-Operators in AllNamespaces should be granted namespace list", func() {
+	g.It("ConnectedOnly-Author:bandrade-Medium-24916-Operators in AllNamespaces should be granted namespace list", func() {
 		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
 		subTemplate := filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
 		dr := make(describerResrouce)
