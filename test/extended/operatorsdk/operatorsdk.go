@@ -260,6 +260,32 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
         o.Expect(err).NotTo(o.HaveOccurred())
         o.Expect(msg).To(o.ContainSubstring("test:  6 bytes"))
     })
+
+    // author: jfan@redhat.com
+    g.It("ConnectedOnly-Author:jfan-Medium-37142-SDK helm cr create deletion process", func() {
+        buildPruningBaseDir := exutil.FixturePath("testdata", "operatorsdk")
+        var nginx = filepath.Join(buildPruningBaseDir, "demo_v1_nginx.yaml")
+        operatorsdkCLI.showInfo = true
+        oc.SetupProject()
+        namespace := oc.Namespace()
+        _, err := operatorsdkCLI.Run("run").Args("bundle", "quay.io/olmqe/nginx-bundle:v4.8", "-n", namespace).Output()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        createNginx, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", nginx, "-p", "NAME=nginx-sample").OutputToFile("config-37142.json")
+        o.Expect(err).NotTo(o.HaveOccurred())
+        err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", createNginx, "-n", namespace).Execute()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        waitErr := wait.Poll(15*time.Second, 360*time.Second, func() (bool, error) {
+            msg, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-n", namespace, "--no-headers").Output()
+            if strings.Contains(msg, "nginx-sample") {
+                e2e.Logf("found pod nginx-sample")
+                return true, nil
+            }
+            return false, nil
+        })
+        o.Expect(waitErr).NotTo(o.HaveOccurred())
+        err = oc.AsAdmin().WithoutNamespace().Run("delete").Args("nginx", "nginx-sample", "-n", namespace).Execute()
+        o.Expect(err).NotTo(o.HaveOccurred())
+    })
    
     // author: chuo@redhat.com
     g.It("Author:chuo-Medium-27718-scorecard remove version flag", func() {
