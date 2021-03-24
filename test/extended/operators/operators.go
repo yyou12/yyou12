@@ -160,12 +160,12 @@ func checkOperatorInstallModes(p Packagemanifest, oc *exutil.CLI) Packagemanifes
 
 //the method is to construct the Packagemanifest object with operator name.
 func CreatePackageManifest(operator string, oc *exutil.CLI) Packagemanifest {
-	msg, err := oc.WithoutNamespace().AsAdmin().Run("get").Args("packagemanifest", operator, "-o=jsonpath={.status.catalogSource}:{.status.catalogSourceNamespace}:{.status.defaultChannel}").Output()
+	msg, err := oc.WithoutNamespace().AsAdmin().Run("get").Args("packagemanifest", operator, "-o=jsonpath={.status.catalogSource}:{.status.catalogSourceNamespace}:{.status.defaultChannel}", "-n", "openshift-marketplace").Output()
 	o.Expect(err).NotTo(o.HaveOccurred())
 	packageData := strings.Split(msg, ":")
 	p := Packagemanifest{CatalogSource: packageData[0], CatalogSourceNamespace: packageData[1], DefaultChannel: packageData[2], Name: operator}
 
-	csvVersion, err := oc.WithoutNamespace().AsAdmin().Run("get").Args("packagemanifest", p.Name, "-o=jsonpath={.status.channels[?(.name=='"+p.DefaultChannel+"')].currentCSV}").Output()
+	csvVersion, err := oc.WithoutNamespace().AsAdmin().Run("get").Args("packagemanifest", p.Name, "-o=jsonpath={.status.channels[?(.name=='"+p.DefaultChannel+"')].currentCSV}", "-n", "openshift-marketplace").Output()
 	o.Expect(err).NotTo(o.HaveOccurred())
 	p.CsvVersion = strings.ReplaceAll(csvVersion, "\"", "")
 
