@@ -861,8 +861,15 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		sub.createWithoutCheck(oc, itName, dr)
 
 		g.By("5) The install plan is Failed")
-		installPlan := getResource(oc, asAdmin, withoutNamespace, "sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.installplan.name}")
-		o.Expect(installPlan).NotTo(o.BeEmpty())
+		var installPlan string
+		err = wait.Poll(3*time.Second, 240*time.Second, func() (bool, error) {
+			installPlan, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.installplan.name}").Output()
+			if strings.Compare(installPlan, "") == 0 || err != nil {
+				return false, nil
+			}
+			return true, nil
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
 		newCheck("expect", asAdmin, withoutNamespace, compare, "Failed", ok, []string{"ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
 
 		g.By("6) Grant the proper permissions to the service account")

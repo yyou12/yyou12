@@ -986,17 +986,17 @@ func execResource(oc *exutil.CLI, asAdmin bool, withoutNamespace bool, parameter
 //withoutNamespace means if take WithoutNamespace() to get it.
 func getResource(oc *exutil.CLI, asAdmin bool, withoutNamespace bool, parameters ...string) string {
 	var result string
-	err := wait.Poll(3*time.Second, 120*time.Second, func() (bool, error) {
-		output, err := doAction(oc, "get", asAdmin, withoutNamespace, parameters...)
+	var err error
+	err = wait.Poll(3*time.Second, 150*time.Second, func() (bool, error) {
+		result, err = doAction(oc, "get", asAdmin, withoutNamespace, parameters...)
 		if err != nil {
-			e2e.Logf("the get error is %v, and try next", err)
+			e2e.Logf("output is %v, error is %v, and try next", result, err)
 			return false, nil
 		}
-		result = output
 		return true, nil
 	})
 	o.Expect(err).NotTo(o.HaveOccurred())
-	e2e.Logf("the result of queried resource:%v", result)
+	e2e.Logf("the returned resource:%v", result)
 	return result
 }
 
