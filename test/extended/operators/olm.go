@@ -3637,7 +3637,19 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		_, err = doAction(oc, "label", asAdmin, withoutNamespace, "crd", "etcdbackups.etcd.database.coreos.com", "operators.coreos.com/"+subEtcd.operatorPackage+"."+subEtcd.namespace+"=")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		//done for WA
-		newCheck("expect", asAdmin, withoutNamespace, contain, "CustomResourceDefinition", ok, []string{"operator", subEtcd.operatorPackage + "." + subEtcd.namespace, "-o=jsonpath={.status.components.refs[*].kind}"}).check(oc)
+		var componentKind string
+		err = wait.Poll(15*time.Second, 240*time.Second, func() (bool, error) {
+			componentKind = getResource(oc, asAdmin, withoutNamespace, "operator", subEtcd.operatorPackage+"."+subEtcd.namespace, "-o=jsonpath={.status.components.refs[*].kind}")
+			if strings.Contains(componentKind, "CustomResourceDefinition") {
+				return true, nil
+			}
+			e2e.Logf("the got kind is %v", componentKind)
+			return false, nil
+		})
+		if err != nil && strings.Compare(componentKind, "") != 0 {
+			e2e.Failf("the operator has wrong component")
+			// after the official is supported, will change it again.
+		}
 
 		g.By("install Cockroachdb")
 		subCockroachdb.create(oc, itName, dr)
