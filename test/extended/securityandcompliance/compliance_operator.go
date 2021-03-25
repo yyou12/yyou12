@@ -1397,8 +1397,8 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 
 			g.By("Verify compliance scan result compliancecheckresult through label ...!!!\n")
 			newCheck("expect", asAdmin, withoutNamespace, contain, "worker-scan-etcd-unique-ca", ok, []string{"compliancecheckresult",
-				"--selector=compliance.openshift.io/check-status=SKIP", "-n", subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
-			newCheck("expect", asAdmin, withoutNamespace, contain, "SKIP", ok, []string{"compliancecheckresult",
+				"--selector=compliance.openshift.io/check-status=NOT-APPLICABLE", "-n", subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "NOT-APPLICABLE", ok, []string{"compliancecheckresult",
 				"worker-scan-etcd-unique-ca", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
 
 			g.By("Remove worker-compliancesuite object.. !!!\n")

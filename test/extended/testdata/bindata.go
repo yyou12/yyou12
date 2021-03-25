@@ -9164,7 +9164,8 @@ objects:
       name: ""
     tolerations: []
 parameters:
-- name: NAME`)
+- name: NAME
+`)
 
 func testExtendedTestdataOperatorsdkDemo_v1_nginxYamlBytes() ([]byte, error) {
 	return _testExtendedTestdataOperatorsdkDemo_v1_nginxYaml, nil
