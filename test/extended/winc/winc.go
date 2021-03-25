@@ -24,14 +24,11 @@ var _ = g.Describe("[sig-windows] Windows_Containers", func() {
 		iaasPlatform string
 		privateKey   = "../internal/config/keys/openshift-qe.pem"
 		publicKey    = "../internal/config/keys/openshift-qe.pub"
-		// privateKey = "~/.ssh/openshift-qe.pem"
-		// publicKey  = "~/.ssh/openshift-qe.pub"
 	)
 
 	g.BeforeEach(func() {
 		output, _ := oc.WithoutNamespace().Run("get").Args("infrastructure", "cluster", "-o=jsonpath={.status.platformStatus.type}").Output()
 		iaasPlatform = strings.ToLower(output)
-
 	})
 
 	// author: sgao@redhat.com
@@ -54,15 +51,21 @@ var _ = g.Describe("[sig-windows] Windows_Containers", func() {
 
 		g.By("Check version annotation is applied to Windows node")
 		// Note: Case 33536 also is covered
-		msg, err = oc.WithoutNamespace().Run("get").Args("nodes", "-l=kubernetes.io/os=windows", "-o=jsonpath='{.items[0].metadata.annotations.windowsmachineconfig\\.openshift\\.io\\/version}'").Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		if msg == "" {
+		windowsHostName := getWindowsHostNames(oc)[0]
+		if !checkVersionAnnotationReady(oc, windowsHostName) {
 			e2e.Failf("Failed to check version annotation is applied to Windows node %s", msg)
 		}
 
-		g.By("Check kubelet service is running")
 		bastionHost := getSSHBastionHost(oc)
 		winInternalIP := getWindowsInternalIPs(oc)[0]
+
+		g.By("Check windows_exporter service is running")
+		msg, _ = runPSCommand(bastionHost, winInternalIP, "Get-Service windows_exporter", privateKey, iaasPlatform)
+		if !strings.Contains(msg, "Running") {
+			e2e.Failf("Failed to check windows_exporter service is running: %s", msg)
+		}
+
+		g.By("Check kubelet service is running")
 		msg, _ = runPSCommand(bastionHost, winInternalIP, "Get-Service kubelet", privateKey, iaasPlatform)
 		if !strings.Contains(msg, "Running") {
 			e2e.Failf("Failed to check kubelet service is running: %s", msg)
@@ -73,7 +76,14 @@ var _ = g.Describe("[sig-windows] Windows_Containers", func() {
 		if !strings.Contains(msg, "Running") {
 			e2e.Failf("Failed to check hybrid-overlay-node service is running: %s", msg)
 		}
+
+		g.By("Check kube-proxy service is running")
+		msg, _ = runPSCommand(bastionHost, winInternalIP, "Get-Service kube-proxy", privateKey, iaasPlatform)
+		if !strings.Contains(msg, "Running") {
+			e2e.Failf("Failed to check kube-proxy service is running: %s", msg)
+		}
 	})
+
 	// author: sgao@redhat.com
 	g.It("Author:sgao-Critical-28423-Dockerfile prepare required binaries in operator image", func() {
 		checkFolders := []struct {
@@ -82,7 +92,7 @@ var _ = g.Describe("[sig-windows] Windows_Containers", func() {
 		}{
 			{
 				folder:   "/payload",
-				expected: "cni hybrid-overlay-node.exe kube-node powershell wmcb.exe",
+				expected: "cni hybrid-overlay-node.exe kube-node powershell windows_exporter.exe wmcb.exe",
 			},
 			{
 				folder:   "/payload/cni",
@@ -108,6 +118,7 @@ var _ = g.Describe("[sig-windows] Windows_Containers", func() {
 			}
 		}
 	})
+
 	// author: sgao@redhat.com
 	g.It("Author:sgao-Critical-32615-Generate userData secret [Serial]", func() {
 		g.By("Check secret windows-user-data generated and contain correct public key")
@@ -162,16 +173,18 @@ var _ = g.Describe("[sig-windows] Windows_Containers", func() {
 			e2e.Failf("Secret windows-user-data is not updated after waiting up to 1 minutes ...")
 		}
 	})
+
 	// author: sgao@redhat.com
 	g.It("Author:sgao-Low-32554-WMCO run in a pod with HostNetwork", func() {
 		winInternalIP := getWindowsInternalIPs(oc)[0]
 		curlDest := winInternalIP + ":22"
 		command := []string{"exec", "-n", "openshift-windows-machine-config-operator", "deployment.apps/windows-machine-config-operator", "--", "curl", curlDest}
 		msg, _ := oc.WithoutNamespace().Run(command...).Args().Output()
-		if !strings.Contains(msg, "OpenSSH_for_Windows") {
+		if !strings.Contains(msg, "SSH-2.0-OpenSSH") {
 			e2e.Failf("Failed to check WMCO run in a pod with HostNetwork: %s", msg)
 		}
 	})
+
 	// author: sgao@redhat.com
 	g.It("Author:sgao-Critical-32856-WMCO watch machineset with Windows label", func() {
 		// Note: Create machineset with Windows label covered in Flexy post action
@@ -230,60 +243,20 @@ var _ = g.Describe("[sig-windows] Windows_Containers", func() {
 			e2e.Failf("Failed to check create machineset without Windows label")
 		}
 	})
+
 	// author: sgao@redhat.com
-	g.It("Author:sgao-Critical-29411-Reconcile Windows node [Serial]", func() {
-		windowsMachineSetName := ""
-		if iaasPlatform == "aws" {
-			// TODO: Get Windows machineset via oc command
-			infrastructureID, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("infrastructure", "cluster", "-o=jsonpath={.status.infrastructureName}").Output()
-			zone := "us-east-2a"
-			windowsMachineSetName = infrastructureID + "-windows-worker-" + zone
-		} else if iaasPlatform == "azure" {
-			windowsMachineSetName = "windows"
-		} else {
-			e2e.Failf("IAAS platform: %s is not automated yet", iaasPlatform)
-		}
+	g.It("Author:sgao-High-29411-Reconcile Windows node [Slow][Disruptive]", func() {
+		windowsMachineSetName := getWindowsMachineSetName(oc)
 		g.By("Scale up the MachineSet")
 		_, err := oc.WithoutNamespace().Run("scale").Args("--replicas=3", "machineset", windowsMachineSetName, "-n", "openshift-machine-api").Output()
+		defer restoreWindowsMachineSet(oc, windowsMachineSetName)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		// Windows node is taking roughly 12 minutes to be shown up in the cluster, set timeout as 20 minutes
-		pollErr := wait.Poll(60*time.Second, 1200*time.Second, func() (bool, error) {
-			msg, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("nodes", "-l", "kubernetes.io/os=windows", "--no-headers").Output()
-			nodes := strings.Split(msg, "\n")
-			if len(nodes) != 3 {
-				e2e.Logf("Expected 3 Windows nodes are not exist yet and waiting up to 20 minutes ...")
-				return false, nil
-			}
-			if !(len(nodes) == 3 && strings.Contains(nodes[0], "Ready") && strings.Contains(nodes[1], "Ready")) {
-				e2e.Logf("Expected 3 Windows nodes are exist but not ready yet and waiting up to 20 minutes ...")
-				return false, nil
-			}
-			e2e.Logf("Expected 3 Windows nodes are ready")
-			return true, nil
-		})
-		if pollErr != nil {
-			e2e.Failf("Expected 3 Windows nodes are not ready after waiting up to 20 minutes ...")
-		}
-
-		g.By("Scale down the MachineSet")
-		_, err = oc.WithoutNamespace().Run("scale").Args("--replicas=2", "machineset", windowsMachineSetName, "-n", "openshift-machine-api").Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		pollErr = wait.Poll(10*time.Second, 150*time.Second, func() (bool, error) {
-			msg, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("nodes", "-l", "kubernetes.io/os=windows", "--no-headers").Output()
-			nodes := strings.Split(msg, "\n")
-			if len(nodes) != 2 {
-				e2e.Logf("Scale down to 2 Windows nodes is not ready yet and waiting up to 3 minutes ...")
-				return false, nil
-			}
-			e2e.Logf("Scale down to 2 Windows nodes is ready")
-			return true, nil
-		})
-		if pollErr != nil {
-			e2e.Failf("Scale down to 2 Windows nodes is not ready after waiting up to 3 minutes ...")
-		}
+		waitWindowsNodesReady(oc, 3, 60*time.Second, 1200*time.Second)
 	})
+
 	// author: sgao@redhat.com
-	g.It("Author:sgao-Critical-28632-Windows and Linux east-west network during a long time [Serial]", func() {
+	g.It("Author:sgao-Critical-28632-Windows and Linux east west network during a long time [Serial]", func() {
 		// Note: Duplicate with Case 31276, run again in [Serial]
 		if !checkWindowsWorkloadCreated(oc) {
 			createWindowsWorkload(oc)
@@ -311,8 +284,9 @@ var _ = g.Describe("[sig-windows] Windows_Containers", func() {
 			e2e.Failf("Failed to curl Windows web server from Linux pod")
 		}
 	})
+
 	// author: sgao@redhat.com
-	g.It("Author:sgao-Critical-32273-Configure kube-proxy and external networking check", func() {
+	g.It("Author:sgao-Critical-32273-Configure kube proxy and external networking check", func() {
 		if !checkWindowsWorkloadCreated(oc) {
 			createWindowsWorkload(oc)
 		}
@@ -337,6 +311,7 @@ var _ = g.Describe("[sig-windows] Windows_Containers", func() {
 			e2e.Failf("Load balancer is not ready after waiting up to 5 minutes ...")
 		}
 	})
+
 	// author: sgao@redhat.com
 	g.It("Author:sgao-Critical-31276-Configure CNI and internal networking check", func() {
 		if !checkWindowsWorkloadCreated(oc) {
@@ -406,7 +381,176 @@ var _ = g.Describe("[sig-windows] Windows_Containers", func() {
 			e2e.Failf("Failed to curl Windows web server from Windows pod in the same node")
 		}
 	})
-	g.It("Author:sgao-Critical-25593-Prevent scheduling non-Windows workloads on Windows nodes", func() {
+
+	// author: sgao@redhat.com
+	g.It("Author:sgao-Medium-33768-NodeWithoutOVNKubeNodePodRunning alert ignore Windows nodes", func() {
+		g.By("Check NodeWithoutOVNKubeNodePodRunning alert ignore Windows nodes")
+		portForwardCMD := "nohup oc -n openshift-monitoring port-forward svc/prometheus-operated 9090  >/dev/null 2>&1 &"
+		killPortForwardCMD := "killall oc"
+		exec.Command("bash", "-c", portForwardCMD).Output()
+		defer exec.Command("bash", "-c", killPortForwardCMD).Output()
+		getAlertCMD := "sleep 5; curl -s http://localhost:9090/api/v1/rules | jq '[.data.groups[].rules[] | select(.name==\"NodeWithoutOVNKubeNodePodRunning\")]'"
+		msg, _ := exec.Command("bash", "-c", getAlertCMD).Output()
+		if !strings.Contains(string(msg), "kube_node_labels{label_kubernetes_io_os=\\\"windows\\\"}") {
+			e2e.Failf("Failed to check NodeWithoutOVNKubeNodePodRunning alert ignore Windows nodes")
+		}
+	})
+
+	// author: sgao@redhat.com
+	g.It("Author:sgao-Critical-33779-Retrieving Windows node logs", func() {
+		g.By("Check a cluster-admin can retrieve kubelet logs")
+		msg, err := oc.WithoutNamespace().Run("adm").Args("node-logs", "-l=kubernetes.io/os=windows", "--path=kubelet/kubelet.log").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		windowsHostNames := getWindowsHostNames(oc)
+		for _, winHostName := range windowsHostNames {
+			e2e.Logf("Retrieve kubelet log on: " + winHostName)
+			if !strings.Contains(string(msg), winHostName+" Log file created at:") {
+				e2e.Failf("Failed to retrieve kubelet log on: " + winHostName)
+			}
+		}
+
+		g.By("Check a cluster-admin can retrieve kube-proxy logs")
+		msg, err = oc.WithoutNamespace().Run("adm").Args("node-logs", "-l=kubernetes.io/os=windows", "--path=kube-proxy/kube-proxy.exe.WARNING").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		for _, winHostName := range windowsHostNames {
+			e2e.Logf("Retrieve kube-proxy log on: " + winHostName)
+			if !strings.Contains(string(msg), winHostName+" Log file created at:") {
+				e2e.Failf("Failed to retrieve kube-proxy log on: " + winHostName)
+			}
+		}
+
+		g.By("Check a cluster-admin can retrieve hybrid-overlay logs")
+		msg, err = oc.WithoutNamespace().Run("adm").Args("node-logs", "-l=kubernetes.io/os=windows", "--path=hybrid-overlay/hybrid-overlay.log").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		for _, winHostName := range windowsHostNames {
+			e2e.Logf("Retrieve hybrid-overlay log on: " + winHostName)
+			if !strings.Contains(string(msg), winHostName) {
+				e2e.Failf("Failed to retrieve hybrid-overlay log on: " + winHostName)
+			}
+		}
+
+		g.By("Check a cluster-admin can retrieve container runtime logs")
+		msg, err = oc.WithoutNamespace().Run("adm").Args("node-logs", "-l=kubernetes.io/os=windows", "--path=journal", "-u=docker").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf("Retrieve container runtime logs")
+		if !strings.Contains(string(msg), "Starting up") {
+			e2e.Failf("Failed to retrieve container runtime logs")
+		}
+	})
+
+	// author: sgao@redhat.com
+	g.It("Author:sgao-Critical-33783-Enable must gather on Windows node [Slow][Disruptive]", func() {
+		g.By("Check must-gather on Windows node")
+		// Note: Marked as [Disruptive] in case of /tmp folder full
+		msg, err := oc.WithoutNamespace().Run("adm").Args("must-gather", "--dest-dir=/tmp/must-gather-33783").Output()
+		defer exec.Command("bash", "-c", "rm -rf /tmp/must-gather-33783").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		mustGather := string(msg)
+		checkMessage := []string{
+			"host_service_logs/windows/",
+			"host_service_logs/windows/log_files/",
+			"host_service_logs/windows/log_files/hybrid-overlay/",
+			"host_service_logs/windows/log_files/hybrid-overlay/hybrid-overlay.log",
+			"host_service_logs/windows/log_files/kube-proxy/",
+			"host_service_logs/windows/log_files/kube-proxy/kube-proxy.exe.ERROR",
+			"host_service_logs/windows/log_files/kube-proxy/kube-proxy.exe.INFO",
+			"host_service_logs/windows/log_files/kube-proxy/kube-proxy.exe.WARNING",
+			"host_service_logs/windows/log_files/kubelet/",
+			"host_service_logs/windows/log_files/kubelet/kubelet.log",
+			"host_service_logs/windows/log_winevent/",
+			"host_service_logs/windows/log_winevent/docker_winevent.log",
+		}
+		for _, v := range checkMessage {
+			if !strings.Contains(mustGather, v) {
+				e2e.Failf("Failed to check must-gather on Windows node: " + v)
+			}
+		}
+	})
+
+	// author: sgao@redhat.com
+	g.It("Author:sgao-High-33794-Watch cloud private key secret [Slow][Disruptive]", func() {
+		g.By("Check watch cloud-private-key secret")
+		oc.WithoutNamespace().Run("delete").Args("secret", "cloud-private-key", "-n", "openshift-windows-machine-config-operator").Output()
+		defer oc.WithoutNamespace().Run("create").Args("secret", "generic", "cloud-private-key", "--from-file=private-key.pem="+privateKey, "-n", "openshift-windows-machine-config-operator").Output()
+		oc.WithoutNamespace().Run("delete").Args("secret", "windows-user-data", "-n", "openshift-machine-api").Output()
+
+		windowsMachineSetName := getWindowsMachineSetName(oc)
+		_, err := oc.WithoutNamespace().Run("scale").Args("machineset", windowsMachineSetName, "--replicas=3", "-n", "openshift-machine-api").Output()
+		defer restoreWindowsMachineSet(oc, windowsMachineSetName)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Check Windows machine should be in Provisioning phase and not reconciled")
+		pollErr := wait.Poll(5*time.Second, 300*time.Second, func() (bool, error) {
+			msg, _ := oc.WithoutNamespace().Run("get").Args("events", "-n", "openshift-machine-api").Output()
+			if strings.Contains(msg, "Secret \"windows-user-data\" not found") {
+				return true, nil
+			}
+			return false, nil
+		})
+		if pollErr != nil {
+			e2e.Failf("Failed to check Windows machine should be in Provisioning phase and not reconciled after waiting up to 5 minutes ...")
+		}
+
+		oc.WithoutNamespace().Run("create").Args("secret", "generic", "cloud-private-key", "--from-file=private-key.pem="+privateKey, "-n", "openshift-windows-machine-config-operator").Output()
+		waitWindowsNodesReady(oc, 3, 60*time.Second, 1200*time.Second)
+	})
+
+	// author: sgao@redhat.com
+	g.It("Author:sgao-Medium-37472-Idempotent check of service running in Windows node [Slow][Disruptive]", func() {
+		if !checkWindowsWorkloadCreated(oc) {
+			createWindowsWorkload(oc)
+		}
+		windowsHostName := getWindowsHostNames(oc)[0]
+		oc.WithoutNamespace().Run("annotate").Args("node", windowsHostName, "windowsmachineconfig.openshift.io/version-").Output()
+
+		g.By("Check after reconciled Windows node should be Ready")
+		waitVersionAnnotationReady(oc, windowsHostName, 60*time.Second, 1200*time.Second)
+
+		g.By("Check LB service works well")
+		externalIP := ""
+		if iaasPlatform == "azure" {
+			externalIP, _ = oc.WithoutNamespace().Run("get").Args("service", "win-webserver", "-o=jsonpath={.status.loadBalancer.ingress[0].ip}", "-n", "winc-test").Output()
+		} else {
+			externalIP, _ = oc.WithoutNamespace().Run("get").Args("service", "win-webserver", "-o=jsonpath={.status.loadBalancer.ingress[0].hostname}", "-n", "winc-test").Output()
+		}
+		externalIPURL := "http://" + externalIP + ":80"
+		// Load balancer takes about 3 minutes to work, set timeout as 5 minutes
+		pollErr := wait.Poll(20*time.Second, 300*time.Second, func() (bool, error) {
+			msg, _ := exec.Command("bash", "-c", "curl "+externalIPURL).Output()
+			if !strings.Contains(string(msg), "Windows Container Web Server") {
+				e2e.Logf("Load balancer is not ready yet and waiting up to 5 minutes ...")
+				return false, nil
+			}
+			e2e.Logf("Load balancer is ready")
+			return true, nil
+		})
+		if pollErr != nil {
+			e2e.Failf("Load balancer is not ready after waiting up to 5 minutes ...")
+		}
+	})
+
+	// author: sgao@redhat.com
+	g.It("Author:sgao-Medium-39030-Re queue on Windows machine's edge cases [Slow][Disruptive]", func() {
+		g.By("Scale down WMCO")
+		_, err := oc.WithoutNamespace().Run("scale").Args("--replicas=0", "deployment", "windows-machine-config-operator", "-n", "openshift-windows-machine-config-operator").Output()
+		defer restoreWMCODeployment(oc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Scale up the MachineSet")
+		windowsMachineSetName := getWindowsMachineSetName(oc)
+		_, err = oc.WithoutNamespace().Run("scale").Args("--replicas=3", "machineset", windowsMachineSetName, "-n", "openshift-machine-api").Output()
+		defer restoreWindowsMachineSet(oc, windowsMachineSetName)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Scale up WMCO")
+		restoreWMCODeployment(oc)
+
+		g.By("Check Windows machines created before WMCO starts are successfully reconciling and Windows nodes added")
+		waitWindowsNodesReady(oc, 3, 60*time.Second, 1200*time.Second)
+	})
+
+	// author: sgao@redhat.com
+	g.It("Author:sgao-Critical-25593-Prevent scheduling non Windows workloads on Windows nodes", func() {
 		g.By("Check Windows node have a taint 'os=Windows:NoSchedule'")
 		msg, err := oc.WithoutNamespace().Run("get").Args("nodes", "-l=kubernetes.io/os=windows", "-o=jsonpath={.items[0].spec.taints[0].key}={.items[0].spec.taints[0].value}:{.items[0].spec.taints[0].effect}").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -442,6 +586,63 @@ var _ = g.Describe("[sig-windows] Windows_Containers", func() {
 		}
 	})
 })
+
+func restoreWindowsMachineSet(oc *exutil.CLI, windowsMachineSetName string) {
+	_, err := oc.WithoutNamespace().Run("scale").Args("--replicas=2", "machineset", windowsMachineSetName, "-n", "openshift-machine-api").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	waitWindowsNodesReady(oc, 2, 10*time.Second, 150*time.Second)
+}
+
+func restoreWMCODeployment(oc *exutil.CLI) {
+	_, err := oc.WithoutNamespace().Run("scale").Args("--replicas=1", "deployment", "windows-machine-config-operator", "-n", "openshift-windows-machine-config-operator").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	// TODO: check WMCO is ready
+}
+
+func waitWindowsNodesReady(oc *exutil.CLI, nodesNumber int, interval time.Duration, timeout time.Duration) {
+	pollErr := wait.Poll(interval, timeout, func() (bool, error) {
+		msg, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("nodes", "-l", "kubernetes.io/os=windows", "--no-headers").Output()
+		nodesReady := strings.Count(msg, "Ready")
+		if nodesReady != nodesNumber {
+			e2e.Logf("Expected %v Windows nodes are not ready yet and waiting up to %v minutes ...", nodesNumber, timeout)
+			return false, nil
+		}
+		e2e.Logf("Expected %v Windows nodes are ready", nodesNumber)
+		return true, nil
+	})
+	if pollErr != nil {
+		e2e.Failf("Expected %v Windows nodes are not ready after waiting up to %v minutes ...", nodesNumber, timeout)
+	}
+}
+
+func waitVersionAnnotationReady(oc *exutil.CLI, windowsNodeName string, interval time.Duration, timeout time.Duration) {
+	pollErr := wait.Poll(interval, timeout, func() (bool, error) {
+		if !checkVersionAnnotationReady(oc, windowsNodeName) {
+			e2e.Logf("Version annotation is not applied to Windows node %s yet", windowsNodeName)
+			return false, nil
+		}
+		e2e.Logf("Version annotation is applied to Windows node %s", windowsNodeName)
+		return true, nil
+	})
+	if pollErr != nil {
+		e2e.Failf("Version annotation is not applied to Windows node %s after waiting up to %v minutes ...", windowsNodeName, timeout)
+	}
+}
+
+func checkVersionAnnotationReady(oc *exutil.CLI, windowsNodeName string) bool {
+	msg, err := oc.WithoutNamespace().Run("get").Args("nodes", windowsNodeName, "-o=jsonpath='{.metadata.annotations.windowsmachineconfig\\.openshift\\.io\\/version}'").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	if msg == "" {
+		return false
+	}
+	return true
+}
+
+func getWindowsMachineSetName(oc *exutil.CLI) string {
+	getCMD := "oc get machineset -ojson -n openshift-machine-api | jq -r '.items[] | select(.spec.template.metadata.labels[]==\"Windows\") | .spec.template.metadata.labels.\"machine.openshift.io/cluster-api-machineset\"'"
+	windowsMachineSetName, _ := exec.Command("bash", "-c", getCMD).Output()
+	return strings.TrimSuffix(string(windowsMachineSetName), "\n")
+}
 
 func getWindowsHostNames(oc *exutil.CLI) []string {
 	winHostNames, err := oc.WithoutNamespace().Run("get").Args("nodes", "-l", "kubernetes.io/os=windows", "-o=jsonpath={.items[*].status.addresses[?(@.type==\"Hostname\")].address}").Output()
@@ -507,8 +708,16 @@ func checkWindowsWorkloadCreated(oc *exutil.CLI) bool {
 
 func createWindowsWorkload(oc *exutil.CLI) {
 	oc.WithoutNamespace().Run("new-project").Args("winc-test").Output()
-	windowsWebServer := filepath.Join(exutil.FixturePath("testdata", "winc"), "windows_web_server.yaml")
-	oc.WithoutNamespace().Run("create").Args("-f", windowsWebServer, "-n", "winc-test").Output()
+	msg, err := oc.WithoutNamespace().Run("get").Args("nodes", "-l=kubernetes.io/os=windows", "-o=jsonpath={.items[0].metadata.labels.node\\.kubernetes\\.io\\/windows-build}").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	windows_docker_image := "mcr.microsoft.com/windows/servercore:ltsc2019"
+	if msg == "10.0.18363" {
+		windows_docker_image = "mcr.microsoft.com/windows/servercore:1909"
+	}
+	windowsWebServer := getFileContent("winc", "windows_web_server.yaml")
+	windowsWebServer = strings.ReplaceAll(windowsWebServer, "<windows_docker_image>", windows_docker_image)
+	ioutil.WriteFile("availWindowsWebServer", []byte(windowsWebServer), 0644)
+	oc.WithoutNamespace().Run("create").Args("-f", "availWindowsWebServer", "-n", "winc-test").Output()
 	// Wait up to 5 minutes for Windows workload ready
 	poolErr := wait.Poll(20*time.Second, 300*time.Second, func() (bool, error) {
 		return checkWindowsWorkloadCreated(oc), nil
