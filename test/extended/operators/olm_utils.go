@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 
 	g "github.com/onsi/ginkgo"
 	o "github.com/onsi/gomega"
@@ -347,13 +348,15 @@ type catalogSourceDescription struct {
 	template    string
 	priority    int
 	secret      string
+	interval    string
 }
 
 //the method is to create catalogsource with template, and save it to dr.
 func (catsrc *catalogSourceDescription) create(oc *exutil.CLI, itName string, dr describerResrouce) {
 	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", catsrc.template,
 		"-p", "NAME="+catsrc.name, "NAMESPACE="+catsrc.namespace, "ADDRESS="+catsrc.address, "SECRET="+catsrc.secret,
-		"DISPLAYNAME="+"\""+catsrc.displayName+"\"", "PUBLISHER="+"\""+catsrc.publisher+"\"", "SOURCETYPE="+catsrc.sourceType)
+		"DISPLAYNAME="+"\""+catsrc.displayName+"\"", "PUBLISHER="+"\""+catsrc.publisher+"\"", "SOURCETYPE="+catsrc.sourceType,
+		"INTERVAL="+catsrc.interval)
 	o.Expect(err).NotTo(o.HaveOccurred())
 	dr.getIr(itName).add(newResource(oc, "catsrc", catsrc.name, requireNS, catsrc.namespace))
 	e2e.Logf("create catsrc %s SUCCESS", catsrc.name)
@@ -1118,4 +1121,32 @@ func githubClient() (context.Context, *http.Client) {
 	)
 	tc := oauth2.NewClient(ctx, ts)
 	return ctx, tc
+}
+
+func GetDirPath(filePathStr string, filePre string) string {
+	if !strings.Contains(filePathStr, "/") || filePathStr == "/" {
+		return ""
+	}
+	dir, file := filepath.Split(filePathStr)
+	if strings.HasPrefix(file, filePre) {
+		return filePathStr
+	} else {
+		return GetDirPath(filepath.Dir(dir), filePre)
+	}
+}
+
+func DeleteDir(filePathStr string, filePre string) bool {
+	filePathToDelete := GetDirPath(filePathStr, filePre)
+	if filePathToDelete == "" || !strings.Contains(filePathToDelete, filePre) {
+		e2e.Logf("there is no such dir %s", filePre)
+		return false
+	} else {
+		e2e.Logf("remove dir %s", filePathToDelete)
+		os.RemoveAll(filePathToDelete)
+		if _, err := os.Stat(filePathToDelete); err == nil {
+			e2e.Logf("delele dir %s failed", filePathToDelete)
+			return false
+		}
+		return true
+	}
 }

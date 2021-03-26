@@ -16,6 +16,7 @@
 // test/extended/testdata/olm/catalogsource-configmap.yaml
 // test/extended/testdata/olm/catalogsource-image.yaml
 // test/extended/testdata/olm/catalogsource-namespace.yaml
+// test/extended/testdata/olm/catalogsource-without-secret.yaml
 // test/extended/testdata/olm/cm-25644-etcd-csv.yaml
 // test/extended/testdata/olm/cm-certutil-readytest.yaml
 // test/extended/testdata/olm/cm-certutil-readytests.yaml
@@ -1451,6 +1452,54 @@ func testExtendedTestdataOlmCatalogsourceNamespaceYaml() (*asset, error) {
 	}
 
 	info := bindataFileInfo{name: "test/extended/testdata/olm/catalogsource-namespace.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataOlmCatalogsourceWithoutSecretYaml = []byte(`apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: catalogsource-image-template
+objects:
+- apiVersion: operators.coreos.com/v1alpha1
+  kind: CatalogSource
+  metadata:
+    name: "${NAME}"
+    namespace: "${NAMESPACE}"
+  spec:
+    image: "${ADDRESS}" 
+    displayName: "${DISPLAYNAME}"
+    icon:
+      base64data: ""
+      mediatype: ""
+    publisher: "${PUBLISHER}"
+    sourceType: "${SOURCETYPE}"
+    updateStrategy:
+      registryPoll:
+        interval: "${INTERVAL}"
+parameters:
+- name: NAME
+- name: NAMESPACE
+- name: ADDRESS
+- name: DISPLAYNAME
+- name: PUBLISHER
+- name: SOURCETYPE
+- name: INTERVAL
+  value: "10m0s"
+
+`)
+
+func testExtendedTestdataOlmCatalogsourceWithoutSecretYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataOlmCatalogsourceWithoutSecretYaml, nil
+}
+
+func testExtendedTestdataOlmCatalogsourceWithoutSecretYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataOlmCatalogsourceWithoutSecretYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/olm/catalogsource-without-secret.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -12716,6 +12765,7 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/olm/catalogsource-configmap.yaml":                                                  testExtendedTestdataOlmCatalogsourceConfigmapYaml,
 	"test/extended/testdata/olm/catalogsource-image.yaml":                                                      testExtendedTestdataOlmCatalogsourceImageYaml,
 	"test/extended/testdata/olm/catalogsource-namespace.yaml":                                                  testExtendedTestdataOlmCatalogsourceNamespaceYaml,
+	"test/extended/testdata/olm/catalogsource-without-secret.yaml":                                             testExtendedTestdataOlmCatalogsourceWithoutSecretYaml,
 	"test/extended/testdata/olm/cm-25644-etcd-csv.yaml":                                                        testExtendedTestdataOlmCm25644EtcdCsvYaml,
 	"test/extended/testdata/olm/cm-certutil-readytest.yaml":                                                    testExtendedTestdataOlmCmCertutilReadytestYaml,
 	"test/extended/testdata/olm/cm-certutil-readytests.yaml":                                                   testExtendedTestdataOlmCmCertutilReadytestsYaml,
@@ -12891,6 +12941,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 					"catalogsource-configmap.yaml":          {testExtendedTestdataOlmCatalogsourceConfigmapYaml, map[string]*bintree{}},
 					"catalogsource-image.yaml":              {testExtendedTestdataOlmCatalogsourceImageYaml, map[string]*bintree{}},
 					"catalogsource-namespace.yaml":          {testExtendedTestdataOlmCatalogsourceNamespaceYaml, map[string]*bintree{}},
+					"catalogsource-without-secret.yaml":     {testExtendedTestdataOlmCatalogsourceWithoutSecretYaml, map[string]*bintree{}},
 					"cm-25644-etcd-csv.yaml":                {testExtendedTestdataOlmCm25644EtcdCsvYaml, map[string]*bintree{}},
 					"cm-certutil-readytest.yaml":            {testExtendedTestdataOlmCmCertutilReadytestYaml, map[string]*bintree{}},
 					"cm-certutil-readytests.yaml":           {testExtendedTestdataOlmCmCertutilReadytestsYaml, map[string]*bintree{}},

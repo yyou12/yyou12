@@ -1,7 +1,11 @@
 package container
 
 import (
+	"bytes"
 	"context"
+	"fmt"
+	"io"
+	"os/exec"
 	"strings"
 
 	e2e "k8s.io/kubernetes/test/e2e/framework"
@@ -22,7 +26,17 @@ func contains(s []string, e string) bool {
 
 // DockerCLI provides function to run the docker command
 type DockerCLI struct {
-	CLI *client.Client
+	CLI             *client.Client
+	execPath        string
+	execCommandPath string
+	globalArgs      []string
+	commandArgs     []string
+	finalArgs       []string
+	verbose         bool
+	stdin           *bytes.Buffer
+	stdout          io.Writer
+	stderr          io.Writer
+	showInfo        bool
 }
 
 // NewDockerCLI initialize the docker cli framework
@@ -33,7 +47,68 @@ func NewDockerCLI() *DockerCLI {
 		e2e.Failf("get docker client failed")
 	}
 	newclient.CLI = cli
+	newclient.execPath = "docker"
+	newclient.showInfo = true
 	return newclient
+}
+
+// Run executes given docker command
+func (c *DockerCLI) Run(commands ...string) *DockerCLI {
+	in, out, errout := &bytes.Buffer{}, &bytes.Buffer{}, &bytes.Buffer{}
+	docker := &DockerCLI{
+		execPath:        c.execPath,
+		execCommandPath: c.execCommandPath,
+	}
+	docker.globalArgs = commands
+	docker.stdin, docker.stdout, docker.stderr = in, out, errout
+	return docker.setOutput(c.stdout)
+}
+
+// setOutput allows to override the default command output
+func (c *DockerCLI) setOutput(out io.Writer) *DockerCLI {
+	c.stdout = out
+	return c
+}
+
+// Args sets the additional arguments for the docker CLI command
+func (c *DockerCLI) Args(args ...string) *DockerCLI {
+	c.commandArgs = args
+	c.finalArgs = append(c.globalArgs, c.commandArgs...)
+	return c
+}
+
+func (c *DockerCLI) printCmd() string {
+	return strings.Join(c.finalArgs, " ")
+}
+
+// Output executes the command and returns stdout/stderr combined into one string
+func (c *DockerCLI) Output() (string, error) {
+	if c.verbose {
+		e2e.Logf("DEBUG: docker %s\n", c.printCmd())
+	}
+	cmd := exec.Command(c.execPath, c.finalArgs...)
+	if c.execCommandPath != "" {
+		e2e.Logf("set exec command path is %s\n", c.execCommandPath)
+		cmd.Dir = c.execCommandPath
+	}
+	cmd.Stdin = c.stdin
+	if c.showInfo {
+		e2e.Logf("Running '%s %s'", c.execPath, strings.Join(c.finalArgs, " "))
+	}
+	out, err := cmd.CombinedOutput()
+	trimmed := strings.TrimSpace(string(out))
+	switch err.(type) {
+	case nil:
+		c.stdout = bytes.NewBuffer(out)
+		return trimmed, nil
+	case *exec.ExitError:
+		e2e.Logf("Error running %v:\n%s", cmd, trimmed)
+		return trimmed, &ExitError{ExitError: err.(*exec.ExitError), Cmd: c.execPath + " " + strings.Join(c.finalArgs, " "), StdErr: trimmed}
+	default:
+		FatalErr(fmt.Errorf("unable to execute %q: %v", c.execPath, err))
+		// unreachable code
+		return "", nil
+	}
 }
 
 // GetImageID is to get the image ID by image tag
