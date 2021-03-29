@@ -306,7 +306,8 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 			displayName: "OLM QE Operators",
 			publisher:   "Jian",
 			sourceType:  "grpc",
-			address:     "quay.io/olmqe/etcd-index:0.9.4-sa",
+			// use the digest in case wrong updates. quay.io/openshifttest/etcd-index:0.9.4-sa
+			address:     "quay.io/openshifttest/etcd-index@sha256:f804adfbae165834acdfc83aaf94e1b7ff53246dca607459cdadd4653228cac6",
 			template:    csImageTemplate,
 		}
 		dr := make(describerResrouce)
@@ -340,6 +341,8 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 			singleNamespace:        true,
 			template:               subTemplate,
 		}
+		defer sub.delete(itName, dr)
+		defer sub.deleteCSV(itName, dr)
 		sub.create(oc, itName, dr)
 		g.By("3) Apprrove the etcdoperator.v0.9.2, it should be in Complete state")
 		sub.approveSpecificIP(oc, itName, dr, "etcdoperator.v0.9.2", "Complete")
