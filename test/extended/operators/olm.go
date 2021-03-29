@@ -2099,8 +2099,11 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		newCheck("expect", asAdmin, withoutNamespace, compare, "UpgradePending", ok, []string{"sub", "sub-21126", "-n", oc.Namespace(), "-o=jsonpath={.status.state}"}).check(oc)
 		// the InstallPlan should not approved
 		newCheck("expect", asAdmin, withoutNamespace, compare, "false", ok, []string{"ip", sub.getIP(oc), "-n", oc.Namespace(), "-o=jsonpath={.spec.approved}"}).check(oc)
-		// should no CSV found
-		newCheck("expect", asAdmin, withoutNamespace, contain, "No resources found", ok, []string{"csv", "-n", oc.Namespace()}).check(oc)
+		// should no etcdoperator.v0.9.4 CSV found
+		msg, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", "etcdoperator.v0.9.4", "-n", oc.Namespace()).Output()
+		if !strings.Contains(msg, "not found") {
+			e2e.Failf("still found the etcdoperator.v0.9.4 in namespace:%s, msg:%v", oc.Namespace(), msg)
+		}
 	})
 })
 
