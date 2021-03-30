@@ -2,6 +2,8 @@ package opm
 
 import (
 	"fmt"
+	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -9,6 +11,7 @@ import (
 	o "github.com/onsi/gomega"
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
 	container "github.com/openshift/openshift-tests-private/test/extended/util/container"
+	db "github.com/openshift/openshift-tests-private/test/extended/util/db"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 )
 
@@ -60,6 +63,9 @@ var _ = g.Describe("[sig-operators] OLM opm with docker", func() {
 	var dockerCLI = container.NewDockerCLI()
 	var podmanCLI = container.NewPodmanCLI()
 	var opmCLI = NewOpmCLI()
+	var sqlit = db.NewSqlit()
+	var quayCLI = container.NewQuayCLI()
+	var oc = exutil.NewCLI("vmonly-"+getRandomString(), exutil.KubeConfigPath())
 
 	// author: xzha@redhat.com
 	g.It("Author:xzha-VMonly-Medium-25955-opm Ability to generate scaffolding for Operator Bundle using docker", func() {
@@ -123,5 +129,107 @@ var _ = g.Describe("[sig-operators] OLM opm with docker", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 		e2e.Logf("check image exist is %v", existFlag)
 		o.Expect(existFlag).To(o.BeTrue())
+	})
+
+	// author: xzha@redhat.com
+	g.It("Author:xzha-VMonly-Medium-37294-OPM can strand packages with prune stranded", func() {
+		containerTool := "podman"
+		containerCLI := podmanCLI
+		opmBaseDir := exutil.FixturePath("testdata", "opm")
+		TestDataPath := filepath.Join(opmBaseDir, "temp")
+		opmCLI.execCommandPath = TestDataPath
+		defer DeleteDir(TestDataPath, "fixture-testdata")
+		indexImage := "quay.io/olmqe/etcd-index:test-37294"
+		indexImageSemver := "quay.io/olmqe/etcd-index:test-37294-semver"
+
+		g.By("step: check etcd-index:test-37294, operatorbundle has two records, channel_entry has one record")
+		indexdbpath1 := filepath.Join(TestDataPath, getRandomString())
+		err := os.Mkdir(TestDataPath, 0755)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = os.Mkdir(indexdbpath1, 0755)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		_, err = oc.AsAdmin().WithoutNamespace().Run("image").Args("extract", indexImage, "--path", "/database/index.db:"+indexdbpath1).Output()
+		e2e.Logf("get index.db SUCCESS, path is %s", path.Join(indexdbpath1, "index.db"))
+		o.Expect(err).NotTo(o.HaveOccurred())
+		result, err := sqlit.DBMatch(path.Join(indexdbpath1, "index.db"), "operatorbundle", "name", []string{"etcdoperator.v0.9.0", "etcdoperator.v0.9.2"})
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(result).To(o.BeTrue())
+		result, err = sqlit.DBMatch(path.Join(indexdbpath1, "index.db"), "channel_entry", "operatorbundle_name", []string{"etcdoperator.v0.9.2"})
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(result).To(o.BeTrue())
+
+		g.By("step: prune-stranded this index image")
+		indexImageTmp1 := indexImage + getRandomString()
+		defer containerCLI.RemoveImage(indexImageTmp1)
+		output, err := opmCLI.Run("index").Args("prune-stranded", "-f", indexImage, "--tag", indexImageTmp1, "-c", containerTool).Output()
+		if err != nil {
+			e2e.Logf(output)
+		}
+		o.Expect(err).NotTo(o.HaveOccurred())
+		output, err = containerCLI.Run("push").Args(indexImageTmp1).Output()
+		if err != nil {
+			e2e.Logf(output)
+		}
+		defer quayCLI.DeleteTag(strings.Replace(indexImageTmp1, "quay.io/", "", 1))
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("step: check index image operatorbundle has one record")
+		indexdbpath2 := filepath.Join(TestDataPath, getRandomString())
+		err = os.Mkdir(indexdbpath2, 0755)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		_, err = oc.AsAdmin().WithoutNamespace().Run("image").Args("extract", indexImageTmp1, "--path", "/database/index.db:"+indexdbpath2).Output()
+		e2e.Logf("get index.db SUCCESS, path is %s", path.Join(indexdbpath2, "index.db"))
+		o.Expect(err).NotTo(o.HaveOccurred())
+		result, err = sqlit.DBMatch(path.Join(indexdbpath2, "index.db"), "operatorbundle", "name", []string{"etcdoperator.v0.9.2"})
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(result).To(o.BeTrue())
+		result, err = sqlit.DBMatch(path.Join(indexdbpath2, "index.db"), "channel_entry", "operatorbundle_name", []string{"etcdoperator.v0.9.2"})
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(result).To(o.BeTrue())
+
+		g.By("test 2")
+		g.By("step: step: check etcd-index:test-37294-semver, operatorbundle has two records, channel_entry has two records")
+		indexdbpath3 := filepath.Join(TestDataPath, getRandomString())
+		err = os.Mkdir(indexdbpath3, 0755)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		_, err = oc.AsAdmin().WithoutNamespace().Run("image").Args("extract", indexImageSemver, "--path", "/database/index.db:"+indexdbpath3).Output()
+		e2e.Logf("get index.db SUCCESS, path is %s", path.Join(indexdbpath3, "index.db"))
+		o.Expect(err).NotTo(o.HaveOccurred())
+		result, err = sqlit.DBMatch(path.Join(indexdbpath3, "index.db"), "operatorbundle", "name", []string{"etcdoperator.v0.9.0", "etcdoperator.v0.9.2"})
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(result).To(o.BeTrue())
+		result, err = sqlit.DBMatch(path.Join(indexdbpath3, "index.db"), "channel_entry", "operatorbundle_name", []string{"etcdoperator.v0.9.0", "etcdoperator.v0.9.2"})
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(result).To(o.BeTrue())
+
+		g.By("step: prune-stranded this index image")
+		indexImageTmp2 := indexImage + getRandomString()
+		defer containerCLI.RemoveImage(indexImageTmp2)
+		output, err = opmCLI.Run("index").Args("prune-stranded", "-f", indexImageSemver, "--tag", indexImageTmp2, "-c", containerTool).Output()
+		if err != nil {
+			e2e.Logf(output)
+		}
+		o.Expect(err).NotTo(o.HaveOccurred())
+		output, err = containerCLI.Run("push").Args(indexImageTmp2).Output()
+		if err != nil {
+			e2e.Logf(output)
+		}
+		defer quayCLI.DeleteTag(strings.Replace(indexImageTmp2, "quay.io/", "", 1))
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("step: check index image has both v0.9.2 and v0.9.2")
+		indexdbpath4 := filepath.Join(TestDataPath, getRandomString())
+		err = os.Mkdir(indexdbpath4, 0755)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		_, err = oc.AsAdmin().WithoutNamespace().Run("image").Args("extract", indexImageTmp2, "--path", "/database/index.db:"+indexdbpath4).Output()
+		e2e.Logf("get index.db SUCCESS, path is %s", path.Join(indexdbpath4, "index.db"))
+		o.Expect(err).NotTo(o.HaveOccurred())
+		result, err = sqlit.DBMatch(path.Join(indexdbpath4, "index.db"), "operatorbundle", "name", []string{"etcdoperator.v0.9.0", "etcdoperator.v0.9.2"})
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(result).To(o.BeTrue())
+		result, err = sqlit.DBMatch(path.Join(indexdbpath4, "index.db"), "channel_entry", "operatorbundle_name", []string{"etcdoperator.v0.9.0", "etcdoperator.v0.9.2"})
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(result).To(o.BeTrue())
+		e2e.Logf("step: check index image has both v0.9.2 and v0.9.2 SUCCESS")
 	})
 })
