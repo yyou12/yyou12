@@ -26,16 +26,15 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
 
         bundleImages := []struct {
             image  string
-            indeximage string
             expect string
         }{
-            {"quay.io/openshift-qe-optional-operators/ose-cluster-nfd-operator-bundle:latest", "quay.io/openshift-qe-optional-operators/ocp4-index:latest", "Successfully created registry pod"},
+            {"quay.io/olmqe/etcd-bundle:0.9.2-share", "Successfully created registry pod"},
         }
         operatorsdkCLI.showInfo = true
         oc.SetupProject()
         for _, b := range bundleImages {
             g.By(fmt.Sprintf("create registry image pod %s", b.image))
-            output, err := operatorsdkCLI.Run("run").Args("bundle", b.image, "--index-image", b.indeximage, "-n", oc.Namespace(), "--timeout=5m").Output()
+            output, err := operatorsdkCLI.Run("run").Args("bundle", b.image, "-n", oc.Namespace(), "--timeout=5m").Output()
             if strings.Contains(output, b.expect) {
                 e2e.Logf(fmt.Sprintf("That's expected! %s", b.image))
             } else {
@@ -59,7 +58,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
         operatorsdkCLI.showInfo = true
         exec.Command("bash", "-c", "mkdir /tmp/memcached-operator-37312 && cd /tmp/memcached-operator-37312 && operator-sdk init --project-version 3-alpha --plugins ansible.sdk.operatorframework.io/v1 --domain example.com --group cache --version v1alpha1 --kind Memcached --generate-playbook").Output()
         defer exec.Command("bash", "-c", "rm -rf /tmp/memcached-operator-37312").Output()
-        result, err := exec.Command("bash", "-c", "cd /tmp/memcached-operator-37312 && operator-sdk generate bundle --deploy-dir=config --crds-dir=config/crds --version=0.0.1 | grep \"Bundle manifests generated successfully in bundle\"").Output()
+        result, err := exec.Command("bash", "-c", "cd /tmp/memcached-operator-37312 && operator-sdk generate bundle --deploy-dir=config --crds-dir=config/crds --version=0.0.1").Output()
         o.Expect(err).NotTo(o.HaveOccurred())
         o.Expect(result).To(o.ContainSubstring("Bundle manifests generated successfully in bundle"))
     })
@@ -105,7 +104,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
         output, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", "etcdoperator.v0.9.4", "-n", oc.Namespace()).Output()
         o.Expect(err).NotTo(o.HaveOccurred())
         o.Expect(output).To(o.ContainSubstring("Succeeded"))
-        output, err = operatorsdkCLI.Run("run").Args("cleanup", "etcd", "-n", oc.Namespace()).Output()
+        output, err = operatorsdkCLI.Run("cleanup").Args("etcd", "-n", oc.Namespace()).Output()
         o.Expect(err).NotTo(o.HaveOccurred())
         o.Expect(output).To(o.ContainSubstring("uninstalled"))
         
@@ -247,9 +246,9 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
         err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", createMemcached, "-n", namespace).Execute()
         o.Expect(err).NotTo(o.HaveOccurred())
         waitErr := wait.Poll(15*time.Second, 360*time.Second, func() (bool, error) {
-            msg, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-n", namespace, "--no-headers").Output()
-            if strings.Contains(msg, "memcached-sample") {
-                e2e.Logf("found pod memcached-sample")
+            msg, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("secret", "-n", namespace).Output()
+            if strings.Contains(msg, "test-secret") {
+                e2e.Logf("found secret test-secret")
                 return true, nil
             }
             return false, nil
