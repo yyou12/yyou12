@@ -196,7 +196,15 @@ func (sub *subscriptionDescription) approve(oc *exutil.CLI, itName string, dr de
 // install-xqgtx   etcdoperator.v0.9.2   Manual     true
 // sub.approveSpecificIP(oc, itName, dr, "etcdoperator.v0.9.2", "Complete") approve this "etcdoperator.v0.9.2" InstallPlan only
 func (sub *subscriptionDescription) approveSpecificIP(oc *exutil.CLI, itName string, dr describerResrouce, csvName string, phase string) {
-	state := getResource(oc, asAdmin, withoutNamespace, "sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.state}")
+	// fix https://github.com/openshift/openshift-tests-private/issues/735
+	var state string
+	wait.Poll(3*time.Second, 120*time.Second, func() (bool, error) {
+		state = getResource(oc, asAdmin, withoutNamespace, "sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.state}")
+		if strings.Compare(state, "UpgradePending") == 0 {
+			return true, nil
+		}
+		return false, nil
+	})
 	if strings.Compare(state, "UpgradePending") == 0 {
 		e2e.Logf(" and the expected CSV")
 		ipCsv := getResource(oc, asAdmin, withoutNamespace, "sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.installplan.name}{\" \"}{.status.currentCSV}")
