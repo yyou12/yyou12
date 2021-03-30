@@ -307,8 +307,8 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 			publisher:   "Jian",
 			sourceType:  "grpc",
 			// use the digest in case wrong updates. quay.io/openshifttest/etcd-index:0.9.4-sa
-			address:     "quay.io/openshifttest/etcd-index@sha256:f804adfbae165834acdfc83aaf94e1b7ff53246dca607459cdadd4653228cac6",
-			template:    csImageTemplate,
+			address:  "quay.io/openshifttest/etcd-index@sha256:f804adfbae165834acdfc83aaf94e1b7ff53246dca607459cdadd4653228cac6",
+			template: csImageTemplate,
 		}
 		dr := make(describerResrouce)
 		itName := g.CurrentGinkgoTestDescription().TestText
@@ -1161,8 +1161,8 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 			displayName: "OLM QE",
 			publisher:   "OLM QE",
 			sourceType:  "grpc",
-			// use the quay.io/openshifttest/etcd-index:latest as index image
-			address:  "quay.io/openshifttest/etcd-index@sha256:a57a5e0d869ff22c04078c529cb78d581af4a9b617c54dc669fda0a40ffd99fd",
+			// use the quay.io/openshifttest/etcd-index:auto as index image
+			address:  "quay.io/openshifttest/etcd-index@sha256:6cd5cb26dd37c25d432c5b2fe7334f695f680a1810b9dfb0ac5de6be5619fcda",
 			template: csTemplate,
 		}
 
