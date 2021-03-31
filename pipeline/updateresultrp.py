@@ -5,6 +5,7 @@ from requests.adapters import HTTPAdapter
 from urllib3.util import Retry
 import urllib3
 from urllib3.exceptions import InsecureRequestWarning
+from datetime import datetime, timedelta
 import yaml
 import urllib.parse
 
@@ -37,26 +38,54 @@ class UpdateResultonRP:
                 isGolang = True
         return isGolang
 
-    def getLaunchIdWithLaunchName(self, launchname, attrfilter=None):
-        filter_url = self.launch_url + "?page.page=1&page.size=150&filter.eq.name=" + launchname
+    def makeLaunchFilterUrl(self, filters=None):
+        filter_url = self.launch_url + "?page.page=1&page.size=500"
+        if filters["launchName"] != "":
+            filter_url = filter_url + "&filter.cnt.name=" + filters["launchName"].replace(" ", "")
+
+        if filters["attributeKey"] != "":
+            filter_url = filter_url + "&filter.has.attributeKey=" + urllib.parse.quote(filters["attributeKey"].replace(" ", ""))
+
+        if filters["subTeam"] != "" and filters["attributeValue"] != "":
+            att_value = filters["subTeam"] + "," + filters["attributeValue"]
+            filter_url = filter_url + "&filter.has.attributeValue=" + urllib.parse.quote(att_value)
+        elif filters["subTeam"] != "":
+            filter_url = filter_url + "&filter.has.attributeValue=" + urllib.parse.quote(filters["subTeam"])
+        elif filters["attributeValue"] != "":
+            filter_url = filter_url + "&filter.has.attributeValue=" + urllib.parse.quote(filters["attributeValue"])
+
+        if filters["timeDuration"] != "":
+            if len(filters["timeDuration"].split(",")) > 1:
+                start_time = filters["timeDuration"].split(",")[0]
+                end_time = filters["timeDuration"].split(",")[1]
+            else:
+                start_time = filters["timeDuration"].split(",")[0]
+                end_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            timediff = datetime.strptime(start_time, "%Y-%m-%d %H:%M:%S").strftime('%s.%f')
+            sttimestamp = int(float(timediff)*1000)
+            timediff = datetime.strptime(end_time, "%Y-%m-%d %H:%M:%S").strftime('%s.%f')
+            edtimestamp = int(float(timediff)*1000+1000)
+            filter_url = filter_url + "&filter.btw.startTime=" + urllib.parse.quote(str(sttimestamp)+","+str(edtimestamp))
+
+        filter_url = filter_url + "&filter.gte.statistics" + urllib.parse.quote("$executions$failed") + "=" +filters["failedNum"]
+
+        print(filter_url)
+        return filter_url
+
+
+    def getLaunchId(self, filters=None):
+        filter_url = self.makeLaunchFilterUrl(filters)
+
         try:
             r = self.session.get(url=filter_url)
             if (r.status_code != 200):
-                raise Exception("get ID error: {0}".format(r.text))
+                raise Exception("get ID error: {0} with code {1}".format(r.text, r.status_code))
             ids = []
             for ret in r.json()["content"]:
                 if not self.isGolangLaunch(ret["attributes"]):
                     continue
+                ids.append(ret["id"])
 
-                if attrfilter == None:
-                    ids.append(ret["id"])
-                else:
-                    for attr in ret["attributes"]:
-                        if attr["key"] == attrfilter["key"] and attr["value"] == attrfilter["value"]:
-                            ids.append(ret["id"])
-                            ids.append(ret["uuid"])
-                            ids.append(ret["startTime"])
-                            ids.append(ret["endTime"])
             if len(ids) == 0:
                 raise Exception('no matched launch id')
             return ids
@@ -64,9 +93,8 @@ class UpdateResultonRP:
             print(e)
             return None
 
-
     def getItemId(self, launchid, itemtype, itemstatus):
-        query_item_url = self.item_url + "?filter.eq.launchId={0}&filter.eq.type={1}&filter.eq.status={2}&isLatest=false&launchesLimit=0&page.size=200".format(launchid, itemtype, itemstatus)
+        query_item_url = self.item_url + "?filter.eq.launchId={0}&filter.eq.type={1}&filter.eq.status={2}&isLatest=false&launchesLimit=0&page.size=500".format(launchid, itemtype, itemstatus)
         ids = []
         r = self.session.get(url=query_item_url)
         if (r.status_code != 200):
@@ -74,35 +102,52 @@ class UpdateResultonRP:
             return ids
 
         if len(r.json()["content"]) == 0:
-            print("no item match with launch name={0}, subteam={1} and status={2}".format(self.args.launchname, self.args.subteam, itemstatus))
+            print("no item match with launch ID={0} and status={1}".format(launchid, itemstatus))
             return ids
 
         for ret in r.json()["content"]:
             ids.append(ret["id"])
-        
+
         return ids
 
-    def ChangeToSuccessPerLuanch(self):
-        existinglaunch = self.getLaunchIdWithLaunchName(self.args.launchname, {"key": "team", "value":self.args.subteam})
-        if existinglaunch == None:
-            print("no launch match with launch name={0} and subteam={1}".format(self.args.launchname, self.args.subteam))
-            return
-        item_ids = self.getItemId(existinglaunch[0], "STEP", "FAILED")
+    def updateItemStatus(self, itemid, itemstatus):
+        update_tiem_url = self.item_url + "/{0}/update".format(itemid)
+        itemdata = {
+            "attributes": [
+                {
+                "key": "manually",
+                "value": itemstatus
+                }
+            ],
+            "status": itemstatus
+        }
+        r = self.session.put(url=update_tiem_url, json=itemdata)
+        return r.status_code
+
+    def updateItemPerLaunch(self, launchid, itemstatus):
+        item_ids = self.getItemId(launchid, "STEP", itemstatus)
         for item_id in item_ids:
-            print(item_id)
-            update_tiem_url = self.item_url + "/{0}/update".format(item_id)
-            itemdata = {
-                "attributes": [
-                    {
-                    "key": "manually",
-                    "value": "passed"
-                    }
-                ],
-                "status": "PASSED"
-            }
-            r = self.session.put(url=update_tiem_url, json=itemdata)
-            if (r.status_code != 200) and (r.status_code != 201):
-                print("can not change status for {0}, please check launch={1} with subteam={2}".format(item_id,self.args.launchname, self.args.subteam))
+            # print(item_id)
+            ret_code = self.updateItemStatus(item_id, "passed")
+            if (ret_code != 200) and (ret_code != 201):
+                print("can not change status for item ID={0} in launch with ID={1}. please rerun or manually change status".format(item_id, launchid))
+
+    def ChangeToSuccess(self):
+        filters = {
+            "launchName": self.args.launchname,
+            "timeDuration": self.args.timeduration,
+            "subTeam": self.args.subteam,
+            "attributeKey": self.args.attrkey,
+            "attributeValue": self.args.attrvalue,
+            "failedNum": "1"
+        }
+        existinglaunchs = self.getLaunchId(filters)
+        print(existinglaunchs)
+        if existinglaunchs == None:
+            print("no launch match")
+            return
+        for launch in existinglaunchs:
+            self.updateItemPerLaunch(launch, "FAILED")
 
 
 if __name__ == "__main__":
@@ -112,12 +157,16 @@ if __name__ == "__main__":
     parser.add_argument("-t","--token", default="")
     parser.add_argument("-p","--project", default="ocp")
 
-    parser.add_argument("-s","--subteam", default="")
     parser.add_argument("-l","--launchname", default="")
+    parser.add_argument("-s","--subteam", default="")
+    parser.add_argument("-td","--timeduration", default="")
+    parser.add_argument("-ak","--attrkey", default="")
+    parser.add_argument("-av","--attrvalue", default="")
+    parser.add_argument("-fn","--failednum", default="0")
     args=parser.parse_args()
 
     updr = UpdateResultonRP(args)
     if args.action == "cls":
-        updr.ChangeToSuccessPerLuanch()
+        updr.ChangeToSuccess()
     exit(0)
 
