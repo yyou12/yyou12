@@ -285,6 +285,13 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
         err = oc.AsAdmin().WithoutNamespace().Run("delete").Args("nginx", "nginx-sample", "-n", namespace).Execute()
         o.Expect(err).NotTo(o.HaveOccurred())
     })
+
+    // author: jfan@redhat.com
+    g.It("Author:jfan-High-34441-SDK commad operator sdk support init help message", func() {
+        output, err := operatorsdkCLI.Run("init").Args("--help").Output()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        o.Expect(output).To(o.ContainSubstring("--component-config"))
+    })
    
     // author: chuo@redhat.com
     g.It("Author:chuo-Medium-27718-scorecard remove version flag", func() {
