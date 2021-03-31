@@ -57,10 +57,9 @@ var _ = g.Describe("[sig-operators] OLM opm should", func() {
 	})
 })
 
-var _ = g.Describe("[sig-operators] OLM opm with docker", func() {
+var _ = g.Describe("[sig-operators] OLM opm with podman", func() {
 	defer g.GinkgoRecover()
 
-	var dockerCLI = container.NewDockerCLI()
 	var podmanCLI = container.NewPodmanCLI()
 	var opmCLI = NewOpmCLI()
 	var sqlit = db.NewSqlit()
@@ -68,16 +67,13 @@ var _ = g.Describe("[sig-operators] OLM opm with docker", func() {
 	var oc = exutil.NewCLI("vmonly-"+getRandomString(), exutil.KubeConfigPath())
 
 	// author: xzha@redhat.com
-	g.It("Author:xzha-VMonly-Medium-25955-opm Ability to generate scaffolding for Operator Bundle using docker", func() {
+	g.It("Author:xzha-VMonly-Medium-25955-opm Ability to generate scaffolding for Operator Bundle", func() {
 		opmBaseDir := exutil.FixturePath("testdata", "opm")
-		TestDataPathDocker := filepath.Join(opmBaseDir, "learn_operator")
-		opmCLI.execCommandPath = TestDataPathDocker
-		defer DeleteDir(TestDataPathDocker, "fixture-testdata")
+		TestDataPath := filepath.Join(opmBaseDir, "learn_operator")
+		opmCLI.execCommandPath = TestDataPath
+		defer DeleteDir(TestDataPath, "fixture-testdata")
 		imageTag := "quay.io/olmqe/25955-operator-" + getRandomString() + ":v0.0.1"
-		_, err := dockerCLI.RemoveImage(imageTag)
-		o.Expect(err).NotTo(o.HaveOccurred())
 
-		g.By("test using docker")
 		g.By("step: opm alpha bundle generate")
 		output, err := opmCLI.Run("alpha").Args("bundle", "generate", "-d", "package/0.0.1", "-p", "25955-operator", "-c", "alpha", "-e", "alpha").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -85,38 +81,17 @@ var _ = g.Describe("[sig-operators] OLM opm with docker", func() {
 		if !strings.Contains(output, "Writing annotations.yaml") || !strings.Contains(output, "Writing bundle.Dockerfile") {
 			e2e.Failf("Failed to execute opm alpha bundle generate : %s", output)
 		}
-		e2e.Logf("clean test data")
-		DeleteDir(TestDataPathDocker, "fixture-testdata")
 
 		g.By("step: opm alpha bundle build")
-		opmBaseDir = exutil.FixturePath("testdata", "opm")
-		TestDataPathDocker = filepath.Join(opmBaseDir, "learn_operator")
-		opmCLI.execCommandPath = TestDataPathDocker
-
-		defer dockerCLI.RemoveImage(imageTag)
-		output, _ = opmCLI.Run("alpha").Args("bundle", "build", "-d", "package/0.0.1", "--tag", imageTag, "-p", "25955-operator", "-c", "alpha", "-e", "alpha", "--overwrite").Output()
-		e2e.Logf(output)
-		if !strings.Contains(output, "Building bundle image") {
-			e2e.Failf("Failed to execute opm alpha bundle build : %s", output)
-		}
-		e2e.Logf("step: check image %s exist", imageTag)
-		existFlag, err := dockerCLI.CheckImageExist(imageTag)
-		o.Expect(err).NotTo(o.HaveOccurred())
-		e2e.Logf("check image exist is %v", existFlag)
-		o.Expect(existFlag).To(o.BeTrue())
 		e2e.Logf("clean test data")
-		DeleteDir(TestDataPathDocker, "fixture-testdata")
-
-		g.By("step: test using podman")
+		DeleteDir(TestDataPath, "fixture-testdata")
 		opmBaseDir = exutil.FixturePath("testdata", "opm")
-		TestDataPathPodman := filepath.Join(opmBaseDir, "learn_operator")
-		opmCLI.execCommandPath = TestDataPathPodman
-		defer DeleteDir(TestDataPathPodman, "fixture-testdata")
-
+		TestDataPath = filepath.Join(opmBaseDir, "learn_operator")
+		opmCLI.execCommandPath = TestDataPath
 		_, err = podmanCLI.RemoveImage(imageTag)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		g.By("step: opm alpha bundle build")
+		e2e.Logf("run opm alpha bundle build")
 		defer podmanCLI.RemoveImage(imageTag)
 		output, _ = opmCLI.Run("alpha").Args("bundle", "build", "-d", "package/0.0.1", "-b", "podman", "--tag", imageTag, "-p", "25955-operator", "-c", "alpha", "-e", "alpha", "--overwrite").Output()
 		e2e.Logf(output)
@@ -125,7 +100,7 @@ var _ = g.Describe("[sig-operators] OLM opm with docker", func() {
 		}
 
 		e2e.Logf("step: check image %s exist", imageTag)
-		existFlag, err = podmanCLI.CheckImageExist(imageTag)
+		existFlag, err := podmanCLI.CheckImageExist(imageTag)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		e2e.Logf("check image exist is %v", existFlag)
 		o.Expect(existFlag).To(o.BeTrue())
