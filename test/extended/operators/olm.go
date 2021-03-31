@@ -1299,7 +1299,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	})
 
 	// author: jiazha@redhat.com
-	g.It("Author:jiazha-Medium-20981-contain the source commit id [Serial]", func() {
+	g.It("Author:jiazha-Medium-20981-contain the source commit id", func() {
 		sameCommit := ""
 		subPods := []string{"catalog-operator", "olm-operator", "packageserver"}
 
@@ -1324,7 +1324,8 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 				g.By("checking this commitID in the operator-lifecycle-manager repo")
 				ctx, tc := githubClient()
 				client := github.NewClient(tc)
-				_, _, err := client.Git.GetCommit(ctx, "operator-framework", "operator-lifecycle-manager", gitCommitID)
+				// OLM downstream repo has been changed to: https://github.com/openshift/operator-framework-olm
+				_, _, err := client.Git.GetCommit(ctx, "openshift", "operator-framework-olm", gitCommitID)
 				if err != nil {
 					e2e.Failf("Git.GetCommit returned error: %v", err)
 				}
