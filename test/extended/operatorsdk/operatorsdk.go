@@ -56,7 +56,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
     g.It("Author:jfan-High-37312-SDK olm improve manage operator bundles in new manifests metadata format", func() {
 
         operatorsdkCLI.showInfo = true
-        exec.Command("bash", "-c", "mkdir /tmp/memcached-operator-37312 && cd /tmp/memcached-operator-37312 && operator-sdk init --project-version 3-alpha --plugins ansible.sdk.operatorframework.io/v1 --domain example.com --group cache --version v1alpha1 --kind Memcached --generate-playbook").Output()
+        exec.Command("bash", "-c", "mkdir /tmp/memcached-operator-37312 && cd /tmp/memcached-operator-37312 && operator-sdk init --plugins ansible.sdk.operatorframework.io/v1 --domain example.com --group cache --version v1alpha1 --kind Memcached --generate-playbook").Output()
         defer exec.Command("bash", "-c", "rm -rf /tmp/memcached-operator-37312").Output()
         result, err := exec.Command("bash", "-c", "cd /tmp/memcached-operator-37312 && operator-sdk generate bundle --deploy-dir=config --crds-dir=config/crds --version=0.0.1").Output()
         o.Expect(err).NotTo(o.HaveOccurred())
