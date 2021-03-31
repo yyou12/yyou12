@@ -14,7 +14,7 @@ FLEXYURLBASE=${JENKINS_URL}"job/ocp-common/job/Flexy-install/"
 KUBECONFIG_FILE=""
 if [ "${CONTENT_FOR_CONF}" != "" ] ; then
   rm -fr handleconfig.py && eval cp -fr ${WORKDIRBASE}"/private/pipeline/handleconfig.py" .
-  value=` python handleconfig.py -a get -y "${CONTENT_FOR_CONF}" -p environments:ocp4:admin_creds_spec || true `
+  value=`python3 handleconfig.py -a get -y "${CONTENT_FOR_CONF}" -p environments:ocp4:admin_creds_spec || true `
   if [ "${value}" != "None" ] && [ "${value}" != "failtogetvalue" ] && [ "${value}" != "" ]; then
     KUBECONFIG_FILE=${value}
   else

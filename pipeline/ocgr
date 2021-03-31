@@ -79,7 +79,7 @@ current_time=`date "+%Y-%m-%d-%H-%M-%S"`
 newresultfile="junit_e2e_"${current_time}".xml"
 rm -fr handleresult.py && eval cp -fr ${WORKSPACE}"/private/pipeline/handleresult.py" .
 rm -fr reportportal.py && eval cp -fr ${WORKSPACE}"/private/pipeline/reportportal.py" .
-python handleresult.py -a replace -i ${resultfile} -o ${newresultfile} && rm -fr ${resultfile}
+python3 handleresult.py -a replace -i ${resultfile} -o ${newresultfile} && rm -fr ${resultfile}
 
 rpresult="SUCCESS"
 if [ "X${LAUNCHID}X" != "XX" ]; then
@@ -110,7 +110,7 @@ if [ "X${LAUNCHID}X" != "XX" ]; then
   rpmmtoken=`cat ${WORKSPACE}"/private/secrets/rp/openshift-qe-reportportal.json" | jq  -r ".ginkgo_rp_mmtoken"`
   rppmtoken=`cat ${WORKSPACE}"/private/secrets/rp/openshift-qe-reportportal.json" | jq  -r ".ginkgo_rp_pmtoken"`
   eval rm -fr "*.zip" "import-*.xml"
-  python handleresult.py -a split -i ${newresultfile}
+  python3 handleresult.py -a split -i ${newresultfile}
   for subteamfile in `ls import-*.xml`; do
     subteam=${subteamfile:7:-4}
     eval zip -r "${LAUNCHID}.zip" "${subteamfile}"
@@ -125,7 +125,7 @@ if [ "X${LAUNCHID}X" != "XX" ]; then
   done
   eval rm -fr "import-*.xml"
 
-  # ret=`python reportportal.py -a merge -l "${LAUNCHID}" 2>&1 || true`
+  # ret=`python3 reportportal.py -a merge -l "${LAUNCHID}" 2>&1 || true`
   # result=`echo ${ret} | tail -1|xargs`
   # if [ "X${result}X" == "XFAILX" ]; then
   #   rpresult="FAIL"
@@ -134,7 +134,7 @@ if [ "X${LAUNCHID}X" != "XX" ]; then
   # fi
 fi
 
-resultsummary=`python handleresult.py -a get -i ${newresultfile} 2>&1 || true`
+resultsummary=`python3 handleresult.py -a get -i ${newresultfile} 2>&1 || true`
 if (echo $resultsummary | grep -q -E "FAIL") ; then
   finalresult="FAIL"
 else

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import xml.dom.minidom
 import argparse
 import re
@@ -38,7 +38,7 @@ class TestResult:
         if toBeRemove is not None:
             noderoot.firstChild.removeChild(toBeRemove)
 
-        with open(output, 'w+') as f:
+        with open(output, 'wb+') as f:
             writer = codecs.lookup('utf-8')[3](f)
             noderoot.writexml(writer, encoding='utf-8')
             writer.close()
@@ -212,7 +212,7 @@ class TestResult:
             testsuite.setAttribute("skipped", str(skippedcount))
             newdoc.appendChild(testsuite)
 
-            with open("import-"+k+".xml", 'w+') as f:
+            with open("import-"+k+".xml", 'wb+') as f:
                 writer = codecs.lookup('utf-8')[3](f)
                 newdoc.writexml(writer, encoding='utf-8')
                 writer.close()

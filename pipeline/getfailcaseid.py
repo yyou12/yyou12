@@ -76,7 +76,7 @@ class ReportPortalClient:
             print(e)
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(prog="python getfailcaseid.py", usage='%(prog)s -l <launchname> -s <subteam>')
+    parser = argparse.ArgumentParser(prog="python3 getfailcaseid.py", usage='%(prog)s -l <launchname> -s <subteam>')
     parser.add_argument("-t","--token", default="4388c1c6-98e8-4e5d-8923-8dffa84a6425") #it is example token for trial project
     parser.add_argument("-s","--subteam", default="", required=True, help="please input subteam you made in your case g.Describe")
     parser.add_argument("-l","--launchname", default="", required=True, help="please input lauchname which is the value of LAUNCH_NAME of the job")
