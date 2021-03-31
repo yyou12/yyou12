@@ -4374,6 +4374,55 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 
 	})
 
+	// author: xzha@redhat.com, test case OCP-40529
+	g.It("ConnectedOnly-Author:xzha-Medium-40529-OPERATOR_CONDITION_NAME should have correct value", func() {
+		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
+		ogSingleTemplate := filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+		subTemplate := filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+		oc.SetupProject()
+		namespaceName := oc.Namespace()
+		var (
+			og = operatorGroupDescription{
+				name:      "test-og",
+				namespace: namespaceName,
+				template:  ogSingleTemplate,
+			}
+			sub = subscriptionDescription{
+				subName:                "ditto-40529-operator",
+				namespace:              namespaceName,
+				catalogSourceName:      "community-operators",
+				catalogSourceNamespace: "openshift-marketplace",
+				channel:                "alpha",
+				ipApproval:             "Manual",
+				operatorPackage:        "ditto-operator",
+				singleNamespace:        true,
+				template:               subTemplate,
+				startingCSV:            "ditto-operator.v0.1.1",
+			}
+		)
+		itName := g.CurrentGinkgoTestDescription().TestText
+		g.By("STEP 1: create the OperatorGroup ")
+		og.createwithCheck(oc, itName, dr)
+
+		g.By("STEP 2: create sub")
+		defer sub.delete(itName, dr)
+		defer sub.deleteCSV(itName, dr)
+		sub.create(oc, itName, dr)
+		e2e.Logf("approve the install plan")
+		sub.approveSpecificIP(oc, itName, dr, "ditto-operator.v0.1.1", "Complete")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", "ditto-operator.v0.1.1", "-n", oc.Namespace(), "-o=jsonpath={.status.phase}"}).check(oc)
+
+		g.By("STEP 3: check OPERATOR_CONDITION_NAME")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "ditto-operator.v0.1.1", ok, []string{"deployment", "ditto-operator", "-n", namespaceName, "-o=jsonpath={.spec.template.spec.containers[*].env[?(@.name==\"OPERATOR_CONDITION_NAME\")].value}"}).check(oc)
+
+		g.By("STEP 4: approve the install plan")
+		sub.approveSpecificIP(oc, itName, dr, "ditto-operator.v0.2.0", "Complete")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", "ditto-operator.v0.2.0", "-n", oc.Namespace(), "-o=jsonpath={.status.phase}"}).check(oc)
+
+		g.By("STEP 5: check OPERATOR_CONDITION_NAME")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "ditto-operator.v0.2.0", ok, []string{"deployment", "ditto-operator", "-n", namespaceName, "-o=jsonpath={.spec.template.spec.containers[*].env[?(@.name==\"OPERATOR_CONDITION_NAME\")].value}"}).check(oc)
+	})
+
 })
 
 var _ = g.Describe("[sig-operators] OLM for an end user handle to support", func() {
