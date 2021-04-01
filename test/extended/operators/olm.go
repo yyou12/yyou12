@@ -4423,6 +4423,52 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		newCheck("expect", asAdmin, withoutNamespace, compare, "ditto-operator.v0.2.0", ok, []string{"deployment", "ditto-operator", "-n", namespaceName, "-o=jsonpath={.spec.template.spec.containers[*].env[?(@.name==\"OPERATOR_CONDITION_NAME\")].value}"}).check(oc)
 	})
 
+	// author: xzha@redhat.com, test case OCP-40534
+	g.It("ConnectedOnly-Author:xzha-Medium-40534-the deployment should not lost the resources section", func() {
+		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
+		ogSingleTemplate := filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+		subTemplate := filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+		oc.SetupProject()
+		namespaceName := oc.Namespace()
+		var (
+			og = operatorGroupDescription{
+				name:      "test-og",
+				namespace: namespaceName,
+				template:  ogSingleTemplate,
+			}
+			sub = subscriptionDescription{
+				subName:                "tidb-40534-operator",
+				namespace:              namespaceName,
+				catalogSourceName:      "community-operators",
+				catalogSourceNamespace: "openshift-marketplace",
+				channel:                "stable",
+				ipApproval:             "Automatic",
+				operatorPackage:        "tidb-operator",
+				singleNamespace:        true,
+				template:               subTemplate,
+			}
+		)
+		itName := g.CurrentGinkgoTestDescription().TestText
+		g.By("STEP 1: create the OperatorGroup ")
+		og.createwithCheck(oc, itName, dr)
+
+		g.By("STEP 2: create sub")
+		defer sub.delete(itName, dr)
+		defer sub.deleteCSV(itName, dr)
+		sub.create(oc, itName, dr)
+
+		g.By("STEP 3: check OPERATOR_CONDITION_NAME")
+		cpuCSV := getResource(oc, asAdmin, withoutNamespace, "csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={..containers[?(@.name==\"tidb-operator\")].resources.requests.cpu}")
+		o.Expect(cpuCSV).NotTo(o.BeEmpty())
+		memoryCSV := getResource(oc, asAdmin, withoutNamespace, "csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={..containers[?(@.name==\"tidb-operator\")].resources.requests.memory}")
+		o.Expect(memoryCSV).NotTo(o.BeEmpty())
+		cpuDeployment := getResource(oc, asAdmin, withoutNamespace, "deployment", fmt.Sprintf("--selector=olm.owner=%s", sub.installedCSV), "-n", sub.namespace, "-o=jsonpath={..containers[?(@.name==\"tidb-operator\")].resources.requests.cpu}")
+		o.Expect(cpuDeployment).To(o.Equal(cpuDeployment))
+		memoryDeployment := getResource(oc, asAdmin, withoutNamespace, "deployment", fmt.Sprintf("--selector=olm.owner=%s", sub.installedCSV), "-n", sub.namespace, "-o=jsonpath={..containers[?(@.name==\"tidb-operator\")].resources.requests.memory}")
+		o.Expect(memoryDeployment).To(o.Equal(memoryCSV))
+
+	})
+
 })
 
 var _ = g.Describe("[sig-operators] OLM for an end user handle to support", func() {
