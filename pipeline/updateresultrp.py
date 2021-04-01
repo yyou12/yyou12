@@ -73,7 +73,7 @@ class UpdateResultonRP:
         return filter_url
 
 
-    def getLaunchId(self, filters=None):
+    def getLaunches(self, filters=None):
         filter_url = self.makeLaunchFilterUrl(filters)
 
         try:
@@ -84,7 +84,7 @@ class UpdateResultonRP:
             for ret in r.json()["content"]:
                 if not self.isGolangLaunch(ret["attributes"]):
                     continue
-                ids.append(ret["id"])
+                ids.append({"id":ret["id"], "name":ret["name"], "number":ret["number"]})
 
             if len(ids) == 0:
                 raise Exception('no matched launch id')
@@ -93,8 +93,8 @@ class UpdateResultonRP:
             print(e)
             return None
 
-    def getItemId(self, launchid, itemtype, itemstatus):
-        query_item_url = self.item_url + "?filter.eq.launchId={0}&filter.eq.type={1}&filter.eq.status={2}&isLatest=false&launchesLimit=0&page.size=500".format(launchid, itemtype, itemstatus)
+    def getItems(self, launch, itemtype, itemstatus):
+        query_item_url = self.item_url + "?filter.eq.launchId={0}&filter.eq.type={1}&filter.eq.status={2}&isLatest=false&launchesLimit=0&page.size=500".format(launch["id"], itemtype, itemstatus)
         ids = []
         r = self.session.get(url=query_item_url)
         if (r.status_code != 200):
@@ -102,11 +102,12 @@ class UpdateResultonRP:
             return ids
 
         if len(r.json()["content"]) == 0:
-            print("no item match with launch ID={0} and status={1}".format(launchid, itemstatus))
+            print("no item match with status={0} in launch {1} #{2} and ".format(itemstatus, launch["name"], launch["number"]))
             return ids
 
         for ret in r.json()["content"]:
-            ids.append(ret["id"])
+            if self.args.author in ret["name"]:
+                ids.append({"id":ret["id"], "name":ret["name"]})
 
         return ids
 
@@ -124,13 +125,13 @@ class UpdateResultonRP:
         r = self.session.put(url=update_tiem_url, json=itemdata)
         return r.status_code
 
-    def updateItemPerLaunch(self, launchid, itemstatus):
-        item_ids = self.getItemId(launchid, "STEP", itemstatus)
-        for item_id in item_ids:
+    def updateItemPerLaunch(self, launch, itemstatus):
+        items = self.getItems(launch, "STEP", itemstatus)
+        for item in items:
             # print(item_id)
-            ret_code = self.updateItemStatus(item_id, "passed")
+            ret_code = self.updateItemStatus(item["id"], "passed")
             if (ret_code != 200) and (ret_code != 201):
-                print("can not change status for item ID={0} in launch with ID={1}. please rerun or manually change status".format(item_id, launchid))
+                print("can not change status for item={0} in launch {1} #{2}. please rerun or manually change status".format(item["name"], launch["name"], launch["number"]))
 
     def ChangeToSuccess(self):
         filters = {
@@ -141,11 +142,11 @@ class UpdateResultonRP:
             "attributeValue": self.args.attrvalue,
             "failedNum": "1"
         }
-        existinglaunchs = self.getLaunchId(filters)
-        print(existinglaunchs)
+        existinglaunchs = self.getLaunches(filters)
         if existinglaunchs == None:
             print("no launch match")
             return
+        print("we found launches:\n {0}".format(existinglaunchs))
         for launch in existinglaunchs:
             self.updateItemPerLaunch(launch, "FAILED")
 
@@ -163,6 +164,7 @@ if __name__ == "__main__":
     parser.add_argument("-ak","--attrkey", default="")
     parser.add_argument("-av","--attrvalue", default="")
     parser.add_argument("-fn","--failednum", default="0")
+    parser.add_argument("-at","--author", default="")
     args=parser.parse_args()
 
     updr = UpdateResultonRP(args)
