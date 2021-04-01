@@ -8,7 +8,6 @@ from urllib3.exceptions import InsecureRequestWarning
 from datetime import datetime, timedelta
 import yaml
 import urllib.parse
-
 class UpdateResultonRP:
     def __init__(self, args):
         if args.token == "":
@@ -69,22 +68,38 @@ class UpdateResultonRP:
 
         filter_url = filter_url + "&filter.gte.statistics" + urllib.parse.quote("$executions$failed") + "=" +filters["failedNum"]
 
-        print(filter_url)
+        print("LaunchFilterURL: {0}".format(filter_url))
         return filter_url
 
 
+    def getLaunchInfoFromRsp(self, rsp):
+        ids = []
+        for ret in rsp:
+            if not self.isGolangLaunch(ret["attributes"]):
+                continue
+            ids.append({"id":ret["id"], "name":ret["name"], "number":ret["number"]})
+        return ids
+
     def getLaunches(self, filters=None):
         filter_url = self.makeLaunchFilterUrl(filters)
+        ids = []
+        total_pages = 0
 
         try:
             r = self.session.get(url=filter_url)
             if (r.status_code != 200):
                 raise Exception("get ID error: {0} with code {1}".format(r.text, r.status_code))
-            ids = []
-            for ret in r.json()["content"]:
-                if not self.isGolangLaunch(ret["attributes"]):
+            total_pages = r.json()["page"]["totalPages"]
+            ids.extend(self.getLaunchInfoFromRsp(r.json()["content"]))
+
+            for page_number in range(2, total_pages+1):
+                filter_url_tmp = filter_url.replace("page.page=1", "page.page="+str(page_number))
+                r = self.session.get(url=filter_url_tmp)
+                if (r.status_code != 200):
+                    print("error to access page number {0} with {1} with code {2}".format(page_number, r.text, r.status_code))
+                    print("continue next page, and please rerun it to try failed page")
                     continue
-                ids.append({"id":ret["id"], "name":ret["name"], "number":ret["number"]})
+                ids.extend(self.getLaunchInfoFromRsp(r.json()["content"]))
 
             if len(ids) == 0:
                 raise Exception('no matched launch id')
@@ -93,21 +108,53 @@ class UpdateResultonRP:
             print(e)
             return None
 
-    def getItems(self, launch, itemtype, itemstatus):
-        query_item_url = self.item_url + "?filter.eq.launchId={0}&filter.eq.type={1}&filter.eq.status={2}&isLatest=false&launchesLimit=0&page.size=500".format(launch["id"], itemtype, itemstatus)
+    def makeItemFilterUrl(self, filters=None):
+        filter_url = self.item_url + "?page.page=1&page.size=500&isLatest=false&launchesLimit=0"
+
+        if filters["launch"] != None:
+            filter_url = filter_url + "&filter.eq.launchId=" + str(filters["launch"]["id"])
+
+        if filters["itemType"] != "":
+            filter_url = filter_url + "&filter.eq.type=" + filters["itemType"]
+
+        if filters["itemStatus"] != "":
+            filter_url = filter_url + "&filter.eq.status=" + filters["itemStatus"]
+
+        # print("ItemFilterURL: {0}".format(filter_url))
+        return filter_url
+
+    def getItemInfoFromRsp(self, rsp, filters):
         ids = []
-        r = self.session.get(url=query_item_url)
-        if (r.status_code != 200):
-            print("can not get item with error {0} and code {1}".format(r.text, r.status_code))
-            return ids
 
-        if len(r.json()["content"]) == 0:
-            print("no item match with status={0} in launch {1} #{2} and ".format(itemstatus, launch["name"], launch["number"]))
+        if len(rsp) == 0:
+            print("no case match with status={0} in launch {1} #{2}".format(filters["itemStatus"], filters["launch"]["name"], filters["launch"]["number"]))
             return ids
-
-        for ret in r.json()["content"]:
+        for ret in rsp:
             if self.args.author in ret["name"]:
                 ids.append({"id":ret["id"], "name":ret["name"]})
+
+        return ids
+
+    def getItems(self, filters):
+        query_item_url = self.makeItemFilterUrl(filters)
+        ids = []
+        total_pages = 0
+
+        r = self.session.get(url=query_item_url)
+        if (r.status_code != 200):
+            print("can not get case status={0} with error {1} and code {2} for launch {3} #{4}".format(filters["itemStatus"],r.text, r.status_code, filters["launch"]["name"], filters["launch"]["number"]))
+            return ids
+        total_pages = r.json()["page"]["totalPages"]
+        ids.extend(self.getItemInfoFromRsp(r.json()["content"], filters))
+
+        for page_number in range(2, total_pages+1):
+            query_item_url_tmp = query_item_url.replace("page.page=1", "page.page="+str(page_number))
+            r = self.session.get(url=query_item_url_tmp)
+            if (r.status_code != 200):
+                print("can not get case status={0} with error {1} and code {2} for launch {3} #{4} for page {5}".format(filters["itemStatus"],r.text, r.status_code, filters["launch"]["name"], filters["launch"]["number"], str(page_number)))
+                print("continue next page, and please rerun it to try failed page")
+                continue
+            ids.extend(self.getItemInfoFromRsp(r.json()["content"], filters))
 
         return ids
 
@@ -126,12 +173,17 @@ class UpdateResultonRP:
         return r.status_code
 
     def updateItemPerLaunch(self, launch, itemstatus):
-        items = self.getItems(launch, "STEP", itemstatus)
+        filters = {
+            "launch": launch,
+            "itemType": "STEP",
+            "itemStatus": itemstatus
+        }
+        items = self.getItems(filters)
         for item in items:
-            # print(item_id)
+            # print(item)
             ret_code = self.updateItemStatus(item["id"], "passed")
             if (ret_code != 200) and (ret_code != 201):
-                print("can not change status for item={0} in launch {1} #{2}. please rerun or manually change status".format(item["name"], launch["name"], launch["number"]))
+                print("can not change status for case={0} in launch {1} #{2}. please rerun or manually change status".format(item["name"], launch["name"], launch["number"]))
 
     def ChangeToSuccess(self):
         filters = {

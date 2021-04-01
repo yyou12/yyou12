@@ -636,7 +636,7 @@ class ReportPortalClient:
             getFailReason = {}
             for lid in launchId:
                 # print(lid)
-                item_url = self.item_url + "?filter.eq.launchId={0}&filter.eq.status=FAILED&isLatest=false&launchesLimit=0&page.size=150".format(lid)
+                item_url = self.item_url + "?filter.eq.launchId={0}&filter.eq.status=FAILED&isLatest=false&launchesLimit=0&page.size=500".format(lid)
                 # print(item_url)
                 r = self.session.get(url=item_url)
                 # print(r.status_code)
@@ -693,7 +693,7 @@ class ReportPortalClient:
         return isGolang
 
     def getLaunchIdWithLaunchName(self, launchname, attrfilter=None):
-        filter_url = self.launch_url + "?page.page=1&page.size=150&filter.eq.name=" + launchname
+        filter_url = self.launch_url + "?page.page=1&page.size=300&filter.eq.name=" + launchname
         # print(filter_url)
         try:
             r = self.session.get(url=filter_url)
@@ -884,7 +884,7 @@ class ReportPortalClient:
             return None
 
     def getFakeGolangLaunchProfileList(self, launchname, version):
-        fake_launch_url = self.launch_url + "?page.page=1&page.size=150&filter.has.attributeValue=" + urllib.parse.quote(version+",golang")+"&filter.eq.name="+launchname
+        fake_launch_url = self.launch_url + "?page.page=1&page.size=300&filter.has.attributeValue=" + urllib.parse.quote(version+",golang")+"&filter.eq.name="+launchname
         try:
             r = self.session.get(url=fake_launch_url, timeout=180)
             # print(r.status_code)
