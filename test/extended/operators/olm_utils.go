@@ -96,6 +96,14 @@ type PrometheusQueryResult struct {
 //if sub.ipApproval is Automatic, it will wait the sub's state become AtLatestKnown and get installed csv as sub.installedCSV, and save csv into dr
 //if sub.ipApproval is not Automatic, it will just wait sub's state become UpgradePending
 func (sub *subscriptionDescription) create(oc *exutil.CLI, itName string, dr describerResrouce) {
+	// for most operator subscription failure, the reason is that there is a left cluster-scoped subscription.
+	// I'd like to print all subscriptions before create it.
+	allSubs, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("sub", "--all-namespaces").Output()
+	if err != nil {
+		e2e.Failf("!!! Couldn't get all subscriptions:%v\n", err)
+	}
+	e2e.Logf("!!! Get all subscriptions in this cluster:%s\n", allSubs)
+
 	sub.createWithoutCheck(oc, itName, dr)
 	if strings.Compare(sub.ipApproval, "Automatic") == 0 {
 		sub.findInstalledCSV(oc, itName, dr)
