@@ -10,6 +10,20 @@ import yaml
 import urllib.parse
 class UpdateResultonRP:
     def __init__(self, args):
+        self.defectFullNameMap = {
+            "PB": "product_bug",
+            "AB": "automation_bug",
+            "TI": "to_investigate",
+            "SI": "si001",
+            "NI": "si_vf6zbppgm81f"
+        }
+        self.defectTypeMap = {
+            "PB": "pb001",
+            "AB": "ab001",
+            "TI": "ti001",
+            "SI": "si001",
+            "NI": "si_vf6zbppgm81f"
+        }
         if args.token == "":
             with open("secrets/rp/openshift-qe-reportportal.json") as f:
                 token_f = yaml.safe_load(f)
@@ -38,7 +52,7 @@ class UpdateResultonRP:
         return isGolang
 
     def makeLaunchFilterUrl(self, filters=None):
-        filter_url = self.launch_url + "?page.page=1&page.size=500"
+        filter_url = self.launch_url + "?page.page=1&page.size=300"
         if filters["launchName"] != "":
             filter_url = filter_url + "&filter.cnt.name=" + filters["launchName"].replace(" ", "")
 
@@ -67,6 +81,16 @@ class UpdateResultonRP:
             filter_url = filter_url + "&filter.btw.startTime=" + urllib.parse.quote(str(sttimestamp)+","+str(edtimestamp))
 
         filter_url = filter_url + "&filter.gte.statistics" + urllib.parse.quote("$executions$failed") + "=" +filters["failedNum"]
+
+        if filters["defectType"] != "":
+            url_map = {
+                "PB": "&filter.gte.statistics" + urllib.parse.quote("$defects$"+self.defectFullNameMap["PB"]+"$total") + "=1",
+                "AB": "&filter.gte.statistics" + urllib.parse.quote("$defects$"+self.defectFullNameMap["AB"]+"$total") + "=1",
+                "TI": "&filter.gte.statistics" + urllib.parse.quote("$defects$"+self.defectFullNameMap["TI"]+"$total") + "=1",
+                "SI": "&filter.gte.statistics" + urllib.parse.quote("$defects$system_issue$"+self.defectFullNameMap["SI"]) + "=1",
+                "NI": "&filter.gte.statistics" + urllib.parse.quote("$defects$system_issue$"+self.defectFullNameMap["NI"]) + "=1"
+            }
+            filter_url = filter_url + url_map[filters["defectType"]]
 
         print("LaunchFilterURL: {0}".format(filter_url))
         return filter_url
@@ -109,7 +133,7 @@ class UpdateResultonRP:
             return None
 
     def makeItemFilterUrl(self, filters=None):
-        filter_url = self.item_url + "?page.page=1&page.size=500&isLatest=false&launchesLimit=0"
+        filter_url = self.item_url + "?page.page=1&page.size=300&isLatest=false&launchesLimit=0"
 
         if filters["launch"] != None:
             filter_url = filter_url + "&filter.eq.launchId=" + str(filters["launch"]["id"])
@@ -119,6 +143,9 @@ class UpdateResultonRP:
 
         if filters["itemStatus"] != "":
             filter_url = filter_url + "&filter.eq.status=" + filters["itemStatus"]
+
+        if filters["defectType"] != "":
+            filter_url = filter_url + "&filter.in.issueType=" + self.defectTypeMap[filters["defectType"]]
 
         # print("ItemFilterURL: {0}".format(filter_url))
         return filter_url
@@ -176,6 +203,7 @@ class UpdateResultonRP:
         filters = {
             "launch": launch,
             "itemType": "STEP",
+            "defectType": self.args.defecttype,
             "itemStatus": itemstatus
         }
         items = self.getItems(filters)
@@ -192,6 +220,7 @@ class UpdateResultonRP:
             "subTeam": self.args.subteam,
             "attributeKey": self.args.attrkey,
             "attributeValue": self.args.attrvalue,
+            "defectType": self.args.defecttype,
             "failedNum": "1"
         }
         existinglaunchs = self.getLaunches(filters)
@@ -217,6 +246,7 @@ if __name__ == "__main__":
     parser.add_argument("-av","--attrvalue", default="")
     parser.add_argument("-fn","--failednum", default="0")
     parser.add_argument("-at","--author", default="")
+    parser.add_argument("-dt","--defecttype", default="", choices={"", "PB", "AB", "SI", "NI", "TI"})
     args=parser.parse_args()
 
     updr = UpdateResultonRP(args)

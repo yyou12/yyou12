@@ -636,7 +636,8 @@ class ReportPortalClient:
             getFailReason = {}
             for lid in launchId:
                 # print(lid)
-                item_url = self.item_url + "?filter.eq.launchId={0}&filter.eq.status=FAILED&isLatest=false&launchesLimit=0&page.size=500".format(lid)
+                item_url = self.item_url + "?filter.eq.launchId={0}&filter.eq.status=FAILED&isLatest=false&launchesLimit=0&page.size=300".format(lid)
+                #suppose one launch instance will have max 300 failed case. if not, will handle it with page.number.
                 # print(item_url)
                 r = self.session.get(url=item_url)
                 # print(r.status_code)
