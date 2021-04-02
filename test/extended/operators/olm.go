@@ -5118,6 +5118,56 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within all namesp
 			g.By("it already exists")
 		}
 	})
+
+	// It will cover test case: OCP-40531, author: xzha@redhat.com
+	g.It("ConnectedOnly-Author:xzha-High-40531-the lastupdatetime timestamp on the copied version should match the original CSV", func() {
+		var (
+			itName              = g.CurrentGinkgoTestDescription().TestText
+			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
+			subTemplate         = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+			sub                 = subscriptionDescription{
+				subName:                "wso2am-operator-40531",
+				namespace:              "openshift-operators",
+				channel:                "stable",
+				ipApproval:             "Automatic",
+				operatorPackage:        "wso2am-operator",
+				catalogSourceName:      "community-operators",
+				catalogSourceNamespace: "openshift-marketplace",
+				template:               subTemplate,
+				singleNamespace:        false,
+			}
+
+			project = projectDescription{
+				name:            "olm-enduser-specific-40531" + getRandomString(),
+				targetNamespace: oc.Namespace(),
+			}
+		)
+
+		g.By("Check the global operator global-operators support all namesapces")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "[]", ok, []string{"og", "global-operators", "-n", "openshift-operators", "-o=jsonpath={.status.namespaces}"})
+
+		g.By("Create operator targeted at all namespace")
+		sub.create(oc, itName, dr)
+		lastUpdateTimeOrigin := getResource(oc, asAdmin, withoutNamespace, "csv", sub.installedCSV, "-n", "openshift-operators", "-o=jsonpath={.status.lastUpdateTime}")
+
+		g.By("Create new namespace")
+		project.create(oc, itName, dr)
+
+		g.By("Check the csv within new namespace is copied.")
+		err := wait.Poll(5*time.Second, 300*time.Second, func() (bool, error) {
+			phase := getResource(oc, asAdmin, withoutNamespace, "csv", sub.installedCSV, "-n", project.name, "-o=jsonpath={.status.phase}")
+			if strings.Compare(phase, "Succeeded") == 0 {
+				return true, nil
+			}
+			return false, nil
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Copied", ok, []string{"csv", sub.installedCSV, "-n", project.name, "-o=jsonpath={.status.reason}"})
+
+		g.By("Check the lastUpdateTime of copied CSV is equal to the original CSV.")
+		lastUpdateTimeNew := getResource(oc, asAdmin, withoutNamespace, "csv", sub.installedCSV, "-n", project.name, "-o=jsonpath={.status.lastUpdateTime}")
+		o.Expect(lastUpdateTimeNew).To(o.Equal(lastUpdateTimeOrigin))
+	})
 })
 
 var _ = g.Describe("[sig-operators] OLM on VM for an end user handle within a namespace", func() {
