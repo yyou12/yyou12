@@ -978,7 +978,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		g.By("10) Recreate the Subscription")
 		sub.delete(itName, dr)
 		sub.deleteCSV(itName, dr)
-		sub.createWithoutCheck(oc, itName, dr)
+		sub.create(oc, itName, dr)
 
 		g.By("11) Checking the state of CSV")
 		newCheck("expect", asUser, withNamespace, compare, "Succeeded", ok, []string{"csv", csv, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
@@ -5175,7 +5175,8 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within all namesp
 
 		g.By("Create operator targeted at all namespace")
 		sub.create(oc, itName, dr)
-		lastUpdateTimeOrigin := getResource(oc, asAdmin, withoutNamespace, "csv", sub.installedCSV, "-n", "openshift-operators", "-o=jsonpath={.status.lastUpdateTime}")
+		defer sub.delete(itName, dr)
+		defer sub.deleteCSV(itName, dr)
 
 		g.By("Create new namespace")
 		project.create(oc, itName, dr)
@@ -5192,7 +5193,19 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within all namesp
 		newCheck("expect", asAdmin, withoutNamespace, compare, "Copied", ok, []string{"csv", sub.installedCSV, "-n", project.name, "-o=jsonpath={.status.reason}"})
 
 		g.By("Check the lastUpdateTime of copied CSV is equal to the original CSV.")
-		lastUpdateTimeNew := getResource(oc, asAdmin, withoutNamespace, "csv", sub.installedCSV, "-n", project.name, "-o=jsonpath={.status.lastUpdateTime}")
+		originCh := make(chan string)
+		defer close(originCh)
+		copyCh := make(chan string)
+		defer close(copyCh)
+		go func() {
+			originCh <- getResource(oc, asAdmin, withoutNamespace, "csv", sub.installedCSV, "-n", "openshift-operators", "-o=jsonpath={.status.lastUpdateTime}")
+		}()
+		go func() {
+			copyCh <- getResource(oc, asAdmin, withoutNamespace, "csv", sub.installedCSV, "-n", project.name, "-o=jsonpath={.status.lastUpdateTime}")
+		}()
+		lastUpdateTimeOrigin := <-originCh
+		lastUpdateTimeNew := <-copyCh
+		e2e.Logf("OriginTimeStamp:%s, CopiedTimeStamp:%s", lastUpdateTimeOrigin, lastUpdateTimeNew)
 		o.Expect(lastUpdateTimeNew).To(o.Equal(lastUpdateTimeOrigin))
 	})
 })
