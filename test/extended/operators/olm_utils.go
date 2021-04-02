@@ -96,13 +96,13 @@ type PrometheusQueryResult struct {
 //if sub.ipApproval is Automatic, it will wait the sub's state become AtLatestKnown and get installed csv as sub.installedCSV, and save csv into dr
 //if sub.ipApproval is not Automatic, it will just wait sub's state become UpgradePending
 func (sub *subscriptionDescription) create(oc *exutil.CLI, itName string, dr describerResrouce) {
-	// for most operator subscription failure, the reason is that there is a left cluster-scoped subscription.
-	// I'd like to print all subscriptions before create it.
-	allSubs, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("sub", "--all-namespaces").Output()
+	// for most operator subscription failure, the reason is that there is a left cluster-scoped CSV.
+	// I'd like to print all CSV before create it.
+	allCSVs, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", "--all-namespaces").Output()
 	if err != nil {
-		e2e.Failf("!!! Couldn't get all subscriptions:%v\n", err)
+		e2e.Failf("!!! Couldn't get all CSVs:%v\n", err)
 	}
-	e2e.Logf("!!! Get all subscriptions in this cluster:%s\n", allSubs)
+	e2e.Logf("!!! Get all CSVs in this cluster:\n%s\n", allCSVs)
 
 	sub.createWithoutCheck(oc, itName, dr)
 	if strings.Compare(sub.ipApproval, "Automatic") == 0 {
@@ -128,8 +128,16 @@ func (sub *subscriptionDescription) createWithoutCheck(oc *exutil.CLI, itName st
 	//	o.Expect(sub.startingCSV).NotTo(o.BeEmpty())
 	//}
 
+	// for most operator subscription failure, the reason is that there is a left cluster-scoped CSV.
+	// I'd like to print all CSV before create it.
+	allCSVs, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", "--all-namespaces").Output()
+	if err != nil {
+		e2e.Failf("!!! Couldn't get all CSVs:%v\n", err)
+	}
+	e2e.Logf("!!! Get all CSVs in this cluster:\n%s\n", allCSVs)
+
 	e2e.Logf("create sub %s", sub.subName)
-	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", sub.template, "-p", "SUBNAME="+sub.subName, "SUBNAMESPACE="+sub.namespace, "CHANNEL="+sub.channel,
+	err = applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", sub.template, "-p", "SUBNAME="+sub.subName, "SUBNAMESPACE="+sub.namespace, "CHANNEL="+sub.channel,
 		"APPROVAL="+sub.ipApproval, "OPERATORNAME="+sub.operatorPackage, "SOURCENAME="+sub.catalogSourceName, "SOURCENAMESPACE="+sub.catalogSourceNamespace, "STARTINGCSV="+sub.startingCSV)
 
 	o.Expect(err).NotTo(o.HaveOccurred())
