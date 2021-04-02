@@ -545,7 +545,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		// o.Expect(msg).To(o.ContainSubstring("redhat-marketplace"))
 		// o.Expect(msg).To(o.ContainSubstring("redhat-operators"))
 		g.By("3) Check the Packagemanifest")
-		msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("packagemanifest").Output()
+		msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("packagemanifest", "-n", "openshift-marketplace").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(msg).NotTo(o.ContainSubstring("No resources found"))
 	})
@@ -1940,18 +1940,45 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	})
 
 	// author: scolange@redhat.com
-
-	// author: scolange@redhat.com
 	g.It("Author:scolange-Medium-23673-Installplan can be created while Install and uninstall operators via Marketplace for 5 times [Slow]", func() {
-		nsName := "test23673"
+		oc.SetupProject()
+		g.By("1) Install the OperatorGroup in a random project")
+		dr := make(describerResrouce)
+		itName := g.CurrentGinkgoTestDescription().TestText
+		dr.addIr(itName)
+
+		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
+		ogSingleTemplate := filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+		og := operatorGroupDescription{
+			name:      "og-23673",
+			namespace: oc.Namespace(),
+			template:  ogSingleTemplate,
+		}
+		og.createwithCheck(oc, itName, dr)
+
 		var count = 0
 		for i := 0; i < 5; i++ {
 			count++
-			etcdPackage := CreateSubscriptionSpecificNamespace("etcd", oc, true, true, nsName, INSTALLPLAN_AUTOMATIC_MODE)
-			defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("ns", nsName).Execute()
-			CheckDeployment(etcdPackage, oc)
-			RemoveOperatorDependencies(etcdPackage, oc, false)
 
+			g.By("2) Install the etcdoperator v0.9.4 with Automatic approval")
+			subTemplate := filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+			sub := subscriptionDescription{
+				subName:                "sub-23673",
+				namespace:              oc.Namespace(),
+				catalogSourceName:      "community-operators",
+				catalogSourceNamespace: "openshift-marketplace",
+				channel:                "singlenamespace-alpha",
+				ipApproval:             "Automatic",
+				operatorPackage:        "etcd",
+				startingCSV:            "etcdoperator.v0.9.4",
+				singleNamespace:        true,
+				template:               subTemplate,
+			}
+
+			sub.create(oc, itName, dr)
+			newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", "etcdoperator.v0.9.4", "-n", oc.Namespace(), "-o=jsonpath={.status.phase}"}).check(oc)
+			sub.delete(itName, dr)
+			sub.deleteCSV(itName, dr)
 		}
 	})
 
