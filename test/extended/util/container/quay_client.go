@@ -65,7 +65,7 @@ func NewQuayCLI() *QuayCLI {
 		} else {
 			var authJson AuthInfo
 			if err := json.Unmarshal(content, &authJson); err != nil {
-				e2e.Logf("parser json error, json content is %s", string(content))
+				e2e.Logf("parser json error")
 			} else {
 				authString = "Bearer " + authJson.Authorization
 			}
@@ -75,7 +75,6 @@ func NewQuayCLI() *QuayCLI {
 		e2e.Logf("get quay auth from env QUAY_AUTH")
 		authString = "Bearer " + os.Getenv("QUAY_AUTH")
 	}
-	e2e.Logf("authstring %s", string(authString))
 	newclient.Authorization = authString
 	return newclient
 }
