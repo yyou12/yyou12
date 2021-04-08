@@ -570,26 +570,50 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	// author: bandrade@redhat.com
 	g.It("Author:bandrade-Medium-24850-Allow users to edit the deployment of an active CSV", func() {
 
+		g.By("1) Install the OperatorGroup in a random project")
+		dr := make(describerResrouce)
+		itName := g.CurrentGinkgoTestDescription().TestText
+		dr.addIr(itName)
+
 		oc.SetupProject()
+		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
+		ogSingleTemplate := filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+		og := operatorGroupDescription{
+			name:      "og-24850",
+			namespace: oc.Namespace(),
+			template:  ogSingleTemplate,
+		}
+		og.createwithCheck(oc, itName, dr)
 
-		g.By("1)Start to subscribe the Etcd operator")
-		etcdPackage := CreateSubscriptionSpecificNamespace("etcd", oc, false, true, oc.Namespace(), INSTALLPLAN_AUTOMATIC_MODE)
-		CheckDeployment(etcdPackage, oc)
+		g.By("2) Install the etcdoperator v0.9.4 with Automatic approval")
+		subTemplate := filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+		sub := subscriptionDescription{
+			subName:                "sub-24850",
+			namespace:              oc.Namespace(),
+			catalogSourceName:      "community-operators",
+			catalogSourceNamespace: "openshift-marketplace",
+			channel:                "singlenamespace-alpha",
+			ipApproval:             "Automatic",
+			operatorPackage:        "etcd",
+			startingCSV:            "etcdoperator.v0.9.4",
+			singleNamespace:        true,
+			template:               subTemplate,
+		}
+		sub.create(oc, itName, dr)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", "etcdoperator.v0.9.4", "-n", oc.Namespace(), "-o=jsonpath={.status.phase}"}).check(oc)
 
-		g.By("2) Patch the deploy object by adding an environment variable")
-		msg, err := oc.AsAdmin().WithoutNamespace().Run("patch").Args("deploy/etcd-operator", "--type=json", "--patch", "[{\"op\": \"add\",\"path\": \"/spec/template/spec/containers/0/env/-\", \"value\": { \"name\": \"a\",\"value\": \"b\"} }]", "-n", oc.Namespace()).Output()
+		g.By("3) Get pod name")
+		podName, err := oc.AsAdmin().Run("get").Args("pods", "-l", "name=etcd-operator-alm-owned", "-n", oc.Namespace(), "-o=jsonpath={.items..metadata.name}").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		g.By("3) Check if the pod is restared")
-		var waitErr = wait.Poll(5*time.Second, 120*time.Second, func() (bool, error) {
-			msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-n", oc.Namespace()).Output()
-			o.Expect(err).NotTo(o.HaveOccurred())
-			if strings.Contains(msg, "etcd-operator") && strings.Contains(msg, "Terminating") {
-				return true, nil
-			}
-			return false, nil
-		})
-		o.Expect(waitErr).NotTo(o.HaveOccurred())
+		g.By("4) Patch the deploy object by adding an environment variable")
+		_, err = oc.AsAdmin().WithoutNamespace().Run("patch").Args("deploy/etcd-operator", "--type=json", "--patch", "[{\"op\": \"add\",\"path\": \"/spec/template/spec/containers/0/env/-\", \"value\": { \"name\": \"a\",\"value\": \"b\"} }]", "-n", oc.Namespace()).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("5) Get restarted pod name")
+		podNameAfterPatch, err := oc.AsAdmin().Run("get").Args("pods", "-l", "name=etcd-operator-alm-owned", "-n", oc.Namespace(), "-o=jsonpath={.items..metadata.name}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(podName).NotTo(o.Equal(podNameAfterPatch))
 
 	})
 	// author: jiazha@redhat.com
