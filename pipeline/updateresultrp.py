@@ -14,15 +14,16 @@ class UpdateResultonRP:
             "PB": "product_bug",
             "AB": "automation_bug",
             "TI": "to_investigate",
-            "SI": "si001",
-            "NI": "si_vf6zbppgm81f"
+            "SI": "system_issue"
+            # "SI": "si001",
+            # "NI": "si_vf6zbppgm81f"
         }
         self.defectTypeMap = {
             "PB": "pb001",
             "AB": "ab001",
             "TI": "ti001",
-            "SI": "si001",
-            "NI": "si_vf6zbppgm81f"
+            "SI": "si001"
+            # "NI": "si_vf6zbppgm81f"
         }
         if args.token == "":
             with open("secrets/rp/openshift-qe-reportportal.json") as f:
@@ -87,8 +88,9 @@ class UpdateResultonRP:
                 "PB": "&filter.gte.statistics" + urllib.parse.quote("$defects$"+self.defectFullNameMap["PB"]+"$total") + "=1",
                 "AB": "&filter.gte.statistics" + urllib.parse.quote("$defects$"+self.defectFullNameMap["AB"]+"$total") + "=1",
                 "TI": "&filter.gte.statistics" + urllib.parse.quote("$defects$"+self.defectFullNameMap["TI"]+"$total") + "=1",
-                "SI": "&filter.gte.statistics" + urllib.parse.quote("$defects$system_issue$"+self.defectFullNameMap["SI"]) + "=1",
-                "NI": "&filter.gte.statistics" + urllib.parse.quote("$defects$system_issue$"+self.defectFullNameMap["NI"]) + "=1"
+                "SI": "&filter.gte.statistics" + urllib.parse.quote("$defects$"+self.defectFullNameMap["SI"]+"$total") + "=1"
+                # "SI": "&filter.gte.statistics" + urllib.parse.quote("$defects$system_issue$"+self.defectFullNameMap["SI"]) + "=1",
+                # "NI": "&filter.gte.statistics" + urllib.parse.quote("$defects$system_issue$"+self.defectFullNameMap["NI"]) + "=1"
             }
             filter_url = filter_url + url_map[filters["defectType"]]
 
@@ -246,7 +248,8 @@ if __name__ == "__main__":
     parser.add_argument("-av","--attrvalue", default="")
     parser.add_argument("-fn","--failednum", default="0")
     parser.add_argument("-at","--author", default="")
-    parser.add_argument("-dt","--defecttype", default="", choices={"", "PB", "AB", "SI", "NI", "TI"})
+    # parser.add_argument("-dt","--defecttype", default="", choices={"", "PB", "AB", "SI", "NI", "TI"})
+    parser.add_argument("-dt","--defecttype", default="", choices={"", "PB", "AB", "SI", "TI"})
     args=parser.parse_args()
 
     updr = UpdateResultonRP(args)
