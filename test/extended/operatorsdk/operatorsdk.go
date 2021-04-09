@@ -306,6 +306,16 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
         o.Expect(err).NotTo(o.HaveOccurred())
         o.Expect(msg).To(o.ContainSubstring("All validation tests have completed successfully"))
     })
+
+    // author: jfan@redhat.com
+    g.It("ConnectedOnly-Author:jfan-Medium-40520-SDK k8sutil 1123Label creates invalid values", func() {
+        operatorsdkCLI.showInfo = true
+        oc.SetupProject()
+        namespace := oc.Namespace()
+        msg, err := operatorsdkCLI.Run("run").Args("bundle", "quay.io/olmqe/raffaelespazzoli-proactive-node-scaling-operator-bundle:latest-", "-n", namespace).Output()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        o.Expect(msg).To(o.ContainSubstring("Successfully created registry pod: raffaelespazzoli-proactive-node-scaling-operator-bundle-latest"))
+    })
    
     // author: chuo@redhat.com
     g.It("Author:chuo-Medium-27718-scorecard remove version flag", func() {
