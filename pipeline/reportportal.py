@@ -18,7 +18,7 @@ class ReportPortalClient:
                 "Apiserver_and_Auth","Workloads","Metering","Cluster_Observability","Quay/Quay.io","Cluster_Infrastructure",
                 "Multi-Cluster","Cluster_Operator","Azure","Network_Edge","Etcd","Installer","Portfolio_Integration",
                 "Service_Development_A","OLM","Operator_SDK","App_Migration","Windows_Containers","Security_and_Compliance",
-                "KNI","Edge","Openshift_Jenkins","RHV","ISV_Operators","PSAP","Multi-Cluster-Networking","OTA","Kata"
+                "KNI","Openshift_Jenkins","RHV","ISV_Operators","PSAP","Multi-Cluster-Networking","OTA","Kata","Build_API"
             ]
     def __init__(self, args):
         urllib3.disable_warnings(category=InsecureRequestWarning)
