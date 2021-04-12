@@ -254,7 +254,18 @@ func (sub *subscriptionDescription) getCSV() csvDescription {
 
 // get the reference InstallPlan
 func (sub *subscriptionDescription) getIP(oc *exutil.CLI) string {
-	return getResource(oc, asAdmin, withoutNamespace, "sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.installPlanRef.name}")
+	var installPlan string
+	waitErr := wait.Poll(5*time.Second, 180*time.Second, func() (bool, error) {
+		var err error
+		installPlan, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.installPlanRef.name}").Output()
+		if strings.Compare(installPlan, "") == 0 || err != nil {
+			return false, nil
+		}
+		return true, nil
+	})
+	o.Expect(waitErr).NotTo(o.HaveOccurred())
+	o.Expect(installPlan).NotTo(o.BeEmpty())
+	return installPlan
 }
 
 //the method is to get the CR version from alm-examples of csv if it exists

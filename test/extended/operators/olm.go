@@ -4570,6 +4570,120 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		o.Expect(catalogs).NotTo(o.ContainSubstring("level=debug"))
 	})
 
+	// It will cover test case: OCP-40958, author: kuiwang@redhat.com
+	g.It("ConnectedOnly-Author:kuiwang-Medium-40958-Indicate invalid OperatorGroup on InstallPlan status", func() {
+		var (
+			itName              = g.CurrentGinkgoTestDescription().TestText
+			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
+			ogSingleTemplate    = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+			ogSAtemplate        = filepath.Join(buildPruningBaseDir, "operatorgroup-serviceaccount.yaml")
+			catsrcImageTemplate = filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
+			subTemplate         = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+			saName              = "scopedv40958"
+			og1                 = operatorGroupDescription{
+				name:      "og1-40958",
+				namespace: "",
+				template:  ogSingleTemplate,
+			}
+			og2 = operatorGroupDescription{
+				name:      "og2-40958",
+				namespace: "",
+				template:  ogSingleTemplate,
+			}
+			ogSa = operatorGroupDescription{
+				name:               "ogsa-40958",
+				namespace:          "",
+				serviceAccountName: saName,
+				template:           ogSAtemplate,
+			}
+			catsrc = catalogSourceDescription{
+				name:        "catsrc-40958-operator",
+				namespace:   "",
+				displayName: "Test Catsrc 40958 Operators",
+				publisher:   "Red Hat",
+				sourceType:  "grpc",
+				address:     "quay.io/olmqe/olm-dep:v40958",
+				template:    catsrcImageTemplate,
+			}
+			sub = subscriptionDescription{
+				subName:                "teiid",
+				namespace:              "",
+				channel:                "beta",
+				ipApproval:             "Automatic",
+				operatorPackage:        "teiid",
+				catalogSourceName:      catsrc.name,
+				catalogSourceNamespace: "",
+				startingCSV:            "teiid.v0.4.0",
+				currentCSV:             "",
+				installedCSV:           "",
+				template:               subTemplate,
+				singleNamespace:        true,
+			}
+		)
+		oc.SetupProject() //project and its resource are deleted automatically when out of It, so no need derfer or AfterEach
+		og1.namespace = oc.Namespace()
+		og2.namespace = oc.Namespace()
+		ogSa.namespace = oc.Namespace()
+		catsrc.namespace = oc.Namespace()
+		sub.namespace = oc.Namespace()
+		sub.catalogSourceNamespace = catsrc.namespace
+
+		g.By("create catalog source")
+		catsrc.create(oc, itName, dr)
+
+		g.By("install operator without og")
+		sub.createWithoutCheck(oc, itName, dr)
+
+		g.By("The install plan is Failed, without og")
+		installPlan := sub.getIP(oc)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Failed", ok, []string{"ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, contain, "no operator group found", ok, []string{"ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.conditions}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, contain, "InstallCheckFailed", ok, []string{"sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.conditions}"}).check(oc)
+
+		g.By("delete operator")
+		sub.delete(itName, dr)
+
+		g.By("Create og1")
+		og1.create(oc, itName, dr)
+
+		g.By("Create og2")
+		og2.create(oc, itName, dr)
+
+		g.By("install operator with multiple og")
+		sub.createWithoutCheck(oc, itName, dr)
+
+		g.By("The install plan is Failed, multiple og")
+		installPlan = sub.getIP(oc)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Failed", ok, []string{"ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, contain, "more than one operator group", ok, []string{"ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.conditions}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, contain, "InstallCheckFailed", ok, []string{"sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.conditions}"}).check(oc)
+
+		g.By("delete resource for next step")
+		sub.delete(itName, dr)
+		og1.delete(itName, dr)
+		og2.delete(itName, dr)
+
+		g.By("create sa")
+		_, err := oc.WithoutNamespace().AsAdmin().Run("create").Args("sa", saName, "-n", sub.namespace).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Create ogSa")
+		ogSa.createwithCheck(oc, itName, dr)
+
+		g.By("delete the service account")
+		_, err = oc.WithoutNamespace().AsAdmin().Run("delete").Args("sa", saName, "-n", sub.namespace).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("install operator without sa for og")
+		sub.createWithoutCheck(oc, itName, dr)
+
+		g.By("The install plan is Failed, without sa for og")
+		installPlan = sub.getIP(oc)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Failed", ok, []string{"ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, contain, "not found", ok, []string{"ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.conditions}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, contain, "InstallComponentFailed", ok, []string{"sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.conditions}"}).check(oc)
+	})
+
 })
 
 var _ = g.Describe("[sig-operators] OLM for an end user handle to support", func() {
