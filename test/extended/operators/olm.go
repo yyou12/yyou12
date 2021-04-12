@@ -4520,6 +4520,56 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 
 	})
 
+	// author: xzha@redhat.com, test case OCP-40532
+	g.It("ConnectedOnly-Author:xzha-Medium-40532-OLM should not print debug logs", func() {
+		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
+		ogSingleTemplate := filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+		subTemplate := filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+		oc.SetupProject()
+		namespaceName := oc.Namespace()
+		var (
+			og = operatorGroupDescription{
+				name:      "test-og",
+				namespace: namespaceName,
+				template:  ogSingleTemplate,
+			}
+			sub = subscriptionDescription{
+				subName:                "tidb-40532-operator",
+				namespace:              namespaceName,
+				catalogSourceName:      "community-operators",
+				catalogSourceNamespace: "openshift-marketplace",
+				channel:                "stable",
+				ipApproval:             "Automatic",
+				operatorPackage:        "tidb-operator",
+				singleNamespace:        true,
+				template:               subTemplate,
+			}
+		)
+		itName := g.CurrentGinkgoTestDescription().TestText
+		g.By("STEP 1: create the OperatorGroup ")
+		og.createwithCheck(oc, itName, dr)
+
+		g.By("STEP 2: create sub")
+		sub.create(oc, itName, dr)
+
+		g.By("STEP 3: check there is no debug logs")
+		olmPodname, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-n", "openshift-operator-lifecycle-manager", "--selector=app=olm-operator", "-o=jsonpath={.items..metadata.name}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(olmPodname).NotTo(o.BeEmpty())
+		olmlogs, err := oc.AsAdmin().WithoutNamespace().Run("logs").Args(olmPodname, "-n", "openshift-operator-lifecycle-manager", "--limit-bytes", "50000").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(olmlogs).NotTo(o.BeEmpty())
+		o.Expect(olmlogs).NotTo(o.ContainSubstring("level=debug"))
+
+		catPodname, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-n", "openshift-operator-lifecycle-manager", "--selector=app=catalog-operator", "-o=jsonpath={.items..metadata.name}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(catPodname).NotTo(o.BeEmpty())
+		catalogs, err := oc.AsAdmin().WithoutNamespace().Run("logs").Args(catPodname, "-n", "openshift-operator-lifecycle-manager", "--limit-bytes", "50000").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(catalogs).NotTo(o.BeEmpty())
+		o.Expect(catalogs).NotTo(o.ContainSubstring("level=debug"))
+	})
+
 })
 
 var _ = g.Describe("[sig-operators] OLM for an end user handle to support", func() {
