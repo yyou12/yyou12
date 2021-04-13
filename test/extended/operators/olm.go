@@ -2594,6 +2594,57 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		o.Expect(strings.Compare(sub.installedCSV, sub.startingCSV) != 0).To(o.BeTrue())
 	})
 
+	g.It("ConnectedOnly-Author:bandrade-Critical-41026-OCS should only one installplan generated when creating subscription", func() {
+		var (
+			itName              = g.CurrentGinkgoTestDescription().TestText
+			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
+			ogSingleTemplate    = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+			subTemplate         = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+			namespace           = "openshift-storage-41026"
+			ogD                 = operatorGroupDescription{
+				name:      "og-singlenamespace",
+				namespace: "",
+				template:  ogSingleTemplate,
+			}
+			subD = subscriptionDescription{
+				subName:                "ocs-operator",
+				namespace:              "openshift-storage",
+				channel:                "stable-4.6",
+				ipApproval:             "Automatic",
+				operatorPackage:        "ocs-operator",
+				catalogSourceName:      "redhat-operators",
+				catalogSourceNamespace: "openshift-marketplace",
+				startingCSV:            "",
+				currentCSV:             "",
+				installedCSV:           "",
+				template:               subTemplate,
+				singleNamespace:        true,
+			}
+			og  = ogD
+			sub = subD
+		)
+		defer RemoveNamespace(namespace, oc)
+		CreateNamespaceWithoutPrefix(namespace, oc)
+		og.namespace = namespace
+		sub.namespace = namespace
+
+		g.By("Create og")
+		og.create(oc, itName, dr)
+
+		g.By("Create operator")
+		sub.create(oc, itName, dr)
+		newCheck("expect", asAdmin, withNamespace, compare, "Succeeded", ok, []string{"csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+
+		g.By("Check there is only one ip")
+		ips := getResource(oc, asAdmin, withoutNamespace, "ip", "-n", sub.namespace, "--no-headers")
+		ipList := strings.Split(ips, "\n")
+		for _, ip := range ipList {
+			name := strings.Fields(ip)[0]
+			getResource(oc, asAdmin, withoutNamespace, "ip", name, "-n", sub.namespace, "-o=json")
+		}
+		o.Expect(strings.Count(ips, sub.installedCSV)).To(o.Equal(1))
+	})
+
 	// It will cover test case: OCP-24438, author: kuiwang@redhat.com
 	g.It("ConnectedOnly-Author:kuiwang-Medium-24438-check subscription CatalogSource Status", func() {
 		var (
