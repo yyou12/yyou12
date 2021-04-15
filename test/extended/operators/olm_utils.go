@@ -175,7 +175,7 @@ func (sub *subscriptionDescription) expectCSV(oc *exutil.CLI, itName string, dr 
 //the method is to approve the install plan when you create sub with sub.ipApproval != Automatic
 //normally firstly call sub.create(), then call this method sub.approve. it is used to operator upgrade case.
 func (sub *subscriptionDescription) approve(oc *exutil.CLI, itName string, dr describerResrouce) {
-	err := wait.Poll(1*time.Second, 60*time.Second, func() (bool, error) {
+	err := wait.Poll(6*time.Second, 360*time.Second, func() (bool, error) {
 		for strings.Compare(sub.installedCSV, "") == 0 {
 			state := getResource(oc, asAdmin, withoutNamespace, "sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.state}")
 			if strings.Compare(state, "AtLatestKnown") == 0 {
@@ -191,7 +191,7 @@ func (sub *subscriptionDescription) approve(oc *exutil.CLI, itName string, dr de
 			o.Expect(installPlan).NotTo(o.BeEmpty())
 			e2e.Logf("try to approve installPlan %s", installPlan)
 			patchResource(oc, asAdmin, withoutNamespace, "ip", installPlan, "-n", sub.namespace, "--type", "merge", "-p", "{\"spec\": {\"approved\": true}}")
-			err := wait.Poll(3*time.Second, 10*time.Second, func() (bool, error) {
+			err := wait.Poll(10*time.Second, 70*time.Second, func() (bool, error) {
 				err := newCheck("expect", asAdmin, withoutNamespace, compare, "Complete", ok, []string{"ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).checkWithoutAssert(oc)
 				if err != nil {
 					e2e.Logf("the get error is %v, and try next", err)
@@ -229,7 +229,7 @@ func (sub *subscriptionDescription) approveSpecificIP(oc *exutil.CLI, itName str
 			o.Expect(installPlan).NotTo(o.BeEmpty())
 			e2e.Logf("---> Get the pending InstallPlan %s", installPlan)
 			patchResource(oc, asAdmin, withoutNamespace, "ip", installPlan, "-n", sub.namespace, "--type", "merge", "-p", "{\"spec\": {\"approved\": true}}")
-			err := wait.Poll(3*time.Second, 10*time.Second, func() (bool, error) {
+			err := wait.Poll(10*time.Second, 70*time.Second, func() (bool, error) {
 				err := newCheck("expect", asAdmin, withoutNamespace, compare, phase, ok, []string{"ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).checkWithoutAssert(oc)
 				if err != nil {
 					return false, nil
@@ -972,7 +972,7 @@ func applyResourceFromTemplate(oc *exutil.CLI, parameters ...string) error {
 //present means if you expect the resource presence or not. if it is ok, expect presence. if it is nok, expect not present.
 func isPresentResource(oc *exutil.CLI, asAdmin bool, withoutNamespace bool, present bool, parameters ...string) bool {
 	parameters = append(parameters, "--ignore-not-found")
-	err := wait.Poll(3*time.Second, 60*time.Second, func() (bool, error) {
+	err := wait.Poll(3*time.Second, 70*time.Second, func() (bool, error) {
 		output, err := doAction(oc, "get", asAdmin, withoutNamespace, parameters...)
 		if err != nil {
 			e2e.Logf("the get error is %v, and try next", err)
