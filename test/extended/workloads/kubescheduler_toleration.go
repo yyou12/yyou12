@@ -40,7 +40,7 @@ var _ = g.Describe("[sig-scheduling] Workloads", func() {
 
 		g.By("Trying to launch a pod with toleration")
 		pod13538.createPodTolerate(oc)
-		pod13538nodename := getPodNodeName(oc, "test-13538", "tolerationseconds-1")
+		pod13538nodename := getPodNodeName(oc, oc.Namespace(), "tolerationseconds-1")
 
 		g.By("Add a matched taint on the node")
 		err := oc.AsAdmin().WithoutNamespace().Run("adm").Args("taint", "node", pod13538nodename, "key1=value1:NoExecute").Execute()
@@ -52,7 +52,7 @@ var _ = g.Describe("[sig-scheduling] Workloads", func() {
 		oc.AsAdmin().WithoutNamespace().Run("adm").Args("taint", "node", pod13538nodename, "key1:NoExecute-").Execute()
 
 		g.By("check the pod should still running on the node")
-		output, err := oc.WithoutNamespace().Run("get").Args("pods", "-n", "test-13538", "tolerationseconds-1", "-o=wide").Output()
+		output, err := oc.WithoutNamespace().Run("get").Args("pods", "-n", oc.Namespace(), "tolerationseconds-1", "-o=wide").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		if matched, _ := regexp.MatchString(pod13538nodename, output); matched {
 			e2e.Logf("pods is still running on node :\n%s", output)
@@ -64,7 +64,7 @@ var _ = g.Describe("[sig-scheduling] Workloads", func() {
 
 		g.By("wait for 100 seconds check the pod still running on the node")
 		time.Sleep(100 * time.Second)
-		output, err = oc.WithoutNamespace().Run("get").Args("pods", "-n", "test-13538", "tolerationseconds-1", "-o=wide").Output()
+		output, err = oc.WithoutNamespace().Run("get").Args("pods", "-n", oc.Namespace(), "tolerationseconds-1", "-o=wide").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		if matched, _ := regexp.MatchString(pod13538nodename, output); matched {
 			e2e.Logf("pods is still running on node after 100s:\n%s", output)
@@ -72,7 +72,7 @@ var _ = g.Describe("[sig-scheduling] Workloads", func() {
 
 		g.By("wait for more 30 seconds check the pod should be deleted")
 		err = wait.Poll(10*time.Second, 30*time.Second, func() (bool, error) {
-			output, _ = oc.WithoutNamespace().Run("get").Args("pods", "-n", "test-13538", "tolerationseconds-1", "-o=wide").Output()
+			output, _ = oc.WithoutNamespace().Run("get").Args("pods", "-n", oc.Namespace(), "tolerationseconds-1", "-o=wide").Output()
 			if matched, _ := regexp.MatchString("pods.*not found", output); matched {
 				e2e.Logf("pods is deleted on node after 120s:\n%s", output)
 				return true, nil

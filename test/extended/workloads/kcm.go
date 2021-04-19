@@ -24,18 +24,18 @@ var _ = g.Describe("[sig-apps] Workloads", func() {
 		var temporarySecretsList []string
 
 		g.By("get all the secrets in kcm project")
-		output, err := oc.WithoutNamespace().Run("get").Args("secrets", "-n", namespace, "-o=jsonpath={.items[*].metadata.name}").Output()
+		output, err := oc.AsAdmin().Run("get").Args("secrets", "-n", namespace, "-o=jsonpath={.items[*].metadata.name}").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		secretsList := strings.Fields(output)
 		
 		g.By("filter out all the none temporary secrets")
 		for _, secretsname := range secretsList {
-			secretsAnnotations, err := oc.WithoutNamespace().Run("get").Args("secrets", "-n", namespace, secretsname, "-o=jsonpath={.metadata.annotations}").Output()
+			secretsAnnotations, err := oc.AsAdmin().Run("get").Args("secrets", "-n", namespace, secretsname, "-o=jsonpath={.metadata.annotations}").Output()
 			o.Expect(err).NotTo(o.HaveOccurred())
 			if matched, _ := regexp.MatchString("kubernetes.io/service-account.name", secretsAnnotations); matched {
 				continue
 			} else {
-				secretOwnerKind, err := oc.WithoutNamespace().Run("get").Args("secrets", "-n", namespace, secretsname,  "-o=jsonpath={.metadata.ownerReferences[0].kind}").Output()
+				secretOwnerKind, err := oc.AsAdmin().Run("get").Args("secrets", "-n", namespace, secretsname,  "-o=jsonpath={.metadata.ownerReferences[0].kind}").Output()
 				o.Expect(err).NotTo(o.HaveOccurred())
 				if strings.Compare(secretOwnerKind,"ConfigMap") == 0 {
 					continue
@@ -47,13 +47,13 @@ var _ = g.Describe("[sig-apps] Workloads", func() {
 
 		g.By("delete all the temporary secrets")
 		for _, secretsD := range temporarySecretsList {
-			_, err = oc.WithoutNamespace().Run("delete").Args("secrets", "-n", namespace, secretsD).Output()
+			_, err = oc.AsAdmin().Run("delete").Args("secrets", "-n", namespace, secretsD).Output()
 			o.Expect(err).NotTo(o.HaveOccurred())
 		}
 
 		g.By("Check the KCM operator should be in Progressing")
 		err = wait.Poll(5*time.Second, 60*time.Second, func() (bool, error) {
-			output, err := oc.WithoutNamespace().Run("get").Args("co", "kube-controller-manager").Output()
+			output, err := oc.AsAdmin().Run("get").Args("co", "kube-controller-manager").Output()
 			if err != nil {
 				e2e.Logf("clusteroperator kube-controller-manager not start new progress, error: %s. Trying again", err)
 				return false, nil
@@ -68,7 +68,7 @@ var _ = g.Describe("[sig-apps] Workloads", func() {
 
 		g.By("Wait for the KCM operator to recover")
 		err = wait.Poll(30*time.Second, 300*time.Second, func() (bool, error) {
-			output, err := oc.WithoutNamespace().Run("get").Args("co", "kube-controller-manager").Output()
+			output, err := oc.AsAdmin().Run("get").Args("co", "kube-controller-manager").Output()
 			if err != nil {
 				e2e.Logf("Fail to get clusteroperator kube-controller-manager, error: %s. Trying again", err)
 				return false, nil
