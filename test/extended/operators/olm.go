@@ -5471,7 +5471,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within all namesp
 	})
 
 	// It will cover test case: OCP-40531, author: xzha@redhat.com
-	g.It("ConnectedOnly-Author:xzha-High-40531-the lastupdatetime timestamp on the copied version should match the original CSV", func() {
+	g.It("ConnectedOnly-Author:xzha-High-40531-High-41051-the value of lastUpdateTime of csv and Components of Operator should be correct", func() {
 		var (
 			itName              = g.CurrentGinkgoTestDescription().TestText
 			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
@@ -5516,7 +5516,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within all namesp
 		o.Expect(err).NotTo(o.HaveOccurred())
 		newCheck("expect", asAdmin, withoutNamespace, compare, "Copied", ok, []string{"csv", sub.installedCSV, "-n", project.name, "-o=jsonpath={.status.reason}"})
 
-		g.By("Check the lastUpdateTime of copied CSV is equal to the original CSV.")
+		g.By("OCP-40531-Check the lastUpdateTime of copied CSV is equal to the original CSV.")
 		originCh := make(chan string)
 		defer close(originCh)
 		copyCh := make(chan string)
@@ -5531,6 +5531,13 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within all namesp
 		lastUpdateTimeNew := <-copyCh
 		e2e.Logf("OriginTimeStamp:%s, CopiedTimeStamp:%s", lastUpdateTimeOrigin, lastUpdateTimeNew)
 		o.Expect(lastUpdateTimeNew).To(o.Equal(lastUpdateTimeOrigin))
+
+		g.By("OCP-41051-Check Operator.Status.Components does not contain copied CSVs.")
+		operatorname := sub.operatorPackage + ".openshift-operators"
+		operatorinfo := getResource(oc, asAdmin, withoutNamespace, "operator", operatorname, "-n", project.name, "-o=jsonpath={.status.components.refs}")
+		o.Expect(operatorinfo).NotTo(o.BeEmpty())
+		o.Expect(operatorinfo).NotTo(o.ContainSubstring("Copied"))
+
 	})
 })
 
