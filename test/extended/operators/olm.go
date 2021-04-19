@@ -4735,6 +4735,91 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		newCheck("expect", asAdmin, withoutNamespace, contain, "InstallComponentFailed", ok, []string{"sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.conditions}"}).check(oc)
 	})
 
+	// author: xzha@redhat.com
+	g.It("Author:xzha-Medium-41174-Periodically retry InstallPlan execution until a timeout expires", func() {
+		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
+		roletemplate := filepath.Join(buildPruningBaseDir, "role.yaml")
+		rolebindingtemplate := filepath.Join(buildPruningBaseDir, "role-binding.yaml")
+		ogSAtemplate := filepath.Join(buildPruningBaseDir, "operatorgroup-serviceaccount.yaml")
+		subTemplate := filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+		oc.SetupProject()
+		namespace := oc.Namespace()
+		itName := g.CurrentGinkgoTestDescription().TestText
+		var (
+			csv = "etcdoperator.v0.9.4"
+			sa  = "scoped-41174"
+			og  = operatorGroupDescription{
+				name:               "test-og-41174",
+				namespace:          namespace,
+				serviceAccountName: sa,
+				template:           ogSAtemplate,
+			}
+			sub = subscriptionDescription{
+				subName:                "etcd",
+				namespace:              namespace,
+				catalogSourceName:      "community-operators",
+				catalogSourceNamespace: "openshift-marketplace",
+				channel:                "singlenamespace-alpha",
+				ipApproval:             "Automatic",
+				operatorPackage:        "etcd",
+				singleNamespace:        true,
+				template:               subTemplate,
+				startingCSV:            csv,
+			}
+			role = roleDescription{
+				name:      "role-41174",
+				namespace: namespace,
+				template:  roletemplate,
+			}
+			rolebinding = rolebindingDescription{
+				name:      "scoped-bindings-41174",
+				namespace: namespace,
+				rolename:  "role-41174",
+				saname:    sa,
+				template:  rolebindingtemplate,
+			}
+		)
+
+		g.By("1) Create the service account and OperatorGroup")
+		_, err := oc.WithoutNamespace().AsAdmin().Run("create").Args("sa", sa, "-n", sub.namespace).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		og.createwithCheck(oc, itName, dr)
+
+		g.By("2) Delete the service account")
+		_, err = oc.WithoutNamespace().AsAdmin().Run("delete").Args("sa", sa, "-n", sub.namespace).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("3) Create a Subscription, check installplan")
+		defer sub.delete(itName, dr)
+		defer sub.deleteCSV(itName, dr)
+		sub.createWithoutCheck(oc, itName, dr)
+		installPlan := sub.getIP(oc)
+		o.Expect(installPlan).NotTo(o.BeEmpty())
+		newCheck("expect", asAdmin, withoutNamespace, contain, "retrying execution due to error: serviceaccounts", ok, []string{"ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.message}"}).check(oc)
+
+		g.By("4) Create the service account, check the installplan")
+		_, err = oc.WithoutNamespace().AsAdmin().Run("create").Args("sa", sa, "-n", namespace).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		newCheck("expect", asAdmin, withoutNamespace, contain, "retrying execution due to error: error creating csv etcdoperator", ok, []string{"ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.message}"}).check(oc)
+
+		g.By("5) After retry timeout, the install plan is Failed")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Failed", ok, []string{"ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+
+		g.By("6) delete sub, then create sub again")
+		sub.delete(itName, dr)
+		sub.createWithoutCheck(oc, itName, dr)
+		installPlan = sub.getIP(oc)
+		newCheck("expect", asAdmin, withoutNamespace, contain, "retrying execution due to error", ok, []string{"ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.message}"}).check(oc)
+
+		g.By("7) Grant the proper permissions to the service account")
+		role.create(oc)
+		rolebinding.create(oc)
+
+		g.By("8) Checking the state of CSV")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Complete", ok, []string{"ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+		newCheck("expect", asUser, withNamespace, compare, "Succeeded", ok, []string{"csv", csv, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+	})
+
 })
 
 var _ = g.Describe("[sig-operators] OLM for an end user handle to support", func() {

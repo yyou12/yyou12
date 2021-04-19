@@ -649,6 +649,14 @@ func (sa *serviceAccountDescription) checkAuth(oc *exutil.CLI, expected string, 
 type roleDescription struct {
 	name      string
 	namespace string
+	template  string
+}
+
+//the method is to create role with template
+func (role *roleDescription) create(oc *exutil.CLI) {
+	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", role.template,
+		"-p", "NAME="+role.name, "NAMESPACE="+role.namespace)
+	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
 //the method is to construct one Role object.
@@ -711,6 +719,21 @@ func (role *roleDescription) getRulesWithDelete(oc *exutil.CLI, delete string) s
 	result := strings.TrimSuffix(rc.String(), ",") + "]"
 	e2e.Logf("rc:%v", result)
 	return result
+}
+
+type rolebindingDescription struct {
+	name      string
+	namespace string
+	rolename  string
+	saname    string
+	template  string
+}
+
+//the method is to create role with template
+func (rolebinding *rolebindingDescription) create(oc *exutil.CLI) {
+	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", rolebinding.template,
+		"-p", "NAME="+rolebinding.name, "NAMESPACE="+rolebinding.namespace, "SA_NAME="+rolebinding.saname, "ROLE_NAME="+rolebinding.rolename)
+	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
 type checkDescription struct {

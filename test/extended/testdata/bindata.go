@@ -48,6 +48,8 @@
 // test/extended/testdata/olm/operatorgroup.yaml
 // test/extended/testdata/olm/opsrc.yaml
 // test/extended/testdata/olm/packageserver.yaml
+// test/extended/testdata/olm/role-binding.yaml
+// test/extended/testdata/olm/role.yaml
 // test/extended/testdata/olm/scoped-sa-etcd.yaml
 // test/extended/testdata/olm/scoped-sa-fine-grained-roles.yaml
 // test/extended/testdata/olm/scoped-sa-roles.yaml
@@ -7959,6 +7961,82 @@ func testExtendedTestdataOlmPackageserverYaml() (*asset, error) {
 	return a, nil
 }
 
+var _testExtendedTestdataOlmRoleBindingYaml = []byte(`apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: rolebinding-template
+objects:
+- apiVersion: rbac.authorization.k8s.io/v1
+  kind: RoleBinding
+  metadata:
+    name: "${NAME}"
+    namespace: "${NAMESPACE}"
+  roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: Role
+    name: "${ROLE_NAME}"
+  subjects:
+  - kind: ServiceAccount
+    name: "${SA_NAME}"
+    namespace: "${NAMESPACE}"
+
+parameters:
+- name: NAME
+- name: NAMESPACE
+- name: SA_NAME
+- name: ROLE_NAME
+`)
+
+func testExtendedTestdataOlmRoleBindingYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataOlmRoleBindingYaml, nil
+}
+
+func testExtendedTestdataOlmRoleBindingYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataOlmRoleBindingYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/olm/role-binding.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataOlmRoleYaml = []byte(`apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: role-template
+objects:
+- apiVersion: rbac.authorization.k8s.io/v1
+  kind: Role
+  metadata:
+    name: "${NAME}"
+    namespace: "${NAMESPACE}"
+  rules:
+    - apiGroups: ["*"]
+      resources: ["*"]
+      verbs: ["*"]
+parameters:
+- name: NAME
+- name: NAMESPACE
+
+`)
+
+func testExtendedTestdataOlmRoleYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataOlmRoleYaml, nil
+}
+
+func testExtendedTestdataOlmRoleYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataOlmRoleYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/olm/role.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
 var _testExtendedTestdataOlmScopedSaEtcdYaml = []byte(`apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
@@ -12832,6 +12910,8 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/olm/operatorgroup.yaml":                                                            testExtendedTestdataOlmOperatorgroupYaml,
 	"test/extended/testdata/olm/opsrc.yaml":                                                                    testExtendedTestdataOlmOpsrcYaml,
 	"test/extended/testdata/olm/packageserver.yaml":                                                            testExtendedTestdataOlmPackageserverYaml,
+	"test/extended/testdata/olm/role-binding.yaml":                                                             testExtendedTestdataOlmRoleBindingYaml,
+	"test/extended/testdata/olm/role.yaml":                                                                     testExtendedTestdataOlmRoleYaml,
 	"test/extended/testdata/olm/scoped-sa-etcd.yaml":                                                           testExtendedTestdataOlmScopedSaEtcdYaml,
 	"test/extended/testdata/olm/scoped-sa-fine-grained-roles.yaml":                                             testExtendedTestdataOlmScopedSaFineGrainedRolesYaml,
 	"test/extended/testdata/olm/scoped-sa-roles.yaml":                                                          testExtendedTestdataOlmScopedSaRolesYaml,
@@ -13009,6 +13089,8 @@ var _bintree = &bintree{nil, map[string]*bintree{
 					"operatorgroup.yaml":                    {testExtendedTestdataOlmOperatorgroupYaml, map[string]*bintree{}},
 					"opsrc.yaml":                            {testExtendedTestdataOlmOpsrcYaml, map[string]*bintree{}},
 					"packageserver.yaml":                    {testExtendedTestdataOlmPackageserverYaml, map[string]*bintree{}},
+					"role-binding.yaml":                     {testExtendedTestdataOlmRoleBindingYaml, map[string]*bintree{}},
+					"role.yaml":                             {testExtendedTestdataOlmRoleYaml, map[string]*bintree{}},
 					"scoped-sa-etcd.yaml":                   {testExtendedTestdataOlmScopedSaEtcdYaml, map[string]*bintree{}},
 					"scoped-sa-fine-grained-roles.yaml":     {testExtendedTestdataOlmScopedSaFineGrainedRolesYaml, map[string]*bintree{}},
 					"scoped-sa-roles.yaml":                  {testExtendedTestdataOlmScopedSaRolesYaml, map[string]*bintree{}},
