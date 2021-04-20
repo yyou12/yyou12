@@ -4731,8 +4731,8 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		g.By("The install plan is Failed, without sa for og")
 		installPlan = sub.getIP(oc)
 		newCheck("expect", asAdmin, withoutNamespace, compare, "Failed", ok, []string{"ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
-		newCheck("expect", asAdmin, withoutNamespace, contain, "not found", ok, []string{"ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.conditions}"}).check(oc)
-		newCheck("expect", asAdmin, withoutNamespace, contain, "InstallComponentFailed", ok, []string{"sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.conditions}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, contain, "not found+2+please make sure the service account exists", ok, []string{"ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.conditions}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, contain, "InstallComponentFailed+2+InstallCheckFailed", ok, []string{"sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.conditions}"}).check(oc)
 	})
 
 	// author: xzha@redhat.com
