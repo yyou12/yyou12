@@ -42,12 +42,28 @@ else
   #config client proxy if necessary
   #export http_proxy= && export https_proxy=
   CLIENT_PROXY_SETTING_SH=${FLEXYURLBASE}${BUILD_NUM_FOR_CONF}"/artifact/workdir/install-dir/client_proxy_setting.sh"
-  ret_code=`curl -s -k ${CLIENT_PROXY_SETTING_SH} -o ./client_proxy_setting.sh  -w "%{http_code}"`
+  ret_code=`curl -s -k ${CLIENT_PROXY_SETTING_SH} -o ./client_proxy_setting.sh  -w "%{http_code}" || true `
+  if [ "${ret_code}" == "000" ]; then
+    echo "there is problem to access jenkins server. sleep 10s and try it again"
+    sleep 10
+    ret_code=`curl -s -k ${CLIENT_PROXY_SETTING_SH} -o ./client_proxy_setting.sh  -w "%{http_code}" || true `
+    if [ "${ret_code}" == "000" ]; then
+      echo "there is still problem to access jenkins server. treate it as no proxy to continue the testing"
+    fi
+  fi
   if [ "${ret_code}" == "200" ]; then
     source ./client_proxy_setting.sh
   elif [ "${ret_code}" == "404" ]; then
     CLIENT_PROXY_SETTING_JSON=${FLEXYURLBASE}${BUILD_NUM_FOR_CONF}"/artifact/workdir/install-dir/client_proxy_setting.json"
-    ret_code=`curl -s -k ${CLIENT_PROXY_SETTING_JSON} -o ./client_proxy_setting.json  -w "%{http_code}"`
+    ret_code=`curl -s -k ${CLIENT_PROXY_SETTING_JSON} -o ./client_proxy_setting.json  -w "%{http_code}" || true `
+    if [ "${ret_code}" == "000" ]; then
+      echo "there is problem to access jenkins server. sleep 10s and try it again"
+      sleep 10
+      ret_code=`curl -s -k ${CLIENT_PROXY_SETTING_JSON} -o ./client_proxy_setting.json  -w "%{http_code}" || true `
+      if [ "${ret_code}" == "000" ]; then
+        echo "there is still problem to access jenkins server. treate it as no proxy to continue the testing"
+      fi
+    fi
     if [ "${ret_code}" == "200" ]; then
       https_proxy_value=`cat ./client_proxy_setting.json | jq -r .https_proxy`
       if [ "${https_proxy_value}" != "null" ]; then
