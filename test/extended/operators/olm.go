@@ -5811,4 +5811,43 @@ var _ = g.Describe("[sig-operators] OLM on VM for an end user handle within a na
 		sub_manual.delete(itName, dr)
 		sub_manual.getCSV().delete(itName, dr)
 	})
+
+	// author: xzha@redhat.com
+	g.It("Author:xzha-VMonly-Medium-25920-Expose bundle data from bundle image container", func() {
+		var (
+			opmBaseDir          = exutil.FixturePath("testdata", "opm")
+			TestDataPath        = filepath.Join(opmBaseDir, "etcd_operator")
+			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
+			cmTemplate          = filepath.Join(buildPruningBaseDir, "cm-template.yaml")
+			cmName              = "cm-25920"
+			cm                  = configMapDescription{
+				name:      cmName,
+				namespace: oc.Namespace(),
+				template:  cmTemplate,
+			}
+			itName = g.CurrentGinkgoTestDescription().TestText
+		)
+
+		opmCLI := opm.NewOpmCLI()
+		defer DeleteDir(TestDataPath, "fixture-testdata")
+		defer DeleteDir(buildPruningBaseDir, "fixture-testdata")
+
+		g.By("1) create a ConfigMap")
+		defer cm.delete(itName, dr)
+		cm.create(oc, itName, dr)
+
+		g.By("2) opm alpha bundle extract")
+		_, err := opmCLI.Run("alpha").Args("bundle", "extract", "-c", cmName, "-n", oc.Namespace(), "-k", exutil.KubeConfigPath(), "-m", TestDataPath+"/0.9.2/").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("3) Check the data of this ConfigMap object.")
+		data, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("cm", cmName, "-n", oc.Namespace(), "-o=jsonpath={.metadata.annotations}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(data).To(o.ContainSubstring("operators.operatorframework.io.bundle.channel.default.v1"))
+		o.Expect(data).To(o.ContainSubstring("operators.operatorframework.io.bundle.channels.v1"))
+		o.Expect(data).To(o.ContainSubstring("operators.operatorframework.io.bundle.manifests.v1"))
+		o.Expect(data).To(o.ContainSubstring("operators.operatorframework.io.bundle.mediatype.v1"))
+		o.Expect(data).To(o.ContainSubstring("operators.operatorframework.io.bundle.metadata.v1"))
+		o.Expect(data).To(o.ContainSubstring("operators.operatorframework.io.bundle.package.v1"))
+	})
 })

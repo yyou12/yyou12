@@ -373,6 +373,12 @@ func (cm *configMapDescription) patch(oc *exutil.CLI, patch string) {
 	patchResource(oc, asAdmin, withoutNamespace, "cm", cm.name, "-n", cm.namespace, "--type", "merge", "-p", patch)
 }
 
+//the method is to delete cm.
+func (cm *configMapDescription) delete(itName string, dr describerResrouce) {
+	e2e.Logf("remove cm %s, ns is %v", cm.name, cm.namespace)
+	dr.getIr(itName).remove(cm.name, "cm", cm.namespace)
+}
+
 type catalogSourceDescription struct {
 	name        string
 	namespace   string
