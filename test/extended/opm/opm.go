@@ -55,6 +55,22 @@ var _ = g.Describe("[sig-operators] OLM opm should", func() {
 			e2e.Failf(fmt.Sprintf("Failed to obtain the removed packages from prune : %s", output))
 		}
 	})
+
+	// author: bandrade@redhat.com
+	g.It("Author:bandrade-VMonly-Low-30318-Bundle build understands packages", func() {
+		opmBaseDir := exutil.FixturePath("testdata", "opm")
+		testDataPath := filepath.Join(opmBaseDir, "aqua")
+		opmCLI.execCommandPath = testDataPath
+		defer DeleteDir(testDataPath, "fixture-testdata")
+
+		g.By("step: opm alpha bundle generate")
+		output, err := opmCLI.Run("alpha").Args("bundle", "generate", "-d", "1.0.1").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf(output)
+		if !strings.Contains(output, "Writing annotations.yaml") || !strings.Contains(output, "Writing bundle.Dockerfile") {
+			e2e.Failf("Failed to execute opm alpha bundle generate : %s", output)
+		}
+	})
 })
 
 var _ = g.Describe("[sig-operators] OLM opm with podman", func() {

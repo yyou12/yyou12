@@ -80,6 +80,14 @@
 // test/extended/testdata/operatorsdk/cache_v1_memcached.yaml
 // test/extended/testdata/operatorsdk/demo_v1_nginx.yaml
 // test/extended/testdata/operatorsdk/operatorgroup.yaml
+// test/extended/testdata/opm/aqua/1.0.1/aqua-operator.v1.0.1.clusterserviceversion.yaml
+// test/extended/testdata/opm/aqua/1.0.1/aquacsps.operator.aquasec.com.crd.yaml
+// test/extended/testdata/opm/aqua/1.0.1/aquadatabases.operator.aquasec.com.crd.yaml
+// test/extended/testdata/opm/aqua/1.0.1/aquaenforcers.operator.aquasec.com.crd.yaml
+// test/extended/testdata/opm/aqua/1.0.1/aquagateways.operator.aquasec.com.crd.yaml
+// test/extended/testdata/opm/aqua/1.0.1/aquascanners.operator.aquasec.com.crd.yaml
+// test/extended/testdata/opm/aqua/1.0.1/aquaservers.operator.aquasec.com.crd.yaml
+// test/extended/testdata/opm/aqua/aqua-operator.package.yaml
 // test/extended/testdata/opm/etcd_operator/0.9.2/manifests/etcdbackups.etcd.database.coreos.com.crd.yaml
 // test/extended/testdata/opm/etcd_operator/0.9.2/manifests/etcdclusters.etcd.database.coreos.com.crd.yaml
 // test/extended/testdata/opm/etcd_operator/0.9.2/manifests/etcdoperator.v0.9.2.clusterserviceversion.yaml
@@ -9349,6 +9357,898 @@ func testExtendedTestdataOperatorsdkOperatorgroupYaml() (*asset, error) {
 	return a, nil
 }
 
+var _testExtendedTestdataOpmAqua101AquaOperatorV101ClusterserviceversionYaml = []byte(`apiVersion: operators.coreos.com/v1alpha1
+kind: ClusterServiceVersion
+metadata:
+  name: aqua-operator.v1.0.1
+  namespace: placeholder
+  annotations:
+    capabilities: Basic Install
+    categories: Security
+    description: The Aqua Security Operator runs within a Openshift cluster and provides a means to deploy and manage Aqua Security cluster and components.
+    certified: "false"
+    containerImage: aquasec/aqua-operator:1.0.1
+    createdAt: 2020-03-25T08:00:00Z
+    support: Aqua Security, Inc.
+    repository: https://github.com/aquasecurity/aqua-operator
+    alm-examples: |-
+      [
+        {
+          "apiVersion": "operator.aquasec.com/v1alpha1",
+          "kind": "AquaCsp",
+          "metadata": {
+            "name": "aqua"
+          },
+          "spec": {
+            "infra": {
+              "platform": "openshift",
+              "requirements": true
+            },
+            "registry": {
+              "url": "registry.aquasec.com",
+              "username": "example@gmail.com",
+              "password": "",
+              "email": "example@gmail.com"
+            },
+            "database": {
+              "replicas": 1,
+              "service": "ClusterIP"
+            },
+            "gateway": {
+              "replicas": 1,
+              "service": "ClusterIP"
+            },
+            "server": {
+              "replicas": 1,
+              "service": "LoadBalancer"
+            },
+            "adminPassword": "Password1",
+            "licenseToken": null
+          }
+        },
+        {
+          "apiVersion": "operator.aquasec.com/v1alpha1",
+          "kind": "AquaDatabase",
+          "metadata": {
+            "name": "aqua"
+          },
+          "spec": {
+            "infra": {
+              "serviceAccount": "aqua-sa",
+              "version": "4.5",
+              "platform": "openshift"
+            },
+            "deploy": {
+              "replicas": 1,
+              "service": "ClusterIP"
+            },
+            "diskSize": 10
+          }
+        },
+        {
+          "apiVersion": "operator.aquasec.com/v1alpha1",
+          "kind": "AquaEnforcer",
+          "metadata": {
+            "name": "aqua"
+          },
+          "spec": {
+            "infra": {
+              "serviceAccount": "aqua-sa",
+              "version": "4.5"
+            },
+            "gateway": {
+              "host": "aqua-gateway-svc",
+              "port": 3622
+            },
+            "token": "token"
+          }
+        },
+        {
+          "apiVersion": "operator.aquasec.com/v1alpha1",
+          "kind": "AquaGateway",
+          "metadata": {
+            "name": "aqua"
+          },
+          "spec": {
+            "infra": {
+              "serviceAccount": "aqua-sa",
+              "version": "4.5"
+            },
+            "common": {
+              "databaseSecret": {
+                "name": "aqua-aqua-db",
+                "key": "password"
+              }
+            },
+            "externalDb": {
+              "host": "aqua-db",
+              "port": 5432,
+              "username": "postgres"
+            },
+            "deploy": {
+              "replicas": 1,
+              "service": "ClusterIP"
+            }
+          }
+        },
+        {
+          "apiVersion": "operator.aquasec.com/v1alpha1",
+          "kind": "AquaScanner",
+          "metadata": {
+            "name": "aqua"
+          },
+          "spec": {
+            "infra": {
+              "serviceAccount": "aqua-sa",
+              "version": "4.5"
+            },
+            "deploy": {
+              "replicas": 1
+            },
+            "login": {
+              "username": "administrator",
+              "password": "Password1",
+              "host": "http://aqua-server:8080"
+            }
+          }
+        },
+        {
+          "apiVersion": "operator.aquasec.com/v1alpha1",
+          "kind": "AquaServer",
+          "metadata": {
+            "name": "aqua"
+          },
+          "spec": {
+            "infra": {
+              "serviceAccount": "aqua-sa",
+              "version": "4.5"
+            },
+            "common": {
+              "databaseSecret": {
+                "name": "aqua-aqua-db",
+                "key": "password"
+              }
+            },
+            "externalDb": {
+              "host": "aqua-db",
+              "port": 5432,
+              "username": "postgres"
+            },
+            "deploy": {
+              "replicas": 1,
+              "service": "LoadBalancer"
+              },
+            "adminPassword": "Password1",
+            "licenseToken": null
+          }
+        }
+      ]
+spec:
+  displayName: Aqua Security Operator
+  version: 1.0.1
+  replaces: aqua-operator.v1.0.0
+  description: |-
+    The Aqua Security Operator runs within an OpenShift cluster and provides a means to deploy and manage the Aqua Security cluster and components :
+    * Server (aka “console”)
+    * Database (for production environments we recommend to use an external database and not the Aqua default database)  
+    * Gateway 
+    * Enforcer (aka “agent”)
+    * Scanner
+    * CSP (package that we recommend to use in non production environments and contains the Server, Database, and Gateway)
+
+    Use the Aqua-Operator to 
+    * Deploy Aqua Security components on OpenShift
+    * Scale up Aqua Security components with extra replicas
+    * Assign metadata tags to Aqua Security components
+    * Automatically scale the number of Aqua scanners based on the number of images in the scan queue
+
+    ## Before You Begin Using the Operator CRDs
+    Obtain access to the Aqua registry - https://www.aquasec.com/about-us/contact-us/
+    You will need to supply two secrets during the installation  
+    * A secret for the Docker registry
+    * A secret for the database
+    You can  list the secrets in the YAML files or you can define secrets in the OpenShift project (see example below) -
+    ` + "`" + `` + "`" + `` + "`" + `bash
+    oc create secret docker-registry aqua-registry --docker-server=registry.aquasec.com --docker-username=<AQUA_USERNAME> --docker-password=<AQUA_PASSWORD> --docker-email=<user email> -n aqua
+    oc create secret generic aqua-database-password --from-literal=db-password=<password> -n aqua
+    oc secrets add aqua-sa aqua-registry --for=pull -n aqua
+    ` + "`" + `` + "`" + `` + "`" + `
+
+    ## After the Installation
+    There are multiple options to deploy the Aqua  CSP. You can review the different options in the following [file](https://github.com/aquasecurity/aqua-operator/blob/master/deploy/crds/operator_v1alpha1_aquacsp_cr.yaml).  Note that for production environments we recommend connecting Aqua to an external production grade database. For lab implementations,  you can use the default database  in the installation scripts.
+    Here is an example of a simple installation  - 
+    ` + "`" + `` + "`" + `` + "`" + `yaml
+    ---
+
+    apiVersion: operator.aquasec.com/v1alpha1
+    kind: AquaCsp
+    metadata:
+      name: aqua
+      namespace: aqua
+    spec:
+      infra:                                    
+          serviceAccount: "aqua-sa"               
+          namespace: "aqua"                       
+          version: "4.6"                          
+          requirements: true                      
+      common:
+          imagePullSecret: "aqua-registry"        # Optional: if already created image pull secret then mention in here
+          dbDiskSize: 10       
+          serverDiskSize: 4   
+      database:                                 
+          replicas: 1                            
+          service: "ClusterIP"                    
+      gateway:                                  
+          replicas: 1                             
+          service: "ClusterIP"                    
+      server:                                   
+          replicas: 1                             
+          service: "NodePort" 
+    ` + "`" + `` + "`" + `` + "`" + `
+  keywords: ['aqua-security', 'scanning', 'security', 'runtime-security']
+  maintainers:
+  - email: nissim.bitan@aquasec.com
+    name: Nissim Bitan, Aqua Security
+  provider: 
+    name: Aqua Security, Inc.
+  maturity: alpha
+  labels:
+    name: aqua-operator
+  selector:
+    matchLabels:
+      name: aqua-operator
+  links:
+  - name: Aqua Security
+    url: https://www.aquasec.com/
+  - name: Aqua Operator Github
+    url: https://github.com/aquasecurity/aqua-operator
+  icon:
+  - base64data: PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4KPCEtLSBHZW5lcmF0b3I6IEFkb2JlIElsbHVzdHJhdG9yIDIzLjAuMiwgU1ZHIEV4cG9ydCBQbHVnLUluIC4gU1ZHIFZlcnNpb246IDYuMDAgQnVpbGQgMCkgIC0tPgo8c3ZnIHZlcnNpb249IjEuMSIgaWQ9IkxheWVyXzEiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHg9IjBweCIgeT0iMHB4IgoJIHZpZXdCb3g9IjAgMCAxMDAgMTAwIiBzdHlsZT0iZW5hYmxlLWJhY2tncm91bmQ6bmV3IDAgMCAxMDAgMTAwOyIgeG1sOnNwYWNlPSJwcmVzZXJ2ZSI+CjxzdHlsZSB0eXBlPSJ0ZXh0L2NzcyI+Cgkuc3Qwe2ZpbGw6I0YwREUzNDt9Cgkuc3Qxe2ZpbGw6I0Y5QUU0MTt9Cgkuc3Qye2ZpbGw6Izk5RDVFQjt9Cgkuc3Qze2ZpbGw6IzAyQjBENDt9Cgkuc3Q0e2ZpbGw6I0Y1OTMyMDt9Cgkuc3Q1e2ZpbGw6IzA5ODA5QTt9Cjwvc3R5bGU+CjxnPgoJPHBvbHlnb24gY2xhc3M9InN0MCIgcG9pbnRzPSI1MCwyLjEgMjUuNSwyNi4xIDc0LjUsMjYuMSA3NC41LDIuMSAJIi8+Cgk8cG9seWdvbiBjbGFzcz0ic3QxIiBwb2ludHM9Ijc0LjUsNzMuOSA5OSw1MCA5OSwyNi4xIDc0LjUsMjYuMSAJIi8+Cgk8cG9seWdvbiBjbGFzcz0ic3QyIiBwb2ludHM9IjI1LjUsNzMuOSAyNS41LDk3LjkgNTAsOTcuOSA3NC41LDczLjkgCSIvPgoJPHBvbHlnb24gY2xhc3M9InN0MyIgcG9pbnRzPSIxLDUwIDEsNzMuOSAyNS41LDczLjkgMjUuNSwyNi4xIAkiLz4KCTxyZWN0IHg9Ijc0LjUiIHk9IjIuMSIgY2xhc3M9InN0NCIgd2lkdGg9IjI0LjUiIGhlaWdodD0iMjMuOSIvPgoJPHJlY3QgeD0iMSIgeT0iNzMuOSIgY2xhc3M9InN0NSIgd2lkdGg9IjI0LjUiIGhlaWdodD0iMjMuOSIvPgo8L2c+Cjwvc3ZnPgo=
+    mediatype: image/svg+xml
+  miniKubeVersion: 1.11.0
+  installModes:
+  - supported: true
+    type: OwnNamespace
+  - supported: true
+    type: SingleNamespace
+  - supported: false
+    type: MultiNamespace
+  - supported: false
+    type: AllNamespaces
+  install:
+    strategy: deployment
+    spec:
+      clusterPermissions:
+      - serviceAccountName: aqua-sa
+        rules:
+        - apiGroups:
+          - "security.openshift.io"
+          resources:
+          - securitycontextconstraints
+          verbs:
+          - use
+          resourceNames:
+          - privileged
+          - hostaccess
+      - serviceAccountName: aqua-operator
+        rules:
+        - apiGroups:
+          - ""
+          resources:
+          - pods
+          - services
+          - endpoints
+          - persistentvolumeclaims
+          - events
+          - configmaps
+          - secrets
+          - serviceaccounts
+          - nodes
+          verbs:
+          - '*'
+        - apiGroups:
+          - ""
+          resources:
+          - namespaces
+          verbs:
+          - get
+        - apiGroups:
+          - apps
+          - extensions
+          resources:
+          - '*'
+          - deployments
+          - daemonsets
+          - replicasets
+          - statefulsets
+          - podsecuritypolicies
+          verbs:
+          - '*'
+        - apiGroups:
+          - monitoring.coreos.com
+          resources:
+          - servicemonitors
+          verbs:
+          - get
+          - create
+        - apiGroups:
+          - operator.aquasec.com
+          resources:
+          - '*'
+          - aquagateways
+          - aquaservers
+          - aquacsps
+          - aquaenforcers
+          - aquascanners
+          verbs:
+          - '*'
+        - apiGroups:
+          - rbac.authorization.k8s.io
+          - authorization.k8s.io
+          resources:
+          - '*'
+          - clusterroles
+          - clusterrolebindings
+          verbs:
+          - '*'
+        - apiGroups:
+          - policy
+          resources:
+          - '*'
+          - podsecuritypolicies
+          verbs:
+          - '*'
+      deployments:
+      - name: aqua-operator
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              name: aqua-operator 
+          template:
+            metadata:
+              labels:
+                name: aqua-operator
+            spec:
+              serviceAccountName: aqua-operator
+              containers:
+              - name: aqua-operator
+                image: aquasec/aqua-operator:1.0.1
+                imagePullPolicy: Always
+                command:
+                - aqua-operator
+                env:
+                - name: WATCH_NAMESPACE
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.annotations['olm.targetNamespaces']
+                - name: POD_NAME
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.name
+                - name: OPERATOR_NAME
+                  value: "aqua-operator"
+                ports:
+                - containerPort: 60000
+                  name: metrics
+  customresourcedefinitions:
+    owned:
+    - kind: AquaCsp
+      name: aquacsps.operator.aquasec.com
+      version: v1alpha1
+      displayName: AquaCsp
+      description: Aqua Security CSP Deployment with Aqua Operator
+    - kind: AquaDatabase
+      name: aquadatabases.operator.aquasec.com
+      version: v1alpha1
+      displayName: AquaDatabase
+      description: Aqua Security Database Deployment with Aqua Operator
+    - kind: AquaEnforcer
+      name: aquaenforcers.operator.aquasec.com
+      version: v1alpha1
+      displayName: AquaEnforcer
+      description: Aqua Security Enforcer Deployment with Aqua Operator
+    - kind: AquaGateway
+      name: aquagateways.operator.aquasec.com
+      version: v1alpha1
+      displayName: AquaGateway
+      description: Aqua Security Gateway Deployment with Aqua Operator
+    - kind: AquaScanner
+      name: aquascanners.operator.aquasec.com
+      version: v1alpha1
+      displayName: AquaScanner
+      description: Aqua Security Scanner Deployment with Aqua Operator
+    - kind: AquaServer
+      name: aquaservers.operator.aquasec.com
+      version: v1alpha1
+      displayName: AquaServer
+      description: Aqua Security Server Deployment with Aqua Operator
+`)
+
+func testExtendedTestdataOpmAqua101AquaOperatorV101ClusterserviceversionYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataOpmAqua101AquaOperatorV101ClusterserviceversionYaml, nil
+}
+
+func testExtendedTestdataOpmAqua101AquaOperatorV101ClusterserviceversionYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataOpmAqua101AquaOperatorV101ClusterserviceversionYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/opm/aqua/1.0.1/aqua-operator.v1.0.1.clusterserviceversion.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataOpmAqua101AquacspsOperatorAquasecComCrdYaml = []byte(`apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: aquacsps.operator.aquasec.com
+spec:
+  group: operator.aquasec.com
+  names:
+    kind: AquaCsp
+    listKind: AquaCspList
+    plural: aquacsps
+    singular: aquacsp
+  scope: Namespaced
+  subresources:
+    status: {}
+  validation:
+    openAPIV3Schema:
+      description: AquaCsp is the Schema for the aquacsps API
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          description: AquaCspSpec defines the desired state of AquaCsp
+          type: object
+        status:
+          description: AquaCspStatus defines the observed state of AquaCsp
+          type: object
+      type: object
+  version: v1alpha1
+  additionalPrinterColumns:
+    - name: Age
+      type: date
+      description: Aqua Csp Age
+      JSONPath: .metadata.creationTimestamp
+    - name: Status
+      type: string
+      description: Aqua Csp status
+      JSONPath: .status.state
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
+`)
+
+func testExtendedTestdataOpmAqua101AquacspsOperatorAquasecComCrdYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataOpmAqua101AquacspsOperatorAquasecComCrdYaml, nil
+}
+
+func testExtendedTestdataOpmAqua101AquacspsOperatorAquasecComCrdYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataOpmAqua101AquacspsOperatorAquasecComCrdYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/opm/aqua/1.0.1/aquacsps.operator.aquasec.com.crd.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataOpmAqua101AquadatabasesOperatorAquasecComCrdYaml = []byte(`apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: aquadatabases.operator.aquasec.com
+spec:
+  group: operator.aquasec.com
+  names:
+    kind: AquaDatabase
+    listKind: AquaDatabaseList
+    plural: aquadatabases
+    singular: aquadatabase
+  scope: Namespaced
+  subresources:
+    status: {}
+  validation:
+    openAPIV3Schema:
+      description: AquaDatabase is the Schema for the aquadatabases API
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          description: AquaDatabaseSpec defines the desired state of AquaDatabase
+          type: object
+        status:
+          description: AquaDatabaseStatus defines the observed state of AquaDatabase
+          type: object
+      type: object
+  version: v1alpha1
+  additionalPrinterColumns:
+    - name: Replicas
+      type: integer
+      description: Replicas Number
+      JSONPath: .spec.deploy.replicas
+    - name: Age
+      type: date
+      description: Aqua Database Age
+      JSONPath: .metadata.creationTimestamp
+    - name: Status
+      type: string
+      description: Aqua Database status
+      JSONPath: .status.state
+    - name: Nodes
+      type: string
+      description: List Of Nodes (Pods)
+      JSONPath: .status.nodes
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
+`)
+
+func testExtendedTestdataOpmAqua101AquadatabasesOperatorAquasecComCrdYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataOpmAqua101AquadatabasesOperatorAquasecComCrdYaml, nil
+}
+
+func testExtendedTestdataOpmAqua101AquadatabasesOperatorAquasecComCrdYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataOpmAqua101AquadatabasesOperatorAquasecComCrdYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/opm/aqua/1.0.1/aquadatabases.operator.aquasec.com.crd.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataOpmAqua101AquaenforcersOperatorAquasecComCrdYaml = []byte(`apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: aquaenforcers.operator.aquasec.com
+spec:
+  group: operator.aquasec.com
+  names:
+    kind: AquaEnforcer
+    listKind: AquaEnforcerList
+    plural: aquaenforcers
+    singular: aquaenforcer
+  scope: Namespaced
+  subresources:
+    status: {}
+  validation:
+    openAPIV3Schema:
+      description: AquaEnforcer is the Schema for the aquaenforcers API
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          description: AquaEnforcerSpec defines the desired state of AquaEnforcer
+          type: object
+        status:
+          description: AquaEnforcerStatus defines the observed state of AquaEnforcer
+          type: object
+      type: object
+  version: v1alpha1
+  additionalPrinterColumns:
+    - name: Replicas
+      type: integer
+      description: Replicas Number
+      JSONPath: .spec.deploy.replicas
+    - name: Age
+      type: date
+      description: Aqua Enforcer Age
+      JSONPath: .metadata.creationTimestamp
+    - name: Status
+      type: string
+      description: Aqua Enforcer status
+      JSONPath: .status.state
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
+`)
+
+func testExtendedTestdataOpmAqua101AquaenforcersOperatorAquasecComCrdYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataOpmAqua101AquaenforcersOperatorAquasecComCrdYaml, nil
+}
+
+func testExtendedTestdataOpmAqua101AquaenforcersOperatorAquasecComCrdYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataOpmAqua101AquaenforcersOperatorAquasecComCrdYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/opm/aqua/1.0.1/aquaenforcers.operator.aquasec.com.crd.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataOpmAqua101AquagatewaysOperatorAquasecComCrdYaml = []byte(`apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: aquagateways.operator.aquasec.com
+spec:
+  group: operator.aquasec.com
+  names:
+    kind: AquaGateway
+    listKind: AquaGatewayList
+    plural: aquagateways
+    singular: aquagateway
+  scope: Namespaced
+  subresources:
+    status: {}
+  validation:
+    openAPIV3Schema:
+      description: AquaGateway is the Schema for the aquagateways API
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          description: AquaGatewaySpec defines the desired state of AquaGateway
+          type: object
+        status:
+          description: AquaGatewayStatus defines the observed state of AquaGateway
+          type: object
+      type: object
+  version: v1alpha1
+  additionalPrinterColumns:
+    - name: Replicas
+      type: integer
+      description: Replicas Number
+      JSONPath: .spec.deploy.replicas
+    - name: Age
+      type: date
+      description: Aqua Gateway Age
+      JSONPath: .metadata.creationTimestamp
+    - name: Status
+      type: string
+      description: Aqua Gateway status
+      JSONPath: .status.state
+    - name: Nodes
+      type: string
+      description: List Of Nodes (Pods)
+      JSONPath: .status.nodes
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
+`)
+
+func testExtendedTestdataOpmAqua101AquagatewaysOperatorAquasecComCrdYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataOpmAqua101AquagatewaysOperatorAquasecComCrdYaml, nil
+}
+
+func testExtendedTestdataOpmAqua101AquagatewaysOperatorAquasecComCrdYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataOpmAqua101AquagatewaysOperatorAquasecComCrdYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/opm/aqua/1.0.1/aquagateways.operator.aquasec.com.crd.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataOpmAqua101AquascannersOperatorAquasecComCrdYaml = []byte(`apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: aquascanners.operator.aquasec.com
+spec:
+  group: operator.aquasec.com
+  names:
+    kind: AquaScanner
+    listKind: AquaScannerList
+    plural: aquascanners
+    singular: aquascanner
+  scope: Namespaced
+  subresources:
+    status: {}
+  validation:
+    openAPIV3Schema:
+      description: AquaScanner is the Schema for the aquascanners API
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          description: AquaScannerSpec defines the desired state of AquaScanner
+          type: object
+        status:
+          description: AquaScannerStatus defines the observed state of AquaScanner
+          type: object
+      type: object
+  version: v1alpha1
+  additionalPrinterColumns:
+    - name: Replicas
+      type: integer
+      description: Replicas Number
+      JSONPath: .spec.deploy.replicas
+    - name: Age
+      type: date
+      description: Aqua Scanner Age
+      JSONPath: .metadata.creationTimestamp
+    - name: Status
+      type: string
+      description: Aqua Scanner status
+      JSONPath: .status.state
+    - name: Nodes
+      type: string
+      description: List Of Nodes (Pods)
+      JSONPath: .status.nodes
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
+`)
+
+func testExtendedTestdataOpmAqua101AquascannersOperatorAquasecComCrdYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataOpmAqua101AquascannersOperatorAquasecComCrdYaml, nil
+}
+
+func testExtendedTestdataOpmAqua101AquascannersOperatorAquasecComCrdYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataOpmAqua101AquascannersOperatorAquasecComCrdYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/opm/aqua/1.0.1/aquascanners.operator.aquasec.com.crd.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataOpmAqua101AquaserversOperatorAquasecComCrdYaml = []byte(`apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: aquaservers.operator.aquasec.com
+spec:
+  group: operator.aquasec.com
+  names:
+    kind: AquaServer
+    listKind: AquaServerList
+    plural: aquaservers
+    singular: aquaserver
+  scope: Namespaced
+  subresources:
+    status: {}
+  validation:
+    openAPIV3Schema:
+      description: AquaServer is the Schema for the aquaservers API
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          description: AquaServerSpec defines the desired state of AquaServer
+          type: object
+        status:
+          description: AquaServerStatus defines the observed state of AquaServer
+          type: object
+      type: object
+  version: v1alpha1
+  additionalPrinterColumns:
+    - name: Replicas
+      type: integer
+      description: Replicas Number
+      JSONPath: .spec.deploy.replicas
+    - name: Age
+      type: date
+      description: Aqua Server Age
+      JSONPath: .metadata.creationTimestamp
+    - name: Status
+      type: string
+      description: Aqua Server status
+      JSONPath: .status.state
+    - name: Nodes
+      type: string
+      description: List Of Nodes (Pods)
+      JSONPath: .status.nodes
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
+`)
+
+func testExtendedTestdataOpmAqua101AquaserversOperatorAquasecComCrdYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataOpmAqua101AquaserversOperatorAquasecComCrdYaml, nil
+}
+
+func testExtendedTestdataOpmAqua101AquaserversOperatorAquasecComCrdYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataOpmAqua101AquaserversOperatorAquasecComCrdYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/opm/aqua/1.0.1/aquaservers.operator.aquasec.com.crd.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataOpmAquaAquaOperatorPackageYaml = []byte(`packageName: aqua
+channels:
+- name: alpha
+  currentCSV: aqua-operator.v1.0.1
+- name: beta
+  currentCSV: aqua-operator.v0.0.2
+- name: stable
+  currentCSV: aqua-operator.v1.0.1
+defaultChannel: stable`)
+
+func testExtendedTestdataOpmAquaAquaOperatorPackageYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataOpmAquaAquaOperatorPackageYaml, nil
+}
+
+func testExtendedTestdataOpmAquaAquaOperatorPackageYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataOpmAquaAquaOperatorPackageYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/opm/aqua/aqua-operator.package.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
 var _testExtendedTestdataOpmEtcd_operator092ManifestsEtcdbackupsEtcdDatabaseCoreosComCrdYaml = []byte(`apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
@@ -13387,6 +14287,14 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/operatorsdk/cache_v1_memcached.yaml":                                               testExtendedTestdataOperatorsdkCache_v1_memcachedYaml,
 	"test/extended/testdata/operatorsdk/demo_v1_nginx.yaml":                                                    testExtendedTestdataOperatorsdkDemo_v1_nginxYaml,
 	"test/extended/testdata/operatorsdk/operatorgroup.yaml":                                                    testExtendedTestdataOperatorsdkOperatorgroupYaml,
+	"test/extended/testdata/opm/aqua/1.0.1/aqua-operator.v1.0.1.clusterserviceversion.yaml":                    testExtendedTestdataOpmAqua101AquaOperatorV101ClusterserviceversionYaml,
+	"test/extended/testdata/opm/aqua/1.0.1/aquacsps.operator.aquasec.com.crd.yaml":                             testExtendedTestdataOpmAqua101AquacspsOperatorAquasecComCrdYaml,
+	"test/extended/testdata/opm/aqua/1.0.1/aquadatabases.operator.aquasec.com.crd.yaml":                        testExtendedTestdataOpmAqua101AquadatabasesOperatorAquasecComCrdYaml,
+	"test/extended/testdata/opm/aqua/1.0.1/aquaenforcers.operator.aquasec.com.crd.yaml":                        testExtendedTestdataOpmAqua101AquaenforcersOperatorAquasecComCrdYaml,
+	"test/extended/testdata/opm/aqua/1.0.1/aquagateways.operator.aquasec.com.crd.yaml":                         testExtendedTestdataOpmAqua101AquagatewaysOperatorAquasecComCrdYaml,
+	"test/extended/testdata/opm/aqua/1.0.1/aquascanners.operator.aquasec.com.crd.yaml":                         testExtendedTestdataOpmAqua101AquascannersOperatorAquasecComCrdYaml,
+	"test/extended/testdata/opm/aqua/1.0.1/aquaservers.operator.aquasec.com.crd.yaml":                          testExtendedTestdataOpmAqua101AquaserversOperatorAquasecComCrdYaml,
+	"test/extended/testdata/opm/aqua/aqua-operator.package.yaml":                                               testExtendedTestdataOpmAquaAquaOperatorPackageYaml,
 	"test/extended/testdata/opm/etcd_operator/0.9.2/manifests/etcdbackups.etcd.database.coreos.com.crd.yaml":   testExtendedTestdataOpmEtcd_operator092ManifestsEtcdbackupsEtcdDatabaseCoreosComCrdYaml,
 	"test/extended/testdata/opm/etcd_operator/0.9.2/manifests/etcdclusters.etcd.database.coreos.com.crd.yaml":  testExtendedTestdataOpmEtcd_operator092ManifestsEtcdclustersEtcdDatabaseCoreosComCrdYaml,
 	"test/extended/testdata/opm/etcd_operator/0.9.2/manifests/etcdoperator.v0.9.2.clusterserviceversion.yaml":  testExtendedTestdataOpmEtcd_operator092ManifestsEtcdoperatorV092ClusterserviceversionYaml,
@@ -13577,6 +14485,18 @@ var _bintree = &bintree{nil, map[string]*bintree{
 					"operatorgroup.yaml":           {testExtendedTestdataOperatorsdkOperatorgroupYaml, map[string]*bintree{}},
 				}},
 				"opm": {nil, map[string]*bintree{
+					"aqua": {nil, map[string]*bintree{
+						"1.0.1": {nil, map[string]*bintree{
+							"aqua-operator.v1.0.1.clusterserviceversion.yaml": {testExtendedTestdataOpmAqua101AquaOperatorV101ClusterserviceversionYaml, map[string]*bintree{}},
+							"aquacsps.operator.aquasec.com.crd.yaml":          {testExtendedTestdataOpmAqua101AquacspsOperatorAquasecComCrdYaml, map[string]*bintree{}},
+							"aquadatabases.operator.aquasec.com.crd.yaml":     {testExtendedTestdataOpmAqua101AquadatabasesOperatorAquasecComCrdYaml, map[string]*bintree{}},
+							"aquaenforcers.operator.aquasec.com.crd.yaml":     {testExtendedTestdataOpmAqua101AquaenforcersOperatorAquasecComCrdYaml, map[string]*bintree{}},
+							"aquagateways.operator.aquasec.com.crd.yaml":      {testExtendedTestdataOpmAqua101AquagatewaysOperatorAquasecComCrdYaml, map[string]*bintree{}},
+							"aquascanners.operator.aquasec.com.crd.yaml":      {testExtendedTestdataOpmAqua101AquascannersOperatorAquasecComCrdYaml, map[string]*bintree{}},
+							"aquaservers.operator.aquasec.com.crd.yaml":       {testExtendedTestdataOpmAqua101AquaserversOperatorAquasecComCrdYaml, map[string]*bintree{}},
+						}},
+						"aqua-operator.package.yaml": {testExtendedTestdataOpmAquaAquaOperatorPackageYaml, map[string]*bintree{}},
+					}},
 					"etcd_operator": {nil, map[string]*bintree{
 						"0.9.2": {nil, map[string]*bintree{
 							"manifests": {nil, map[string]*bintree{
