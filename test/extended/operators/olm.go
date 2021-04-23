@@ -4752,7 +4752,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 	})
 
 	// author: xzha@redhat.com
-	g.It("Author:xzha-Medium-41174-Periodically retry InstallPlan execution until a timeout expires", func() {
+	g.It("Author:xzha-Medium-41174-Periodically retry InstallPlan execution until a timeout expires [Serial]", func() {
 		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
 		roletemplate := filepath.Join(buildPruningBaseDir, "role.yaml")
 		rolebindingtemplate := filepath.Join(buildPruningBaseDir, "role-binding.yaml")
