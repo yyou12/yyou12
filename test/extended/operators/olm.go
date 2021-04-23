@@ -1250,6 +1250,22 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		}
 	})
 
+	g.It("ConnectedOnly-Author:bandrade-High-40317-Check CatalogSources index images", func() {
+		clusterVersion, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("clusterversion", "version", "-o=jsonpath={.status.history..version}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		cs := [...]string{"certified-operators", "community-operators", "redhat-operators"}
+
+		for _, v := range cs {
+			msgCertified, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("catalogsource", v, "-o=jsonpath={.spec.image}", "-n", "openshift-marketplace").Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			splittedCertifiedVersion := strings.Split(msgCertified, ":")[1]
+			certifiedVersion := splittedCertifiedVersion[1:]
+			o.Expect(clusterVersion).To(o.ContainSubstring(certifiedVersion))
+
+		}
+	})
+
 	// author: bandrade@redhat.com
 	g.It("ConnectedOnly-Author:bandrade-High-32613-Operators won't install if the CSV dependency is already installed", func() {
 
