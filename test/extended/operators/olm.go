@@ -2127,7 +2127,6 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		o.Expect(NameCouchBase).To(o.Equal("Couchbase"))
 	})
 
-
 	// author: scolange@redhat.com
 	g.It("ConnectedOnly-Author:scolange-Medium-41283-Marketplace extract container request CPU or memory", func() {
 
@@ -2136,57 +2135,53 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		var og1 = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
 		var operatorWait = 150 * time.Second
 
-		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("ns", "test41283").Execute()
-
-		g.By("create new namespace")
-		var err = oc.AsAdmin().WithoutNamespace().Run("create").Args("ns", "test41283").Execute()
-		o.Expect(err).NotTo(o.HaveOccurred())
+		oc.SetupProject()
+		namespace := oc.Namespace()
 
 		/*
-		createOg, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", og, "-p", "NAME=test-operators-og", "NAMESPACE=test41283").OutputToFile("config-41283.json")
-		o.Expect(err).NotTo(o.HaveOccurred())
-		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", createOg).Execute()
-		o.Expect(err).NotTo(o.HaveOccurred())
-        */
+			createOg, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", og, "-p", "NAME=test-operators-og", "NAMESPACE=test41283").OutputToFile("config-41283.json")
+			o.Expect(err).NotTo(o.HaveOccurred())
+			err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", createOg).Execute()
+			o.Expect(err).NotTo(o.HaveOccurred())
+		*/
 
 		dr := make(describerResrouce)
 		itName := g.CurrentGinkgoTestDescription().TestText
 		dr.addIr(itName)
 
 		og := operatorGroupDescription{
-				name: "test-operators-og",
-				namespace: "test41283",
-				template: og1,
+			name:      "test-operators-og",
+			namespace: namespace,
+			template:  og1,
 		}
 		og.createwithCheck(oc, itName, dr)
 
 		g.By("Verify inside the jobs the value of spec.containers[].resources.requests field are setted")
-		
+
 		/*
-		createImgSub, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", Sub, "-p", "SUBNAME=couchbase", "SUBNAMESPACE=test41283",
-			"CHANNEL=stable", "APPROVAL=Automatic", "OPERATORNAME=couchbase-enterprise-certified", "SOURCENAME=certified-operators", "SOURCENAMESPACE=openshift-marketplace").OutputToFile("config-41283.json")
-		o.Expect(err).NotTo(o.HaveOccurred())
-		err = oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", createImgSub).Execute()
-		o.Expect(err).NotTo(o.HaveOccurred())
+			createImgSub, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", Sub, "-p", "SUBNAME=couchbase", "SUBNAMESPACE=test41283",
+				"CHANNEL=stable", "APPROVAL=Automatic", "OPERATORNAME=couchbase-enterprise-certified", "SOURCENAME=certified-operators", "SOURCENAMESPACE=openshift-marketplace").OutputToFile("config-41283.json")
+			o.Expect(err).NotTo(o.HaveOccurred())
+			err = oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", createImgSub).Execute()
+			o.Expect(err).NotTo(o.HaveOccurred())
 		*/
-		
+
 		sub := subscriptionDescription{
-			subName: "couchbase",
-			namespace: "test41283",
-			catalogSourceName: "certified-operators",
+			subName:                "couchbase",
+			namespace:              namespace,
+			catalogSourceName:      "certified-operators",
 			catalogSourceNamespace: "openshift-marketplace",
-			channel: "stable",
-			ipApproval: "Automatic",
-			operatorPackage: "couchbase-enterprise-certified",
-			singleNamespace: true,
-			template: Sub,
-			}
-			defer sub.delete(itName, dr)
-			defer sub.deleteCSV(itName, dr)
-			sub.create(oc, itName, dr)
+			channel:                "stable",
+			ipApproval:             "Automatic",
+			operatorPackage:        "couchbase-enterprise-certified",
+			singleNamespace:        true,
+			template:               Sub,
+		}
+		defer sub.delete(itName, dr)
+		defer sub.deleteCSV(itName, dr)
+		sub.create(oc, itName, dr)
 
-
-		err = wait.Poll(60*time.Second, operatorWait, func() (bool, error) {
+		err := wait.Poll(60*time.Second, operatorWait, func() (bool, error) {
 			checknameCsv, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("jobs", "-n", "openshift-marketplace", "-o", "jsonpath={.items[*].spec.template.spec.containers[*].resources.requests.cpu}").Output()
 			o.Expect(err).NotTo(o.HaveOccurred())
 			e2e.Logf(checknameCsv)
@@ -2201,7 +2196,6 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 	})
-
 
 	// author: jiazha@redhat.com
 	g.It("Author:jiazha-Medium-21126-OLM Subscription status says CSV is installed when it is not", func() {
