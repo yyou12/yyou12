@@ -304,4 +304,42 @@ var _ = g.Describe("[sig-operators] OLM opm with podman", func() {
 
 	})
 
+	// author: bandrade@redhat.com
+	g.It("Author:bandrade-VMonly-Medium-34049-opm can prune operators from index", func() {
+		opmBaseDir := exutil.FixturePath("testdata", "opm")
+		TestDataPath := filepath.Join(opmBaseDir, "temp")
+		indexTmpPath := filepath.Join(TestDataPath, getRandomString())
+		defer DeleteDir(TestDataPath, indexTmpPath)
+		err := os.MkdirAll(indexTmpPath, 0755)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		containerCLI := podmanCLI
+		containerTool := "podman"
+		sourceImageTag := "quay.io/olmqe/multi-index:2.0"
+		imageTag := "quay.io/olmqe/multi-index" + getRandomString() + ":3.0"
+		defer podmanCLI.RemoveImage(imageTag)
+		defer podmanCLI.RemoveImage(sourceImageTag)
+		output, err := opmCLI.Run("index").Args("prune", "-f", sourceImageTag, "-p", "planetscale", "-t", imageTag, "-c", containerTool).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		if !strings.Contains(output, "deleting packages") || !strings.Contains(output, "pkg=lib-bucket-provisioner") {
+			e2e.Failf(fmt.Sprintf("Failed to obtain the removed packages from prune : %s", output))
+		}
+
+		output, err = containerCLI.Run("push").Args(imageTag).Output()
+		if err != nil {
+			e2e.Logf(output)
+		}
+		defer quayCLI.DeleteTag(strings.Replace(imageTag, "quay.io/", "", 1))
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		_, err = oc.AsAdmin().WithoutNamespace().Run("image").Args("extract", imageTag, "--path", "/database/index.db:"+indexTmpPath).Output()
+		e2e.Logf("get index.db SUCCESS, path is %s", path.Join(indexTmpPath, "index.db"))
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		result, err := sqlit.DBMatch(path.Join(indexTmpPath, "index.db"), "channel_entry", "operatorbundle_name", []string{"lib-bucket-provisioner.v1.0.0"})
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(result).To(o.BeFalse())
+
+	})
+
 })
