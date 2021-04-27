@@ -1014,7 +1014,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		csImageTemplate := filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
 
 		oc.SetupProject()
-		g.By("Start to create the CatalogSource CR")
+		g.By("1) Start to create the CatalogSource CR")
 		cs := catalogSourceDescription{
 			name:        "prometheus-dependency-cs",
 			namespace:   "openshift-marketplace",
@@ -1031,11 +1031,34 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		cs.create(oc, itName, dr)
 		newCheck("expect", asAdmin, withoutNamespace, compare, "READY", ok, []string{"catsrc", cs.name, "-n", cs.namespace, "-o=jsonpath={.status..lastObservedState}"}).check(oc)
 
-		g.By("Start to subscribe the Etcd operator")
-		etcdPackage := CreateSubscriptionSpecificNamespace("etcd-prometheus", oc, false, true, oc.Namespace(), INSTALLPLAN_AUTOMATIC_MODE)
-		CheckDeployment(etcdPackage, oc)
+		g.By("2) Install the OperatorGroup in a random project")
 
-		g.By("Assert that prometheus dependency is resolved")
+		ogSingleTemplate := filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+		og := operatorGroupDescription{
+			name:      "og-30765",
+			namespace: oc.Namespace(),
+			template:  ogSingleTemplate,
+		}
+		og.createwithCheck(oc, itName, dr)
+
+		g.By("3) Install the etcdoperator v0.9.4 with Automatic approval")
+		subTemplate := filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+		sub := subscriptionDescription{
+			subName:                "sub-30765",
+			namespace:              oc.Namespace(),
+			catalogSourceName:      "prometheus-dependency-cs",
+			catalogSourceNamespace: "openshift-marketplace",
+			channel:                "singlenamespace-alpha",
+			ipApproval:             "Automatic",
+			operatorPackage:        "etcd-prometheus",
+			startingCSV:            "etcdoperator.v0.9.4",
+			singleNamespace:        true,
+			template:               subTemplate,
+		}
+		sub.create(oc, itName, dr)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", "etcdoperator.v0.9.4", "-n", oc.Namespace(), "-o=jsonpath={.status.phase}"}).check(oc)
+
+		g.By("4) Assert that prometheus dependency is resolved")
 		msg, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", "-n", oc.Namespace()).Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(msg).To(o.ContainSubstring("prometheus"))
@@ -2223,14 +2246,12 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 
 	})
 
-
-	g.It("ConnectedOnly-Author:scolange-Medium-21534-Check OperatorGroups on console", func(){
+	g.It("ConnectedOnly-Author:scolange-Medium-21534-Check OperatorGroups on console", func() {
 		ogNamespace, err1 := oc.AsAdmin().WithoutNamespace().Run("get").Args("og", "-n", "openshift-operators", "-o", "jsonpath={.status.namespace}").Output()
 		e2e.Logf(ogNamespace)
 		o.Expect(err1).NotTo(o.HaveOccurred())
 		o.Expect(ogNamespace).To(o.Equal(""))
 	})
-
 
 	// author: jiazha@redhat.com
 	g.It("Author:jiazha-Medium-21126-OLM Subscription status says CSV is installed when it is not", func() {
