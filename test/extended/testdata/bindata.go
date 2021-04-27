@@ -13391,7 +13391,7 @@ spec:
   selector:
     matchLabels:
       app: win-webserver
-  replicas: 5
+  replicas: 1
   template:
     metadata:
       labels:
