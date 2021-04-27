@@ -4862,6 +4862,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 
 		g.By("Create ogSa")
 		ogSa.createwithCheck(oc, itName, dr)
+		newCheck("expect", asAdmin, withoutNamespace, compare, saName, ok, []string{"og", ogSa.name, "-n", ogSa.namespace, "-o=jsonpath={.status.serviceAccountRef.name}"}).check(oc)
 
 		g.By("delete the service account")
 		_, err = oc.WithoutNamespace().AsAdmin().Run("delete").Args("sa", saName, "-n", sub.namespace).Output()
