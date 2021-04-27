@@ -3726,6 +3726,9 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		g.By("check if Portworx is installed")
 		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", subPortworx.installedCSV, "-n", subPortworx.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
 
+		g.By("get IP of Portworx")
+		portworxIP := subPortworx.getIP(oc)
+
 		g.By("Delete Portworx sub")
 		subPortworx.delete(itName, dr)
 
@@ -3745,16 +3748,12 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		g.By("install Couchbase")
 		subCouchbase.create(oc, itName, dr)
 
-		g.By("check if Couchbase is installed")
-		err := wait.Poll(15*time.Second, 360*time.Second, func() (bool, error) {
-			csvPhase := getResource(oc, asAdmin, withoutNamespace, "csv", subCouchbase.installedCSV, "-n", subCouchbase.namespace, "-o=jsonpath={.status.phase}")
-			if strings.Contains(csvPhase, "Succeeded") {
-				e2e.Logf("Couchbase is installed")
-				return true, nil
-			}
-			return false, nil
-		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		g.By("get IP of Couchbase")
+		couchbaseIP := subCouchbase.getIP(oc)
+
+		g.By("it takes different IP")
+		o.Expect(couchbaseIP).NotTo(o.Equal(portworxIP))
+
 	})
 
 	// It will cover test case: OCP-33176, author: kuiwang@redhat.com
