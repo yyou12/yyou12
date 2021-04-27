@@ -543,6 +543,30 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
         output, _ = operatorsdkCLI.Run("cleanup").Args("example-operator").Output()
         o.Expect(output).To(o.ContainSubstring("uninstalled"))
     })
+
+    // author: jfan@redhat.com
+    g.It("ConnectedOnly-Author:jfan-High-41497-SDK ansible operatorsdk util k8s status in the task", func() {
+        buildPruningBaseDir := exutil.FixturePath("testdata", "operatorsdk")
+        var memcached = filepath.Join(buildPruningBaseDir, "cache_v1_memcached.yaml")
+        operatorsdkCLI.showInfo = true
+        oc.SetupProject()
+        namespace := oc.Namespace()
+        _, err := operatorsdkCLI.Run("run").Args("bundle", "quay.io/olmqe/memcached-bundle:v4.8", "-n", namespace).Output()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        createMemcached, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", memcached, "-p", "NAME=memcached-sample").OutputToFile("config-41497.json")
+        o.Expect(err).NotTo(o.HaveOccurred())
+        err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", createMemcached, "-n", namespace).Execute()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        waitErr := wait.Poll(15*time.Second, 360*time.Second, func() (bool, error) {
+            msg, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("memcached.cache.example.com", "memcached-sample", "-n", namespace, "-o", "yaml").Output()
+            if strings.Contains(msg, "hello world") {
+                e2e.Logf("k8s_status test hello world")
+                return true, nil
+            }
+            return false, nil
+        })
+        o.Expect(waitErr).NotTo(o.HaveOccurred())
+    })
    
     // author: chuo@redhat.com
     g.It("Author:chuo-Medium-27718-scorecard remove version flag", func() {
