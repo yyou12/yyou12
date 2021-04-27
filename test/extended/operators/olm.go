@@ -4878,7 +4878,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 	})
 
 	// author: xzha@redhat.com
-	g.It("Author:xzha-Medium-41174-Periodically retry InstallPlan execution until a timeout expires [Serial]", func() {
+	g.It("Author:xzha-Medium-41174-Periodically retry InstallPlan execution until a timeout expires", func() {
 		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
 		roletemplate := filepath.Join(buildPruningBaseDir, "role.yaml")
 		rolebindingtemplate := filepath.Join(buildPruningBaseDir, "role-binding.yaml")
@@ -4926,10 +4926,13 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		_, err := oc.WithoutNamespace().AsAdmin().Run("create").Args("sa", sa, "-n", sub.namespace).Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		og.createwithCheck(oc, itName, dr)
+		newCheck("expect", asAdmin, withoutNamespace, compare, sa, ok, []string{"og", og.name, "-n", og.namespace, "-o=jsonpath={.status.serviceAccountRef.name}"}).check(oc)
 
 		g.By("2) Delete the service account")
 		_, err = oc.WithoutNamespace().AsAdmin().Run("delete").Args("sa", sa, "-n", sub.namespace).Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
+		// waiting for the condition is ready
+		time.Sleep(2 * time.Second)
 
 		g.By("3) Create a Subscription, check installplan")
 		defer sub.delete(itName, dr)
