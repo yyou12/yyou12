@@ -2197,6 +2197,15 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 
 	})
 
+
+	g.It("ConnectedOnly-Author:scolange-Medium-21534-Check OperatorGroups on console", func(){
+		ogNamespace, err1 := oc.AsAdmin().WithoutNamespace().Run("get").Args("og", "-n", "openshift-operators", "-o", "jsonpath={.status.namespace}").Output()
+		e2e.Logf(ogNamespace)
+		o.Expect(err1).NotTo(o.HaveOccurred())
+		o.Expect(ogNamespace).To(o.Equal(""))
+	})
+
+
 	// author: jiazha@redhat.com
 	g.It("Author:jiazha-Medium-21126-OLM Subscription status says CSV is installed when it is not", func() {
 		g.By("1) Install the OperatorGroup in a random project")
