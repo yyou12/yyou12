@@ -316,7 +316,7 @@ var _ = g.Describe("[sig-operators] OLM opm with podman", func() {
 		containerCLI := podmanCLI
 		containerTool := "podman"
 		sourceImageTag := "quay.io/olmqe/multi-index:2.0"
-		imageTag := "quay.io/olmqe/multi-index" + getRandomString() + ":3.0"
+		imageTag := "quay.io/olmqe/multi-index:3.0." + getRandomString()
 		defer podmanCLI.RemoveImage(imageTag)
 		defer podmanCLI.RemoveImage(sourceImageTag)
 		output, err := opmCLI.Run("index").Args("prune", "-f", sourceImageTag, "-p", "planetscale", "-t", imageTag, "-c", containerTool).Output()
