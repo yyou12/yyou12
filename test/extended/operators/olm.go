@@ -2245,6 +2245,98 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		o.Expect(ogNamespace).To(o.Equal(""))
 	})
 
+
+	// author: scolange@redhat.com
+	g.It("ConnectedOnly-Author:scolange-Medium-24587-Add InstallPlan conditions to Subscription status", func(){
+	
+		var buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
+		var Sub = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+		var og1 = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+		var operatorWait = 150 * time.Second
+
+		oc.SetupProject()
+		namespace := oc.Namespace()
+		dr := make(describerResrouce)
+		itName := g.CurrentGinkgoTestDescription().TestText
+		dr.addIr(itName)
+
+		og := operatorGroupDescription{
+			name:      "test-operators-og",
+			namespace:  namespace,
+			template:   og1,
+		}
+		og.createwithCheck(oc, itName, dr)
+
+		sub := subscriptionDescription{
+			subName:                "couchbase",
+			namespace:              namespace,
+			catalogSourceName:      "certified-operators",
+			catalogSourceNamespace: "openshift-marketplace",
+			channel:                "stable",
+			ipApproval:             "Manual",
+			operatorPackage:        "couchbase-enterprise-certified",
+			singleNamespace:        true,
+			template:               Sub,
+		}
+		defer sub.delete(itName, dr)
+		defer sub.deleteCSV(itName, dr)
+		sub.create(oc, itName, dr)
+
+		e2e.Logf("inst")
+		waiterr := wait.Poll(30*time.Second, operatorWait, func() (bool, error) {
+			inst, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("sub", "-n", namespace, "-o", "jsonpath={.items[*].spec.installPlanApproval}").Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			if inst == "Manual" {
+				e2e.Logf("Install Approval Manual")
+				return true, nil
+			} else {
+				e2e.Failf("FAIL - Install Approval Manual ")
+				return false, nil
+			}
+		})
+		o.Expect(waiterr).NotTo(o.HaveOccurred())
+
+		e2e.Logf("nameIP")
+		nameIP := sub.getIP(oc)
+		o.Expect(nameIP).NotTo(o.BeEmpty())
+		
+		e2e.Logf("instSub")
+		instSub, err1 := oc.AsAdmin().WithoutNamespace().Run("get").Args("sub", "-n", namespace, "-o", "jsonpath={.items[*].status.conditions[1].type}").Output()
+		e2e.Logf(instSub)
+		o.Expect(err1).NotTo(o.HaveOccurred())
+		o.Expect(instSub).To(o.Equal("InstallPlanPending"))
+
+		patchIP, err2 := oc.AsAdmin().WithoutNamespace().Run("patch").Args("ip", nameIP, "-n", namespace, "--type=merge", "-p", "{\"spec\":{\"approved\": true}}").Output()
+		e2e.Logf(patchIP)
+		o.Expect(err2).NotTo(o.HaveOccurred())
+		o.Expect(patchIP).To(o.ContainSubstring("patched"))
+
+		waiterr = wait.Poll(30*time.Second, operatorWait, func() (bool, error) {
+			stateSub, err1 := oc.AsAdmin().WithoutNamespace().Run("get").Args("sub", "-n", namespace, "-o", "jsonpath={.items[*].status.state}").Output()
+			e2e.Logf(stateSub)
+			o.Expect(err1).NotTo(o.HaveOccurred())
+			if stateSub == "AtLatestKnown" {
+				e2e.Logf("AtLatestKnown FOUND")
+				return true, nil
+			} else {
+				e2e.Failf("FAIL - AtLatestKnown NOT-FOUND")
+				return false, nil
+			}
+		})
+		o.Expect(waiterr).NotTo(o.HaveOccurred())
+
+		deteleIP, err1 := oc.AsAdmin().WithoutNamespace().Run("delete").Args("ip", nameIP, "-n", namespace).Output()
+		e2e.Logf(deteleIP)
+		o.Expect(err1).NotTo(o.HaveOccurred())
+		o.Expect(deteleIP).To(o.ContainSubstring("deleted"))
+
+		instSub1, err1 := oc.AsAdmin().WithoutNamespace().Run("get").Args("sub", "-n", namespace, "-o", "jsonpath={.items[*].status.conditions[1].type}").Output()
+		e2e.Logf(instSub1)
+		o.Expect(err1).NotTo(o.HaveOccurred())
+		o.Expect(instSub1).To(o.Equal("InstallPlanMissing"))
+
+	})
+
 	// author: jiazha@redhat.com
 	g.It("Author:jiazha-Medium-21126-OLM Subscription status says CSV is installed when it is not", func() {
 		g.By("1) Install the OperatorGroup in a random project")
