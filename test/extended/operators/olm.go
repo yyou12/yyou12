@@ -2104,7 +2104,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	})
 
 	// author: scolange@redhat.com OCP-40316
-	g.It("Author:scolange-Medium-40316-OLM enters infinite loop if Pending CSV replaces itself [Serial]", func() {
+	g.It("ConnectedOnly-Author:scolange-Medium-40316-OLM enters infinite loop if Pending CSV replaces itself [Serial]", func() {
 
 		var buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
 		var operatorGroup = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
@@ -2135,7 +2135,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		pods, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-n", "openshift-operator-lifecycle-manager").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		e2e.Logf(pods)
-
+      
 		lines := strings.Split(pods, "\n")
 		for _, line := range lines {
 			e2e.Logf("line: %v", line)
@@ -2143,18 +2143,19 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 				name := strings.Split(line, " ")
 				checkRel, err := oc.AsAdmin().WithoutNamespace().Run("adm").Args("top", "pods", name[0], "-n", "openshift-operator-lifecycle-manager").Output()
 				o.Expect(err).NotTo(o.HaveOccurred())
-				lines1 := strings.Split(checkRel, " ")
-				for _, line1 := range lines1 {
-					if strings.Contains(line1, "m") {
-						e2e.Logf("line1: %v", line1)
-						cpu := strings.Split(line1, "m")
-						if cpu[0] > "98" {
-							e2e.Logf("cpu: %v", cpu[0])
-							e2e.Failf("CPU Limit usate more the 99%: %v", checkRel, line1, cpu[0])
+				linesTop := strings.Split(checkRel, "\n")
+				for _, lineTop := range linesTop {
+					if strings.Contains(lineTop, name[0]) {
+						cpuOutput := strings.Split(strings.TrimSpace(lineTop), " ")[1]
+						cpu := strings.Split(cpuOutput, "m")[0]
+						if cpu > "98" {
+							e2e.Logf("cpu: %v", cpu)
+							e2e.Failf("CPU Limit usage is more the 99%: %v", checkRel)
 						}
 					}
+	
 				}
-
+	
 			}
 		}
 	})
