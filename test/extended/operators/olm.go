@@ -4471,12 +4471,13 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 				ipApproval:             "Automatic",
 				channel:                "singlenamespace-alpha",
 				operatorPackage:        "etcd",
+				startingCSV:            "etcdoperator.v0.9.2",
 				singleNamespace:        true,
 				template:               subFile,
 			}
 		)
 
-		g.By("check for operator")
+		g.By("1, check if this operator ready for instaalling")
 		e2e.Logf("Check if %v exists in the %v catalog", sub.operatorPackage, sub.catalogSourceName)
 		exists, err = clusterPackageExists(oc, sub)
 		if !exists {
@@ -4485,7 +4486,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(exists).To(o.BeTrue())
 
-		g.By("Get token & pods")
+		g.By("2, Get token & pods so that access the Prometheus")
 		og.create(oc, itName, dr)
 		olmToken, err = oc.AsAdmin().WithoutNamespace().Run("sa").Args("get-token", "prometheus-k8s", "-n", "openshift-monitoring").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -4499,7 +4500,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(catPodname).NotTo(o.BeEmpty())
 
-		g.By("collect olm metrics before")
+		g.By("3, Collect olm metrics before installing an operator")
 		msg, _, err = oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-operator-lifecycle-manager", olmPodname, "-i", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", olmToken), "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query=csv_count").Outputs()
 		o.Expect(msg).NotTo(o.BeEmpty())
 		json.Unmarshal([]byte(msg), &data)
@@ -4538,11 +4539,14 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 
 		e2e.Logf("\nbefore {csv_count, csv_upgrade_count, catalog_source_count, install_plan_count, subscription_count, subscription_sync_total}\n%v", metricsBefore)
 
-		g.By("Subscribe")
-		sub.create(oc, itName, dr) // check kept timing out
-		newCheck("expect", asAdmin, withoutNamespace, compare, "AtLatestKnown", ok, []string{"sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.state}"}).check(oc)
+		g.By("4, Start to subscribe to etcdoperator.v0.9.2")
+		defer sub.delete(itName, dr) // remove the subscription after test
+		sub.create(oc, itName, dr)
 
-		g.By("Collect olm metrics after")
+		defer sub.deleteCSV(itName, dr) // remove the csv after test
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", "etcdoperator.v0.9.4", "-n", oc.Namespace(), "-o=jsonpath={.status.phase}"}).check(oc)
+
+		g.By("5, etcdoperator.v0.9.2 upgrade to etcdoperator.v0.9.4, start to collect olm metrics after")
 		msg, _, err = oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-operator-lifecycle-manager", olmPodname, "-i", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", olmToken), "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query=csv_count").Outputs()
 		o.Expect(msg).NotTo(o.BeEmpty())
 		json.Unmarshal([]byte(msg), &data)
@@ -4578,34 +4582,37 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 			}
 		}
 
-		g.By("Results")
+		g.By("6, Check results")
 		e2e.Logf("{csv_count csv_upgrade_count catalog_source_count install_plan_count subscription_count subscription_sync_total}")
 		e2e.Logf("%v", metricsBefore)
 		e2e.Logf("%v", metricsAfter)
 
 		g.By("Check Results")
-		// csv_count can increase or decrease
-		// o.Expect(metricsBefore.csv_count <= metricsAfter.csv_count).To(o.BeTrue())
-		// e2e.Logf("PASS csv_count is equal or greater")
+		// csv_count can increase since there is a new csv generated
+		o.Expect(metricsBefore.csvCount <= metricsAfter.csvCount).To(o.BeTrue())
+		e2e.Logf("PASS csv_count is greater")
 
-		o.Expect(metricsBefore.csvUpgradeCount <= metricsAfter.csvUpgradeCount).To(o.BeTrue())
-		e2e.Logf("PASS csv_upgrade_count is equal or greater")
+		// csv_upgrade_count should increase since its type is counter, see: https://prometheus.io/docs/concepts/metric_types/
+		o.Expect((metricsAfter.csvUpgradeCount - metricsBefore.csvUpgradeCount) == 1).To(o.BeTrue())
+		e2e.Logf("PASS csv_upgrade_count is greater")
 
-		o.Expect(metricsBefore.catalogSourceCount <= metricsAfter.catalogSourceCount).To(o.BeTrue())
-		e2e.Logf("PASS catalog_source_count is equal or greater")
+		// catalog_source_count should be equal since we don't install/uninstall it in this test
+		o.Expect(metricsBefore.catalogSourceCount == metricsAfter.catalogSourceCount).To(o.BeTrue())
+		e2e.Logf("PASS catalog_source_count is equal")
 
-		o.Expect(metricsBefore.installPlanCount <= metricsAfter.installPlanCount).To(o.BeTrue())
-		e2e.Logf("PASS install_plan_count is equal or greater")
+		// install_plan_count should be greater since we there are 2 new ip generated in this case
+		o.Expect(metricsBefore.installPlanCount < metricsAfter.installPlanCount).To(o.BeTrue())
+		e2e.Logf("PASS install_plan_count is greater")
 
-		o.Expect(metricsBefore.subscriptionCount <= metricsAfter.subscriptionCount).To(o.BeTrue())
-		e2e.Logf("PASS subscription_count is equal or greater")
+		// subscription_count should be greater since we there are 1 new subscription generated in this case
+		o.Expect(metricsBefore.subscriptionCount < metricsAfter.subscriptionCount).To(o.BeTrue())
+		e2e.Logf("PASS subscription_count is greater")
 
-		o.Expect(metricsBefore.subscriptionSyncTotal <= metricsAfter.subscriptionSyncTotal).To(o.BeTrue())
-		e2e.Logf("PASS subscription_sync_total is equal or greater")
-		e2e.Logf("All PASS\n")
+		// subscription_sync_total should be greater
+		o.Expect(metricsBefore.subscriptionSyncTotal < metricsAfter.subscriptionSyncTotal).To(o.BeTrue())
+		e2e.Logf("PASS subscription_sync_total is greater")
 
-		g.By("DONE")
-
+		g.By("All PASS\n")
 	})
 
 	// author: xzha@redhat.com, test case OCP-40529
