@@ -821,8 +821,8 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		sub.createWithoutCheck(oc, itName, dr)
 
 		g.By("5) The install plan is Failed")
-		installPlan := sub.getIP(oc)
-		newCheck("expect", asAdmin, withoutNamespace, compare, "Failed", ok, []string{"ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+		installPlan := getResource(oc, asAdmin, withoutNamespace, "ip", "-n", sub.namespace, "-o=jsonpath={.items..metadata.name}")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "InstallComponentFailed", ok, []string{"ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.conditions..reason}"}).check(oc)
 
 		g.By("6) Grant the proper permissions to the service account")
 		_, err = oc.WithoutNamespace().AsAdmin().Run("create").Args("-f", saRoles, "-n", namespace).Output()
@@ -892,15 +892,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		sub.createWithoutCheck(oc, itName, dr)
 
 		g.By("5) The install plan is Failed")
-		var installPlan string
-		err = wait.Poll(3*time.Second, 240*time.Second, func() (bool, error) {
-			installPlan, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.installplan.name}").Output()
-			if strings.Compare(installPlan, "") == 0 || err != nil {
-				return false, nil
-			}
-			return true, nil
-		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		installPlan := sub.getIP(oc)
 		newCheck("expect", asAdmin, withoutNamespace, compare, "Failed", ok, []string{"ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
 
 		g.By("6) Grant the proper permissions to the service account")
@@ -2135,7 +2127,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		pods, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-n", "openshift-operator-lifecycle-manager").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		e2e.Logf(pods)
-      
+
 		lines := strings.Split(pods, "\n")
 		for _, line := range lines {
 			e2e.Logf("line: %v", line)
@@ -2153,9 +2145,9 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 							e2e.Failf("CPU Limit usage is more the 99%: %v", checkRel)
 						}
 					}
-	
+
 				}
-	
+
 			}
 		}
 	})
@@ -2245,10 +2237,9 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		o.Expect(ogNamespace).To(o.Equal(""))
 	})
 
-
 	// author: scolange@redhat.com
-	g.It("ConnectedOnly-Author:scolange-Medium-24587-Add InstallPlan conditions to Subscription status", func(){
-	
+	g.It("ConnectedOnly-Author:scolange-Medium-24587-Add InstallPlan conditions to Subscription status", func() {
+
 		var buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
 		var Sub = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
 		var og1 = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
@@ -2262,8 +2253,8 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 
 		og := operatorGroupDescription{
 			name:      "test-operators-og",
-			namespace:  namespace,
-			template:   og1,
+			namespace: namespace,
+			template:  og1,
 		}
 		og.createwithCheck(oc, itName, dr)
 
@@ -2299,7 +2290,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		e2e.Logf("nameIP")
 		nameIP := sub.getIP(oc)
 		o.Expect(nameIP).NotTo(o.BeEmpty())
-		
+
 		e2e.Logf("instSub")
 		instSub, err1 := oc.AsAdmin().WithoutNamespace().Run("get").Args("sub", "-n", namespace, "-o", "jsonpath={.items[*].status.conditions[1].type}").Output()
 		e2e.Logf(instSub)
