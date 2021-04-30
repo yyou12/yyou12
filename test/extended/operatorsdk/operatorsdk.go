@@ -594,8 +594,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
         operatorsdkCLI.showInfo = true
         output, _ := operatorsdkCLI.Run("version").Args().Output()
         o.Expect(output).To(o.ContainSubstring("v1.19.4"))
-    }) 
-
+    })
     // author: chuo@redhat.com
     g.It("ConnectedOnly-Author:chuo-Medium-34366-change ansible operator flags from maxWorkers using env MAXCONCURRENTRECONCILES ", func() {
         operatorsdkCLI.showInfo = true
@@ -630,5 +629,28 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
         output, err := oc.AsAdmin().WithoutNamespace().Run("logs").Args(podname, "-c", "manager", "-n", "memcached-operator-system-ocp34366").Output()
         o.Expect(err).NotTo(o.HaveOccurred())
         o.Expect(output).To(o.ContainSubstring("\"worker count\":6"))	
+    })
+
+    // author: chuo@redhat.com
+    g.It("Author:chuo-Medium-34883-SDK stamp on Operator bundle image", func() {
+        operatorsdkCLI.showInfo = true
+        exec.Command("bash", "-c", "mkdir -p /tmp/ocp-34883/memcached-operator && cd /tmp/ocp-34883/memcached-operator && operator-sdk init --plugins=ansible --domain example.com").Output()
+        defer exec.Command("bash", "-c", "rm -rf /tmp/ocp-34883").Output()
+        exec.Command("bash", "-c", "cd /tmp/ocp-34883/memcached-operator && operator-sdk create api --group cache --version v1alpha1 --kind Memcached --generate-role").Output()
+        exec.Command("bash", "-c", "cd /tmp/ocp-34883/memcached-operator && mkdir -p /tmp/ocp-34883/memcached-operator/config/manifests/").Output()
+        exec.Command("bash", "-c", "cp -rf test/extended/util/operatorsdk/ocp-34883-data/manifests/bases/ /tmp/ocp-34883/memcached-operator/config/manifests/").Output()
+        waitErr := wait.Poll(5*time.Second, 120*time.Second, func() (bool, error) {
+			msg, err := exec.Command("bash", "-c", "cd /tmp/ocp-34883/memcached-operator && make bundle").Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			if strings.Contains(string(msg), "operator-sdk bundle validate ./bundle")  {
+				return true, nil
+			}
+			return false, nil
+        })
+        o.Expect(waitErr).NotTo(o.HaveOccurred())
+        
+        output, err := exec.Command("bash", "-c", "cat /tmp/ocp-34883/memcached-operator/bundle/metadata/annotations.yaml  | grep -E \"operators.operatorframework.io.metrics.builder: operator-sdk\"").Output()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        o.Expect(output).To(o.ContainSubstring("operators.operatorframework.io.metrics.builder: operator-sdk"))	
     })
 })
