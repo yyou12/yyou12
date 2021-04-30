@@ -2328,6 +2328,70 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 
 	})
 
+	// author: scolange@redhat.com
+	g.It("ConnectedOnly-Author:scolange-Medium-41565-Resolution fails to sort channel if inner entry does not satisfy predicate", func(){
+	
+		var buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
+		var Sub = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+		var og1 = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+
+		oc.SetupProject()
+		namespace := oc.Namespace()
+		dr := make(describerResrouce)
+		itName := g.CurrentGinkgoTestDescription().TestText
+		dr.addIr(itName)
+
+		og := operatorGroupDescription{
+			name:      "test-operators-og",
+			namespace:  namespace,
+			template:   og1,
+		}
+		og.createwithCheck(oc, itName, dr)
+
+		sub := subscriptionDescription{
+			subName:                "hive-operator",
+			namespace:              namespace,
+			catalogSourceName:      "community-operators",
+			catalogSourceNamespace: "openshift-marketplace",
+			channel:                "alpha",
+			ipApproval:             "Automatic",
+			operatorPackage:        "hive-operator",
+			singleNamespace:        true,
+			template:               Sub,
+		}
+		defer sub.delete(itName, dr)
+		defer sub.deleteCSV(itName, dr)
+		sub.create(oc, itName, dr)
+
+		e2e.Logf("Check 1 operator")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+				
+		sub = subscriptionDescription{
+			subName:                "assisted-service-operator",
+			namespace:              namespace,
+			catalogSourceName:      "community-operators",
+			catalogSourceNamespace: "openshift-marketplace",
+			channel:                "alpha",
+			ipApproval:             "Automatic",
+			operatorPackage:        "assisted-service-operator",
+			singleNamespace:        true,
+			template:               Sub,
+		}
+		defer sub.delete(itName, dr)
+		defer sub.deleteCSV(itName, dr)
+		sub.create(oc, itName, dr)
+		
+		e2e.Logf("Check 2 operator")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+
+		e2e.Logf("Check event in failed")
+		eventOutput, err1 := oc.AsAdmin().WithoutNamespace().Run("get").Args("event", "-n", namespace).Output()
+		o.Expect(err1).NotTo(o.HaveOccurred())
+		o.Expect(eventOutput).NotTo(o.ContainSubstring("Failed"))
+
+
+	})
+
 	// author: jiazha@redhat.com
 	g.It("Author:jiazha-Medium-21126-OLM Subscription status says CSV is installed when it is not", func() {
 		g.By("1) Install the OperatorGroup in a random project")
