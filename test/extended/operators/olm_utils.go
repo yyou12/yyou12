@@ -1056,7 +1056,7 @@ func getResource(oc *exutil.CLI, asAdmin bool, withoutNamespace bool, parameters
 	var err error
 	err = wait.Poll(3*time.Second, 150*time.Second, func() (bool, error) {
 		result, err = doAction(oc, "get", asAdmin, withoutNamespace, parameters...)
-		if err != nil && len(strings.TrimSpace(result)) != 0 {
+		if err != nil || len(strings.TrimSpace(result)) == 0 {
 			e2e.Logf("output is %v, error is %v, and try next", result, err)
 			return false, nil
 		}
