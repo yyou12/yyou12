@@ -1056,6 +1056,22 @@ func getResource(oc *exutil.CLI, asAdmin bool, withoutNamespace bool, parameters
 	var err error
 	err = wait.Poll(3*time.Second, 150*time.Second, func() (bool, error) {
 		result, err = doAction(oc, "get", asAdmin, withoutNamespace, parameters...)
+		if err != nil {
+			e2e.Logf("output is %v, error is %v, and try next", result, err)
+			return false, nil
+		}
+		return true, nil
+	})
+	o.Expect(err).NotTo(o.HaveOccurred())
+	e2e.Logf("the returned resource:%v", result)
+	return result
+}
+
+func getResourceNoEmpty(oc *exutil.CLI, asAdmin bool, withoutNamespace bool, parameters ...string) string {
+	var result string
+	var err error
+	err = wait.Poll(3*time.Second, 150*time.Second, func() (bool, error) {
+		result, err = doAction(oc, "get", asAdmin, withoutNamespace, parameters...)
 		if err != nil || len(strings.TrimSpace(result)) == 0 {
 			e2e.Logf("output is %v, error is %v, and try next", result, err)
 			return false, nil
