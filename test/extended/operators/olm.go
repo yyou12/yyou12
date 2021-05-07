@@ -821,7 +821,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		sub.createWithoutCheck(oc, itName, dr)
 
 		g.By("5) The install plan is Failed")
-		installPlan := getResource(oc, asAdmin, withoutNamespace, "ip", "-n", sub.namespace, "-o=jsonpath={.items..metadata.name}")
+		installPlan := getResourceNoEmpty(oc, asAdmin, withoutNamespace, "ip", "-n", sub.namespace, "-o=jsonpath={.items..metadata.name}")
 		newCheck("expect", asAdmin, withoutNamespace, compare, "InstallComponentFailed", ok, []string{"ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.conditions..reason}"}).check(oc)
 
 		g.By("6) Grant the proper permissions to the service account")
@@ -892,7 +892,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		sub.createWithoutCheck(oc, itName, dr)
 
 		g.By("5) The install plan is Failed")
-		installPlan := sub.getIP(oc)
+		installPlan := getResourceNoEmpty(oc, asAdmin, withoutNamespace, "ip", "-n", sub.namespace, "-o=jsonpath={.items..metadata.name}")
 		newCheck("expect", asAdmin, withoutNamespace, compare, "Failed", ok, []string{"ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
 
 		g.By("6) Grant the proper permissions to the service account")
@@ -2329,8 +2329,8 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	})
 
 	// author: scolange@redhat.com
-	g.It("ConnectedOnly-Author:scolange-Medium-41565-Resolution fails to sort channel if inner entry does not satisfy predicate", func(){
-	
+	g.It("ConnectedOnly-Author:scolange-Medium-41565-Resolution fails to sort channel if inner entry does not satisfy predicate", func() {
+
 		var buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
 		var Sub = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
 		var og1 = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
@@ -2343,8 +2343,8 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 
 		og := operatorGroupDescription{
 			name:      "test-operators-og",
-			namespace:  namespace,
-			template:   og1,
+			namespace: namespace,
+			template:  og1,
 		}
 		og.createwithCheck(oc, itName, dr)
 
@@ -2365,7 +2365,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 
 		e2e.Logf("Check 1 operator")
 		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
-				
+
 		sub = subscriptionDescription{
 			subName:                "assisted-service-operator",
 			namespace:              namespace,
@@ -2380,7 +2380,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		defer sub.delete(itName, dr)
 		defer sub.deleteCSV(itName, dr)
 		sub.create(oc, itName, dr)
-		
+
 		e2e.Logf("Check 2 operator")
 		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
 
@@ -2388,7 +2388,6 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		eventOutput, err1 := oc.AsAdmin().WithoutNamespace().Run("get").Args("event", "-n", namespace).Output()
 		o.Expect(err1).NotTo(o.HaveOccurred())
 		o.Expect(eventOutput).NotTo(o.ContainSubstring("Failed"))
-
 
 	})
 
