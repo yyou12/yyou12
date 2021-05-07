@@ -1,6 +1,7 @@
 package operators
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -13,7 +14,6 @@ import (
 	g "github.com/onsi/ginkgo"
 	o "github.com/onsi/gomega"
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
-	"github.com/stretchr/stew/slice"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apiserver/pkg/storage/names"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
@@ -35,14 +35,17 @@ var SkippedOperators = []string{"quay-bridge-operator", "kubevirt-hyperconverged
 	"armory-operator", "cluster-logging", "k8s-triliovault", "quay-bridge-operator", "windows-machine-config-operator", "local-storage-operator", "prisma-cloud-compute-console-operator.v2.0.1",
 	"citrix-adc-istio-ingress-gateway-operator", "citrix-cpx-with-ingress-controller-operator", "kubemq-operator-marketplace"}
 
-var CertifiedOperators = []string{"3scale-community-operator", "amq-streams",
+//The ISV operators may from the "community-operators", "certified-operators", "redhat-operators", and "redhat-marketplace" CatalogSources,
+//For the specific details, you can refer to https://docs.google.com/spreadsheets/d/1Y3Y4Xv_r_PkwjE69iA9WlQ9ups98zYO1pprtQlii7wk/edit#gid=349207498
+var ISVOperators = []string{"3scale-community-operator", "amq-streams",
 	"argocd-operator", "cert-utils-operator", "couchbase-enterprise-certified",
 	"federatorai-certified", "jaeger-product", "keycloak-operator", "kiali-ossm", "mongodb-enterprise", "must-gather-operator",
 	"percona-server-mongodb-operator-certified", "percona-xtradb-cluster-operator-certified", "planetscale",
 	"portworx-certified", "postgresql", "presto-operator", "prometheus", "radanalytics-spark",
 	"resource-locker-operator", "spark-gcp", "storageos2", "strimzi-kafka-operator",
 	"syndesis", "tidb-operator-certified"}
-var CaseIDCertifiedOperators = map[string]string{
+
+var CaseIDISVOperators = map[string]string{
 	"3scale-community-operator":                 "26931",
 	"amq-streams":                               "23955",
 	"argocd-operator":                           "27312",
@@ -75,60 +78,75 @@ var BasicPrefix = "[Basic]"
 const INSTALLPLAN_AUTOMATIC_MODE = "Automatic"
 const INSTALLPLAN_MANUAL_MODE = "Manual"
 
-var _ = g.Describe("[sig-operators] ISV_Operators", func() {
-	var (
-		oc             = exutil.NewCLI("operator", exutil.KubeConfigPath())
-		currentPackage Packagemanifest
-		allPackages    []string
-	)
+var _ = g.Describe("[Suite:openshift/isv] ISV_Operators", func() {
 
+	var oc = exutil.NewCLI("isv", exutil.KubeConfigPath())
 	defer g.GinkgoRecover()
 
-	g.BeforeEach(func() {
-		output, _ := oc.AsAdmin().WithoutNamespace().NotShowInfo().Run("get").Args("packagemanifest", "-l catalog="+CatalogLabels[0], "-o=jsonpath={range .items[*]}{.metadata.labels.catalog}:{.metadata.name}{'\\n'}{end}").Output()
-		certifiedPackages := strings.Split(output, "\n")
-		output2, _ := oc.AsAdmin().WithoutNamespace().NotShowInfo().Run("get").Args("packagemanifest", "-l catalog="+CatalogLabels[1], "-o=jsonpath={range .items[*]}{.metadata.labels.catalog}:{.metadata.name}{'\\n'}{end}").Output()
-		redhatOperatorsPackages := strings.Split(output2, "\n")
-		output3, _ := oc.AsAdmin().WithoutNamespace().NotShowInfo().Run("get").Args("packagemanifest", "-l catalog="+CatalogLabels[2], "-o=jsonpath={range .items[*]}{.metadata.labels.catalog}:{.metadata.name}{'\\n'}{end}").Output()
-		communityPackages := strings.Split(output3, "\n")
-		packages1 := append(certifiedPackages, redhatOperatorsPackages...)
-		allPackages = append(packages1, communityPackages...)
-	})
+	buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
+	subTemplate := filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+	ogSingleTemplate := filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
 
-	for i := range allPackages {
+	for i := range ISVOperators {
+		operator := ISVOperators[i]
+		g.It(fmt.Sprintf("Author:bandrade-Medium-%s [Basic] Operator %s should work properly", CaseIDISVOperators[operator], operator), func() {
+			g.By("1) Constructing the subscription")
+			dr := make(describerResrouce)
+			itName := g.CurrentGinkgoTestDescription().TestText
+			dr.addIr(itName)
 
-		operator := allPackages[i]
-		packageSplitted := strings.Split(operator, ":")
-
-		if len(packageSplitted) > 1 {
-			packageName := strings.TrimSpace(packageSplitted[1])
-
-			g.It(TestCaseName(packageName, BasicPrefix), func() {
-
-				if slice.Contains(SkippedOperators, packageName) {
-					g.Skip("Operator " + packageName + " can't be tested in a generic way")
+			subItems := constructSubscription(operator, oc, INSTALLPLAN_AUTOMATIC_MODE)
+			// Note: don't create OperatorGroup for openshift-operators namespace
+			if subItems.Namespace != "openshift-operators" {
+				og := operatorGroupDescription{
+					name:      fmt.Sprintf("og-%s", CaseIDISVOperators[operator]),
+					namespace: subItems.Namespace,
+					template:  ogSingleTemplate,
 				}
-				g.By("by installing", func() {
-					currentPackage = CreateSubscription(packageName, oc, INSTALLPLAN_AUTOMATIC_MODE)
-					CheckDeployment(currentPackage, oc)
-				})
-				g.By("by uninstalling", func() {
-					RemoveOperatorDependencies(currentPackage, oc, true)
-				})
-			})
-		}
+				og.createwithCheck(oc, itName, dr)
+			}
+			// Create subscription
+			sub := subscriptionDescription{
+				subName:                fmt.Sprintf("sub-%s", CaseIDISVOperators[operator]),
+				namespace:              subItems.Namespace,
+				catalogSourceName:      subItems.CatalogSource,
+				catalogSourceNamespace: subItems.CatalogSourceNamespace,
+				channel:                subItems.DefaultChannel,
+				ipApproval:             "Automatic",
+				operatorPackage:        subItems.Name,
+				startingCSV:            subItems.CsvVersion,
+				singleNamespace:        subItems.SupportsSingleNamespace,
+				template:               subTemplate,
+			}
+			defer sub.delete(itName, dr)
+			g.By(fmt.Sprintf("2) Subscribe to %s", operator))
+			e2e.Logf("--> The subscription:\n %v", sub)
+			sub.create(oc, itName, dr)
 
+			defer sub.deleteCSV(itName, dr)
+			g.By(fmt.Sprintf("3) Check if %s works well", operator))
+			newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", sub.startingCSV, "-n", oc.Namespace(), "-o=jsonpath={.status.phase}"}).check(oc)
+		})
 	}
 })
 
-func TestCaseName(operator string, initialPrefix string) string {
-	suffix := " should work properly"
-	prefix := " Operator "
-	return initialPrefix + prefix + operator + suffix
+func constructSubscription(operator string, oc *exutil.CLI, installPlanApprovalMode string) Packagemanifest {
+	p := CreatePackageManifest(operator, oc)
+	// Create Namespace
+	oc.SetupProject()
+	if p.SupportsSingleNamespace || p.SupportsOwnNamespace {
+		p.Namespace = oc.Namespace()
+	} else if p.SupportsAllNamespaces {
+		p.Namespace = "openshift-operators"
+	} else {
+		g.Skip("Install Modes AllNamespaces and SingleNamespace are disabled for Operator: " + operator)
+	}
+
+	return p
 }
 
 func IsCertifiedOperator(operator string) bool {
-	if contains(CertifiedOperators, operator) {
+	if contains(ISVOperators, operator) {
 		return true
 	}
 	return false
@@ -188,7 +206,7 @@ func CreateSubscription(operator string, oc *exutil.CLI, installPlanApprovalMode
 		p.Namespace = "openshift-operators"
 
 	} else {
-		g.Skip("Install Modes AllNamespaces and  SingleNamespace are disabled for Operator: " + operator)
+		g.Skip("Install Modes AllNamespaces and SingleNamespace are disabled for Operator: " + operator)
 	}
 
 	templateSubscriptionYAML := writeSubscription(p, installPlanApprovalMode)

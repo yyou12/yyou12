@@ -16,7 +16,7 @@ require (
 	github.com/openshift/api v3.9.1-0.20191201231411-9f834e337466+incompatible
 	github.com/openshift/client-go v0.0.0-20200116152001-92a2713fa240
 	github.com/openshift/library-go v0.0.0-20200120153246-906409ae5e38
-	github.com/openshift/openshift-tests v0.0.0-20210415084438-014a6f636f3f
+	github.com/openshift/openshift-tests v0.0.0-20210419092451-54fe679382af
 	github.com/pborman/uuid v1.2.0
 	github.com/prometheus/client_golang v1.1.0
 	github.com/prometheus/client_model v0.0.0-20190129233127-fd36f4220a90
@@ -29,11 +29,11 @@ require (
 	k8s.io/apimachinery v0.17.1
 	k8s.io/apiserver v0.17.1
 	k8s.io/cli-runtime v0.17.1
-	k8s.io/client-go v0.17.1
+	k8s.io/client-go v1.5.2
 	k8s.io/component-base v0.17.1
 	k8s.io/klog v1.0.0
 	k8s.io/kubectl v0.0.0
-	k8s.io/kubernetes v1.17.1
+	k8s.io/kubernetes v1.21.0
 	k8s.io/legacy-cloud-providers v0.0.0
 	sigs.k8s.io/yaml v1.1.0
 )

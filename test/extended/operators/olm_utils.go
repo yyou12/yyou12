@@ -98,11 +98,11 @@ type PrometheusQueryResult struct {
 func (sub *subscriptionDescription) create(oc *exutil.CLI, itName string, dr describerResrouce) {
 	// for most operator subscription failure, the reason is that there is a left cluster-scoped CSV.
 	// I'd like to print all CSV before create it.
-	allCSVs, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", "--all-namespaces").Output()
-	if err != nil {
-		e2e.Failf("!!! Couldn't get all CSVs:%v\n", err)
-	}
-	e2e.Logf("!!! Get all CSVs in this cluster:\n%s\n", allCSVs)
+	// allCSVs, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", "--all-namespaces").Output()
+	// if err != nil {
+	// 	e2e.Failf("!!! Couldn't get all CSVs:%v\n", err)
+	// }
+	// e2e.Logf("!!! Get all CSVs in this cluster:\n%s\n", allCSVs)
 
 	sub.createWithoutCheck(oc, itName, dr)
 	if strings.Compare(sub.ipApproval, "Automatic") == 0 {

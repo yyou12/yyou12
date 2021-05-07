@@ -10226,13 +10226,14 @@ func testExtendedTestdataOpmAqua101AquaserversOperatorAquasecComCrdYaml() (*asse
 
 var _testExtendedTestdataOpmAquaAquaOperatorPackageYaml = []byte(`packageName: aqua
 channels:
-- name: alpha
-  currentCSV: aqua-operator.v1.0.1
-- name: beta
-  currentCSV: aqua-operator.v0.0.2
-- name: stable
-  currentCSV: aqua-operator.v1.0.1
-defaultChannel: stable`)
+  - name: alpha
+    currentCSV: aqua-operator.v1.0.1
+  - name: beta
+    currentCSV: aqua-operator.v0.0.2
+  - name: stable
+    currentCSV: aqua-operator.v1.0.1
+defaultChannel: stable
+`)
 
 func testExtendedTestdataOpmAquaAquaOperatorPackageYamlBytes() ([]byte, error) {
 	return _testExtendedTestdataOpmAquaAquaOperatorPackageYaml, nil
