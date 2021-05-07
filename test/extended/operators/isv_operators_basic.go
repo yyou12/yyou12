@@ -43,7 +43,7 @@ var ISVOperators = []string{"3scale-community-operator", "amq-streams",
 	"percona-server-mongodb-operator-certified", "percona-xtradb-cluster-operator-certified", "planetscale",
 	"portworx-certified", "postgresql", "presto-operator", "prometheus", "radanalytics-spark",
 	"resource-locker-operator", "spark-gcp", "storageos2", "strimzi-kafka-operator",
-	"syndesis", "tidb-operator-certified"}
+	"syndesis", "tidb-operator"}
 
 var CaseIDISVOperators = map[string]string{
 	"3scale-community-operator":                 "26931",
@@ -70,7 +70,7 @@ var CaseIDISVOperators = map[string]string{
 	"storageos2":                                "25885",
 	"strimzi-kafka-operator":                    "26056",
 	"syndesis":                                  "26055",
-	"tidb-operator-certified":                   "25412",
+	"tidb-operator":                             "25412",
 }
 var CatalogLabels = []string{"certified-operators", "redhat-operators", "community-operators"}
 var BasicPrefix = "[Basic]"
