@@ -36,7 +36,7 @@ var SkippedOperators = []string{"quay-bridge-operator", "kubevirt-hyperconverged
 	"citrix-adc-istio-ingress-gateway-operator", "citrix-cpx-with-ingress-controller-operator", "kubemq-operator-marketplace"}
 
 var CertifiedOperators = []string{"3scale-community-operator", "amq-streams",
-	"argocd-operator", "cert-utils-operator", "couchbase-enterprise-certified", "dotscience-operator",
+	"argocd-operator", "cert-utils-operator", "couchbase-enterprise-certified",
 	"federatorai-certified", "jaeger-product", "keycloak-operator", "kiali-ossm", "mongodb-enterprise", "must-gather-operator",
 	"percona-server-mongodb-operator-certified", "percona-xtradb-cluster-operator-certified", "planetscale",
 	"portworx-certified", "postgresql", "presto-operator", "prometheus", "radanalytics-spark",
