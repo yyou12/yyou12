@@ -153,7 +153,7 @@ var _ = g.Describe("[sig-operators] ISV_Operators [Suite:openshift/isv]", func()
 
 			appPodName   = ""
 			csvName      = ""
-			caseID       = CaseIDCertifiedOperators["radanalytics-spark"]
+			caseID       = CaseIDISVOperators["radanalytics-spark"]
 			err          error
 			msg          string
 			packageName  = "radanalytics-spark" // spark-operator in OperatorHub
