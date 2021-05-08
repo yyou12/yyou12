@@ -40,9 +40,21 @@ else
 fi
 
 if [[ "${FILTERSO}" == *"Disruptive"* ]] && [[ "${FILTERSO}" != *"~Disruptive"* ]]; then
-  buildtype="-YD"
+  if [[ "${FILTERSO}" == *"Basic"* ]]; then
+    buildtype="-YDB"
+  elif [[ "${FILTERSO}" == *"Intermediate"* ]]; then
+    buildtype="-YDI"
+  else
+    buildtype="-YDN"
+  fi
 else
-  buildtype="-ND"
+  if [[ "${FILTERSO}" == *"Basic"* ]]; then
+    buildtype="-NDB"
+  elif [[ "${FILTERSO}" == *"Intermediate"* ]]; then
+    buildtype="-NDI"
+  else
+    buildtype="-NDN"
+  fi
 fi
 
 rm -fr handleattribution.py && eval cp -fr ${WORKSPACE}"/private/pipeline/handleattribution.py" .

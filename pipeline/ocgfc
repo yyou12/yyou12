@@ -16,9 +16,21 @@ else
 fi
 
 if [[ "${FILTERSO}" == *"Disruptive"* ]] && [[ "${FILTERSO}" != *"~Disruptive"* ]]; then
-  buildtype="-YD"
+  if [[ "${FILTERSO}" == *"Basic"* ]]; then
+    buildtype="-YDB"
+  elif [[ "${FILTERSO}" == *"Intermediate"* ]]; then
+    buildtype="-YDI"
+  else
+    buildtype="-YDN"
+  fi
 else
-  buildtype="-ND"
+  if [[ "${FILTERSO}" == *"Basic"* ]]; then
+    buildtype="-NDB"
+  elif [[ "${FILTERSO}" == *"Intermediate"* ]]; then
+    buildtype="-NDI"
+  else
+    buildtype="-NDN"
+  fi
 fi
 
 cd ${WORKBUILDDIR}
@@ -26,7 +38,7 @@ rm -fr reportportal.py && eval cp -fr ${WORKSPACE}"/private/pipeline/reportporta
 
 rpmmtoken=`cat ${WORKSPACE}"/private/secrets/rp/openshift-qe-reportportal.json" | jq  -r ".ginkgo_rp_mmtoken"`
 rppmtoken=`cat ${WORKSPACE}"/private/secrets/rp/openshift-qe-reportportal.json" | jq  -r ".ginkgo_rp_pmtoken"`
-ret=`python3 reportportal.py -a getfcd -l "${LAUNCHID}" -ss "${ORIGSCENARIO}"  -bn "${BUILDNUM}""${buildtype}" -t "${rpmmtoken}" -ta "${rppmtoken}" 2>&1 || true`
+ret=`python3 reportportal.py -a getfcd -l "${LAUNCHID}" -ss "${ORIGSCENARIO}"  -bn "${BUILDNUM}""${buildtype}""_${JOB_BASE_NAME}" -t "${rpmmtoken}" -ta "${rppmtoken}" 2>&1 || true`
 # echo -e "\\\n"${ret}"\\\n"
 
 result=`echo -e ${ret} | tail -1|xargs`
