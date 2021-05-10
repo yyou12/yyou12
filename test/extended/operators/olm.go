@@ -5766,52 +5766,40 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within all namesp
 	})
 
 	// It will cover test case: OCP-40531, author: xzha@redhat.com
-	g.It("ConnectedOnly-Author:xzha-High-40531-High-41051-the value of lastUpdateTime of csv and Components of Operator should be correct", func() {
+	g.It("ConnectedOnly-Author:xzha-High-40531-High-41051-the value of lastUpdateTime of csv and Components of Operator should be correct [Serial]", func() {
 		var (
 			itName              = g.CurrentGinkgoTestDescription().TestText
 			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
 			subTemplate         = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
 			sub                 = subscriptionDescription{
-				subName:                "wso2am-operator-40531",
+				subName:                "sub-40531",
 				namespace:              "openshift-operators",
-				channel:                "stable",
+				channel:                "clusterwide-alpha",
 				ipApproval:             "Automatic",
-				operatorPackage:        "wso2am-operator",
+				operatorPackage:        "etcd",
 				catalogSourceName:      "community-operators",
 				catalogSourceNamespace: "openshift-marketplace",
 				template:               subTemplate,
 				singleNamespace:        false,
 			}
-
-			project = projectDescription{
-				name:            "olm-enduser-specific-40531" + getRandomString(),
-				targetNamespace: oc.Namespace(),
-			}
 		)
 
-		g.By("Check the global operator global-operators support all namesapces")
+		g.By("1, Check if the global operator global-operators support all namesapces")
 		newCheck("expect", asAdmin, withoutNamespace, compare, "[]", ok, []string{"og", "global-operators", "-n", "openshift-operators", "-o=jsonpath={.status.namespaces}"})
 
-		g.By("Create operator targeted at all namespace")
+		g.By("2, Create operator targeted at all namespace")
 		sub.create(oc, itName, dr)
 		defer sub.delete(itName, dr)
 		defer sub.deleteCSV(itName, dr)
 
-		g.By("Create new namespace")
-		project.create(oc, itName, dr)
+		g.By("3, Create new namespace")
+		oc.SetupProject()
 
-		g.By("Check the csv within new namespace is copied.")
-		err := wait.Poll(5*time.Second, 300*time.Second, func() (bool, error) {
-			phase := getResource(oc, asAdmin, withoutNamespace, "csv", sub.installedCSV, "-n", project.name, "-o=jsonpath={.status.phase}")
-			if strings.Compare(phase, "Succeeded") == 0 {
-				return true, nil
-			}
-			return false, nil
-		})
-		o.Expect(err).NotTo(o.HaveOccurred())
-		newCheck("expect", asAdmin, withoutNamespace, compare, "Copied", ok, []string{"csv", sub.installedCSV, "-n", project.name, "-o=jsonpath={.status.reason}"})
+		g.By("4, Check the csv within new namespace is copied.")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", sub.installedCSV, "-n", oc.Namespace(), "-o=jsonpath={.status.phase}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Copied", ok, []string{"csv", sub.installedCSV, "-n", oc.Namespace(), "-o=jsonpath={.status.reason}"})
 
-		g.By("OCP-40531-Check the lastUpdateTime of copied CSV is equal to the original CSV.")
+		g.By("5, OCP-40531-Check the lastUpdateTime of copied CSV is equal to the original CSV.")
 		originCh := make(chan string)
 		defer close(originCh)
 		copyCh := make(chan string)
@@ -5820,19 +5808,18 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within all namesp
 			originCh <- getResource(oc, asAdmin, withoutNamespace, "csv", sub.installedCSV, "-n", "openshift-operators", "-o=jsonpath={.status.lastUpdateTime}")
 		}()
 		go func() {
-			copyCh <- getResource(oc, asAdmin, withoutNamespace, "csv", sub.installedCSV, "-n", project.name, "-o=jsonpath={.status.lastUpdateTime}")
+			copyCh <- getResource(oc, asAdmin, withoutNamespace, "csv", sub.installedCSV, "-n", oc.Namespace(), "-o=jsonpath={.status.lastUpdateTime}")
 		}()
 		lastUpdateTimeOrigin := <-originCh
 		lastUpdateTimeNew := <-copyCh
 		e2e.Logf("OriginTimeStamp:%s, CopiedTimeStamp:%s", lastUpdateTimeOrigin, lastUpdateTimeNew)
 		o.Expect(lastUpdateTimeNew).To(o.Equal(lastUpdateTimeOrigin))
 
-		g.By("OCP-41051-Check Operator.Status.Components does not contain copied CSVs.")
+		g.By("6, OCP-41051-Check Operator.Status.Components does not contain copied CSVs.")
 		operatorname := sub.operatorPackage + ".openshift-operators"
-		operatorinfo := getResource(oc, asAdmin, withoutNamespace, "operator", operatorname, "-n", project.name, "-o=jsonpath={.status.components.refs}")
+		operatorinfo := getResource(oc, asAdmin, withoutNamespace, "operator", operatorname, "-n", oc.Namespace(), "-o=jsonpath={.status.components.refs}")
 		o.Expect(operatorinfo).NotTo(o.BeEmpty())
 		o.Expect(operatorinfo).NotTo(o.ContainSubstring("Copied"))
-
 	})
 })
 
