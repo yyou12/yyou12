@@ -2,6 +2,55 @@
 set +x
 #get fail case from existing launch for rerun
 
+function get_build_type {
+
+  if [[ "${FILTERSO}" == *"Disruptive"* ]] && [[ "${FILTERSO}" != *"~Disruptive"* ]] && [[ "${FILTERSO}" == *"Basic"* ]]; then
+    buildtype="-YDB"
+    return
+  fi
+
+  if [[ "${FILTERSO}" == *"Disruptive"* ]] && [[ "${FILTERSO}" != *"~Disruptive"* ]] && [[ "${FILTERSO}" == *"Intermediate"* ]]; then
+    buildtype="-YDI"
+    return
+  fi
+
+  if [[ "${FILTERSO}" == *"Disruptive"* ]] && [[ "${FILTERSO}" != *"~Disruptive"* ]]; then
+    buildtype="-YDN"
+    return
+  fi
+
+  if [[ "${FILTERSO}" == *"Basic"* ]]; then
+    buildtype="-NDB"
+    return
+  fi
+
+  if [[ "${FILTERSO}" == *"Intermediate"* ]]; then
+    buildtype="-NDI"
+    return
+  fi
+
+  buildtype="-NDN"
+
+# if [[ "${FILTERSO}" == *"Disruptive"* ]] && [[ "${FILTERSO}" != *"~Disruptive"* ]]; then
+#   if [[ "${FILTERSO}" == *"Basic"* ]]; then
+#     buildtype="-YDB"
+#   elif [[ "${FILTERSO}" == *"Intermediate"* ]]; then
+#     buildtype="-YDI"
+#   else
+#     buildtype="-YDN"
+#   fi
+# else
+#   if [[ "${FILTERSO}" == *"Basic"* ]]; then
+#     buildtype="-NDB"
+#   elif [[ "${FILTERSO}" == *"Intermediate"* ]]; then
+#     buildtype="-NDI"
+#   else
+#     buildtype="-NDN"
+#   fi
+# fi
+
+}
+
 WORKBUILDDIR=$1
 WORKSPACE=$2
 LAUNCHID=$3
@@ -15,23 +64,7 @@ else
   FILTERSO=${FILTERSO:4}
 fi
 
-if [[ "${FILTERSO}" == *"Disruptive"* ]] && [[ "${FILTERSO}" != *"~Disruptive"* ]]; then
-  if [[ "${FILTERSO}" == *"Basic"* ]]; then
-    buildtype="-YDB"
-  elif [[ "${FILTERSO}" == *"Intermediate"* ]]; then
-    buildtype="-YDI"
-  else
-    buildtype="-YDN"
-  fi
-else
-  if [[ "${FILTERSO}" == *"Basic"* ]]; then
-    buildtype="-NDB"
-  elif [[ "${FILTERSO}" == *"Intermediate"* ]]; then
-    buildtype="-NDI"
-  else
-    buildtype="-NDN"
-  fi
-fi
+get_build_type
 
 cd ${WORKBUILDDIR}
 rm -fr reportportal.py && eval cp -fr ${WORKSPACE}"/private/pipeline/reportportal.py" .
