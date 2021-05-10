@@ -4771,44 +4771,49 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		namespaceName := oc.Namespace()
 		var (
 			og = operatorGroupDescription{
-				name:      "test-og",
+				name:      "og-40529",
 				namespace: namespaceName,
 				template:  ogSingleTemplate,
 			}
 			sub = subscriptionDescription{
-				subName:                "ditto-40529-operator",
+				subName:                "sub-40529",
 				namespace:              namespaceName,
 				catalogSourceName:      "community-operators",
 				catalogSourceNamespace: "openshift-marketplace",
-				channel:                "alpha",
+				channel:                "singlenamespace-alpha",
 				ipApproval:             "Manual",
-				operatorPackage:        "ditto-operator",
+				operatorPackage:        "etcd",
 				singleNamespace:        true,
 				template:               subTemplate,
-				startingCSV:            "ditto-operator.v0.1.1",
+				startingCSV:            "etcdoperator.v0.9.2",
 			}
 		)
 		itName := g.CurrentGinkgoTestDescription().TestText
-		g.By("STEP 1: create the OperatorGroup ")
+		g.By("1: create the OperatorGroup ")
 		og.createwithCheck(oc, itName, dr)
 
-		g.By("STEP 2: create sub")
+		g.By("2: create sub")
 		defer sub.delete(itName, dr)
 		defer sub.deleteCSV(itName, dr)
+		// to get the latest installedCSV for manual subscription so that its csv can be deleted successfully
+		defer sub.update(oc, itName, dr)
+
 		sub.create(oc, itName, dr)
 		e2e.Logf("approve the install plan")
-		sub.approveSpecificIP(oc, itName, dr, "ditto-operator.v0.1.1", "Complete")
-		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", "ditto-operator.v0.1.1", "-n", oc.Namespace(), "-o=jsonpath={.status.phase}"}).check(oc)
+		sub.approveSpecificIP(oc, itName, dr, "etcdoperator.v0.9.2", "Complete")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", "etcdoperator.v0.9.2", "-n", oc.Namespace(), "-o=jsonpath={.status.phase}"}).check(oc)
 
-		g.By("STEP 3: check OPERATOR_CONDITION_NAME")
-		newCheck("expect", asAdmin, withoutNamespace, compare, "ditto-operator.v0.1.1", ok, []string{"deployment", "ditto-operator", "-n", namespaceName, "-o=jsonpath={.spec.template.spec.containers[*].env[?(@.name==\"OPERATOR_CONDITION_NAME\")].value}"}).check(oc)
+		g.By("3: check OPERATOR_CONDITION_NAME")
+		// there are 3 containers in this pod
+		newCheck("expect", asAdmin, withoutNamespace, compare, "etcdoperator.v0.9.2 etcdoperator.v0.9.2 etcdoperator.v0.9.2", ok, []string{"deployment", "etcd-operator", "-n", namespaceName, "-o=jsonpath={.spec.template.spec.containers[*].env[?(@.name==\"OPERATOR_CONDITION_NAME\")].value}"}).check(oc)
 
-		g.By("STEP 4: approve the install plan")
-		sub.approveSpecificIP(oc, itName, dr, "ditto-operator.v0.2.0", "Complete")
-		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", "ditto-operator.v0.2.0", "-n", oc.Namespace(), "-o=jsonpath={.status.phase}"}).check(oc)
+		g.By("4: approve the install plan")
+		sub.approveSpecificIP(oc, itName, dr, "etcdoperator.v0.9.4", "Complete")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", "etcdoperator.v0.9.4", "-n", oc.Namespace(), "-o=jsonpath={.status.phase}"}).check(oc)
 
-		g.By("STEP 5: check OPERATOR_CONDITION_NAME")
-		newCheck("expect", asAdmin, withoutNamespace, compare, "ditto-operator.v0.2.0", ok, []string{"deployment", "ditto-operator", "-n", namespaceName, "-o=jsonpath={.spec.template.spec.containers[*].env[?(@.name==\"OPERATOR_CONDITION_NAME\")].value}"}).check(oc)
+		g.By("5: check OPERATOR_CONDITION_NAME")
+		// there are 3 containers in this pod
+		newCheck("expect", asAdmin, withoutNamespace, compare, "etcdoperator.v0.9.4 etcdoperator.v0.9.4 etcdoperator.v0.9.4", ok, []string{"deployment", "etcd-operator", "-n", namespaceName, "-o=jsonpath={.spec.template.spec.containers[*].env[?(@.name==\"OPERATOR_CONDITION_NAME\")].value}"}).check(oc)
 	})
 
 	// author: xzha@redhat.com, test case OCP-40534
