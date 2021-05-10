@@ -2,6 +2,32 @@
 set +x
 #generae report
 
+function get_build_type {
+
+  if [[ "${FILTERSO}" == *"Disruptive"* ]] && [[ "${FILTERSO}" != *"~Disruptive"* ]] && [[ "${FILTERSO}" == *"Basic"* ]]; then
+    buildtype="-YDB"
+    return
+  fi
+  if [[ "${FILTERSO}" == *"Disruptive"* ]] && [[ "${FILTERSO}" != *"~Disruptive"* ]] && [[ "${FILTERSO}" == *"Intermediate"* ]]; then
+    buildtype="-YDI"
+    return
+  fi
+  if [[ "${FILTERSO}" == *"Disruptive"* ]] && [[ "${FILTERSO}" != *"~Disruptive"* ]]; then
+    buildtype="-YDN"
+    return
+  fi
+  if [[ "${FILTERSO}" == *"Basic"* ]]; then
+    buildtype="-NDB"
+    return
+  fi
+  if [[ "${FILTERSO}" == *"Intermediate"* ]]; then
+    buildtype="-NDI"
+    return
+  fi
+  buildtype="-NDN"
+
+}
+
 WORKBUILDDIR=$1
 WORKSPACE=$2
 VERSION=$(echo $3 | tr -dc '0-9')
@@ -39,23 +65,7 @@ else
   ATTRIBUTIONOPTION=${ATTRIBUTIONOPTION:4}
 fi
 
-if [[ "${FILTERSO}" == *"Disruptive"* ]] && [[ "${FILTERSO}" != *"~Disruptive"* ]]; then
-  if [[ "${FILTERSO}" == *"Basic"* ]]; then
-    buildtype="-YDB"
-  elif [[ "${FILTERSO}" == *"Intermediate"* ]]; then
-    buildtype="-YDI"
-  else
-    buildtype="-YDN"
-  fi
-else
-  if [[ "${FILTERSO}" == *"Basic"* ]]; then
-    buildtype="-NDB"
-  elif [[ "${FILTERSO}" == *"Intermediate"* ]]; then
-    buildtype="-NDI"
-  else
-    buildtype="-NDN"
-  fi
-fi
+get_build_type
 
 rm -fr handleattribution.py && eval cp -fr ${WORKSPACE}"/private/pipeline/handleattribution.py" .
 pipelinetype=`python3 handleattribution.py -a get -y "${ATTRIBUTIONOPTION}" -p pipeline_type || true `
