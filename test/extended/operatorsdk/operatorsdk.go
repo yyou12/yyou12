@@ -576,7 +576,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
     g.It("Author:chuo-Critical-37655-run bundle upgrade connect to the Operator SDK CLI", func() {
         operatorsdkCLI.showInfo = true
         output, _ := operatorsdkCLI.Run("run").Args("bundle-upgrade", "-h").Output()
-        o.Expect(output).To(o.ContainSubstring("Upgrade an Operator previously installed in the bundle format with OLM"))		
+        o.Expect(output).To(o.ContainSubstring("help for bundle-upgrade"))		
     })
 
     // author: chuo@redhat.com
@@ -584,7 +584,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
         operatorsdkCLI.showInfo = true
         result, err := exec.Command("bash", "-c", "ansible-operator run --help").Output()
         o.Expect(err).NotTo(o.HaveOccurred())
-        o.Expect(result).To(o.ContainSubstring("--metrics-addr"))	
+        o.Expect(result).To(o.ContainSubstring("--metrics-bind-address"))	
     })
     // author: chuo@redhat.com
     g.It("Author:chuo-High-37914-Bump k8s in SDK to v1.19 and controller-runtime to 0.7.0", func() {
