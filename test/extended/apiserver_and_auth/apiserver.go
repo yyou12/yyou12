@@ -1,11 +1,11 @@
 package apiserver_and_auth
 
 import (
-	"time"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"regexp"
 	"strconv"
 	"strings"
-	"regexp"
-	"k8s.io/apimachinery/pkg/util/wait"
+	"time"
 
 	g "github.com/onsi/ginkgo"
 	o "github.com/onsi/gomega"
@@ -63,7 +63,8 @@ var _ = g.Describe("[sig-api-machinery] Apiserver_and_Auth", func() {
 
 	// author: xxia@redhat.com
 	// It is destructive case, will make kube-apiserver roll out, so adding [Disruptive]. One rollout costs about 25mins, so adding [Slow]
-	g.It("Author:xxia-Medium-25806-Force encryption key rotation for etcd datastore [Slow][Disruptive]", func() {
+	// If the case duration is greater than 10 minutes and is executed in serial (labelled Serial or Disruptive), add Longduration
+	g.It("Longduration-Author:xxia-Medium-25806-Force encryption key rotation for etcd datastore [Slow][Disruptive]", func() {
 		// only run this case in Etcd Encryption On cluster
 		g.By("Check if cluster is Etcd Encryption On")
 		output, err := oc.WithoutNamespace().Run("get").Args("apiserver/cluster", "-o=jsonpath={.spec.encryption.type}").Output()
@@ -149,7 +150,8 @@ spec:
 
 	// author: xxia@redhat.com
 	// It is destructive case, will make kube-apiserver roll out, so adding [Disruptive]. One rollout costs about 25mins, so adding [Slow]
-	g.It("Author:xxia-Medium-25811-Etcd encrypted cluster could self-recover when related encryption configuration is deleted [Slow][Disruptive]", func() {
+	// If the case duration is greater than 10 minutes and is executed in serial (labelled Serial or Disruptive), add Longduration
+	g.It("Longduration-Author:xxia-Medium-25811-Etcd encrypted cluster could self-recover when related encryption configuration is deleted [Slow][Disruptive]", func() {
 		// only run this case in Etcd Encryption On cluster
 		g.By("Check if cluster is Etcd Encryption On")
 		output, err := oc.WithoutNamespace().Run("get").Args("apiserver/cluster", "-o=jsonpath={.spec.encryption.type}").Output()
@@ -235,7 +237,8 @@ spec:
 	// author: xxia@redhat.com
 	// It is destructive case, will make openshift-kube-apiserver and openshift-apiserver namespaces deleted, so adding [Disruptive].
 	// In test the recovery costs about 22mins in max, so adding [Slow]
-	g.It("Author:xxia-Medium-36801-Etcd encrypted cluster could self-recover when related encryption namespaces are deleted [Slow][Disruptive]", func() {
+	// If the case duration is greater than 10 minutes and is executed in serial (labelled Serial or Disruptive), add Longduration
+	g.It("Longduration-Author:xxia-Medium-36801-Etcd encrypted cluster could self-recover when related encryption namespaces are deleted [Slow][Disruptive]", func() {
 		// only run this case in Etcd Encryption On cluster
 		g.By("Check if cluster is Etcd Encryption On")
 		encryptionType, err := oc.WithoutNamespace().Run("get").Args("apiserver/cluster", "-o=jsonpath={.spec.encryption.type}").Output()
@@ -243,7 +246,7 @@ spec:
 		if "aescbc" == encryptionType {
 			jsonPath := `{.items[?(@.metadata.finalizers[0]=="encryption.apiserver.operator.openshift.io/deletion-protection")].metadata.name}`
 
-			secretNames, err := oc.WithoutNamespace().Run("get").Args("secret", "-n", "openshift-apiserver", "-o=jsonpath=" + jsonPath).Output()
+			secretNames, err := oc.WithoutNamespace().Run("get").Args("secret", "-n", "openshift-apiserver", "-o=jsonpath="+jsonPath).Output()
 			o.Expect(err).NotTo(o.HaveOccurred())
 			// These secrets have deletion-protection finalizers by design. Remove finalizers, otherwise deleting the namespaces will be stuck
 			e2e.Logf("Remove finalizers from secret %s in openshift-apiserver", secretNames)
@@ -253,7 +256,7 @@ spec:
 			}
 
 			e2e.Logf("Remove finalizers from secret %s in openshift-kube-apiserver", secretNames)
-			secretNames, err = oc.WithoutNamespace().Run("get").Args("secret", "-n", "openshift-kube-apiserver", "-o=jsonpath=" + jsonPath).Output()
+			secretNames, err = oc.WithoutNamespace().Run("get").Args("secret", "-n", "openshift-kube-apiserver", "-o=jsonpath="+jsonPath).Output()
 			o.Expect(err).NotTo(o.HaveOccurred())
 			for _, item := range strings.Split(secretNames, " ") {
 				err := oc.WithoutNamespace().Run("patch").Args("secret", item, "-n", "openshift-kube-apiserver", `-p={"metadata":{"finalizers":null}}`).Execute()
@@ -274,7 +277,7 @@ spec:
 			isKasNsNew, isOasNsNew := false, false
 			// In test, observed the max wait time can be 4m, so the parameter is larger
 			err = wait.Poll(5*time.Second, 6*time.Minute, func() (bool, error) {
-				if ! isKasNsNew {
+				if !isKasNsNew {
 					uidNewKasNs, err := oc.WithoutNamespace().Run("get").Args("ns", "openshift-kube-apiserver", `-o=jsonpath={.metadata.uid}`).Output()
 					if err == nil {
 						if uidNewKasNs != uidOldKasNs {
@@ -287,7 +290,7 @@ spec:
 							if stuckTerminating == "True" {
 								// We need to handle the race (not always happening) by removing new secrets' finazliers to make namepace not stuck in Terminating
 								e2e.Logf("Hit race: when ns/openshift-kube-apiserver is Terminating, new encryption-config secrets are seen")
-								secretNames, _, _ := oc.WithoutNamespace().Run("get").Args("secret", "-n", "openshift-kube-apiserver", "-o=jsonpath=" + jsonPath).Outputs()
+								secretNames, _, _ := oc.WithoutNamespace().Run("get").Args("secret", "-n", "openshift-kube-apiserver", "-o=jsonpath="+jsonPath).Outputs()
 								for _, item := range strings.Split(secretNames, " ") {
 									oc.WithoutNamespace().Run("patch").Args("secret", item, "-n", "openshift-kube-apiserver", `-p={"metadata":{"finalizers":null}}`).Execute()
 								}
@@ -295,7 +298,7 @@ spec:
 						}
 					}
 				}
-				if ! isOasNsNew {
+				if !isOasNsNew {
 					uidNewOasNs, err := oc.WithoutNamespace().Run("get").Args("ns", "openshift-apiserver", `-o=jsonpath={.metadata.uid}`).Output()
 					if err == nil {
 						if uidNewOasNs != uidOldOasNs {

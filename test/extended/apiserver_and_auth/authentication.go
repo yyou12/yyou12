@@ -22,7 +22,8 @@ var _ = g.Describe("[sig-auth] Apiserver_and_Auth", func() {
 
 	// author: xxia@redhat.com
 	// It is destructive case, will make co/authentical Available=False for a while, so adding [Disruptive]
-	g.It("Author:xxia-Medium-29917-Deleted authentication resources can come back immediately [Disruptive]", func() {
+	// If the case duration is greater than 10 minutes and is executed in serial (labelled Serial or Disruptive), add Longduration
+	g.It("Longduration-Author:xxia-Medium-29917-Deleted authentication resources can come back immediately [Disruptive]", func() {
 		g.By("Delete namespace openshift-authentication")
 		err := oc.WithoutNamespace().Run("delete").Args("ns", "openshift-authentication").Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
