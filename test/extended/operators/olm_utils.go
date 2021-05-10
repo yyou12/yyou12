@@ -112,6 +112,17 @@ func (sub *subscriptionDescription) create(oc *exutil.CLI, itName string, dr des
 	}
 }
 
+// It's for the manual subscription to get its latest status, such as, the installedCSV.
+func (sub *subscriptionDescription) update(oc *exutil.CLI, itName string, dr describerResrouce) {
+	installedCSV := getResource(oc, asAdmin, withoutNamespace, "sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.installedCSV}")
+	o.Expect(installedCSV).NotTo(o.BeEmpty())
+	if strings.Compare(sub.installedCSV, installedCSV) != 0 {
+		sub.installedCSV = installedCSV
+		dr.getIr(itName).add(newResource(oc, "csv", sub.installedCSV, requireNS, sub.namespace))
+	}
+	e2e.Logf("updating the subscription to get the latest installedCSV: %s", sub.installedCSV)
+}
+
 //the method is to just create sub, and save it to dr, do not check its state.
 func (sub *subscriptionDescription) createWithoutCheck(oc *exutil.CLI, itName string, dr describerResrouce) {
 	//isAutomatic := strings.Compare(sub.ipApproval, "Automatic") == 0
@@ -298,7 +309,7 @@ func (sub *subscriptionDescription) delete(itName string, dr describerResrouce) 
 	dr.getIr(itName).remove(sub.subName, "sub", sub.namespace)
 }
 func (sub *subscriptionDescription) deleteCSV(itName string, dr describerResrouce) {
-	e2e.Logf("remove csv %s, ns is %s", sub.installedCSV, sub.namespace)
+	e2e.Logf("remove csv %s, ns is %s, the subscription is: %s", sub.installedCSV, sub.namespace, sub)
 	dr.getIr(itName).remove(sub.installedCSV, "csv", sub.namespace)
 }
 
