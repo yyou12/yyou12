@@ -477,12 +477,19 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
         defer operatorsdkCLI.Run("cleanup").Args("example-operator").Output()
         msg, _ = oc.AsAdmin().WithoutNamespace().Run("get").Args("og", "operator-sdk-og", "-o=jsonpath={.spec.targetNamespaces}").Output()
         o.Expect(msg).To(o.ContainSubstring(""))
-        msg, _ = oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", "-n", "openshift-operators").Output()
-        o.Expect(msg).To(o.ContainSubstring("example-operator"))
+        waitErr := wait.Poll(15*time.Second, 360*time.Second, func() (bool, error) {
+            msg, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", "-n", "openshift-operators").Output()
+            if strings.Contains(msg, "example-operator") {
+                e2e.Logf("csv example-operator")
+                return true, nil
+            }
+            return false, nil
+        })
+        o.Expect(waitErr).NotTo(o.HaveOccurred())
         output, err := operatorsdkCLI.Run("cleanup").Args("example-operator").Output()
         o.Expect(err).NotTo(o.HaveOccurred())
         o.Expect(output).To(o.ContainSubstring("uninstalled"))
-        waitErr := wait.Poll(15*time.Second, 360*time.Second, func() (bool, error) {
+        waitErr = wait.Poll(15*time.Second, 360*time.Second, func() (bool, error) {
             msg, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "quay-io-olmqe-installmode-bundle-0-1-0", "--no-headers").Output()
             if strings.Contains(msg, "not found") {
                 e2e.Logf("not found pod quay-io-olmqe-installmode-bundle-0-1-0")
