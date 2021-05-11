@@ -5623,7 +5623,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within all namesp
 	})
 
 	// It will cover test case: OCP-24906, author: kuiwang@redhat.com
-	g.It("ConnectedOnly-Author:kuiwang-Medium-24906-Operators requesting cluster-scoped permission can trigger kube GC bug", func() {
+	g.It("ConnectedOnly-Author:kuiwang-Medium-24906-Operators requesting cluster-scoped permission can trigger kube GC bug [Serial]", func() {
 		var (
 			itName              = g.CurrentGinkgoTestDescription().TestText
 			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
@@ -5648,6 +5648,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within all namesp
 
 		g.By("Create operator targeted at all namespace")
 		sub.create(oc, itName, dr)
+		sub.update(oc, itName, dr)
 
 		g.By("Check clusterrolebinding has no OwnerReferences")
 		cl.add(newCheck("expect", asAdmin, withoutNamespace, compare, "", ok, []string{"clusterrolebinding", fmt.Sprintf("--selector=olm.owner=%s", sub.installedCSV), "-n", sub.namespace, "-o=jsonpath={..OwnerReferences}"}))
