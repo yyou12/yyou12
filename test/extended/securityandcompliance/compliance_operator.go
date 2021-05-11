@@ -2202,6 +2202,42 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			g.By("ocp-34928 Storage class and access modes are successfully configurable through ComplianceSuite and ComplianceScan ..!!!\n")
 		})
 
+		// author: xiyuan@redhat.com
+		g.It("Author:xiyuan-Medium-40372-Use a separate SA for resultserver", func() {
+			var csuiteMD = complianceSuiteDescription{
+				name:         "master-compliancesuite",
+				namespace:    "",
+				scanname:     "master-scan",
+				profile:      "xccdf_org.ssgproject.content_profile_moderate",
+				content:      "ssg-rhcos4-ds.xml",
+				contentImage: "quay.io/complianceascode/ocp4:latest",
+				rule:         "xccdf_org.ssgproject.content_rule_no_empty_passwords",
+				nodeSelector: "master",
+				template:     csuiteTemplate,
+			}
+
+			// These are special steps to overcome problem which are discussed in [1] so that namespace should not stuck in 'Terminating' state
+			// [1] https://bugzilla.redhat.com/show_bug.cgi?id=1858186
+			defer cleanupObjects(oc,
+				objectTableRef{"compliancesuite", subD.namespace, "master-compliancesuite"})
+
+			g.By("check role resultserver")
+			rsRoleName := getResourceNameWithKeyword(oc, "role", "resultserver")
+			e2e.Logf("rs role name: %v\n", rsRoleName)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "resourceNames:[restricted] resources:[securitycontextconstraints] verbs:[use]]", ok, []string{"role", rsRoleName, "-n",
+				subD.namespace, "-o=jsonpath={.rules}"}).check(oc)
+
+			g.By("create compliancesuite")
+			csuiteMD.namespace = subD.namespace
+			csuiteMD.create(oc, itName, dr)
+
+			g.By("check the scc and securityContext for the rs pod")
+			rsPodName := getResourceNameWithKeywordFromResourceList(oc, "pod", "rs")
+			//could not use newCheck as rs pod will be deleted soon
+			checkKeyWordsForRspod(oc, rsPodName, [...]string{"restricted", "fsGroup", "resultserver"})
+
+		})
+
 	})
 
 })

@@ -479,3 +479,63 @@ func getStorageClassVolumeBindingMode(oc *exutil.CLI) string {
 		return sclassvbm
 	}
 }
+
+func getResourceNameWithKeyword(oc *exutil.CLI, rs string, keyword string) string {
+	var resourceName string
+	rsList := getResource(oc, asAdmin, withoutNamespace, rs, "-o=jsonpath={.items[*].metadata.name}")
+	rsl := strings.Fields(rsList)
+	for _, v := range rsl {
+		resourceName = fmt.Sprintf("%s", v)
+		if strings.Contains(resourceName, keyword) {
+			break
+		}
+	}
+	if resourceName == "" {
+		e2e.Failf("Failed to get resource name!")
+	}
+	return resourceName
+}
+
+func getResourceNameWithKeywordFromResourceList(oc *exutil.CLI, rs string, keyword string) string {
+	var result, resourceName string
+	err := wait.Poll(1*time.Second, 120*time.Second, func() (bool, error) {
+		output, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args(rs, "-n", oc.Namespace(), "-o=jsonpath={.items[*].metadata.name}").Output()
+		e2e.Logf("the result of output:%v", output)
+		if strings.Contains(output, keyword) {
+			result = output
+			return true, nil
+		}
+		return false, nil
+	})
+	o.Expect(err).NotTo(o.HaveOccurred())
+	rsl := strings.Fields(result)
+	for _, v := range rsl {
+		resourceName = fmt.Sprintf("%s", v)
+		if strings.Contains(resourceName, keyword) {
+			break
+		}
+	}
+	if resourceName == "" {
+		e2e.Failf("Failed to get resource name!")
+	}
+	return resourceName
+}
+
+func checkKeyWordsForRspod(oc *exutil.CLI, podname string, keyword [3]string) {
+	var flag bool = true
+	var kw string
+	output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", podname, "-n", oc.Namespace(), "-o=json").Output()
+
+	o.Expect(err).NotTo(o.HaveOccurred())
+	for _, v := range keyword {
+		kw = fmt.Sprintf("%s", v)
+		if !strings.Contains(output, kw) {
+			e2e.Failf("The keyword %kw not exist!", v)
+			flag = false
+			break
+		}
+	}
+	if flag == false {
+		e2e.Failf("The keyword not exist!")
+	}
+}
