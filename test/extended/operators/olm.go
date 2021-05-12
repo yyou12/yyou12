@@ -265,6 +265,9 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 			singleNamespace:        true,
 			template:               subTemplate,
 		}
+		defer sub.delete(itName, dr)
+		defer sub.deleteCSV(itName, dr)
+		defer sub.update(oc, itName, dr)
 		sub.create(oc, itName, dr)
 
 		g.By("3) Apprrove this etcdoperator.v0.9.2, it should be in Complete state")
@@ -484,6 +487,9 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 			singleNamespace:        true,
 			template:               subTemplate,
 		}
+		defer sub.delete(itName, dr)
+		defer sub.deleteCSV(itName, dr)
+		defer sub.update(oc, itName, dr)
 		sub.create(oc, itName, dr)
 
 		g.By("3) create a ConfigMap")
@@ -5087,6 +5093,8 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		g.By("3) Create a Subscription, check installplan")
 		defer sub.delete(itName, dr)
 		defer sub.deleteCSV(itName, dr)
+		defer sub.update(oc, itName, dr)
+
 		sub.createWithoutCheck(oc, itName, dr)
 		installPlan := sub.getIP(oc)
 		o.Expect(installPlan).NotTo(o.BeEmpty())
