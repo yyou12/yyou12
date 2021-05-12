@@ -2235,9 +2235,19 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			rsPodName := getResourceNameWithKeywordFromResourceList(oc, "pod", "rs")
 			//could not use newCheck as rs pod will be deleted soon
 			checkKeyWordsForRspod(oc, rsPodName, [...]string{"restricted", "fsGroup", "resultserver"})
-
 		})
 
+		// author: xiyuan@redhat.com
+		g.It("Author:xiyuan-Medium-40280-The infrastructure feature should show the Compliance operator when the disconnected filter gets applied", func() {
+			g.By("check the infrastructure-features for csv!!!\n")
+			csvName := getResource(oc, asAdmin, withoutNamespace, "csv", "-n", oc.Namespace(), "-o=jsonpath={.items[0].metadata.name}")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "[\"disconnected\", \"fips\", \"proxy-aware\"]", ok, []string{"csv",
+				csvName, "-n", oc.Namespace(), "-o=jsonpath={.metadata.annotations.operators\\.openshift\\.io/infrastructure-features}"}).check(oc)
+
+			g.By("check the infrastructure-features for packagemanifest!!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "[\"disconnected\", \"fips\", \"proxy-aware\"]", ok, []string{"packagemanifest", subD.operatorPackage,
+				"-n", oc.Namespace(), "-o=jsonpath={.status.channels[0].currentCSVDesc.annotations.operators\\.openshift\\.io/infrastructure-features}"}).check(oc)
+		})
 	})
 
 })
