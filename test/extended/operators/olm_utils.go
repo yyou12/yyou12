@@ -1074,7 +1074,7 @@ func getResource(oc *exutil.CLI, asAdmin bool, withoutNamespace bool, parameters
 		return true, nil
 	})
 	o.Expect(err).NotTo(o.HaveOccurred())
-	e2e.Logf("the returned resource:%v", result)
+	e2e.Logf("$oc get %v, the returned resource:%v", parameters, result)
 	return result
 }
 
@@ -1090,7 +1090,7 @@ func getResourceNoEmpty(oc *exutil.CLI, asAdmin bool, withoutNamespace bool, par
 		return true, nil
 	})
 	o.Expect(err).NotTo(o.HaveOccurred())
-	e2e.Logf("the returned resource:%v", result)
+	e2e.Logf("$oc get %v, the returned resource:%v", parameters, result)
 	return result
 }
 
