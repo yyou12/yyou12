@@ -102,15 +102,19 @@ class ReportPortalClient:
             if not launchrestarted:
                 raise Exception('rerun start launch fails')
 
-            suiteuuid = self.startSuite(suitname, existinguuid, starttime)
+            suiteuuid = self.startSuite(suitname, existinguuid, starttime) #it should be startTest, but keep this name for less code change.
             # print(suiteuuid)
             if suiteuuid == None:
                 raise Exception('start suite fails')
+            containeruuid = suiteuuid
 
-            containeruuid = self.startContainer(suiteuuid, suitname, existinguuid, starttime)
+            # the orginal V5 return same id for SUITE and TEST following launch->suite->test->step
+            # but now it return different id for SUITE and TEST. and when importing result, it follows launch->test->step
+            # so, we change to startSuite from STUIE to TEST, and disable startContainer
+            # containeruuid = self.startContainer(suiteuuid, suitname, existinguuid, starttime)
             # print(containeruuid)
-            if containeruuid == None:
-                raise Exception('start container fails')
+            # if containeruuid == None:
+            #     raise Exception('start container fails')
             
             for case in cases:
                 casename = case.getAttribute("name")
@@ -141,8 +145,8 @@ class ReportPortalClient:
             print("\\n")
             return False
         finally:
-            if containeruuid is not None:
-                self.finishContainer(containeruuid, existinguuid, starttime, suiteduration)
+            # if containeruuid is not None:
+            #     self.finishContainer(containeruuid, existinguuid, starttime, suiteduration)
             if suiteuuid is not None:
                 self.finishSuite(suiteuuid, existinguuid, starttime, suiteduration)
             if launchrestarted:
@@ -178,7 +182,8 @@ class ReportPortalClient:
             return None
 
     def replaceChild(self, parentid, childname, existinguuid, currenttime):
-        return self.startChild(parentid, childname, existinguuid, str(currenttime))
+        currenttime = datetime.utcfromtimestamp(currenttime/1000.0 + 1)
+        return self.startChild(parentid, childname, existinguuid, currenttime.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + "Z")
     def finishReplaceChild(self, childid, existinguuid, starttime, finishtime, failures, skipped, systemouts):
         return self.finishChild(childid, existinguuid, str(starttime), str(finishtime), failures, skipped, systemouts)
     def createChild(self, parentid, childname, existinguuid, currenttime):
@@ -320,7 +325,7 @@ class ReportPortalClient:
                 "name": suitename,
                 # "startTime": str(currenttime),
                 "startTime": currenttime.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + "Z",
-                "type": "SUITE"
+                "type": "TEST" # change it from SUITE to TEST to apply same with importing result.
             }
             r = self.session.post(url=self.item_url, json=itemdata)
             # print(r.status_code)
