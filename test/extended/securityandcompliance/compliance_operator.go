@@ -316,6 +316,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 
 		})
 
+		/* Disabling the test case, it might be required in future release
 		// author: pdhamdhe@redhat.com
 		g.It("Author:pdhamdhe-Medium-32082-The ComplianceSuite shows the scan result NOT-APPLICABLE after all rules are skipped to scan", func() {
 
@@ -362,7 +363,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 
 			g.By("The ocp-32082 complianceScan has performed successfully....!!!\n")
 
-		})
+		})*/
 
 		// author: pdhamdhe@redhat.com
 		g.It("Author:pdhamdhe-High-33398-The Compliance Operator supports to variables in tailored profile", func() {
