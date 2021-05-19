@@ -2,6 +2,7 @@ package securityandcompliance
 
 import (
 	"fmt"
+	"os/exec"
 	"strconv"
 	"strings"
 	"time"
@@ -457,10 +458,13 @@ func getStorageClassProvisioner(oc *exutil.CLI) string {
 		e2e.Logf("the result of StorageClassProvisioner:%v", scpro)
 		return scpro
 	} else {
-		sclasspro, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("storageclass", "-o=jsonpath={.items[0].provisioner}").Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		e2e.Logf("the result of StorageClassProvisioner:%v", sclasspro)
-		return sclasspro
+		scs, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("storageclass").OutputToFile(getRandomString() + "isc-config.json")
+                e2e.Logf("the result of scs:%v", scs)
+                result, err := exec.Command("bash", "-c", "cat "+scs+" | grep \"default\" | awk '{print $3}'; rm -rf "+scs).Output()
+                o.Expect(err).NotTo(o.HaveOccurred())
+                res := strings.TrimSpace(string(result))
+                e2e.Logf("the result of StorageClassProvisioner:%v", res)
+                return res
 	}
 }
 

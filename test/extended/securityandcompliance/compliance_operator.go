@@ -2176,9 +2176,6 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			subD.complianceSuiteName(oc, "worker-compliancesuite")
 			subD.complianceSuiteResult(oc, csuiteD.name, "COMPLIANT INCONSISTENT")
 
-			g.By("Check worker-compliancesuite result through exit-code.. !!!\n")
-			subD.getScanExitCodeFromConfigmap(oc, "0")
-
 			g.By("Check pvc name and storage size for worker-scan.. !!!\n")
 			subD.getPVCName(oc, "worker-scan")
 			newCheck("expect", asAdmin, withoutNamespace, contain, "gold", ok, []string{"pvc", csuiteD.scanname, "-n",
@@ -2189,9 +2186,6 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			g.By("Check master-scan name and result..!!!\n")
 			subD.complianceScanName(oc, "master-scan")
 			subD.complianceScanResult(oc, "COMPLIANT")
-
-			g.By("Check master-scan result through exit-code ..!!!\n")
-			subD.getScanExitCodeFromConfigmap(oc, "0")
 
 			g.By("Check pvc name and storage size for master-scan ..!!!\n")
 			subD.getPVCName(oc, "master-scan")
