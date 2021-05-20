@@ -675,4 +675,58 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
         o.Expect(err).NotTo(o.HaveOccurred())
         o.Expect(output).To(o.ContainSubstring("operators.operatorframework.io.metrics.builder: operator-sdk"))	
     })
+    
+    // author: chuo@redhat.com
+    g.It("Author:chuo-Medium-31314-Medium-31273-scorecard basic test migration and migrate OLM tests", func() {
+        operatorsdkCLI.showInfo = true
+        exec.Command("bash", "-c", "mkdir -p /tmp/ocp-31314/memcached-operator && cd /tmp/ocp-31314/memcached-operator && operator-sdk init --plugins=ansible --domain example.com").Output()
+        defer exec.Command("bash", "-c", "rm -rf /tmp/ocp-31314").Output()
+        exec.Command("bash", "-c", "cd /tmp/ocp-31314/memcached-operator && operator-sdk create api --group cache --version v1alpha1 --kind Memcached --generate-role").Output()
+        exec.Command("bash", "-c", "cd /tmp/ocp-31314/memcached-operator && mkdir -p /tmp/ocp-31314/memcached-operator/config/manifests/").Output()
+        exec.Command("bash", "-c", "cp -rf test/extended/util/operatorsdk/ocp-31314-data/manifests/bases/ /tmp/ocp-31314/memcached-operator/config/manifests/").Output()
+        waitErr := wait.Poll(5*time.Second, 120*time.Second, func() (bool, error) {
+			msg, err := exec.Command("bash", "-c", "cd /tmp/ocp-31314/memcached-operator && make bundle").Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			if strings.Contains(string(msg), "operator-sdk bundle validate ./bundle")  {
+				return true, nil
+			}
+			return false, nil
+        })
+        o.Expect(waitErr).NotTo(o.HaveOccurred())
+
+        //ocp-31314
+        g.By("scorecard basic test migration")
+        output, err := exec.Command("bash", "-c", "cd /tmp/ocp-31314/memcached-operator && operator-sdk scorecard bundle -c bundle/tests/scorecard/config.yaml  -w 60s --selector=test=basic-check-spec-test").Output()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        o.Expect(output).To(o.ContainSubstring("State: pass"))
+
+        //ocp-31273
+        g.By("migrate OLM tests-bundle validation")
+        output, err = exec.Command("bash", "-c", "cd /tmp/ocp-31314/memcached-operator && operator-sdk scorecard bundle -c bundle/tests/scorecard/config.yaml  -w 60s --selector=test=olm-bundle-validation-test").Output()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        o.Expect(output).To(o.ContainSubstring("State: pass"))	
+
+        g.By("migrate OLM tests-crds have validation test")
+        output, err = exec.Command("bash", "-c", "cd /tmp/ocp-31314/memcached-operator && operator-sdk scorecard bundle -c bundle/tests/scorecard/config.yaml  -w 60s --selector=test=olm-crds-have-validation-test").Output()
+        o.Expect(output).To(o.ContainSubstring("State: fail"))	
+        o.Expect(output).To(o.ContainSubstring("Suggestions:"))
+        o.Expect(output).To(o.ContainSubstring("Add CRD validation for spec field `foo` in Memcached/v1alpha1"))
+
+        g.By("migrate OLM tests-crds have resources test")
+        output, err = exec.Command("bash", "-c", "cd /tmp/ocp-31314/memcached-operator && operator-sdk scorecard bundle -c bundle/tests/scorecard/config.yaml  -w 60s --selector=test=olm-crds-have-resources-test").Output()
+        o.Expect(output).To(o.ContainSubstring("State: fail"))
+        o.Expect(output).To(o.ContainSubstring("Owned CRDs do not have resources specified"))
+
+        g.By("migrate OLM tests- spec descriptors test")
+        output, err = exec.Command("bash", "-c", "cd /tmp/ocp-31314/memcached-operator && operator-sdk scorecard bundle -c bundle/tests/scorecard/config.yaml  -w 60s --selector=test=olm-spec-descriptors-test").Output()
+        o.Expect(output).To(o.ContainSubstring("State: fail"))
+        o.Expect(output).To(o.ContainSubstring("Suggestions:"))
+        o.Expect(output).To(o.ContainSubstring("Add a spec descriptor for foo"))
+        o.Expect(output).To(o.ContainSubstring("foo does not have a spec descriptor"))
+
+        g.By("migrate OLM tests- status descriptors test")
+        output, err = exec.Command("bash", "-c", "cd /tmp/ocp-31314/memcached-operator && operator-sdk scorecard bundle -c bundle/tests/scorecard/config.yaml  -w 60s --selector=test=olm-status-descriptors-test").Output()
+        o.Expect(output).To(o.ContainSubstring("State: fail"))
+        o.Expect(output).To(o.ContainSubstring("memcacheds.cache.example.com does not have a status descriptor"))
+    })
 })
