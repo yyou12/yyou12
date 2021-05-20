@@ -89,7 +89,7 @@ var _ = g.Describe("[Suite:openshift/isv] ISV_Operators", func() {
 
 	for i := range ISVOperators {
 		operator := ISVOperators[i]
-		g.It(fmt.Sprintf("Author:bandrade-Medium-%s-[Basic] Operator %s should work properly", CaseIDISVOperators[operator], operator), func() {
+		g.It(fmt.Sprintf("ConnectedOnly-Author:bandrade-Medium-%s-[Basic] Operator %s should work properly", CaseIDISVOperators[operator], operator), func() {
 			g.By("1) Constructing the subscription")
 			dr := make(describerResrouce)
 			itName := g.CurrentGinkgoTestDescription().TestText
