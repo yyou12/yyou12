@@ -36,6 +36,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		tprofileWithoutVarTemplate string
 		scansettingTemplate        string
 		scansettingbindingTemplate string
+		profilebundleTemplate      string
 		pvextractpodYAML           string
 		podModifyTemplate          string
 		storageClassTemplate       string
@@ -64,6 +65,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		tprofileWithoutVarTemplate = filepath.Join(buildPruningBaseDir, "tailoredprofile-withoutvariable.yaml")
 		scansettingTemplate = filepath.Join(buildPruningBaseDir, "scansetting.yaml")
 		scansettingbindingTemplate = filepath.Join(buildPruningBaseDir, "scansettingbinding.yaml")
+		profilebundleTemplate = filepath.Join(buildPruningBaseDir, "profilebundle.yaml")
 		pvextractpodYAML = filepath.Join(buildPruningBaseDir, "pv-extract-pod.yaml")
 		podModifyTemplate = filepath.Join(buildPruningBaseDir, "pod_modify.yaml")
 		storageClassTemplate = filepath.Join(buildPruningBaseDir, "storage_class.yaml")
@@ -2278,6 +2280,87 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			g.By("check the https proxy in the configmap!!!\n")
 			newCheck("expect", asAdmin, withoutNamespace, contain, httpsProxy, ok, []string{"cm", csuiteMD.scanname + "-openscap-env-map", "-n",
 				subD.namespace, "-o=jsonpath={.data.HTTPS_PROXY}"}).check(oc)
+		})
+
+		// author: xiyuan@redhat.com
+		g.It("Author:xiyuan-High-33859-Verify if the profileparser enables to get content updates when the image digest updated", func() {
+			var (
+				pb = profileBundleDescription{
+					name:         "test1",
+					namespace:    "",
+					contentimage: "quay.io/openshifttest/ocp4-openscap-content@sha256:392b0a67e4386a7450b0bb0c9353231563b7ab76056d215f10e6f5ffe0a2cbad",
+					contentfile:  "ssg-rhcos4-ds.xml",
+					template:     profilebundleTemplate,
+				}
+				tprofileD = tailoredProfileDescription{
+					name:         "example-tailoredprofile",
+					namespace:    "",
+					extends:      "test1-moderate",
+					enrulename1:  "test1-account-disable-post-pw-expiration",
+					disrulename1: "test1-account-unique-name",
+					disrulename2: "test1-account-use-centralized-automated-auth",
+					varname:      "test1-var-selinux-state",
+					value:        "permissive",
+					template:     tprofileTemplate,
+				}
+				tprofileD2 = tailoredProfileDescription{
+					name:         "example-tailoredprofile2",
+					namespace:    "",
+					extends:      "test1-moderate",
+					enrulename1:  "test1-wireless-disable-in-bios",
+					disrulename1: "test1-account-unique-name",
+					disrulename2: "test1-account-use-centralized-automated-auth",
+					varname:      "test1-var-selinux-state",
+					value:        "permissive",
+					template:     tprofileTemplate,
+				}
+			)
+
+			defer cleanupObjects(oc,
+				objectTableRef{"profilebundle", subD.namespace, pb.name},
+				objectTableRef{"tailoredprofile", subD.namespace, tprofileD.name},
+				objectTableRef{"tailoredprofile", subD.namespace, tprofileD2.name})
+
+			g.By("create profilebundle!!!\n")
+			pb.namespace = subD.namespace
+			pb.create(oc, itName, dr)
+			newCheck("expect", asAdmin, withoutNamespace, contain, pb.name, ok, []string{"profilebundle", pb.name, "-n", pb.namespace,
+				"-o=jsonpath={.metadata.name}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "Valid", ok, []string{"profilebundle", pb.name, "-n", pb.namespace,
+				"-o=jsonpath={.status.conditions[0].reason}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "test1-chronyd-no-chronyc-network", ok, []string{"rules", "test1-chronyd-no-chronyc-network",
+				"-n", oc.Namespace()}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "test1-chronyd-client-only", ok, []string{"rules", "test1-chronyd-client-only",
+				"-n", oc.Namespace()}).check(oc)
+
+			g.By("check the default profilebundle !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "Valid", ok, []string{"profilebundle", "ocp4", "-n", pb.namespace,
+				"-o=jsonpath={.status.conditions[0].reason}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "Valid", ok, []string{"profilebundle", "rhcos4", "-n", pb.namespace,
+				"-o=jsonpath={.status.conditions[0].reason}"}).check(oc)
+
+			g.By("Create tailoredprofile !!!\n")
+			tprofileD.namespace = subD.namespace
+			tprofileD.create(oc, itName, dr)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "READY", ok, []string{"tailoredprofile", tprofileD.name, "-n", tprofileD.namespace,
+				"-o=jsonpath={.status.state}"}).check(oc)
+
+			g.By("Patch the profilebundle with a different image !!!\n")
+			patch := fmt.Sprintf("{\"spec\":{\"contentImage\":\"quay.io/openshifttest/ocp4-openscap-content@sha256:3778c668f462424552c15c6c175704b64270ea06183fd034aa264736f1ec45a9\"}}")
+			patchResource(oc, asAdmin, withoutNamespace, "profilebundle", pb.name, "-n", pb.namespace, "--type", "merge", "-p", patch)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "Pending", ok, []string{"profilebundle", pb.name, "-n", pb.namespace,
+				"-o=jsonpath={.status.conditions[0].reason}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "Valid", ok, []string{"profilebundle", pb.name, "-n", pb.namespace,
+				"-o=jsonpath={.status.conditions[0].reason}"}).check(oc)
+			newCheck("present", asAdmin, withoutNamespace, notPresent, "", ok, []string{"rules", "test1-chronyd-no-chronyc-network", "-n", oc.Namespace()}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "test1-chronyd-client-only", ok, []string{"rules", "test1-chronyd-client-only",
+				"-n", oc.Namespace()}).check(oc)
+
+			g.By("Create tailoredprofile !!!\n")
+			tprofileD2.namespace = subD.namespace
+			tprofileD2.create(oc, itName, dr)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "READY", ok, []string{"tailoredprofile", tprofileD2.name, "-n", tprofileD.namespace,
+				"-o=jsonpath={.status.state}"}).check(oc)
 		})
 	})
 

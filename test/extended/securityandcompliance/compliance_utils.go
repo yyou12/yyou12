@@ -37,6 +37,14 @@ type complianceSuiteDescription struct {
 	template            string
 }
 
+type profileBundleDescription struct {
+	name         string
+	namespace    string
+	contentimage string
+	contentfile  string
+	template     string
+}
+
 type scanSettingDescription struct {
 	autoapplyremediations bool
 	name                  string
@@ -126,6 +134,13 @@ func (csuite *complianceSuiteDescription) create(oc *exutil.CLI, itName string, 
 		"SIZE="+csuite.size, "ROTATION="+strconv.Itoa(csuite.rotation), "TAILORCONFIGMAPNAME="+csuite.tailoringConfigMap)
 	o.Expect(err).NotTo(o.HaveOccurred())
 	dr.getIr(itName).add(newResource(oc, "compliancesuite", csuite.name, requireNS, csuite.namespace))
+}
+
+func (pb *profileBundleDescription) create(oc *exutil.CLI, itName string, dr describerResrouce) {
+	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", pb.template, "-p", "NAME="+pb.name, "NAMESPACE="+pb.namespace,
+		"CONTENIMAGE="+pb.contentimage, "CONTENTFILE="+pb.contentfile)
+	o.Expect(err).NotTo(o.HaveOccurred())
+	dr.getIr(itName).add(newResource(oc, "profilebundle", pb.name, requireNS, pb.namespace))
 }
 
 func (ss *scanSettingDescription) create(oc *exutil.CLI, itName string, dr describerResrouce) {
@@ -481,6 +496,7 @@ func getStorageClassVolumeBindingMode(oc *exutil.CLI) string {
 		o.Expect(err).NotTo(o.HaveOccurred())
 		e2e.Logf("the result of StorageClassVolumeBindingMode:%v", sclassvbm)
 		return sclassvbm
+
 	}
 }
 

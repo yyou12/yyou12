@@ -64,6 +64,7 @@ const (
 	compare          = true
 	contain          = false
 	present          = true
+	notPresent       = false
 	ok               = true
 	nok              = false
 )

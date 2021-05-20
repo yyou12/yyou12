@@ -115,6 +115,7 @@
 // test/extended/testdata/securityandcompliance/fileintegrity.yaml
 // test/extended/testdata/securityandcompliance/operator-group.yaml
 // test/extended/testdata/securityandcompliance/pod_modify.yaml
+// test/extended/testdata/securityandcompliance/profilebundle.yaml
 // test/extended/testdata/securityandcompliance/pv-extract-pod.yaml
 // test/extended/testdata/securityandcompliance/scansetting.yaml
 // test/extended/testdata/securityandcompliance/scansettingbinding.yaml
@@ -12859,6 +12860,42 @@ func testExtendedTestdataSecurityandcompliancePod_modifyYaml() (*asset, error) {
 	return a, nil
 }
 
+var _testExtendedTestdataSecurityandcomplianceProfilebundleYaml = []byte(`apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: profilebundle-template
+objects:
+- apiVersion: compliance.openshift.io/v1alpha1
+  kind: ProfileBundle
+  metadata:
+    name: "${NAME}"
+    namespace: "${NAMESPACE}"
+  spec:
+    contentImage: "${CONTENIMAGE}"
+    contentFile: "${CONTENTFILE}"
+
+parameters:
+- name: NAME
+- name: NAMESPACE
+- name: CONTENIMAGE
+- name: CONTENTFILE
+`)
+
+func testExtendedTestdataSecurityandcomplianceProfilebundleYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataSecurityandcomplianceProfilebundleYaml, nil
+}
+
+func testExtendedTestdataSecurityandcomplianceProfilebundleYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataSecurityandcomplianceProfilebundleYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/securityandcompliance/profilebundle.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
 var _testExtendedTestdataSecurityandcompliancePvExtractPodYaml = []byte(`apiVersion: "v1"
 kind: Pod
 metadata:
@@ -14323,6 +14360,7 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/securityandcompliance/fileintegrity.yaml":                                          testExtendedTestdataSecurityandcomplianceFileintegrityYaml,
 	"test/extended/testdata/securityandcompliance/operator-group.yaml":                                         testExtendedTestdataSecurityandcomplianceOperatorGroupYaml,
 	"test/extended/testdata/securityandcompliance/pod_modify.yaml":                                             testExtendedTestdataSecurityandcompliancePod_modifyYaml,
+	"test/extended/testdata/securityandcompliance/profilebundle.yaml":                                          testExtendedTestdataSecurityandcomplianceProfilebundleYaml,
 	"test/extended/testdata/securityandcompliance/pv-extract-pod.yaml":                                         testExtendedTestdataSecurityandcompliancePvExtractPodYaml,
 	"test/extended/testdata/securityandcompliance/scansetting.yaml":                                            testExtendedTestdataSecurityandcomplianceScansettingYaml,
 	"test/extended/testdata/securityandcompliance/scansettingbinding.yaml":                                     testExtendedTestdataSecurityandcomplianceScansettingbindingYaml,
@@ -14543,6 +14581,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 					"fileintegrity.yaml":                   {testExtendedTestdataSecurityandcomplianceFileintegrityYaml, map[string]*bintree{}},
 					"operator-group.yaml":                  {testExtendedTestdataSecurityandcomplianceOperatorGroupYaml, map[string]*bintree{}},
 					"pod_modify.yaml":                      {testExtendedTestdataSecurityandcompliancePod_modifyYaml, map[string]*bintree{}},
+					"profilebundle.yaml":                   {testExtendedTestdataSecurityandcomplianceProfilebundleYaml, map[string]*bintree{}},
 					"pv-extract-pod.yaml":                  {testExtendedTestdataSecurityandcompliancePvExtractPodYaml, map[string]*bintree{}},
 					"scansetting.yaml":                     {testExtendedTestdataSecurityandcomplianceScansettingYaml, map[string]*bintree{}},
 					"scansettingbinding.yaml":              {testExtendedTestdataSecurityandcomplianceScansettingbindingYaml, map[string]*bintree{}},
