@@ -1,0 +1,79 @@
+#!/bin/bash
+#usage: setup-vm goc48 ${WORKBUILDDIR} ${WORKSPACE}/tool_dir
+#get oc client
+echo $1 $2 $3
+NODELABEL=$1
+WORKBUILDDIR=$2
+WORKDIR=$3
+mkdir -p $WORKDIR
+CURRENTDIR=`pwd`
+
+rm -rf /tmp/*
+podman rm -a -f
+podman rmi -a -f
+sudo rm -f /usr/bin/oc /usr/local/bin/oc /usr/local/bin/opm /usr/local/bin/initializer /usr/local/bin/configmap-server /usr/local/bin/registry-server
+
+cd /etc/pki/ca-trust/source/anchors
+sudo curl -O --insecure https://password.corp.redhat.com/RH-IT-Root-CA.crt
+sudo curl -O --insecure https://password.corp.redhat.com/legacy.crt
+sudo curl -O --insecure https://engineering.redhat.com/Eng-CA.crt
+sudo curl -O --insecure https://vcenter.sddc-44-236-21-251.vmwarevmc.com/certs/download.zip
+sudo unzip -o download.zip 'certs/lin/*'
+sudo mv -f ./certs/lin/* ./ && \
+sudo rm -rf download.zip ./certs
+sudo update-ca-trust extract
+cd $WORKDIR
+
+if echo $NODELABEL | grep -E '^goc([0-9]{2})$'; then
+  NIGHTLYFLAG=$(echo $NODELABEL | tr -dc '0-9')
+  echo $NIGHTLYFLAG
+else
+  echo "the node label is not correct. For example, goc45"
+  exit 1
+fi
+
+sudo rm -f /etc/yum.repos.d/redhat_offcial.repo /etc/yum.repos.d/localdev-rhel-8-baseos-rpms.repo /etc/yum.repos.d/google-cloud-sdk.repo /etc/yum.repos.d/azure-cli.repo
+sudo cp ${WORKBUILDDIR}/pipeline/repo-file/aos-devel-$NIGHTLYFLAG.repo /etc/yum.repos.d/puddle.repo
+sudo ls -lrt /etc/yum.repos.d/
+sudo yum remove 'origin*.x86_64' 'atomic-openshift*.x86_64' 'openshift-clients*.x86_64' -y
+sudo yum -y install openshift-clients jq
+sudo yum clean all -y
+sudo pip3 install requests
+echo "oc version:"
+oc version
+retVal=$?
+if [ $retVal -ne 0 ]; then
+    echo "install oc failed"
+    exit 1
+fi
+
+#get opm client
+echo $KUBECONFIG
+NIGHTLYVERSION=`oc get clusterversion | grep version | awk '{print $2}'`
+if [ ${NIGHTLYVERSION}"null" == "null" ]; then
+    echo "get clusterversion failed"
+    exit 1
+fi
+oc extract secret/pull-secret -n openshift-config  --confirm
+ocpimaage=`oc adm release info registry.ci.openshift.org/ocp/release:${NIGHTLYVERSION} --image-for=operator-registry -a .dockerconfigjson`
+echo ${ocpimaage}
+podman pull ${ocpimaage} --authfile  .dockerconfigjson
+instanceID=`podman create ${ocpimaage}`
+podman cp ${instanceID}:/bin/opm  .
+podman cp ${instanceID}:/bin/initializer .
+podman cp ${instanceID}:/bin/configmap-server .
+podman cp ${instanceID}:/bin/registry-server .
+podman rm  -a
+podman rmi  -a
+echo "opm version:"
+opm version
+retVal=$?
+if [ $retVal -ne 0 ]; then
+    echo "get opm failed"
+    exit 1
+fi
+
+mkdir -p ~/.docker
+sudo cp -f ${WORKBUILDDIR}/secrets/quay/config.json ~/.docker
+podman login quay.io 
+cd $CURRENTDIR
