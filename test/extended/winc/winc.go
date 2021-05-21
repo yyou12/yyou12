@@ -264,19 +264,17 @@ var _ = g.Describe("[sig-windows] Windows_Containers", func() {
 		defer deleteProject(oc, namespace)
 
 		g.By("Check communication: Windows pod <--> Linux pod")
-		winpodNameIP, err := oc.WithoutNamespace().Run("get").Args("pod", "--selector=app=win-webserver", "-o=jsonpath={.items[0].metadata.name}|{.items[0].status.podIP}", "-n", namespace).Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		linuxpodNameIP, err := oc.WithoutNamespace().Run("get").Args("pod", "--selector=run=linux-webserver", "-o=jsonpath={.items[0].metadata.name}|{.items[0].status.podIP}", "-n", namespace).Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		windows := strings.Split(winpodNameIP, "|")
-		linux := strings.Split(linuxpodNameIP, "|")
-		command := []string{"exec", "-n", namespace, windows[0], "--", "curl", linux[1] + ":8080"}
+		winPodNames := getWorkloadsNames(oc, "windows", namespace)
+		windPodIPs := getWorkloadsIP(oc, "windows", namespace)
+		linuxPodNames := getWorkloadsNames(oc, "linux", namespace)
+		linuxPodIPs := getWorkloadsIP(oc, "linux", namespace)
+		command := []string{"exec", "-n", namespace, winPodNames[0], "--", "curl", linuxPodIPs[0] + ":8080"}
 		msg, err := oc.WithoutNamespace().Run(command...).Args().Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		if !strings.Contains(msg, "Linux Container Web Server") {
 			e2e.Failf("Failed to curl Linux web server from Windows pod")
 		}
-		command = []string{"exec", "-n", namespace, linux[0], "--", "curl", windows[1]}
+		command = []string{"exec", "-n", namespace, linuxPodNames[0], "--", "curl", windPodIPs[0]}
 		msg, err = oc.WithoutNamespace().Run(command...).Args().Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		if !strings.Contains(msg, "Windows Container Web Server") {
@@ -315,22 +313,21 @@ var _ = g.Describe("[sig-windows] Windows_Containers", func() {
 		g.By("Check access through clusterIP from Linux and Windows pods")
 		windowsClusterIP := getServiceClusterIP(oc, "windows", namespace)
 		linuxClusterIP := getServiceClusterIP(oc, "linux", namespace)
+		winPodArray := getWorkloadsNames(oc, "windows", namespace)
+		linuxPodArray := getWorkloadsNames(oc, "linux", namespace)
 		e2e.Logf("windows cluster IP: " + windowsClusterIP)
 		e2e.Logf("Linux cluster IP: " + linuxClusterIP)
-		winpodNameIP, err := oc.WithoutNamespace().Run("get").Args("pod", "--selector=app=win-webserver", "-o=jsonpath={.items[0].metadata.name}|{.items[0].status.podIP}", "-n", namespace).Output()
-		linuxpodNameIP, err := oc.WithoutNamespace().Run("get").Args("pod", "--selector=run=linux-webserver", "-o=jsonpath={.items[0].metadata.name}|{.items[0].status.podIP}", "-n", namespace).Output()
 
-		o.Expect(err).NotTo(o.HaveOccurred())
-		windows := strings.Split(winpodNameIP, "|")
-		linux := strings.Split(linuxpodNameIP, "|")
-		command := []string{"exec", "-n", namespace, windows[0], "--", "curl", linuxClusterIP + ":8080"}
+		//we query the Linux ClusterIP by a windows pod
+		command := []string{"exec", "-n", namespace, winPodArray[0], "--", "curl", linuxClusterIP + ":8080"}
+
 		msg, err := oc.WithoutNamespace().Run(command...).Args().Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		if !strings.Contains(msg, "Linux Container Web Server") {
 			e2e.Failf("Failed to curl Linux ClusterIP from a windows pod")
 		}
 		e2e.Logf("***** Now testing Windows node from a linux host : ****")
-		command = []string{"exec", "-n", namespace, linux[0], "--", "curl", windowsClusterIP}
+		command = []string{"exec", "-n", namespace, linuxPodArray[0], "--", "curl", windowsClusterIP}
 		msg, err = oc.WithoutNamespace().Run(command...).Args().Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		if !strings.Contains(msg, "Windows Container Web Server") {
@@ -343,18 +340,15 @@ var _ = g.Describe("[sig-windows] Windows_Containers", func() {
 		scaleDeployment(oc, "windows", 2, namespace)
 
 		o.Expect(err).NotTo(o.HaveOccurred())
-		winpodNames, err := oc.WithoutNamespace().Run("get").Args("pod", "--selector=app=win-webserver", "-o=jsonpath={.items[0].metadata.name}{.items[0].status.podName}{.items[0].status.podName};{.items[1].metadata.name}{.items[1].status.podName}{.items[1].status.podName}", "-n", namespace).Output()
-		e2e.Logf("Windows pod array is ", winpodNames)
-		secondWindowsPodName := strings.Split(winpodNames, ";")
-
-		command = []string{"exec", "-n", namespace, linux[0], "--", "curl", windowsClusterIP}
+		winPodArray = getWorkloadsNames(oc, "windows", namespace)
+		command = []string{"exec", "-n", namespace, linuxPodArray[0], "--", "curl", windowsClusterIP}
 		msg, err = oc.WithoutNamespace().Run(command...).Args().Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		if !strings.Contains(msg, "Windows Container Web Server") {
 			e2e.Failf("Failed to curl Windows ClusterIP from a Linux pod")
 		}
 
-		command = []string{"exec", "-n", namespace, secondWindowsPodName[1], "--", "curl", linuxClusterIP + ":8080"}
+		command = []string{"exec", "-n", namespace, winPodArray[1], "--", "curl", linuxClusterIP + ":8080"}
 		msg, err = oc.WithoutNamespace().Run(command...).Args().Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		if !strings.Contains(msg, "Linux Container Web Server") {
@@ -368,21 +362,21 @@ var _ = g.Describe("[sig-windows] Windows_Containers", func() {
 		defer scaleWindowsMachineSet(oc, windowsMachineSetName, 2)
 		waitWindowsNodesReady(oc, 3, 60*time.Second, 1200*time.Second)
 		// Testing the Windows server is reachable via Linux pod
-		command = []string{"exec", "-n", namespace, linux[0], "--", "curl", windowsClusterIP}
+		command = []string{"exec", "-n", namespace, linuxPodArray[0], "--", "curl", windowsClusterIP}
 		msg, err = oc.WithoutNamespace().Run(command...).Args().Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		if !strings.Contains(msg, "Windows Container Web Server") {
 			e2e.Failf("Failed to curl Windows ClusterIP from a Linux pod")
 		}
 		// Testing the Linux server is reachable with the second windows pod created
-		command = []string{"exec", "-n", namespace, secondWindowsPodName[0], "--", "curl", linuxClusterIP + ":8080"}
+		command = []string{"exec", "-n", namespace, winPodArray[1], "--", "curl", linuxClusterIP + ":8080"}
 		msg, err = oc.WithoutNamespace().Run(command...).Args().Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		if !strings.Contains(msg, "Linux Container Web Server") {
 			e2e.Failf("Failed to curl Linux ClusterIP from a windows pod")
 		}
 		// Testing the Linux server is reachable with the first Windows pod created.
-		command = []string{"exec", "-n", namespace, windows[0], "--", "curl", linuxClusterIP + ":8080"}
+		command = []string{"exec", "-n", namespace, winPodArray[0], "--", "curl", linuxClusterIP + ":8080"}
 		msg, err = oc.WithoutNamespace().Run(command...).Args().Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		if !strings.Contains(msg, "Linux Container Web Server") {
@@ -397,41 +391,40 @@ var _ = g.Describe("[sig-windows] Windows_Containers", func() {
 		createLinuxWorkload(oc, namespace)
 		defer deleteProject(oc, namespace)
 		g.By("Check communication: Windows pod <--> Linux pod")
-		winpodNameIP, err := oc.WithoutNamespace().Run("get").Args("pod", "--selector=app=win-webserver", "-o=jsonpath={.items[0].metadata.name}|{.items[0].status.podIP}", "-n", namespace).Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		linuxpodNameIP, err := oc.WithoutNamespace().Run("get").Args("pod", "--selector=run=linux-webserver", "-o=jsonpath={.items[0].metadata.name}|{.items[0].status.podIP}", "-n", namespace).Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		windows := strings.Split(winpodNameIP, "|")
-		linux := strings.Split(linuxpodNameIP, "|")
-		command := []string{"exec", "-n", namespace, windows[0], "--", "curl", linux[1] + ":8080"}
+		winPodNameArray := getWorkloadsNames(oc, "windows", namespace)
+		linuxPodNameArray := getWorkloadsNames(oc, "linux", namespace)
+		winPodIPArray := getWorkloadsIP(oc, "windows", namespace)
+		linuxPodIPArray := getWorkloadsIP(oc, "linux", namespace)
+		command := []string{"exec", "-n", namespace, linuxPodNameArray[0], "--", "curl", winPodIPArray[0]}
 		msg, err := oc.WithoutNamespace().Run(command...).Args().Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		if !strings.Contains(msg, "Linux Container Web Server") {
-			e2e.Failf("Failed to curl Linux web server from Windows pod")
-		}
-		command = []string{"exec", "-n", namespace, linux[0], "--", "curl", windows[1] + ":80"}
-		msg, err = oc.WithoutNamespace().Run(command...).Args().Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		if !strings.Contains(msg, "Windows Container Web Server") {
 			e2e.Failf("Failed to curl Windows web server from Linux pod")
 		}
 
+		linuxSVC := linuxPodIPArray[0] + ":8080"
+		command = []string{"exec", "-n", namespace, winPodNameArray[0], "--", "curl", linuxSVC}
+		msg, err = oc.WithoutNamespace().Run(command...).Args().Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		if !strings.Contains(msg, "Linux Container Web Server") {
+			e2e.Failf("Failed to curl Linux web server from Windows pod")
+		}
+
 		g.By("Check communication: Windows pod <--> Windows pod in the same node")
 		// we scale the deployment to 5 windows pods
 		scaleDeployment(oc, "windows", 5, namespace)
-		winpodNameIP, err = oc.WithoutNamespace().Run("get").Args("pod", "--selector=app=win-webserver", "--sort-by=.status.hostIP", "-o=jsonpath={.items[0].metadata.name}|{.items[0].status.podIP}|{.items[0].status.hostIP};{.items[1].metadata.name}|{.items[1].status.podIP}|{.items[1].status.hostIP}", "-n", namespace).Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		winpod_1 := strings.Split(strings.Split(winpodNameIP, ";")[0], "|")
-		winpod_2 := strings.Split(strings.Split(winpodNameIP, ";")[1], "|")
-		if winpod_1[2] != winpod_2[2] {
+		hostIPArray := getWorkloadsHostIP(oc, "windows", namespace)
+		if hostIPArray[0] != hostIPArray[1] {
 			e2e.Failf("Failed to get Windows pod in the same node")
 		}
-		command = []string{"exec", "-n", namespace, winpod_1[0], "--", "curl", winpod_2[1]}
+		podNameArray := getWorkloadsNames(oc, "windows", namespace)
+		podIPArray := getWorkloadsIP(oc, "windows", namespace)
+		command = []string{"exec", "-n", namespace, podNameArray[0], "--", "curl", podIPArray[0]}
 		msg, err = oc.WithoutNamespace().Run(command...).Args().Output()
 		if !strings.Contains(msg, "Windows Container Web Server") {
 			e2e.Failf("Failed to curl Windows web server from Windows pod in the same node")
 		}
-		command = []string{"exec", "-n", namespace, winpod_2[0], "--", "curl", winpod_1[1]}
+		command = []string{"exec", "-n", namespace, podNameArray[0], "--", "curl", podIPArray[1]}
 		msg, err = oc.WithoutNamespace().Run(command...).Args().Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		if !strings.Contains(msg, "Windows Container Web Server") {
@@ -439,20 +432,19 @@ var _ = g.Describe("[sig-windows] Windows_Containers", func() {
 		}
 
 		g.By("Check communication: Windows pod <--> Windows pod across different Windows nodes")
-		winpodNameIP, err = oc.WithoutNamespace().Run("get").Args("pod", "--selector=app=win-webserver", "--sort-by=.status.hostIP", "-o=jsonpath={.items[0].metadata.name}|{.items[0].status.podIP}|{.items[0].status.hostIP};{.items[-1].metadata.name}|{.items[-1].status.podIP}|{.items[-1].status.hostIP}", "-n", namespace).Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		windows_1 := strings.Split(strings.Split(winpodNameIP, ";")[0], "|")
-		windows_2 := strings.Split(strings.Split(winpodNameIP, ";")[1], "|")
-		if windows_1[2] == windows_2[2] {
+		lastHostIP := hostIPArray[len(hostIPArray)-1]
+		if hostIPArray[0] == lastHostIP {
 			e2e.Failf("Failed to get Windows pod across different Windows nodes")
 		}
-		command = []string{"exec", "-n", namespace, windows_1[0], "--", "curl", windows_2[1]}
+		lastIP := winPodIPArray[len(winPodIPArray)-1]
+		command = []string{"exec", "-n", namespace, winPodNameArray[0], "--", "curl", lastIP}
 		msg, err = oc.WithoutNamespace().Run(command...).Args().Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		if !strings.Contains(msg, "Windows Container Web Server") {
 			e2e.Failf("Failed to curl Windows web server from Windows pod in the same node")
 		}
-		command = []string{"exec", "-n", namespace, windows_2[0], "--", "curl", windows_1[1]}
+		lastPodName := winPodNameArray[len(winPodNameArray)-1]
+		command = []string{"exec", "-n", namespace, lastPodName, "--", "curl", winPodIPArray[0]}
 		msg, err = oc.WithoutNamespace().Run(command...).Args().Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		if !strings.Contains(msg, "Windows Container Web Server") {
@@ -852,7 +844,7 @@ func scaleDeployment(oc *exutil.CLI, os string, replicas int, namespace string) 
 	deploymentName := getWorkloadName(os)
 	_, err := oc.WithoutNamespace().Run("scale").Args("--replicas="+strconv.Itoa(replicas), "deployment", deploymentName, "-n", namespace).Output()
 	o.Expect(err).NotTo(o.HaveOccurred())
-	poolErr := wait.Poll(20*time.Second, 300*time.Second, func() (bool, error) {
+	poolErr := wait.Poll(60*time.Second, 300*time.Second, func() (bool, error) {
 		return checkWindowsWorkloadScaled(oc, namespace, replicas), nil
 	})
 	if poolErr != nil {
@@ -870,4 +862,44 @@ func scaleWindowsMachineSet(oc *exutil.CLI, windowsMachineSetName string, replic
 func deleteProject(oc *exutil.CLI, namespace string) {
 	_, err := oc.WithoutNamespace().Run("delete").Args("project", namespace).Output()
 	o.Expect(err).NotTo(o.HaveOccurred())
+}
+func getWorkloadSelector(os string) string {
+	selector := "app"
+	if os == "linux" {
+		selector = "run"
+	}
+	return selector
+}
+
+// this function returns an array of workloads names by their OS type
+func getWorkloadsNames(oc *exutil.CLI, os string, namespace string) []string {
+	workloadName := getWorkloadName(os)
+	selector := getWorkloadSelector(os)
+
+	workloads, err := oc.WithoutNamespace().Run("get").Args("pod", "--selector="+selector+"="+workloadName, "--sort-by=.status.hostIP", "-o=jsonpath={.items[*].metadata.name}", "-n", namespace).Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	pods := strings.Split(workloads, " ")
+	return pods
+}
+
+// this function returns an array of workloads IP's by their OS type
+func getWorkloadsIP(oc *exutil.CLI, os string, namespace string) []string {
+	workloadName := getWorkloadName(os)
+	selector := getWorkloadSelector(os)
+
+	workloads, err := oc.WithoutNamespace().Run("get").Args("pod", "--selector="+selector+"="+workloadName, "--sort-by=.status.hostIP", "-o=jsonpath={.items[*].status.podIP}", "-n", namespace).Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	ips := strings.Split(workloads, " ")
+	return ips
+}
+
+// this function returns an array of workloads IP's by their OS type
+func getWorkloadsHostIP(oc *exutil.CLI, os string, namespace string) []string {
+	workloadName := getWorkloadName(os)
+	selector := getWorkloadSelector(os)
+
+	workloads, err := oc.WithoutNamespace().Run("get").Args("pod", "--selector="+selector+"="+workloadName, "--sort-by=.status.hostIP", "-o=jsonpath={.items[*].status.hostIP}", "-n", namespace).Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	ips := strings.Split(workloads, " ")
+	return ips
 }
