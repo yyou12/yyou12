@@ -55,7 +55,6 @@ func NewQuayCLI() *QuayCLI {
 		_, fullFilename, _, _ := runtime.Caller(0)
 		authFilepath = path.Dir(path.Dir(path.Dir(path.Dir(path.Dir(fullFilename))))) + "/secrets/quay/quay_auth.json"
 	}
-	e2e.Logf("get quay auth from file %s", authFilepath)
 	if _, err := os.Stat(authFilepath); os.IsNotExist(err) {
 		e2e.Logf("auth file does not exist")
 	} else {
