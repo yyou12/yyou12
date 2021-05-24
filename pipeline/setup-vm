@@ -8,6 +8,7 @@ WORKDIR=$3
 mkdir -p $WORKDIR
 CURRENTDIR=`pwd`
 
+sudo rm -rf /tmp/fixture-testdata-*
 rm -rf /tmp/*
 podman rm -a -f
 podman rmi -a -f
