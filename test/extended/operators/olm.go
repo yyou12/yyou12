@@ -4768,6 +4768,171 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		g.By("All PASS\n")
 	})
 
+	// author: tbuskey@redhat.com, test case OCP-40972
+	g.It("Author:tbuskey-High-40972-Provide more specific text when no candidates for Subscription spec", func() {
+		var (
+			itName               = g.CurrentGinkgoTestDescription().TestText
+			buildPruningBaseDir  = exutil.FixturePath("testdata", "olm")
+			ogTemplate           = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+			subFile              = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+			catPodname           string
+			err                  error
+			exists               bool
+			failures             = 0
+			failureNames         = ""
+			msg                  string
+			s                    string
+			since                = "--since=60s"
+			snooze time.Duration = 90
+			step                 string
+			tail                 = "--tail=10"
+			waitErr              error
+		)
+
+		oc.SetupProject()
+
+		var (
+			og = operatorGroupDescription{
+				name:      "test-40972-group",
+				namespace: oc.Namespace(),
+				template:  ogTemplate,
+			}
+			subOriginal = subscriptionDescription{
+				subName:                "etcd-40972",
+				namespace:              oc.Namespace(),
+				catalogSourceName:      "community-operators",
+				catalogSourceNamespace: "openshift-marketplace",
+				ipApproval:             "Automatic",
+				channel:                "singlenamespace-alpha",
+				operatorPackage:        "etcd",
+				startingCSV:            "etcdoperator.v0.9.2",
+				singleNamespace:        true,
+				template:               subFile,
+			}
+			sub = subOriginal
+		)
+
+		g.By("1, check if this operator exists")
+		e2e.Logf("Check if %v exists in the %v catalog", sub.operatorPackage, sub.catalogSourceName)
+		exists, err = clusterPackageExists(oc, sub)
+		if !exists {
+			e2e.Failf("FAIL:PackageMissing %v does not exist in catalog %v", sub.operatorPackage, sub.catalogSourceName)
+		}
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(exists).To(o.BeTrue())
+
+		g.By("2, Get the OLM catalog pod name for log query")
+		catPodname, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-n", "openshift-operator-lifecycle-manager", "--selector=app=catalog-operator", "-o=jsonpath={.items..metadata.name}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(catPodname).NotTo(o.BeEmpty())
+
+		g.By("3, Create og")
+		og.create(oc, itName, dr)
+		defer og.delete(itName, dr)
+
+		g.By("1/4 bad package name")
+		sub = subOriginal
+		sub.operatorPackage = "xyzzy"
+		s = fmt.Sprintf("no operators found in package %v in the catalog referenced by subscription %v", sub.operatorPackage, sub.subName)
+		step = "1/4"
+
+		sub.createWithoutCheck(oc, itName, dr)
+		waitErr = wait.Poll(3*time.Second, snooze*time.Second, func() (bool, error) {
+			msg, err = oc.AsAdmin().WithoutNamespace().Run("logs").Args(catPodname, "-n", "openshift-operator-lifecycle-manager", tail, since).Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			if strings.Contains(msg, s) {
+				return true, nil
+			}
+			return false, nil
+		})
+		o.Expect(waitErr).NotTo(o.HaveOccurred())
+		if !strings.Contains(msg, s) {
+			e2e.Logf("STEP %v FAIL log is missing %v in: %v\n", step, s, msg)
+			failures++
+			failureNames = s + "\n"
+		}
+		sub.deleteCSV(itName, dr)
+		sub.delete(itName, dr)
+		
+		g.By("2/4 bad catalog name")
+		e2e.Logf("catpodname %v", catPodname)
+		sub = subOriginal
+		sub.catalogSourceName = "xyzzy"
+		s = fmt.Sprintf("no operators found from catalog %v in namespace openshift-marketplace referenced by subscription %v", sub.catalogSourceName, sub.subName)
+		step = "2/4"
+
+		sub.createWithoutCheck(oc, itName, dr)
+		waitErr = wait.Poll(3*time.Second, snooze*time.Second, func() (bool, error) {
+			msg, err = oc.AsAdmin().WithoutNamespace().Run("logs").Args(catPodname, "-n", "openshift-operator-lifecycle-manager", tail, since).Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			if strings.Contains(msg, s) {
+				return true, nil
+			}
+			return false, nil
+		})
+		o.Expect(waitErr).NotTo(o.HaveOccurred())
+		if !strings.Contains(msg, s) {
+			e2e.Logf("STEP %v FAIL log is missing %v in: %v\n", step, s, msg)
+			failures++
+			failureNames = failureNames + s + "\n" 
+
+		}
+		sub.deleteCSV(itName, dr)
+		sub.delete(itName, dr)
+
+		g.By("3/4 bad channel")
+		sub = subOriginal
+		sub.channel = "xyzzy"
+		s = fmt.Sprintf("no operators found in channel %v of package etcd in the catalog referenced by subscription %v", sub.channel, sub.subName)
+		step = "3/4"
+
+		sub.createWithoutCheck(oc, itName, dr)
+		waitErr = wait.Poll(3*time.Second, snooze*time.Second, func() (bool, error) {
+			msg, err = oc.AsAdmin().WithoutNamespace().Run("logs").Args(catPodname, "-n", "openshift-operator-lifecycle-manager", tail, since).Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			if strings.Contains(msg, s) {
+				return true, nil
+			}
+			return false, nil
+		})
+		if !strings.Contains(msg, s) {
+			e2e.Logf("STEP %v FAIL log is missing %v in: %v\n", step, s, msg)
+			failures++
+			failureNames = failureNames + s + "\n" 
+		}
+		sub.deleteCSV(itName, dr)
+		sub.delete(itName, dr)
+		
+		g.By("4/4 bad CSV")
+		sub = subOriginal
+		sub.startingCSV = "xyzzy.v0.9.2"
+		s = fmt.Sprintf("no operators found with name %v in channel singlenamespace-alpha of package etcd in the catalog referenced by subscription %v", sub.startingCSV, sub.subName)
+		step = "4/4"
+
+		sub.createWithoutCheck(oc, itName, dr)
+		waitErr = wait.Poll(3*time.Second, snooze*time.Second, func() (bool, error) {
+			msg, err = oc.AsAdmin().WithoutNamespace().Run("logs").Args(catPodname, "-n", "openshift-operator-lifecycle-manager", tail, since).Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			if strings.Contains(msg, s) {
+				return true, nil
+			}
+			return false, nil
+		})
+		if !strings.Contains(msg, s) {
+			e2e.Logf("STEP %v FAIL log is missing %v in: %v\n", step, s, msg)
+			failures++
+			failureNames = failureNames + s + "\n" 
+		}
+		sub.deleteCSV(itName, dr)
+		sub.delete(itName, dr)
+		
+		g.By("FINISH\n")
+		if failures != 0 {
+			e2e.Failf("FAILED: %v of the log messages were not found", failures)
+		}
+	})
+
+
 	// author: xzha@redhat.com, test case OCP-40529
 	g.It("ConnectedOnly-Author:xzha-Medium-40529-OPERATOR_CONDITION_NAME should have correct value", func() {
 		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
