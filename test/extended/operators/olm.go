@@ -1399,7 +1399,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 
 			if sameCommit == "" {
 				sameCommit = gitCommitID
-				g.By("checking this commitID in the operator-lifecycle-manager repo")
+				g.By("checking this commitID in https://github.com/openshift/operator-framework-olm repo")
 				ctx, tc := githubClient()
 				client := github.NewClient(tc)
 				// OLM downstream repo has been changed to: https://github.com/openshift/operator-framework-olm
@@ -4771,22 +4771,22 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 	// author: tbuskey@redhat.com, test case OCP-40972
 	g.It("Author:tbuskey-High-40972-Provide more specific text when no candidates for Subscription spec", func() {
 		var (
-			itName               = g.CurrentGinkgoTestDescription().TestText
-			buildPruningBaseDir  = exutil.FixturePath("testdata", "olm")
-			ogTemplate           = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
-			subFile              = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
-			catPodname           string
-			err                  error
-			exists               bool
-			failures             = 0
-			failureNames         = ""
-			msg                  string
-			s                    string
-			since                = "--since=60s"
-			snooze time.Duration = 90
-			step                 string
-			tail                 = "--tail=10"
-			waitErr              error
+			itName              = g.CurrentGinkgoTestDescription().TestText
+			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
+			ogTemplate          = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+			subFile             = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+			catPodname          string
+			err                 error
+			exists              bool
+			failures            = 0
+			failureNames        = ""
+			msg                 string
+			s                   string
+			since                             = "--since=60s"
+			snooze              time.Duration = 90
+			step                string
+			tail                = "--tail=10"
+			waitErr             error
 		)
 
 		oc.SetupProject()
@@ -4853,7 +4853,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		}
 		sub.deleteCSV(itName, dr)
 		sub.delete(itName, dr)
-		
+
 		g.By("2/4 bad catalog name")
 		e2e.Logf("catpodname %v", catPodname)
 		sub = subOriginal
@@ -4874,7 +4874,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		if !strings.Contains(msg, s) {
 			e2e.Logf("STEP %v FAIL log is missing %v in: %v\n", step, s, msg)
 			failures++
-			failureNames = failureNames + s + "\n" 
+			failureNames = failureNames + s + "\n"
 
 		}
 		sub.deleteCSV(itName, dr)
@@ -4898,11 +4898,11 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		if !strings.Contains(msg, s) {
 			e2e.Logf("STEP %v FAIL log is missing %v in: %v\n", step, s, msg)
 			failures++
-			failureNames = failureNames + s + "\n" 
+			failureNames = failureNames + s + "\n"
 		}
 		sub.deleteCSV(itName, dr)
 		sub.delete(itName, dr)
-		
+
 		g.By("4/4 bad CSV")
 		sub = subOriginal
 		sub.startingCSV = "xyzzy.v0.9.2"
@@ -4921,17 +4921,16 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		if !strings.Contains(msg, s) {
 			e2e.Logf("STEP %v FAIL log is missing %v in: %v\n", step, s, msg)
 			failures++
-			failureNames = failureNames + s + "\n" 
+			failureNames = failureNames + s + "\n"
 		}
 		sub.deleteCSV(itName, dr)
 		sub.delete(itName, dr)
-		
+
 		g.By("FINISH\n")
 		if failures != 0 {
 			e2e.Failf("FAILED: %v of the log messages were not found", failures)
 		}
 	})
-
 
 	// author: xzha@redhat.com, test case OCP-40529
 	g.It("ConnectedOnly-Author:xzha-Medium-40529-OPERATOR_CONDITION_NAME should have correct value", func() {
