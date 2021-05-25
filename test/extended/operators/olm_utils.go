@@ -1208,7 +1208,7 @@ func clusterPackageExists(oc *exutil.CLI, sub subscriptionDescription) (bool, er
 func githubClient() (context.Context, *http.Client) {
 	ctx := context.Background()
 	ts := oauth2.StaticTokenSource(
-		&oauth2.Token{AccessToken: "91b3eac7455e8a7245dadce0de9e7d60f097a9a9"},
+		&oauth2.Token{AccessToken: "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"},
 	)
 	tc := oauth2.NewClient(ctx, ts)
 	return ctx, tc
