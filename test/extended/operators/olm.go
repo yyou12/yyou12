@@ -5287,6 +5287,73 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		newCheck("expect", asUser, withNamespace, compare, "Succeeded", ok, []string{"csv", csv, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
 	})
 
+	// author: xzha@redhat.com
+	g.It("ConnectedOnly-Author:xzha-Medium-41035-Fail InstallPlan on bundle unpack timeout [Slow]", func() {
+		var (
+			itName              = g.CurrentGinkgoTestDescription().TestText
+			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
+			ogSingleTemplate    = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+			catsrcImageTemplate = filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
+			subTemplate         = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+			og                  = operatorGroupDescription{
+				name:      "og-41035",
+				namespace: "",
+				template:  ogSingleTemplate,
+			}
+			catsrc = catalogSourceDescription{
+				name:        "catsrc-41035",
+				namespace:   "",
+				displayName: "Test Catsrc 41035 Operators",
+				publisher:   "Red Hat",
+				sourceType:  "grpc",
+				address:     "quay.io/olmqe/ditto-index:41035",
+				template:    catsrcImageTemplate,
+			}
+			sub = subscriptionDescription{
+				subName:                "ditto-operator-41035",
+				namespace:              "",
+				channel:                "4.8",
+				ipApproval:             "Automatic",
+				operatorPackage:        "ditto-operator",
+				catalogSourceName:      catsrc.name,
+				catalogSourceNamespace: "",
+				template:               subTemplate,
+				singleNamespace:        true,
+			}
+		)
+		oc.SetupProject() //project and its resource are deleted automatically when out of It, so no need derfer or AfterEach
+		og.namespace = oc.Namespace()
+		catsrc.namespace = oc.Namespace()
+		sub.namespace = oc.Namespace()
+		sub.catalogSourceNamespace = catsrc.namespace
+
+		g.By("create og")
+		og.create(oc, itName, dr)
+
+		g.By("create catalog source")
+		catsrc.create(oc, itName, dr)
+
+		g.By("install operator")
+		defer sub.delete(itName, dr)
+		sub.createWithoutCheck(oc, itName, dr)
+
+		g.By("The install plan is Failed")
+		installPlan := sub.getIP(oc)
+		err := wait.Poll(15*time.Second, 900*time.Second, func() (bool, error) {
+			result := getResource(oc, asAdmin, withoutNamespace, "ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.phase}")
+			if strings.Compare(result, "Failed") == 0 {
+				e2e.Logf("ip is failed")
+				return true, nil
+			}
+			return false, nil
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
+		conditions := getResource(oc, asAdmin, withoutNamespace, "ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.conditions}")
+		o.Expect(conditions).To(o.ContainSubstring("DeadlineExceeded"))
+		o.Expect(conditions).To(o.ContainSubstring("Job was active longer than specified deadline"))
+		o.Expect(conditions).To(o.ContainSubstring("Bundle unpacking failed"))
+	})
+
 })
 
 var _ = g.Describe("[sig-operators] OLM for an end user handle to support", func() {
