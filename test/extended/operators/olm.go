@@ -6372,4 +6372,58 @@ var _ = g.Describe("[sig-operators] OLM on VM for an end user handle within a na
 		o.Expect(data).To(o.ContainSubstring("operators.operatorframework.io.bundle.metadata.v1"))
 		o.Expect(data).To(o.ContainSubstring("operators.operatorframework.io.bundle.package.v1"))
 	})
+
+	// author: xzha@redhat.com
+	g.It("Author:xzha-VMonly-Medium-40528-opm can filter the platform/arch of the index image", func() {
+		baseDir := exutil.FixturePath("testdata", "olm")
+		TestDataPath := filepath.Join(baseDir, "temp")
+		indexTmpPath := filepath.Join(TestDataPath, getRandomString())
+		defer DeleteDir(TestDataPath, indexTmpPath)
+		err := os.MkdirAll(indexTmpPath, 0755)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		indexImage := "registry.redhat.io/redhat/redhat-operator-index:v4.6"
+
+		g.By("1) check oc adm calalog mirror help")
+		output, err := oc.AsAdmin().Run("adm").Args("catalog", "mirror", "--help").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring("--index-filter-by-os"))
+		o.Expect(output).NotTo(o.ContainSubstring("--filter-by-os"))
+
+		g.By("2) run oc adm calalog mirror with --index-filter-by-os=linux/amd64")
+		defer exec.Command("rm", "-f", ".dockerconfigjson").Output()
+		_, err = oc.AsAdmin().Run("extract").Args("secret/pull-secret", "-n", "openshift-config", "--confirm").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		tmpPath1 := filepath.Join(indexTmpPath, "amd64")
+		output, err = oc.AsAdmin().Run("adm").Args("catalog", "mirror", "--index-filter-by-os=linux/amd64", indexImage,
+			"localhost:5000", "--manifests-only", "--to-manifests="+tmpPath1, "-a", ".dockerconfigjson").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring("Chose linux/amd64 manifest from the manifest list"))
+		o.Expect(output).To(o.ContainSubstring("wrote mirroring manifests to "))
+
+		g.By("3) Check the data of mapping.txt")
+		result, err := exec.Command("bash", "-c", "cat "+tmpPath1+"/mapping.txt|grep -E redhat-operator-index").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(result).To(o.ContainSubstring("localhost:5000/redhat/redhat-operator-index:v4.6"))
+
+		g.By("4) run oc adm calalog mirror with --index-filter-by-os=linux/s390x")
+		tmpPath2 := filepath.Join(indexTmpPath, "s390x")
+		output, err = oc.AsAdmin().Run("adm").Args("catalog", "mirror", "--index-filter-by-os=linux/s390x", indexImage,
+			"localhost:5000", "--manifests-only", "--to-manifests="+tmpPath2, "-a", ".dockerconfigjson").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring("Chose linux/s390x manifest from the manifest list"))
+		o.Expect(output).To(o.ContainSubstring("wrote mirroring manifests to "))
+
+		g.By("5) Check the data of mapping.txt")
+		result, err = exec.Command("bash", "-c", "cat "+tmpPath2+"/mapping.txt|grep -E redhat-operator-index").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(result).To(o.ContainSubstring("localhost:5000/redhat/redhat-operator-index:v4.6"))
+
+		g.By("6) run oc adm calalog mirror with --index-filter-by-os=linux/abc")
+		tmpPath3 := filepath.Join(indexTmpPath, "abc")
+		output, _ = oc.AsAdmin().Run("adm").Args("catalog", "mirror", "--index-filter-by-os=linux/abc", indexImage,
+			"localhost:5000", "--manifests-only", "--to-manifests="+tmpPath3, "-a", ".dockerconfigjson").Output()
+		o.Expect(output).To(o.ContainSubstring("error: the image is a manifest list and contains multiple images"))
+
+	})
 })
