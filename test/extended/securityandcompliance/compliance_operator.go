@@ -569,7 +569,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 
 		})
 		// author: xiyuan@redhat.com
-		g.It("Author:xiyuan-Medium-33611-Verify the tolerations could work for compliancescan when there is more than one taint on node [Serial]", func() {
+		g.It("Author:xiyuan-Medium-33611-Verify the tolerations could work for compliancescan when there is more than one taint on node [Exclusive]", func() {
 			var (
 				cscanD = complianceScanDescription{
 					name:         "example-compliancescan3",
@@ -956,7 +956,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		})
 
 		// author: pdhamdhe@redhat.com
-		g.It("Author:pdhamdhe-High-33609-Verify the tolerations could work for compliancesuite [Serial]", func() {
+		g.It("Author:pdhamdhe-High-33609-Verify the tolerations could work for compliancesuite [Exclusive]", func() {
 
 			var (
 				csuiteD = complianceSuiteDescription{
@@ -1075,7 +1075,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		})
 
 		// author: pdhamdhe@redhat.com
-		g.It("Author:pdhamdhe-High-33610-Verify the tolerations could work for compliancescan [Serial]", func() {
+		g.It("Author:pdhamdhe-High-33610-Verify the tolerations could work for compliancescan [Exclusive]", func() {
 
 			var (
 				cscanD = complianceScanDescription{
@@ -2362,6 +2362,140 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			newCheck("expect", asAdmin, withoutNamespace, contain, "READY", ok, []string{"tailoredprofile", tprofileD2.name, "-n", tprofileD.namespace,
 				"-o=jsonpath={.status.state}"}).check(oc)
 		})
-	})
 
+		// author: xiyuan@redhat.com
+		g.It("Author:xiyuan-Medium-33578-Verify if the profileparser enables to get content updates when add a new ProfileBundle [Slow]", func() {
+			var (
+				pb = profileBundleDescription{
+					name:         "test1",
+					namespace:    "",
+					contentimage: "quay.io/openshifttest/ocp4-openscap-content@sha256:392b0a67e4386a7450b0bb0c9353231563b7ab76056d215f10e6f5ffe0a2cbad",
+					contentfile:  "ssg-rhcos4-ds.xml",
+					template:     profilebundleTemplate,
+				}
+				pb2 = profileBundleDescription{
+					name:         "test2",
+					namespace:    "",
+					contentimage: "quay.io/openshifttest/ocp4-openscap-content@sha256:3778c668f462424552c15c6c175704b64270ea06183fd034aa264736f1ec45a9",
+					contentfile:  "ssg-rhcos4-ds.xml",
+					template:     profilebundleTemplate,
+				}
+				tprofileD = tailoredProfileDescription{
+					name:         "example-tailoredprofile",
+					namespace:    "",
+					extends:      "test1-moderate",
+					enrulename1:  "test1-account-disable-post-pw-expiration",
+					disrulename1: "test1-account-unique-name",
+					disrulename2: "test1-account-use-centralized-automated-auth",
+					varname:      "test1-var-selinux-state",
+					value:        "permissive",
+					template:     tprofileTemplate,
+				}
+				tprofileD2 = tailoredProfileDescription{
+					name:         "example-tailoredprofile2",
+					namespace:    "",
+					extends:      "test2-moderate",
+					enrulename1:  "test2-wireless-disable-in-bios",
+					disrulename1: "test2-account-unique-name",
+					disrulename2: "test2-account-use-centralized-automated-auth",
+					varname:      "test2-var-selinux-state",
+					value:        "permissive",
+					template:     tprofileTemplate,
+				}
+			)
+
+			defer cleanupObjects(oc,
+				objectTableRef{"profilebundle", subD.namespace, pb.name},
+				objectTableRef{"profilebundle", subD.namespace, pb2.name},
+				objectTableRef{"tailoredprofile", subD.namespace, tprofileD.name},
+				objectTableRef{"tailoredprofile", subD.namespace, tprofileD2.name})
+
+			g.By("create profilebundle!!!\n")
+			pb.namespace = subD.namespace
+			pb.create(oc, itName, dr)
+			newCheck("expect", asAdmin, withoutNamespace, contain, pb.name, ok, []string{"profilebundle", pb.name, "-n", pb.namespace,
+				"-o=jsonpath={.metadata.name}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "Valid", ok, []string{"profilebundle", pb.name, "-n", pb.namespace,
+				"-o=jsonpath={.status.conditions[0].reason}"}).check(oc)
+
+			g.By("check the default profilebundle !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "Valid", ok, []string{"profilebundle", "ocp4", "-n", pb.namespace,
+				"-o=jsonpath={.status.conditions[0].reason}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "Valid", ok, []string{"profilebundle", "rhcos4", "-n", pb.namespace,
+				"-o=jsonpath={.status.conditions[0].reason}"}).check(oc)
+
+			g.By("Create tailoredprofile !!!\n")
+			tprofileD.namespace = subD.namespace
+			tprofileD.create(oc, itName, dr)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "READY", ok, []string{"tailoredprofile", tprofileD.name, "-n", tprofileD.namespace,
+				"-o=jsonpath={.status.state}"}).check(oc)
+
+			g.By("Create another profilebundle with a different image !!!\n")
+			pb2.namespace = subD.namespace
+			pb2.create(oc, itName, dr)
+			newCheck("expect", asAdmin, withoutNamespace, contain, pb2.name, ok, []string{"profilebundle", pb2.name, "-n", pb2.namespace,
+				"-o=jsonpath={.metadata.name}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "Valid", ok, []string{"profilebundle", pb2.name, "-n", pb2.namespace,
+				"-o=jsonpath={.status.conditions[0].reason}"}).check(oc)
+
+			g.By("check the default profilebundle !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "Valid", ok, []string{"profilebundle", "ocp4", "-n", pb.namespace,
+				"-o=jsonpath={.status.conditions[0].reason}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "Valid", ok, []string{"profilebundle", "rhcos4", "-n", pb.namespace,
+				"-o=jsonpath={.status.conditions[0].reason}"}).check(oc)
+
+			g.By("Create tailoredprofile !!!\n")
+			tprofileD2.namespace = subD.namespace
+			tprofileD2.create(oc, itName, dr)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "READY", ok, []string{"tailoredprofile", tprofileD2.name, "-n", tprofileD.namespace,
+				"-o=jsonpath={.status.state}"}).check(oc)
+		})
+
+		// author: xiyuan@redhat.com
+		g.It("Author:xiyuan-High-33429-The Compliance Operator returns error if there is no toleration for a node taint [Exclusive] [Slow]", func() {
+
+			var (
+				csuiteD = complianceSuiteDescription{
+					name:         "example-compliancesuite",
+					namespace:    "",
+					scanname:     "rhcos-scan",
+					schedule:     "* 1 * * *",
+					profile:      "xccdf_org.ssgproject.content_profile_moderate",
+					content:      "ssg-rhcos4-ds.xml",
+					contentImage: "quay.io/complianceascode/ocp4:latest",
+					rule:         "xccdf_org.ssgproject.content_rule_no_empty_passwords",
+					nodeSelector: "wscan",
+					size:         "2Gi",
+					template:     csuiteTemplate,
+				}
+				itName = g.CurrentGinkgoTestDescription().TestText
+			)
+
+			// adding label to rhcos worker node to skip rhel worker node if any
+			g.By("Label all rhcos worker nodes as wscan.. !!!\n")
+			setLabelToNode(oc)
+
+			g.By("Get one worker node.. !!!\n")
+			nodeName := getOneRhcosWorkerNodeName(oc)
+
+			g.By("cleanup !!!\n")
+			defer cleanupObjects(oc,
+				objectTableRef{"compliancesuite", subD.namespace, csuiteD.name})
+			defer func() {
+				taintNode(oc, "taint", "node", nodeName, "key1=value1:NoSchedule-")
+			}()
+
+			g.By("Taint node and create compliancesuite.. !!!\n")
+			taintNode(oc, "taint", "node", nodeName, "key1=value1:NoSchedule")
+			csuiteD.namespace = subD.namespace
+			csuiteD.create(oc, itName, dr)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", csuiteD.name, "-n",
+				subD.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "ERROR", ok, []string{"compliancesuite", csuiteD.name, "-n",
+				subD.namespace, "-o=jsonpath={.status.result}"}).check(oc)
+
+			g.By("Check complianceScan result exit-code through configmap.. !!!\n")
+			subD.getScanExitCodeFromConfigmap(oc, "2 unschedulable")
+		})
+	})
 })
