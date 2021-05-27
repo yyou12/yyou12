@@ -244,18 +244,6 @@ func (ck checkDescription) checkWithoutAssert(oc *exutil.CLI) error {
 	}
 }
 
-func (catsrc *catalogSourceDescription) checkPackagemanifest(oc *exutil.CLI, expected string) {
-	err := wait.Poll(5*time.Second, 120*time.Second, func() (bool, error) {
-		output, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", catsrc.namespace, "packagemanifest", catsrc.name).Output()
-		e2e.Logf("the result of checkPackagemanifest:%v", output)
-		if strings.Contains(output, expected) {
-			return true, nil
-		}
-		return false, nil
-	})
-	o.Expect(err).NotTo(o.HaveOccurred())
-}
-
 func (og *operatorGroupDescription) checkOperatorgroup(oc *exutil.CLI, expected string) {
 	err := wait.Poll(5*time.Second, 60*time.Second, func() (bool, error) {
 		output, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", og.namespace, "operatorgroup", og.name).Output()

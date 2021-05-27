@@ -61,7 +61,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 			namespace:              "",
 			channel:                "4.8",
 			ipApproval:             "Automatic",
-			operatorPackage:        "file-integrity-operator",
+			operatorPackage:        "openshift-file-integrity-operator",
 			catalogSourceName:      "file-integrity-operator",
 			catalogSourceNamespace: "",
 			startingCSV:            "",
@@ -77,8 +77,8 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 			configkey:         "",
 			graceperiod:       15,
 			debug:             false,
-			nodeselectorkey:   "kubernetes.io/os",
-			nodeselectorvalue: "linux",
+			nodeselectorkey:   "node.openshift.io/os_id",
+			nodeselectorvalue: "rhcos",
 			template:          fioTemplate,
 		}
 		podModifyD = podModify{
@@ -112,7 +112,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 
 		g.By("Create catsrc")
 		catsrc.create(oc, itName, dr)
-		catsrc.checkPackagemanifest(oc, catsrc.displayName)
+		newCheck("expect", asAdmin, withoutNamespace, contain, catsrc.displayName, ok, []string{"packagemanifest", catsrc.displayName, "-n", catsrc.namespace}).check(oc)
 		g.By("Create og")
 		og.create(oc, itName, dr)
 		og.checkOperatorgroup(oc, og.name)
@@ -128,7 +128,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 
 		var pod = podModifyD
 		pod.namespace = oc.Namespace()
-		nodeName := getOneWorkerNodeName(oc)
+		nodeName := getOneRhcosWorkerNodeName(oc)
 		pod.name = "pod-modify"
 		pod.nodeName = nodeName
 		pod.args = "mkdir -p /hostroot/root/test"
@@ -158,7 +158,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 
 		g.By("Create catsrc")
 		catsrc.create(oc, itName, dr)
-		catsrc.checkPackagemanifest(oc, catsrc.displayName)
+		newCheck("expect", asAdmin, withoutNamespace, contain, catsrc.displayName, ok, []string{"packagemanifest", catsrc.displayName, "-n", catsrc.namespace}).check(oc)
 		g.By("Create og")
 		og.create(oc, itName, dr)
 		og.checkOperatorgroup(oc, og.name)
@@ -199,7 +199,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 
 		g.By("Create catsrc")
 		catsrc.create(oc, itName, dr)
-		catsrc.checkPackagemanifest(oc, catsrc.displayName)
+		newCheck("expect", asAdmin, withoutNamespace, contain, catsrc.displayName, ok, []string{"packagemanifest", catsrc.displayName, "-n", catsrc.namespace}).check(oc)
 		g.By("Create og")
 		og.create(oc, itName, dr)
 		og.checkOperatorgroup(oc, og.name)
@@ -240,7 +240,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 
 		g.By("Create catsrc")
 		catsrc.create(oc, itName, dr)
-		catsrc.checkPackagemanifest(oc, catsrc.displayName)
+		newCheck("expect", asAdmin, withoutNamespace, contain, catsrc.displayName, ok, []string{"packagemanifest", catsrc.displayName, "-n", catsrc.namespace}).check(oc)
 		g.By("Create og")
 		og.create(oc, itName, dr)
 		og.checkOperatorgroup(oc, og.name)
@@ -295,7 +295,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 
 		g.By("Create catsrc")
 		catsrc.create(oc, itName, dr)
-		catsrc.checkPackagemanifest(oc, catsrc.displayName)
+		newCheck("expect", asAdmin, withoutNamespace, contain, catsrc.displayName, ok, []string{"packagemanifest", catsrc.displayName, "-n", catsrc.namespace}).check(oc)
 		g.By("Create og")
 		og.create(oc, itName, dr)
 		og.checkOperatorgroup(oc, og.name)
@@ -308,7 +308,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 		g.By("Create fileintegrity")
 		fi1.createFIOWithoutConfig(oc, itName, dr)
 		fi1.checkFileintegrityStatus(oc, "running")
-		nodeName := getOneWorkerNodeName(oc)
+		nodeName := getOneRhcosWorkerNodeName(oc)
 		fi1.reinitFileintegrity(oc, "annotated")
 		fi1.checkFileintegrityStatus(oc, "running")
 		newCheck("expect", asAdmin, withoutNamespace, compare, "Active", ok, []string{"fileintegrity", fi1.name, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
@@ -341,7 +341,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 
 		g.By("Create catsrc")
 		catsrc.create(oc, itName, dr)
-		catsrc.checkPackagemanifest(oc, catsrc.displayName)
+		newCheck("expect", asAdmin, withoutNamespace, contain, catsrc.displayName, ok, []string{"packagemanifest", catsrc.displayName, "-n", catsrc.namespace}).check(oc)
 		g.By("Create og")
 		og.create(oc, itName, dr)
 		og.checkOperatorgroup(oc, og.name)
@@ -380,7 +380,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 
 		g.By("Create catsrc")
 		catsrc.create(oc, itName, dr)
-		catsrc.checkPackagemanifest(oc, catsrc.displayName)
+		newCheck("expect", asAdmin, withoutNamespace, contain, catsrc.displayName, ok, []string{"packagemanifest", catsrc.displayName, "-n", catsrc.namespace}).check(oc)
 		g.By("Create og")
 		og.create(oc, itName, dr)
 		og.checkOperatorgroup(oc, og.name)
@@ -395,7 +395,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 		fi1.checkFileintegrityStatus(oc, "running")
 		var pod = podModifyD
 		pod.namespace = oc.Namespace()
-		nodeName := getOneWorkerNodeName(oc)
+		nodeName := getOneRhcosWorkerNodeName(oc)
 		pod.name = "pod-modify"
 		pod.nodeName = nodeName
 		pod.args = "mkdir -p /hostroot/root/test"
@@ -437,7 +437,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 
 		g.By("Create catsrc")
 		catsrc.create(oc, itName, dr)
-		catsrc.checkPackagemanifest(oc, catsrc.displayName)
+		newCheck("expect", asAdmin, withoutNamespace, contain, catsrc.displayName, ok, []string{"packagemanifest", catsrc.displayName, "-n", catsrc.namespace}).check(oc)
 		g.By("Create og")
 		og.create(oc, itName, dr)
 		og.checkOperatorgroup(oc, og.name)
@@ -456,7 +456,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 		fi1.checkFileintegrityStatus(oc, "running")
 
 		g.By("Check Data Details in CM and Fileintegritynodestatus Equal or not")
-		nodeName := getOneWorkerNodeName(oc)
+		nodeName := getOneRhcosWorkerNodeName(oc)
 		fi1.checkFileintegritynodestatus(oc, nodeName, "Failed")
 		cmName := fi1.getConfigmapFromFileintegritynodestatus(oc, nodeName)
 		intFileAddedCM, intFileChangedCM, intFileRemovedCM := fi1.getDetailedDataFromConfigmap(oc, cmName)
@@ -465,7 +465,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 	})
 
 	//author: xiyuan@redhat.com
-	g.It("Author:xiyuan-High-33226-enable configuring tolerations in FileIntegrities [Serial]", func() {
+	g.It("Author:xiyuan-High-33226-enable configuring tolerations in FileIntegrities [Exclusive]", func() {
 		var itName = g.CurrentGinkgoTestDescription().TestText
 		oc.SetupProject()
 		catsrc.namespace = oc.Namespace()
@@ -480,7 +480,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 
 		g.By("Create catsrc")
 		catsrc.create(oc, itName, dr)
-		catsrc.checkPackagemanifest(oc, catsrc.displayName)
+		newCheck("expect", asAdmin, withoutNamespace, contain, catsrc.displayName, ok, []string{"packagemanifest", catsrc.displayName, "-n", catsrc.namespace}).check(oc)
 		g.By("Create og")
 		og.create(oc, itName, dr)
 		og.checkOperatorgroup(oc, og.name)
@@ -491,7 +491,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 		sub.checkPodFioStatus(oc, "running")
 
 		g.By("Create taint")
-		nodeName := getOneWorkerNodeName(oc)
+		nodeName := getOneRhcosWorkerNodeName(oc)
 		defer func() {
 			output, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("node", nodeName, "-o=jsonpath={.spec.taints}").Output()
 			if strings.Contains(output, "value1") {
@@ -507,13 +507,13 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 		fi1.checkConfigmapCreated(oc)
 		fi1.createFIOWithConfig(oc, itName, dr)
 		fi1.checkFileintegrityStatus(oc, "running")
-		fi1.checkPodNumerLessThanNodeNumber(oc, "node-role.kubernetes.io/worker")
+		fi1.checkPodNumerLessThanNodeNumber(oc, "kubernetes.io/os=linux,node-role.kubernetes.io/worker=")
 
 		g.By("patch the tolerations and compare again")
 		patch := fmt.Sprintf("{\"spec\":{\"tolerations\":[{\"effect\":\"NoSchedule\",\"key\":\"key1\",\"operator\":\"Equal\",\"value\":\"value1\"}]}}")
 		patchResource(oc, asAdmin, withoutNamespace, "fileintegrity", fi1.name, "-n", fi1.namespace, "--type", "merge", "-p", patch)
 		fi1.checkFileintegrityStatus(oc, "running")
-		fi1.checkPodNumerEqualNodeNumber(oc, "node-role.kubernetes.io/worker=")
+		fi1.checkPodNumerEqualNodeNumber(oc, "kubernetes.io/os=linux,node-role.kubernetes.io/worker=")
 
 		taintNode(oc, "taint", "node", nodeName, "key1=value1:NoSchedule-")
 		defer taintNode(oc, "taint", "node", nodeName, "key1=:NoSchedule-")
@@ -523,17 +523,17 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 		fi1.removeFileintegrity(oc, "deleted")
 		fi1.createFIOWithConfig(oc, itName, dr)
 		fi1.checkFileintegrityStatus(oc, "running")
-		fi1.checkPodNumerLessThanNodeNumber(oc, "node-role.kubernetes.io/worker")
+		fi1.checkPodNumerLessThanNodeNumber(oc, "kubernetes.io/os=linux,node-role.kubernetes.io/worker=")
 
 		g.By("patch the tolerations and compare again")
 		patch = fmt.Sprintf("{\"spec\":{\"tolerations\":[{\"effect\":\"NoSchedule\",\"key\":\"key1\",\"operator\":\"Exists\"}]}}")
 		patchResource(oc, asAdmin, withoutNamespace, "fileintegrity", fi1.name, "-n", fi1.namespace, "--type", "merge", "-p", patch)
 		fi1.checkFileintegrityStatus(oc, "running")
-		fi1.checkPodNumerEqualNodeNumber(oc, "node-role.kubernetes.io/worker=")
+		fi1.checkPodNumerEqualNodeNumber(oc, "kubernetes.io/os=linux,node-role.kubernetes.io/worker=")
 	})
 
 	//author: xiyuan@redhat.com
-	g.It("Author:xiyuan-Medium-33254-enable configuring tolerations in FileIntegrities when there is more than one taint on one node [Serial]", func() {
+	g.It("Author:xiyuan-Medium-33254-enable configuring tolerations in FileIntegrities when there is more than one taint on one node [Exclusive]", func() {
 		var itName = g.CurrentGinkgoTestDescription().TestText
 		oc.SetupProject()
 		catsrc.namespace = oc.Namespace()
@@ -548,7 +548,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 
 		g.By("Create catsrc")
 		catsrc.create(oc, itName, dr)
-		catsrc.checkPackagemanifest(oc, catsrc.displayName)
+		newCheck("expect", asAdmin, withoutNamespace, contain, catsrc.displayName, ok, []string{"packagemanifest", catsrc.displayName, "-n", catsrc.namespace}).check(oc)
 		g.By("Create og")
 		og.create(oc, itName, dr)
 		og.checkOperatorgroup(oc, og.name)
@@ -559,7 +559,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 		sub.checkPodFioStatus(oc, "running")
 
 		g.By("Create taint")
-		nodeName := getOneWorkerNodeName(oc)
+		nodeName := getOneRhcosWorkerNodeName(oc)
 		defer taintNode(oc, "taint", "node", nodeName, "key1=value1:NoSchedule-", "key2=value2:NoExecute-")
 		taintNode(oc, "taint", "node", nodeName, "key1=value1:NoSchedule", "key2=value2:NoExecute")
 
@@ -570,13 +570,13 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 		fi1.checkConfigmapCreated(oc)
 		fi1.createFIOWithConfig(oc, itName, dr)
 		fi1.checkFileintegrityStatus(oc, "running")
-		fi1.checkPodNumerLessThanNodeNumber(oc, "node-role.kubernetes.io/worker=")
+		fi1.checkPodNumerLessThanNodeNumber(oc, "kubernetes.io/os=linux,node-role.kubernetes.io/worker=")
 
 		g.By("patch the tolerations and compare again")
 		patch := fmt.Sprintf("{\"spec\":{\"tolerations\":[{\"effect\":\"NoSchedule\",\"key\":\"key1\",\"operator\":\"Equal\",\"value\":\"value1\"},{\"effect\":\"NoExecute\",\"key\":\"key2\",\"operator\":\"Equal\",\"value\":\"value2\"}]}}")
 		patchResource(oc, asAdmin, withoutNamespace, "fileintegrity", fi1.name, "-n", fi1.namespace, "--type", "merge", "-p", patch)
 		fi1.checkFileintegrityStatus(oc, "running")
-		fi1.checkPodNumerEqualNodeNumber(oc, "node-role.kubernetes.io/worker=")
+		fi1.checkPodNumerEqualNodeNumber(oc, "kubernetes.io/os=linux,node-role.kubernetes.io/worker=")
 	})
 
 	//author: xiyuan@redhat.com
@@ -593,7 +593,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 
 		g.By("Create catsrc")
 		catsrc.create(oc, itName, dr)
-		catsrc.checkPackagemanifest(oc, catsrc.displayName)
+		newCheck("expect", asAdmin, withoutNamespace, contain, catsrc.displayName, ok, []string{"packagemanifest", catsrc.displayName, "-n", catsrc.namespace}).check(oc)
 		g.By("Create og")
 		og.create(oc, itName, dr)
 		og.checkOperatorgroup(oc, og.name)
@@ -630,7 +630,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 	})
 
 	//author: xiyuan@redhat.com
-	g.It("Author:xiyuan-Medium-31862-check whether aide config change from non-empty to empty will trigger a re-initialization of the aide database or not", func() {
+	g.It("Author:xiyuan-Medium-31862-check whether aide config change from non-empty to empty will trigger a re-initialization of the aide database or not [Serial]", func() {
 		var itName = g.CurrentGinkgoTestDescription().TestText
 		oc.SetupProject()
 		catsrc.namespace = oc.Namespace()
@@ -643,7 +643,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 
 		g.By("Create catsrc")
 		catsrc.create(oc, itName, dr)
-		catsrc.checkPackagemanifest(oc, catsrc.displayName)
+		newCheck("expect", asAdmin, withoutNamespace, contain, catsrc.displayName, ok, []string{"packagemanifest", catsrc.displayName, "-n", catsrc.namespace}).check(oc)
 		g.By("Create og")
 		og.create(oc, itName, dr)
 		og.checkOperatorgroup(oc, og.name)
@@ -660,7 +660,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 		fi1.checkConfigmapCreated(oc)
 		fi1.createFIOWithConfig(oc, itName, dr)
 		fi1.checkFileintegrityStatus(oc, "running")
-		nodeName := getOneWorkerNodeName(oc)
+		nodeName := getOneRhcosWorkerNodeName(oc)
 		fi1.checkFileintegritynodestatus(oc, nodeName, "Failed")
 
 		g.By("trigger reinit by changing aide config to empty")
@@ -683,7 +683,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 
 		g.By("Create catsrc")
 		catsrc.create(oc, itName, dr)
-		catsrc.checkPackagemanifest(oc, catsrc.displayName)
+		newCheck("expect", asAdmin, withoutNamespace, contain, catsrc.displayName, ok, []string{"packagemanifest", catsrc.displayName, "-n", catsrc.namespace}).check(oc)
 		g.By("Create og")
 		og.create(oc, itName, dr)
 		og.checkOperatorgroup(oc, og.name)
@@ -698,7 +698,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 		fi1.checkFileintegrityStatus(oc, "running")
 		fi1.reinitFileintegrity(oc, "annotated")
 		fi1.checkFileintegrityStatus(oc, "running")
-		nodeName := getOneWorkerNodeName(oc)
+		nodeName := getOneRhcosWorkerNodeName(oc)
 		fi1.checkFileintegritynodestatus(oc, nodeName, "Succeeded")
 
 		g.By("trigger reinit by applying aide config")
