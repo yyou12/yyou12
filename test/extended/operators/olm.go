@@ -613,7 +613,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		g.By("4) Patch the deploy object by adding an environment variable")
-		_, err = oc.AsAdmin().WithoutNamespace().Run("patch").Args("deploy/etcd-operator", "--type=json", "--patch", "[{\"op\": \"add\",\"path\": \"/spec/template/spec/containers/0/env/-\", \"value\": { \"name\": \"a\",\"value\": \"b\"} }]", "-n", oc.Namespace()).Output()
+		_, err = oc.AsAdmin().WithoutNamespace().Run("set").Args("env", "deploy/etcd-operator", "A=B", "-n", oc.Namespace()).Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		g.By("5) Get restarted pod name")
