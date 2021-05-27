@@ -18,10 +18,6 @@ cd /etc/pki/ca-trust/source/anchors
 sudo curl -O --insecure https://password.corp.redhat.com/RH-IT-Root-CA.crt
 sudo curl -O --insecure https://password.corp.redhat.com/legacy.crt
 sudo curl -O --insecure https://engineering.redhat.com/Eng-CA.crt
-sudo curl -O --insecure https://vcenter.sddc-44-236-21-251.vmwarevmc.com/certs/download.zip
-sudo unzip -o download.zip 'certs/lin/*'
-sudo mv -f ./certs/lin/* ./ && \
-sudo rm -rf download.zip ./certs
 sudo update-ca-trust extract
 cd $WORKDIR
 
