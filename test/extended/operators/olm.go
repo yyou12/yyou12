@@ -6390,13 +6390,14 @@ var _ = g.Describe("[sig-operators] OLM on VM for an end user handle within a na
 		o.Expect(output).NotTo(o.ContainSubstring("--filter-by-os"))
 
 		g.By("2) run oc adm calalog mirror with --index-filter-by-os=linux/amd64")
-		defer exec.Command("rm", "-f", ".dockerconfigjson").Output()
-		_, err = oc.AsAdmin().Run("extract").Args("secret/pull-secret", "-n", "openshift-config", "--confirm").Output()
+		dockerconfigjsonpath := filepath.Join(indexTmpPath, ".dockerconfigjson")
+		defer exec.Command("rm", "-f", dockerconfigjsonpath).Output()
+		_, err = oc.AsAdmin().Run("extract").Args("secret/pull-secret", "-n", "openshift-config", "--confirm", "--to="+indexTmpPath).Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		tmpPath1 := filepath.Join(indexTmpPath, "amd64")
 		output, err = oc.AsAdmin().Run("adm").Args("catalog", "mirror", "--index-filter-by-os=linux/amd64", indexImage,
-			"localhost:5000", "--manifests-only", "--to-manifests="+tmpPath1, "-a", ".dockerconfigjson").Output()
+			"localhost:5000", "--manifests-only", "--to-manifests="+tmpPath1, "-a", dockerconfigjsonpath).Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(output).To(o.ContainSubstring("Chose linux/amd64 manifest from the manifest list"))
 		o.Expect(output).To(o.ContainSubstring("wrote mirroring manifests to "))
@@ -6409,7 +6410,7 @@ var _ = g.Describe("[sig-operators] OLM on VM for an end user handle within a na
 		g.By("4) run oc adm calalog mirror with --index-filter-by-os=linux/s390x")
 		tmpPath2 := filepath.Join(indexTmpPath, "s390x")
 		output, err = oc.AsAdmin().Run("adm").Args("catalog", "mirror", "--index-filter-by-os=linux/s390x", indexImage,
-			"localhost:5000", "--manifests-only", "--to-manifests="+tmpPath2, "-a", ".dockerconfigjson").Output()
+			"localhost:5000", "--manifests-only", "--to-manifests="+tmpPath2, "-a", dockerconfigjsonpath).Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(output).To(o.ContainSubstring("Chose linux/s390x manifest from the manifest list"))
 		o.Expect(output).To(o.ContainSubstring("wrote mirroring manifests to "))
@@ -6422,7 +6423,7 @@ var _ = g.Describe("[sig-operators] OLM on VM for an end user handle within a na
 		g.By("6) run oc adm calalog mirror with --index-filter-by-os=linux/abc")
 		tmpPath3 := filepath.Join(indexTmpPath, "abc")
 		output, _ = oc.AsAdmin().Run("adm").Args("catalog", "mirror", "--index-filter-by-os=linux/abc", indexImage,
-			"localhost:5000", "--manifests-only", "--to-manifests="+tmpPath3, "-a", ".dockerconfigjson").Output()
+			"localhost:5000", "--manifests-only", "--to-manifests="+tmpPath3, "-a", dockerconfigjsonpath).Output()
 		o.Expect(output).To(o.ContainSubstring("error: the image is a manifest list and contains multiple images"))
 
 	})
