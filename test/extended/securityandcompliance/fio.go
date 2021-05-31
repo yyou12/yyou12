@@ -323,7 +323,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 		fi1.checkFileintegrityStatus(oc, "running")
 		newCheck("expect", asAdmin, withoutNamespace, compare, "Error", ok, []string{"fileintegrity", fi1.name, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
 		var podName = fi1.getOneFioPodName(oc)
-		fi1.checkKeywordExistInLog(oc, podName, "exit status 17")
+		fi1.checkKeywordExistInLog(oc, podName, "aide check returned status 17")
 		fi1.checkFileintegritynodestatus(oc, nodeName, "Errored")
 	})
 
