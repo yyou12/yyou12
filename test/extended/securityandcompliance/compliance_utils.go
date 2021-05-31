@@ -474,12 +474,12 @@ func getStorageClassProvisioner(oc *exutil.CLI) string {
 		return scpro
 	} else {
 		scs, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("storageclass").OutputToFile(getRandomString() + "isc-config.json")
-                e2e.Logf("the result of scs:%v", scs)
-                result, err := exec.Command("bash", "-c", "cat "+scs+" | grep \"default\" | awk '{print $3}'; rm -rf "+scs).Output()
-                o.Expect(err).NotTo(o.HaveOccurred())
-                res := strings.TrimSpace(string(result))
-                e2e.Logf("the result of StorageClassProvisioner:%v", res)
-                return res
+		e2e.Logf("the result of scs:%v", scs)
+		result, err := exec.Command("bash", "-c", "cat "+scs+" | grep \"default\" | awk '{print $3}'; rm -rf "+scs).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		res := strings.TrimSpace(string(result))
+		e2e.Logf("the result of StorageClassProvisioner:%v", res)
+		return res
 	}
 }
 
@@ -502,7 +502,7 @@ func getStorageClassVolumeBindingMode(oc *exutil.CLI) string {
 
 func getResourceNameWithKeyword(oc *exutil.CLI, rs string, keyword string) string {
 	var resourceName string
-	rsList := getResource(oc, asAdmin, withoutNamespace, rs, "-o=jsonpath={.items[*].metadata.name}")
+	rsList := getResource(oc, asAdmin, withoutNamespace, rs, "-o=jsonpath={.items[*].metadata.name}", "-n", oc.Namespace())
 	rsl := strings.Fields(rsList)
 	for _, v := range rsl {
 		resourceName = fmt.Sprintf("%s", v)
