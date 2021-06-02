@@ -12994,7 +12994,7 @@ objects:
       kind: "${PROFILEKIND1}"
       apiGroup: compliance.openshift.io/v1alpha1
     # Cluster checks
-    - name: ocp4-moderate
+    - name: "${PROFILENAME2}"
       kind: Profile
       apiGroup: compliance.openshift.io/v1alpha1
   settingsRef:

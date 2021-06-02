@@ -559,3 +559,34 @@ func checkKeyWordsForRspod(oc *exutil.CLI, podname string, keyword [3]string) {
 		e2e.Failf("The keyword not exist!")
 	}
 }
+
+func checkResourceNumber(oc *exutil.CLI, exceptedRsNo int, parameters ...string) {
+	rs, err := oc.AsAdmin().WithoutNamespace().Run("get").Args(parameters...).OutputToFile(getRandomString() + "isc-rs.json")
+	o.Expect(err).NotTo(o.HaveOccurred())
+	e2e.Logf("the result of rs:%v", rs)
+	result, err := exec.Command("bash", "-c", "cat "+rs+" | wc -l").Output()
+	r1 := strings.TrimSpace(string(result))
+	rsNumber, _ := strconv.Atoi(r1)
+	if rsNumber < exceptedRsNo {
+		e2e.Failf("The rsNumber %v not equals the exceptedRsNo %v!", rsNumber, exceptedRsNo)
+	}
+}
+
+func checkWarnings(oc *exutil.CLI, expectedString string, parameters ...string) {
+	rs, err := oc.AsAdmin().WithoutNamespace().Run("get").Args(parameters...).OutputToFile(getRandomString() + "isc-rs.json")
+	o.Expect(err).NotTo(o.HaveOccurred())
+	e2e.Logf("the result of rs:%v", rs)
+	result, err := exec.Command("bash", "-c", "cat "+rs+" | awk '{print $1}'").Output()
+	checkresults := strings.Fields(string(result))
+	for _, checkresult := range checkresults {
+		e2e.Logf("the result of checkresult:%v", checkresult)
+		instructions, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("compliancecheckresult", checkresult, "-n", oc.Namespace(),
+			"-o=jsonpath={.warnings}").Output()
+		e2e.Logf("the result of instructions:%v", instructions)
+		if !strings.Contains(instructions, expectedString) {
+			e2e.Failf("The instructions %v don't contain expectedString %v!", instructions, expectedString)
+			break
+		}
+		o.Expect(err).NotTo(o.HaveOccurred())
+	}
+}

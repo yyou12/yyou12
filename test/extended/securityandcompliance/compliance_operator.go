@@ -2497,5 +2497,44 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			g.By("Check complianceScan result exit-code through configmap.. !!!\n")
 			subD.getScanExitCodeFromConfigmap(oc, "2 unschedulable")
 		})
+
+		// author: xiyuan@redhat.com
+		g.It("Author:xiyuan-Medium-40226-NOT APPLICABLE rule should report NOT APPLICABLE status in 'ComplianceCheckResult' instead of SKIP [Slow]", func() {
+			var (
+				ssb = scanSettingBindingDescription{
+					name:            "cis-test",
+					namespace:       "",
+					profilekind1:    "Profile",
+					profilename1:    "ocp4-cis",
+					profilename2:    "ocp4-cis-node",
+					scansettingname: "default",
+					template:        scansettingbindingTemplate,
+				}
+				itName = g.CurrentGinkgoTestDescription().TestText
+			)
+
+			g.By("Create scansettingbinding !!!\n")
+			ssb.namespace = subD.namespace
+			defer cleanupObjects(oc, objectTableRef{"scansettingbinding", subD.namespace, ssb.name})
+			ssb.create(oc, itName, dr)
+			newCheck("expect", asAdmin, withoutNamespace, contain, ssb.name, ok, []string{"scansettingbinding", "-n", ssb.namespace,
+				"-o=jsonpath={.items[0].metadata.name}"}).check(oc)
+
+			g.By("Check ComplianceSuite status !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", ssb.name, "-n", ssb.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+			subD.scanPodStatus(oc, "Succeeded")
+			subD.complianceSuiteResult(oc, ssb.name, "NON-COMPLIANT INCONSISTENT")
+
+			g.By("Check ComplianceSuite status !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "NOT-APPLICABLE", ok, []string{"compliancecheckresult", "ocp4-cis-node-worker-etcd-unique-ca", "-n", ssb.namespace,
+				"-o=jsonpath={.status}"}).check(oc)
+
+			g.By("Check the number of compliancecheckresult in NOT-APPLICABLE !!!\n")
+			checkResourceNumber(oc, 37, "compliancecheckresult", "-l", "compliance.openshift.io/check-status=NOT-APPLICABLE", "--no-headers", "-n", subD.namespace)
+
+			g.By("Check the warnings of NOT-APPLICABLE rules !!!\n")
+			checkWarnings(oc, "rule is only applicable", "compliancecheckresult", "-l", "compliance.openshift.io/check-status=NOT-APPLICABLE", "--no-headers", "-n", subD.namespace)
+
+		})
 	})
 })
