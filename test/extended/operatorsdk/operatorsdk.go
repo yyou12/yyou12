@@ -184,28 +184,28 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
     // author: jfan@redhat.com
     g.It("ConnectedOnly-Author:jfan-High-28157-SDK ansible blacklist supported in watches.yaml", func() {
         buildPruningBaseDir := exutil.FixturePath("testdata", "operatorsdk")
-        var memcached = filepath.Join(buildPruningBaseDir, "cache_v1_memcached.yaml")
+        var blacklist = filepath.Join(buildPruningBaseDir, "cache1_v1_blacklist.yaml")
         operatorsdkCLI.showInfo = true
         oc.SetupProject()
         namespace := oc.Namespace()
-        _, err := operatorsdkCLI.Run("run").Args("bundle", "quay.io/olmqe/memcached-bundle:v4.8", "-n", namespace, "--timeout", "5m").Output()
+        _, err := operatorsdkCLI.Run("run").Args("bundle", "quay.io/olmqe/blacklist-bundle:v4.8", "-n", namespace, "--timeout", "5m").Output()
         o.Expect(err).NotTo(o.HaveOccurred())
-        createMemcached, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", memcached, "-p", "NAME=memcached-sample").OutputToFile("config-28157.json")
+        createBlacklist, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", blacklist, "-p", "NAME=blacklist-sample").OutputToFile("config-28157.json")
         o.Expect(err).NotTo(o.HaveOccurred())
-        err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", createMemcached, "-n", namespace).Execute()
+        err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", createBlacklist, "-n", namespace).Execute()
         o.Expect(err).NotTo(o.HaveOccurred())
         waitErr := wait.Poll(15*time.Second, 360*time.Second, func() (bool, error) {
             msg, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-n", namespace, "--no-headers").Output()
-            if strings.Contains(msg, "memcached-sample") {
-                e2e.Logf("found pod memcached-sample")
+            if strings.Contains(msg, "blacklist-sample") {
+                e2e.Logf("found pod blacklist-sample")
                 return true, nil
             }
             return false, nil
         })
         o.Expect(waitErr).NotTo(o.HaveOccurred())
-        msg, err := oc.AsAdmin().WithoutNamespace().Run("logs").Args("deploy/memcached-operator-controller-manager", "-c", "manager", "-n", namespace).Output()
+        msg, err := oc.AsAdmin().WithoutNamespace().Run("logs").Args("deploy/blacklist-controller-manager", "-c", "manager", "-n", namespace).Output()
         o.Expect(err).NotTo(o.HaveOccurred())
-        o.Expect(msg).To(o.ContainSubstring("Skipping cache lookup"))
+        o.Expect(msg).To(o.ContainSubstring("Skipping"))
     })
 
     // author: jfan@redhat.com

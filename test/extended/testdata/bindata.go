@@ -76,6 +76,7 @@
 // test/extended/testdata/operators/storageosupgrade-cr.yaml
 // test/extended/testdata/operators/strimzi-cr.yaml
 // test/extended/testdata/operators/subscription.yaml
+// test/extended/testdata/operatorsdk/cache1_v1_blacklist.yaml
 // test/extended/testdata/operatorsdk/cache_v1_collectiontest.yaml
 // test/extended/testdata/operatorsdk/cache_v1_memcached.yaml
 // test/extended/testdata/operatorsdk/demo_v1_nginx.yaml
@@ -9203,6 +9204,36 @@ func testExtendedTestdataOperatorsSubscriptionYaml() (*asset, error) {
 	return a, nil
 }
 
+var _testExtendedTestdataOperatorsdkCache1_v1_blacklistYaml = []byte(`apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: blacklist-template
+objects:
+- apiVersion: cache1.blacklist.com/v1
+  kind: Blacklist
+  metadata:
+    name: "${NAME}"
+  spec:
+    size: 1
+parameters:
+- name: NAME
+`)
+
+func testExtendedTestdataOperatorsdkCache1_v1_blacklistYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataOperatorsdkCache1_v1_blacklistYaml, nil
+}
+
+func testExtendedTestdataOperatorsdkCache1_v1_blacklistYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataOperatorsdkCache1_v1_blacklistYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/operatorsdk/cache1_v1_blacklist.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
 var _testExtendedTestdataOperatorsdkCache_v1_collectiontestYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
@@ -14321,6 +14352,7 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/operators/storageosupgrade-cr.yaml":                                                testExtendedTestdataOperatorsStorageosupgradeCrYaml,
 	"test/extended/testdata/operators/strimzi-cr.yaml":                                                         testExtendedTestdataOperatorsStrimziCrYaml,
 	"test/extended/testdata/operators/subscription.yaml":                                                       testExtendedTestdataOperatorsSubscriptionYaml,
+	"test/extended/testdata/operatorsdk/cache1_v1_blacklist.yaml":                                              testExtendedTestdataOperatorsdkCache1_v1_blacklistYaml,
 	"test/extended/testdata/operatorsdk/cache_v1_collectiontest.yaml":                                          testExtendedTestdataOperatorsdkCache_v1_collectiontestYaml,
 	"test/extended/testdata/operatorsdk/cache_v1_memcached.yaml":                                               testExtendedTestdataOperatorsdkCache_v1_memcachedYaml,
 	"test/extended/testdata/operatorsdk/demo_v1_nginx.yaml":                                                    testExtendedTestdataOperatorsdkDemo_v1_nginxYaml,
@@ -14518,6 +14550,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 					"subscription.yaml":                           {testExtendedTestdataOperatorsSubscriptionYaml, map[string]*bintree{}},
 				}},
 				"operatorsdk": {nil, map[string]*bintree{
+					"cache1_v1_blacklist.yaml":     {testExtendedTestdataOperatorsdkCache1_v1_blacklistYaml, map[string]*bintree{}},
 					"cache_v1_collectiontest.yaml": {testExtendedTestdataOperatorsdkCache_v1_collectiontestYaml, map[string]*bintree{}},
 					"cache_v1_memcached.yaml":      {testExtendedTestdataOperatorsdkCache_v1_memcachedYaml, map[string]*bintree{}},
 					"demo_v1_nginx.yaml":           {testExtendedTestdataOperatorsdkDemo_v1_nginxYaml, map[string]*bintree{}},
