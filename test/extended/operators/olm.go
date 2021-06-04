@@ -2018,6 +2018,20 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	})
 
 	// author: scolange@redhat.com
+	g.It("Author:scolange-Medium-42041-Available=False despite unavailableReplicas <= maxUnavailable", func() {
+		maxUnavailable, err1 := oc.AsAdmin().WithoutNamespace().Run("get").Args("deployment", "packageserver", "-n", "openshift-operator-lifecycle-manager", "-o=jsonpath={.spec.strategy.rollingUpdate.maxUnavailable}").Output()
+		e2e.Logf(maxUnavailable)
+		o.Expect(err1).NotTo(o.HaveOccurred())
+		o.Expect(maxUnavailable).To(o.Equal("1"))
+
+		maxSurge, err1 := oc.AsAdmin().WithoutNamespace().Run("get").Args("deployment", "packageserver", "-n", "openshift-operator-lifecycle-manager", "-o=jsonpath={.spec.strategy.rollingUpdate.maxSurge}").Output()
+		e2e.Logf(maxSurge)
+		o.Expect(err1).NotTo(o.HaveOccurred())
+		o.Expect(maxSurge).To(o.Equal("1"))
+	})
+
+
+	// author: scolange@redhat.com
 	g.It("Author:scolange-Medium-23673-Installplan can be created while Install and uninstall operators via Marketplace for 5 times [Slow]", func() {
 		oc.SetupProject()
 		g.By("1) Install the OperatorGroup in a random project")
