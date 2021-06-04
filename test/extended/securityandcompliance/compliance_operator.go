@@ -2536,5 +2536,81 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			checkWarnings(oc, "rule is only applicable", "compliancecheckresult", "-l", "compliance.openshift.io/check-status=NOT-APPLICABLE", "--no-headers", "-n", subD.namespace)
 
 		})
+
+		// author: pdhamdhe@redhat.com
+		g.It("Author:pdhamdhe-High-41861-Verify fips mode checking rules are working as expected [Slow]", func() {
+
+			var (
+				csuiteD = complianceSuiteDescription{
+					name:         "worker-compliancesuite",
+					namespace:    "",
+					scanname:     "worker-scan",
+					profile:      "xccdf_org.ssgproject.content_profile_moderate",
+					content:      "ssg-rhcos4-ds.xml",
+					contentImage: "quay.io/complianceascode/ocp4:latest",
+					rule:         "xccdf_org.ssgproject.content_rule_enable_fips_mode",
+					nodeSelector: "wscan",
+					template:     csuiteTemplate,
+				}
+
+				csuiteMD = complianceSuiteDescription{
+					name:         "master-compliancesuite",
+					namespace:    "",
+					scanname:     "master-scan",
+					profile:      "xccdf_org.ssgproject.content_profile_moderate",
+					content:      "ssg-rhcos4-ds.xml",
+					contentImage: "quay.io/complianceascode/ocp4:latest",
+					rule:         "xccdf_org.ssgproject.content_rule_enable_fips_mode",
+					nodeSelector: "master",
+					template:     csuiteTemplate,
+				}
+				itName = g.CurrentGinkgoTestDescription().TestText
+			)
+
+			defer cleanupObjects(oc,
+				objectTableRef{"compliancesuite", subD.namespace, csuiteMD.name},
+				objectTableRef{"compliancesuite", subD.namespace, csuiteD.name})
+
+			// adding label to rhcos worker node to skip rhel worker node if any
+			g.By("Label all rhcos worker nodes as wscan.. !!!\n")
+			setLabelToNode(oc)
+
+			g.By("Create compliancesuite objects !!!\n")
+			csuiteD.namespace = subD.namespace
+			csuiteD.create(oc, itName, dr)
+			csuiteMD.namespace = subD.namespace
+			csuiteMD.create(oc, itName, dr)
+			newCheck("expect", asAdmin, withoutNamespace, contain, csuiteD.name, ok, []string{"compliancesuite", "-n", csuiteD.namespace,
+				"-o=jsonpath={.items[*].metadata.name}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, csuiteMD.name, ok, []string{"compliancesuite", "-n", csuiteMD.namespace,
+				"-o=jsonpath={.items[*].metadata.name}"}).check(oc)
+
+			g.By("Check ComplianceSuite status !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", csuiteD.name, "-n", csuiteD.namespace,
+				"-o=jsonpath={.status.phase}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", csuiteMD.name, "-n", csuiteMD.namespace,
+				"-o=jsonpath={.status.phase}"}).check(oc)
+
+			g.By("Check worker and master scan pods status.. !!! \n")
+			subD.scanPodStatus(oc, "Succeeded")
+
+			fips_out := checkFipsStatus(oc)
+			if strings.Contains(fips_out, "FIPS mode is enabled.") {
+				g.By("Check complianceSuite result.. !!!\n")
+				subD.complianceSuiteResult(oc, csuiteD.name, "COMPLIANT")
+				subD.complianceSuiteResult(oc, csuiteMD.name, "COMPLIANT")
+				newCheck("expect", asAdmin, withoutNamespace, contain, "PASS", ok, []string{"compliancecheckresult", "master-scan-enable-fips-mode", "-n", oc.Namespace(), "-o=jsonpath={.status}"}).check(oc)
+				newCheck("expect", asAdmin, withoutNamespace, contain, "PASS", ok, []string{"compliancecheckresult", "worker-scan-enable-fips-mode", "-n", oc.Namespace(), "-o=jsonpath={.status}"}).check(oc)
+
+			} else {
+				g.By("Check complianceSuite result.. !!!\n")
+				subD.complianceSuiteResult(oc, csuiteD.name, "NON-COMPLIANT")
+				subD.complianceSuiteResult(oc, csuiteMD.name, "NON-COMPLIANT")
+				newCheck("expect", asAdmin, withoutNamespace, contain, "FAIL", ok, []string{"compliancecheckresult", "master-scan-enable-fips-mode", "-n", oc.Namespace(), "-o=jsonpath={.status}"}).check(oc)
+				newCheck("expect", asAdmin, withoutNamespace, contain, "FAIL", ok, []string{"compliancecheckresult", "worker-scan-enable-fips-mode", "-n", oc.Namespace(), "-o=jsonpath={.status}"}).check(oc)
+			}
+
+			g.By("ocp-41861 Successfully verify fips mode checking rules are working as expected ..!!!\n")
+		})
 	})
 })

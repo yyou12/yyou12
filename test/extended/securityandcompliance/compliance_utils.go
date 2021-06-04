@@ -502,7 +502,7 @@ func getStorageClassVolumeBindingMode(oc *exutil.CLI) string {
 
 func getResourceNameWithKeyword(oc *exutil.CLI, rs string, keyword string) string {
 	var resourceName string
-	rsList := getResource(oc, asAdmin, withoutNamespace, rs, "-o=jsonpath={.items[*].metadata.name}", "-n", oc.Namespace())
+	rsList, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args(rs, "-n", oc.Namespace(), "-o=jsonpath={.items[*].metadata.name}").Output()
 	rsl := strings.Fields(rsList)
 	for _, v := range rsl {
 		resourceName = fmt.Sprintf("%s", v)
@@ -589,4 +589,18 @@ func checkWarnings(oc *exutil.CLI, expectedString string, parameters ...string) 
 		}
 		o.Expect(err).NotTo(o.HaveOccurred())
 	}
+}
+
+func checkFipsStatus(oc *exutil.CLI) string {
+	mnodeName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("node", "--selector=node.openshift.io/os_id=rhcos,node-role.kubernetes.io/master=",
+		"-o=jsonpath={.items[0].metadata.name}").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	efips, err := oc.AsAdmin().WithoutNamespace().Run("debug").Args("node/"+mnodeName, "--", "chroot", "/host", "fips-mode-setup", "--check").Output()
+	if strings.Contains(efips, "FIPS mode is disabled.") {
+		e2e.Logf("Fips is disabled on master node %v ", mnodeName)
+	} else {
+		e2e.Logf("Fips is enabled on master node %v ", mnodeName)
+	}
+	o.Expect(err).NotTo(o.HaveOccurred())
+	return efips
 }
