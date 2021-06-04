@@ -590,6 +590,8 @@ class ReportPortalClient:
                     for attr in ret["attributes"]:
                         if attr["key"] == "team" and attr["value"] == st and buildnum != "":
                             for bid in buildnum.split(","):
+                                if re.match('(\d+)-([a-zA-Z]+)_(.+)', bid) is None:
+                                    continue
                                 bidType = bid.replace(" ", "").split("_")[0].split("-")[1]
                                 bidJobName = "ginkgo-test" # old build num format, take default value
                                 if len(bid.replace(" ", "").split("_")) > 1:
@@ -782,6 +784,8 @@ class ReportPortalClient:
             buildJobName = self.args.buildnum.split("_")[1]
 
             for bid in existingattrvalue.split(","):
+                if re.match('(\d+)-([a-zA-Z]+)_(.+)', bid) is None:
+                    continue
                 bidType = bid.replace(" ", "").split("_")[0].split("-")[1]
                 bidJobName = "ginkgo-test" # old build num format, take default value
                 if len(bid.replace(" ", "").split("_")) > 1:
