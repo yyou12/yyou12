@@ -2221,8 +2221,8 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			g.By("check role resultserver")
 			rsRoleName := getResourceNameWithKeyword(oc, "role", "resultserver")
 			e2e.Logf("rs role name: %v\n", rsRoleName)
-			newCheck("expect", asAdmin, withoutNamespace, contain, "resourceNames:[restricted] resources:[securitycontextconstraints] verbs:[use]]", ok, []string{"role", rsRoleName, "-n",
-				subD.namespace, "-o=jsonpath={.rules}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "[{\"apiGroups\":[\"security.openshift.io\"],\"resourceNames\":[\"restricted\"],\"resources\":[\"securitycontextconstraints\"],\"verbs\":[\"use\"]}]",
+				ok, []string{"role", rsRoleName, "-n", subD.namespace, "-o=jsonpath={.rules}"}).check(oc)
 
 			g.By("create compliancesuite")
 			csuiteMD.namespace = subD.namespace
