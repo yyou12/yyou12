@@ -2032,6 +2032,19 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 
 
 	// author: scolange@redhat.com
+	g.It("Author:scolange-Medium-42068-Available condition set to false on any Deployment spec change", func() {
+		available, err1 := oc.AsAdmin().WithoutNamespace().Run("get").Args("clusteroperator", "operator-lifecycle-manager-packageserver", "-o=jsonpath={.status.conditions[1].type}").Output()
+		e2e.Logf(available)
+		o.Expect(err1).NotTo(o.HaveOccurred())
+		o.Expect(available).To(o.Equal("Available"))
+
+		statusAvailable, err1 := oc.AsAdmin().WithoutNamespace().Run("get").Args("clusteroperator", "operator-lifecycle-manager-packageserver", "-o=jsonpath={.status.conditions[1].status}").Output()
+		e2e.Logf(statusAvailable)
+		o.Expect(err1).NotTo(o.HaveOccurred())
+		o.Expect(statusAvailable).To(o.Equal("True"))
+	})
+
+	// author: scolange@redhat.com
 	g.It("Author:scolange-Medium-23673-Installplan can be created while Install and uninstall operators via Marketplace for 5 times [Slow]", func() {
 		oc.SetupProject()
 		g.By("1) Install the OperatorGroup in a random project")
