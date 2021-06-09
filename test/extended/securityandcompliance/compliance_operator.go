@@ -2612,5 +2612,40 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 
 			g.By("ocp-41861 Successfully verify fips mode checking rules are working as expected ..!!!\n")
 		})
+
+		// author: pdhamdhe@redhat.com
+		g.It("Author:pdhamdhe-High-41093-The instructions should be available for all rules in cis profiles [Slow]", func() {
+			var (
+				ssb = scanSettingBindingDescription{
+					name:            "cis-instruction",
+					namespace:       "",
+					profilekind1:    "Profile",
+					profilename1:    "ocp4-cis",
+					profilename2:    "ocp4-cis-node",
+					scansettingname: "default",
+					template:        scansettingbindingTemplate,
+				}
+				itName = g.CurrentGinkgoTestDescription().TestText
+			)
+
+			defer cleanupObjects(oc, objectTableRef{"scansettingbinding", subD.namespace, ssb.name})
+
+			g.By("Create scansettingbinding !!!\n")
+			ssb.namespace = subD.namespace
+			ssb.create(oc, itName, dr)
+			newCheck("expect", asAdmin, withoutNamespace, contain, ssb.name, ok, []string{"scansettingbinding", "-n", ssb.namespace,
+				"-o=jsonpath={.items[0].metadata.name}"}).check(oc)
+
+			g.By("Check ComplianceSuite status !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", ssb.name, "-n", ssb.namespace,
+				"-o=jsonpath={.status.phase}"}).check(oc)
+			subD.complianceSuiteResult(oc, ssb.name, "NON-COMPLIANT INCONSISTENT")
+
+			g.By("Check the total number of CIS Manual rules.. !!!\n")
+			checkResourceNumber(oc, 27, "compliancecheckresult", "-l", "compliance.openshift.io/check-status=MANUAL", "--no-headers", "-n", subD.namespace)
+			checkCisRulesInstruction(oc)
+
+			g.By("ocp-41093 Successfully verify that all CIS rules has instructions ..!!!\n")
+		})
 	})
 })

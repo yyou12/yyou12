@@ -604,3 +604,19 @@ func checkFipsStatus(oc *exutil.CLI) string {
 	o.Expect(err).NotTo(o.HaveOccurred())
 	return efips
 }
+
+func checkCisRulesInstruction(oc *exutil.CLI) {
+	cisrule, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("compliancecheckresult", "-n", oc.Namespace(), "--selector=compliance.openshift.io/check-status=MANUAL",
+		"-o=jsonpath={.items[*].metadata.name}").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	cisrules := strings.Fields(cisrule)
+	for _, cisrule := range cisrules {
+		ruleinst, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("compliancecheckresult", cisrule, "-n", oc.Namespace(), "-o=jsonpath={.instructions}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		if ruleinst == "" {
+			e2e.Failf("This CIS rule '%v' do not have any instruction", cisrule)
+		} else {
+			e2e.Logf("This CIS rule '%v' has instruction", cisrule)
+		}
+	}
+}
