@@ -31,6 +31,16 @@ type Channel struct {
 	depth               int
 }
 
+type Package struct {
+	name            string
+	default_channel string
+}
+
+type Image struct {
+	image               string
+	operatorbundle_name string
+}
+
 // NewSqlit creates a new sqlit instance.
 func NewSqlit() *Sqlit {
 	return &Sqlit{
@@ -132,6 +142,48 @@ func (c *Sqlit) QueryOperatorChannel(dbFilePath string) ([]Channel, error) {
 	return Channels, nil
 }
 
+// QueryPackge executes an sqlit query as an ordinary user and returns the result.
+func (c *Sqlit) QueryPackge(dbFilePath string) ([]Package, error) {
+	rows, err := c.QueryDB(dbFilePath, "select * from package;")
+	var (
+		Packages        []Package
+		name            string
+		default_channel string
+	)
+	defer rows.Close()
+	if err != nil {
+		return Packages, err
+	}
+
+	for rows.Next() {
+		rows.Scan(&name, &default_channel)
+		Packages = append(Packages, Package{name: name,
+			default_channel: default_channel})
+	}
+	return Packages, nil
+}
+
+// QueryRelatedImage executes an sqlit query as an ordinary user and returns the result.
+func (c *Sqlit) QueryRelatedImage(dbFilePath string) ([]Image, error) {
+	rows, err := c.QueryDB(dbFilePath, "select * from related_image;")
+	var (
+		relatedImages       []Image
+		image               string
+		operatorbundle_name string
+	)
+	defer rows.Close()
+	if err != nil {
+		return relatedImages, err
+	}
+
+	for rows.Next() {
+		rows.Scan(&image, &operatorbundle_name)
+		relatedImages = append(relatedImages, Image{image: image,
+			operatorbundle_name: operatorbundle_name})
+	}
+	return relatedImages, nil
+}
+
 // GetOperatorChannelByColumn
 func (c *Sqlit) GetOperatorChannelByColumn(dbFilePath string, column string) ([]string, error) {
 	channels, err := c.QueryOperatorChannel(dbFilePath)
@@ -170,8 +222,28 @@ func (c *Sqlit) Query(dbFilePath string, table string, column string) ([]string,
 			valueList = append(valueList, value.String())
 		}
 		return valueList, nil
+	case "package":
+		result, err := c.QueryPackge(dbFilePath)
+		if err != nil {
+			return nil, err
+		}
+		for _, packageIndex := range result {
+			value := reflect.Indirect(reflect.ValueOf(&packageIndex)).FieldByName(column)
+			valueList = append(valueList, value.String())
+		}
+		return valueList, nil
+	case "related_image":
+		result, err := c.QueryRelatedImage(dbFilePath)
+		if err != nil {
+			return nil, err
+		}
+		for _, imageIndex := range result {
+			value := reflect.Indirect(reflect.ValueOf(&imageIndex)).FieldByName(column)
+			valueList = append(valueList, value.String())
+		}
+		return valueList, nil
 	default:
-		err := fmt.Errorf("unknown method")
+		err := fmt.Errorf("do not support to query table " + table)
 		return nil, err
 	}
 }

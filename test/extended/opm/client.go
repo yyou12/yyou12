@@ -16,7 +16,7 @@ import (
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 )
 
-// CLI provides function to call the OPM CLI
+// CLI provides function to call the CLI
 type CLI struct {
 	execPath        string
 	execCommandPath string
@@ -42,22 +42,30 @@ func NewOpmCLI() *CLI {
 	return client
 }
 
-// Run executes given OPM command verb
+func NewInitializer() *CLI {
+	client := &CLI{}
+	client.username = "admin"
+	client.execPath = "initializer"
+	client.showInfo = true
+	return client
+}
+
+// Run executes given command verb
 func (c *CLI) Run(commands ...string) *CLI {
 	in, out, errout := &bytes.Buffer{}, &bytes.Buffer{}, &bytes.Buffer{}
-	opm := &CLI{
+	client := &CLI{
 		execPath:        c.execPath,
 		verb:            commands[0],
 		username:        c.username,
 		execCommandPath: c.execCommandPath,
 	}
 	if c.skipTLS {
-		opm.globalArgs = append([]string{"--skip-tls=true"}, commands...)
+		client.globalArgs = append([]string{"--skip-tls=true"}, commands...)
 	} else {
-		opm.globalArgs = commands
+		client.globalArgs = commands
 	}
-	opm.stdin, opm.stdout, opm.stderr = in, out, errout
-	return opm.setOutput(c.stdout)
+	client.stdin, client.stdout, client.stderr = in, out, errout
+	return client.setOutput(c.stdout)
 }
 
 // setOutput allows to override the default command output
@@ -94,7 +102,7 @@ func FatalErr(msg interface{}) {
 // Output executes the command and returns stdout/stderr combined into one string
 func (c *CLI) Output() (string, error) {
 	if c.verbose {
-		e2e.Logf("DEBUG: opm %s\n", c.printCmd())
+		e2e.Logf("DEBUG: %s %s\n", c.execPath, c.printCmd())
 	}
 	cmd := exec.Command(c.execPath, c.finalArgs...)
 	if c.execCommandPath != "" {

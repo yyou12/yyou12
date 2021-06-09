@@ -7,6 +7,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"time"
 
 	g "github.com/onsi/ginkgo"
 	o "github.com/onsi/gomega"
@@ -339,6 +340,58 @@ var _ = g.Describe("[sig-operators] OLM opm with podman", func() {
 		result, err := sqlit.DBMatch(path.Join(indexTmpPath, "index.db"), "channel_entry", "operatorbundle_name", []string{"lib-bucket-provisioner.v1.0.0"})
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(result).To(o.BeFalse())
+
+	})
+
+	g.It("Author:xzha-VMonly-Medium-26594-Related Images", func() {
+		var initializerCLI = NewInitializer()
+		opmBaseDir := exutil.FixturePath("testdata", "opm")
+		TestDataPath := filepath.Join(opmBaseDir, "etcd_operator", "etcd_community")
+		TmpDataPath := filepath.Join(opmBaseDir, "tmp")
+		err := os.MkdirAll(TmpDataPath, 0755)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		initializerCLI.execCommandPath = TmpDataPath
+		defer exec.Command("kill", "-9", "$(lsof -t -i:26594)").Output()
+		defer DeleteDir(TestDataPath, "fixture-testdata")
+
+		g.By("step: Run the initializer binary to get a database.")
+		dbFilePath := filepath.Join(TmpDataPath, "bundles.db")
+		output, err := initializerCLI.Run("-m").Args(TestDataPath, "-o", dbFilePath).Output()
+		if err != nil {
+			e2e.Logf(output)
+		}
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("step: Check if the related images stores in this database")
+		image := "quay.io/coreos/etcd-operator@sha256:66a37fd61a06a43969854ee6d3e21087a98b93838e284a6086b13917f96b0d9b"
+
+		result, err := sqlit.DBMatch(dbFilePath, "package", "name", []string{"etcd"})
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(result).To(o.BeTrue())
+		result, err = sqlit.DBHas(dbFilePath, "related_image", "image", []string{image})
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(result).To(o.BeTrue())
+
+		g.By("step: Run the registry-server binary to load manifest and serves a grpc API to query it.")
+		e2e.Logf("step: Run the registry-server ")
+		cmd := exec.Command("registry-server", "-d", dbFilePath, "-t", filepath.Join(TmpDataPath, "26594.log"), "-p", "26594")
+		cmd.Dir = TmpDataPath
+		err = cmd.Start()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		time.Sleep(time.Second * 1)
+		e2e.Logf("step: check api.Registry/ListPackages")
+		outputCurl, err := exec.Command("grpcurl", "-plaintext", "localhost:26594", "api.Registry/ListPackages").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(string(outputCurl)).To(o.ContainSubstring("etcd"))
+		e2e.Logf("step: check api.Registry/GetBundleForChannel")
+		outputCurl, err = exec.Command("grpcurl", "-plaintext", "-d", "{\"pkgName\":\"etcd\",\"channelName\":\"singlenamespace-alpha\"}", "localhost:26594", "api.Registry/GetBundleForChannel").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(string(outputCurl)).To(o.ContainSubstring(image))
+		outputCurl, err = exec.Command("grpcurl", "-plaintext", "-d", "{\"pkgName\":\"etcd\",\"channelName\":\"clusterwide-alpha\"}", "localhost:26594", "api.Registry/GetBundleForChannel").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(string(outputCurl)).To(o.ContainSubstring(image))
+		cmd.Process.Kill()
+		g.By("step: SUCCESS")
 
 	})
 
