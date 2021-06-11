@@ -43,7 +43,7 @@ type PodmanImage struct {
 // PodmanCLI provides function to run the docker command
 type PodmanCLI struct {
 	execPath        string
-	execCommandPath string
+	ExecCommandPath string
 	globalArgs      []string
 	commandArgs     []string
 	finalArgs       []string
@@ -67,7 +67,7 @@ func (c *PodmanCLI) Run(commands ...string) *PodmanCLI {
 	in, out, errout := &bytes.Buffer{}, &bytes.Buffer{}, &bytes.Buffer{}
 	podman := &PodmanCLI{
 		execPath:        c.execPath,
-		execCommandPath: c.execCommandPath,
+		ExecCommandPath: c.ExecCommandPath,
 	}
 	podman.globalArgs = commands
 	podman.stdin, podman.stdout, podman.stderr = in, out, errout
@@ -97,9 +97,9 @@ func (c *PodmanCLI) Output() (string, error) {
 		e2e.Logf("DEBUG: podman %s\n", c.printCmd())
 	}
 	cmd := exec.Command(c.execPath, c.finalArgs...)
-	if c.execCommandPath != "" {
-		e2e.Logf("set exec command path is %s\n", c.execCommandPath)
-		cmd.Dir = c.execCommandPath
+	if c.ExecCommandPath != "" {
+		e2e.Logf("set exec command path is %s\n", c.ExecCommandPath)
+		cmd.Dir = c.ExecCommandPath
 	}
 	cmd.Stdin = c.stdin
 	if c.showInfo {

@@ -62,7 +62,7 @@ var _ = g.Describe("[sig-operators] OLM opm should", func() {
 	g.It("Author:bandrade-VMonly-Low-30318-Bundle build understands packages", func() {
 		opmBaseDir := exutil.FixturePath("testdata", "opm")
 		testDataPath := filepath.Join(opmBaseDir, "aqua")
-		opmCLI.execCommandPath = testDataPath
+		opmCLI.ExecCommandPath = testDataPath
 		defer DeleteDir(testDataPath, "fixture-testdata")
 
 		g.By("step: opm alpha bundle generate")
@@ -88,7 +88,7 @@ var _ = g.Describe("[sig-operators] OLM opm with podman", func() {
 	g.It("Author:xzha-VMonly-Medium-25955-opm Ability to generate scaffolding for Operator Bundle", func() {
 		opmBaseDir := exutil.FixturePath("testdata", "opm")
 		TestDataPath := filepath.Join(opmBaseDir, "learn_operator")
-		opmCLI.execCommandPath = TestDataPath
+		opmCLI.ExecCommandPath = TestDataPath
 		defer DeleteDir(TestDataPath, "fixture-testdata")
 		imageTag := "quay.io/olmqe/25955-operator-" + getRandomString() + ":v0.0.1"
 
@@ -105,7 +105,7 @@ var _ = g.Describe("[sig-operators] OLM opm with podman", func() {
 		DeleteDir(TestDataPath, "fixture-testdata")
 		opmBaseDir = exutil.FixturePath("testdata", "opm")
 		TestDataPath = filepath.Join(opmBaseDir, "learn_operator")
-		opmCLI.execCommandPath = TestDataPath
+		opmCLI.ExecCommandPath = TestDataPath
 		_, err = podmanCLI.RemoveImage(imageTag)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
@@ -130,7 +130,7 @@ var _ = g.Describe("[sig-operators] OLM opm with podman", func() {
 		containerCLI := podmanCLI
 		opmBaseDir := exutil.FixturePath("testdata", "opm")
 		TestDataPath := filepath.Join(opmBaseDir, "temp")
-		opmCLI.execCommandPath = TestDataPath
+		opmCLI.ExecCommandPath = TestDataPath
 		defer DeleteDir(TestDataPath, "fixture-testdata")
 		indexImage := "quay.io/olmqe/etcd-index:test-37294"
 		indexImageSemver := "quay.io/olmqe/etcd-index:test-37294-semver"
@@ -232,7 +232,7 @@ var _ = g.Describe("[sig-operators] OLM opm with podman", func() {
 		containerTool := "podman"
 		opmBaseDir := exutil.FixturePath("testdata", "opm")
 		TestDataPath := filepath.Join(opmBaseDir, "temp")
-		opmCLI.execCommandPath = TestDataPath
+		opmCLI.ExecCommandPath = TestDataPath
 		defer DeleteDir(TestDataPath, "fixture-testdata")
 		indexImage := "quay.io/olmqe/redhat-operator-index:40530"
 		defer containerCLI.RemoveImage(indexImage)
@@ -350,7 +350,7 @@ var _ = g.Describe("[sig-operators] OLM opm with podman", func() {
 		TmpDataPath := filepath.Join(opmBaseDir, "tmp")
 		err := os.MkdirAll(TmpDataPath, 0755)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		initializerCLI.execCommandPath = TmpDataPath
+		initializerCLI.ExecCommandPath = TmpDataPath
 		defer exec.Command("kill", "-9", "$(lsof -t -i:26594)").Output()
 		defer DeleteDir(TestDataPath, "fixture-testdata")
 

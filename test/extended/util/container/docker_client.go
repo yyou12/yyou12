@@ -28,7 +28,7 @@ func contains(s []string, e string) bool {
 type DockerCLI struct {
 	CLI             *client.Client
 	execPath        string
-	execCommandPath string
+	ExecCommandPath string
 	globalArgs      []string
 	commandArgs     []string
 	finalArgs       []string
@@ -57,7 +57,7 @@ func (c *DockerCLI) Run(commands ...string) *DockerCLI {
 	in, out, errout := &bytes.Buffer{}, &bytes.Buffer{}, &bytes.Buffer{}
 	docker := &DockerCLI{
 		execPath:        c.execPath,
-		execCommandPath: c.execCommandPath,
+		ExecCommandPath: c.ExecCommandPath,
 	}
 	docker.globalArgs = commands
 	docker.stdin, docker.stdout, docker.stderr = in, out, errout
@@ -87,9 +87,9 @@ func (c *DockerCLI) Output() (string, error) {
 		e2e.Logf("DEBUG: docker %s\n", c.printCmd())
 	}
 	cmd := exec.Command(c.execPath, c.finalArgs...)
-	if c.execCommandPath != "" {
-		e2e.Logf("set exec command path is %s\n", c.execCommandPath)
-		cmd.Dir = c.execCommandPath
+	if c.ExecCommandPath != "" {
+		e2e.Logf("set exec command path is %s\n", c.ExecCommandPath)
+		cmd.Dir = c.ExecCommandPath
 	}
 	cmd.Stdin = c.stdin
 	if c.showInfo {

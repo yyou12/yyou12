@@ -19,7 +19,7 @@ import (
 // CLI provides function to call the CLI
 type CLI struct {
 	execPath        string
-	execCommandPath string
+	ExecCommandPath string
 	verb            string
 	username        string
 	globalArgs      []string
@@ -57,7 +57,7 @@ func (c *CLI) Run(commands ...string) *CLI {
 		execPath:        c.execPath,
 		verb:            commands[0],
 		username:        c.username,
-		execCommandPath: c.execCommandPath,
+		ExecCommandPath: c.ExecCommandPath,
 	}
 	if c.skipTLS {
 		client.globalArgs = append([]string{"--skip-tls=true"}, commands...)
@@ -105,9 +105,9 @@ func (c *CLI) Output() (string, error) {
 		e2e.Logf("DEBUG: %s %s\n", c.execPath, c.printCmd())
 	}
 	cmd := exec.Command(c.execPath, c.finalArgs...)
-	if c.execCommandPath != "" {
-		e2e.Logf("set exec command path is %s\n", c.execCommandPath)
-		cmd.Dir = c.execCommandPath
+	if c.ExecCommandPath != "" {
+		e2e.Logf("set exec command path is %s\n", c.ExecCommandPath)
+		cmd.Dir = c.ExecCommandPath
 	}
 	cmd.Stdin = c.stdin
 	if c.showInfo {
