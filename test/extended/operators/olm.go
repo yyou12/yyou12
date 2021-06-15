@@ -5311,6 +5311,16 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		g.By("8) Checking the state of CSV")
 		newCheck("expect", asAdmin, withoutNamespace, compare, "Complete", ok, []string{"ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
 		newCheck("expect", asUser, withNamespace, compare, "Succeeded", ok, []string{"csv", csv, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+		err = wait.Poll(1*time.Second, 10*time.Second, func() (bool, error) {
+			installedCSV := getResource(oc, asAdmin, withoutNamespace, "sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.installedCSV}")
+			if strings.Compare(installedCSV, "") == 0 {
+				e2e.Logf("get installedCSV failed")
+				return false, nil
+			}
+			return true, nil
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
+		g.By("9) SUCCESS")
 	})
 
 	// author: xzha@redhat.com
