@@ -5,6 +5,15 @@ function run {
   case_scenario="$2"
   case_importance="$3"
   case_filter="$4"
+  case_timeout="$5"
+
+  if [[ "x${case_timeout}x" == "xx" ]] || [[ "${case_timeout}" == "null" ]]; then
+    echo "case timeout is ${case_timeout}, set it to be default value 35m"
+    case_timeout="35"
+  else
+    case_timeout=${case_timeout:4}
+    echo "case timeout is ${case_timeout}m"
+  fi
 
   make clean
   if [ "${repo_owner}" == "openshift" ]; then
@@ -26,7 +35,7 @@ function run {
   cat ./case_selected
   echo "-----------------------------------------------------"
 
-  ./bin/extended-platform-tests run --max-parallel-tests 6 --timeout 35m --junit-dir=./ -f ./case_selected
+  ./bin/extended-platform-tests run --max-parallel-tests 6 --timeout ${case_timeout}"m" --junit-dir=./ -f ./case_selected
   rm -fr ./case_selected
 }
 
@@ -103,4 +112,4 @@ function handle_or_filter {
     cat ./case_selected | grep -v -E "${value}" >> ./case_selected_or
   fi
 }
-run "$1" "$2" "$3" "$4"
+run "$@"

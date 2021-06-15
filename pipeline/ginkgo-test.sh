@@ -7,8 +7,8 @@ function run {
     echo "please input value for SCENARIO"
     exit 1
   fi
-  if ! echo ${JENKINS_SLAVE} | grep -E '^goc([0-9]{2})$'; then
-    echo "wrong slave node ${JENKINS_SLAVE}"
+  if ! echo ${JENKINS_AGENT} | grep -E '^goc([0-9]{2})$'; then
+    echo "wrong agent node ${JENKINS_AGENT}"
     exit 1
   fi
   PIPELINESCRIPT_DIR=${WORKSPACE}"/private/pipeline" && export PATH=${PIPELINESCRIPT_DIR}:$PATH
@@ -20,12 +20,38 @@ function run {
   cd ${WORKBUILDDIR}
 
   put_fake_launch_for_each_profile
-  config_env_for_cluster
+  config_env
   id
   date
   select_fail_case_for_official_rerun
   execute
   result_report
+}
+
+function config_env {
+  if (echo ${NODE_LABELS} | grep -E 'preserve-gvm'); then
+    echo "config env for vm"
+    config_env_for_vm
+  else
+    echo "config env for cluster"
+    config_env_for_cluster
+  fi
+}
+
+function config_env_for_vm {
+  echo "home path is "${HOME}
+  mkdir -p ${HOME}/kubeconf && mkdir -p ${HOME}/azureauth && \
+  echo "export KUBECONFIG=${HOME}/kubeconf/kubeconfig" > ${WORKSPACE}/.bash_profile && \
+  echo "export AZURE_AUTH_LOCATION=${HOME}/azureauth/azure_auth.json" >> ${WORKSPACE}/.bash_profile && \
+  echo 'export GOROOT=/usr/lib/golang' >> ${WORKSPACE}/.bash_profile && \
+  echo 'export GOPATH=${WORKSPACE}/goproject' >> ${WORKSPACE}/.bash_profile && \
+  echo 'export GOCACHE=${WORKSPACE}/gocache' >> ${WORKSPACE}/.bash_profile && \
+  echo 'export PATH=$PATH:/usr/lib/golang/go/bin:${WORKSPACE}/tool_tmp' >> ${WORKSPACE}/.bash_profile && \
+  source ${WORKSPACE}/.bash_profile
+  echo "configure kubeconfig, azure authentication or client proxy for the cluster"
+  source ${PIPELINESCRIPT_DIR}"/occe4c" ${WORKSPACE} "null"${FLEXY_BUILD} "${CONFIG}"
+  echo "configure vm"
+  ${PIPELINESCRIPT_DIR}"/setup-vm" ${JENKINS_AGENT} ${WORKBUILDDIR} ${WORKSPACE}"/tool_tmp"
 }
 
 function config_env_for_cluster {
@@ -42,14 +68,14 @@ function config_env_for_cluster {
 }
 function result_report {
   echo "get result and parse it"
-  #LAUNCHTRIAL="yes"
-  #if we do not set it, it means LAUNCHTRIAL is no and the launch is treated as official if LAUNCH_NAME and PROFILE_NAME are official
-  #if we do not set it as yes, it means LAUNCHTRIAL is yes and the launch is treated as trial although LAUNCH_NAME and PROFILE_NAME are official
-  #if LAUNCH_NAME or PROFILE_NAME are not official, the launch will be treated as personal launch.
-  ocgr ${WORKBUILDDIR} ${WORKSPACE} ${JENKINS_SLAVE} "null"${LAUNCH_NAME} "null""${PROFILE_NAME}" "null""${LAUNCHTRIAL}" "${TIERN_REPO_OWNER}""-""${REPO_OWNER}" ${BUILD_NUMBER} "null""${FILTERS}" "null""${ADDITIONAL_ATTRIBUTES}"
+  LAUNCHTRIAL="yes"
+  if [ "${TIERN_REPO_OWNER}" == "kuiwang02" ]; then
+    ocgr ${WORKBUILDDIR} ${WORKSPACE} ${JENKINS_AGENT} "null"${LAUNCH_NAME} "null""${PROFILE_NAME}" "null""${LAUNCHTRIAL}" "openshift-""${REPO_OWNER}"             ${BUILD_NUMBER} "null""${FILTERS}" "null""${ADDITIONAL_ATTRIBUTES}"
+  else
+    ocgr ${WORKBUILDDIR} ${WORKSPACE} ${JENKINS_AGENT} "null"${LAUNCH_NAME} "null""${PROFILE_NAME}" "null""${LAUNCHTRIAL}" "${TIERN_REPO_OWNER}""-""${REPO_OWNER}" ${BUILD_NUMBER} "null""${FILTERS}" "null""${ADDITIONAL_ATTRIBUTES}"
+  fi
 }
 
-#execute cases
 function execute {
   echo "the scenario is \"${SCENARIO}\", and the importance is \"${IMPORTANCE}\""
   eval rm -fr ${WORKSPACE}"/private/junit_e2e_*.xml" ${WORKSPACE}"/public/junit_e2e_*.xml"
@@ -58,26 +84,24 @@ function execute {
   case "$REPO_OWNER" in
     openshift)
       echo "run case with oropenshift-tests-private under openshift or your account. similar to ocrd"
-      echo "ocr ${TIERN_REPO_OWNER} \"${SCENARIO}\" ${IMPORTANCE} \"null${FILTERS}\""
-      ocr ${TIERN_REPO_OWNER} "${SCENARIO}" ${IMPORTANCE} "null${FILTERS}" || true
+      echo "ocr ${TIERN_REPO_OWNER} \"${SCENARIO}\" ${IMPORTANCE} \"null${FILTERS}\"  \"null${CASE_TIMEOUT}\""
+      ocr ${TIERN_REPO_OWNER} "${SCENARIO}" ${IMPORTANCE} "null${FILTERS}" "null${CASE_TIMEOUT}" || true
       ;;
     *)
       echo "run case with oropenshift-tests under your account. similar to ocru"
-      echo "ocr null \"${SCENARIO}\" ${IMPORTANCE} \"null${FILTERS}\""
-      ocr "null" "${SCENARIO}" ${IMPORTANCE} "null${FILTERS}"|| true
+      echo "ocr null \"${SCENARIO}\" ${IMPORTANCE} \"null${FILTERS}\"  \"null${CASE_TIMEOUT}\""
+      ocr "null" "${SCENARIO}" ${IMPORTANCE} "null${FILTERS}"  "null${CASE_TIMEOUT}"|| true
       ;;
   esac
 }
 
-#reselect case for rerun only for offical nightly
 function select_fail_case_for_official_rerun {
-  #ROOT_BUILD_CAUSE=CIBUILDCAUSE,MANUALTRIGGER,DEEPLYNESTEDCAUSES
+  echo "cause by rebuild is ${IS_REBUILD_CAUSE}"
+  echo "cause by upstream is ${IS_UPSTREAM_CAUSE}"
   if ((echo ${LAUNCH_NAME} | grep -E '^([0-9]{8})-([0-9]{4})$') || \
       (echo ${LAUNCH_NAME} | grep -E '^([0-9]{8})-([0-9]{4})_([0-9]{1,2})$')) && \
-      (([[ "${ROOT_BUILD_CAUSE}" == *"MANUALTRIGGER"* ]] && [[ "${ROOT_BUILD_CAUSE}" == *"CIBUILDCAUSE"* ]]) || \
-       ([[ "${ROOT_BUILD_CAUSE}" == *"MANUALTRIGGER"* ]] && [[ "${ROOT_BUILD_CAUSE}" == *"TIMERTRIGGER"* ]])) && \
-      # [[ "X${BUILD_CAUSE_MANUALTRIGGER}X" != "XX" ]] && [[ "${BUILD_CAUSE_MANUALTRIGGER}" == "true" ]] && \
-      [[ "${TIERN_REPO_OWNER}" == "openshift" ]] && [[ "${REPO_OWNER}" == "openshift" ]]; then
+      ([[ "${IS_REBUILD_CAUSE}" == "yes" ]] && [[ "${IS_UPSTREAM_CAUSE}" == "yes" ]]) && \
+      ([[ "${TIERN_REPO_OWNER}" == "openshift" ]] || [[ "${TIERN_REPO_OWNER}" == "kuiwang02" ]]) && [[ "${REPO_OWNER}" == "openshift" ]]; then
     echo "valid launch name with reran pipeline build. Try to find fail case and update SCENARIO"
     failcaseid=`ocgfc ${WORKBUILDDIR} ${WORKSPACE} ${LAUNCH_NAME} "${SCENARIO}" ${BUILD_NUMBER} "null""${FILTERS}" 2>&1 || true`
     echo -e "${failcaseid}"
@@ -92,11 +116,13 @@ function select_fail_case_for_official_rerun {
   else
     echo "no launch name or invalid launch name, or not rerun pipeline build, and keep original ${SCENARIO}"
   fi
+
+  echo -e "the scenario:\n${SCENARIO}"
 }
 
 function put_fake_launch_for_each_profile {
   if [ "${SCENARIO}" == "putfakelaunchforeachprofile" ] ; then
-    ocpf ${WORKBUILDDIR} ${WORKSPACE} ${JENKINS_SLAVE}
+    ocpf ${WORKBUILDDIR} ${WORKSPACE} ${JENKINS_AGENT}
     exit 0
   fi
 }
