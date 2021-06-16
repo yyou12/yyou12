@@ -2,7 +2,6 @@ package operators
 
 import (
 	"fmt"
-	"math/rand"
 	"os"
 	"os/exec"
 	"path"
@@ -150,6 +149,8 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	})
 
 	// author: jiazha@redhat.com
+	// update at June 16, 2021 due to https://bugzilla.redhat.com/show_bug.cgi?id=1927340
+	// details: https://hackmd.io/9wG20hu5TU-y1HrkhvcsZQ?view
 	g.It("ConnectedOnly-Author:jiazha-Medium-37710-supports the Upgradeable Supported Condition", func() {
 		g.By("1) Install the OperatorGroup in a random project")
 		dr := make(describerResrouce)
@@ -180,50 +181,30 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 			singleNamespace:        true,
 			template:               subTemplate,
 		}
+		defer sub.delete(itName, dr)
+		defer sub.deleteCSV(itName, dr)
+		defer sub.update(oc, itName, dr)
 		sub.create(oc, itName, dr)
 
 		g.By("3) Apprrove this etcdoperator.v0.9.2, it should be in Complete state")
 		sub.approveSpecificIP(oc, itName, dr, "etcdoperator.v0.9.2", "Complete")
 		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", "etcdoperator.v0.9.2", "-n", oc.Namespace(), "-o=jsonpath={.status.phase}"}).check(oc)
 
-		g.By("4) Creates a proxy server or application-level gateway between localhost and the Kubernetes API Server")
-		// Create a random port during 10000 - 65535
-		rand.Seed(time.Now().UnixNano())
-		port := rand.Intn(65535-10000) + 10000
-		// Release this port after test complete
-		defer func() {
-			outPut, _ := exec.Command("lsof", fmt.Sprintf("-i:%d", port)).CombinedOutput()
-			valid := regexp.MustCompile("oc\\s+\\d+")
-			pid := valid.FindAllString(string(outPut[:]), -1)
-			exec.Command("kill", "-9", pid[0][3:]).CombinedOutput()
-		}()
-		// Use another termianl do run this server
-		go func() {
-			defer g.GinkgoRecover()
-			msg, _ := oc.AsAdmin().WithoutNamespace().Run("proxy").Args(fmt.Sprintf("--port=%d", port), "&").Output()
-			if strings.Contains(msg, "address already in use") {
-				e2e.Failf("!!!Fail to run this server")
-			}
-		}()
-
-		g.By("5) Patch the status of the Upgradeable to False")
-		// wait 3 seconds to waiting for the proxy server ready
-		time.Sleep(3 * time.Second)
-		// In proxy cluster, get ERROR: The requested URL could not be retrieved
-		serverPath := fmt.Sprintf("localhost:%d/apis/operators.coreos.com/v1/namespaces/%s/operatorconditions/etcdoperator.v0.9.2/status", port, oc.Namespace())
-		outPut, err := exec.Command("curl", "-X", "PATCH", "-H", "Content-Type: application/merge-patch+json", "--data", "{\"status\":{\"conditions\":[{\"lastTransitionTime\":\"2020-12-17T15:39:01Z\",\"message\":\"Test\",\"reason\":\"NotUpgradeable\",\"status\":\"False\",\"type\":\"Upgradeable\"}]}}", serverPath).CombinedOutput()
-		e2e.Logf("!!! command output:\n%s", string(outPut[:]))
-		o.Expect(err).NotTo(o.HaveOccurred())
+		// The conditions array will be added to OperatorCondition’s spec and operator is now expected to only update the conditions in the spec to reflect its condition
+		// and no longer push changes to OperatorCondition’s status.
+		// $oc patch operatorcondition etcdoperator.v0.9.2 -p '{"spec":{"conditions":[{"type":"Upgradeable", "observedCondition":1,"status":"False","reason":"bug","message":"not ready","lastUpdateTime":"2021-06-16T16:56:44Z","lastTransitionTime":"2021-06-16T16:56:44Z"}]}}' --type=merge
+		g.By("4) Patch the spec.conditions[0].Upgradeable to False")
+		patchResource(oc, asAdmin, withoutNamespace, "-n", oc.Namespace(), "operatorcondition", "etcdoperator.v0.9.2", "-p", "{\"spec\": {\"conditions\": [{\"type\": \"Upgradeable\", \"status\": \"False\", \"reason\": \"upgradeIsNotSafe\", \"message\": \"Disbale the upgrade\", \"observedCondition\":1, \"lastUpdateTime\":\"2021-06-16T16:56:44Z\",\"lastTransitionTime\":\"2021-06-16T16:56:44Z\"}]}}", "--type=merge")
 
 		newCheck("expect", asAdmin, withoutNamespace, compare, "Upgradeable", ok, []string{"operatorcondition", "etcdoperator.v0.9.2", "-n", oc.Namespace(), "-o=jsonpath={.status.conditions[0].type}"}).check(oc)
 		newCheck("expect", asAdmin, withoutNamespace, compare, "False", ok, []string{"operatorcondition", "etcdoperator.v0.9.2", "-n", oc.Namespace(), "-o=jsonpath={.status.conditions[0].status}"}).check(oc)
 
-		g.By("6) Apprrove this etcdoperator.v0.9.4, the corresponding CSV should be in Pending state")
+		g.By("5) Apprrove this etcdoperator.v0.9.4, the corresponding CSV should be in Pending state")
 		sub.approveSpecificIP(oc, itName, dr, "etcdoperator.v0.9.4", "Complete")
 		newCheck("expect", asAdmin, withoutNamespace, compare, "Pending", ok, []string{"csv", "etcdoperator.v0.9.4", "-n", oc.Namespace(), "-o=jsonpath={.status.phase}"}).check(oc)
 
-		g.By("7) Check the CSV message, the operator is not upgradeable")
-		err = wait.Poll(3*time.Second, 60*time.Second, func() (bool, error) {
+		g.By("6) Check the CSV message, the operator is not upgradeable")
+		err := wait.Poll(3*time.Second, 60*time.Second, func() (bool, error) {
 			msg, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", oc.Namespace(), "csv", "etcdoperator.v0.9.4", "-o=jsonpath={.status.message}").Output()
 			if !strings.Contains(msg, "operator is not upgradeable") {
 				return false, nil
@@ -231,6 +212,12 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 			return true, nil
 		})
 		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("7) Patch the spec.conditions[0].Upgradeable to True")
+		// $oc patch operatorcondition etcdoperator.v0.9.2 -p '{"spec":{"conditions":[{"type":"Upgradeable", "observedCondition":1,"status":"True","reason":"bug","message":"ready","lastUpdateTime":"2021-06-16T16:56:44Z","lastTransitionTime":"2021-06-16T16:56:44Z"}]}}' --type=merge
+		patchResource(oc, asAdmin, withoutNamespace, "-n", oc.Namespace(), "operatorcondition", "etcdoperator.v0.9.2", "-p", "{\"spec\": {\"conditions\": [{\"type\": \"Upgradeable\", \"status\": \"True\", \"reason\": \"ready\", \"message\": \"enable the upgrade\", \"observedCondition\":1, \"lastUpdateTime\":\"2021-06-16T17:56:44Z\",\"lastTransitionTime\":\"2021-06-16T17:56:44Z\"}]}}", "--type=merge")
+		g.By("8) the etcdoperator.v0.9.2 can be upgraded to etcdoperator.v0.9.4 successfully")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", "etcdoperator.v0.9.4", "-n", oc.Namespace(), "-o=jsonpath={.status.phase}"}).check(oc)
 
 	})
 
@@ -4809,9 +4796,9 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 			exists              bool
 			failures            = 0
 			failureNames        = ""
+			since               = "--since=60s"
 			msg                 string
 			s                   string
-			since                             = "--since=60s"
 			snooze              time.Duration = 180
 			step                string
 			tail                = "--tail=10"
