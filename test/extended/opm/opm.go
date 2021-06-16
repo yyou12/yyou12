@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -393,6 +394,223 @@ var _ = g.Describe("[sig-operators] OLM opm with podman", func() {
 		cmd.Process.Kill()
 		g.By("step: SUCCESS")
 
+	})
+
+
+	// author: tbuskey@redhat.com
+	g.It("Author:tbuskey-VMonly-High-30786-Bundle addition commutativity", func() {
+		opmBaseDir   := exutil.FixturePath("testdata", "opm")
+		defer DeleteDir(opmBaseDir, "fixture-testdata")
+		TestDataPath := filepath.Join(opmBaseDir, "temp")
+		opmCLI.ExecCommandPath = TestDataPath
+
+		var (	
+			bundles      [3]string
+			bundleName   [3]string
+			indexName    = "index30786"
+			matched      bool
+			sqlResults   []db.Channel
+		)
+
+		g.By("Setup environment")
+		// see OCP-30786 for creation of these images
+		bundles[0]    = "quay.io/olmqe/etcd-bundle:0.9.0-39795"
+		bundles[1]    = "quay.io/olmqe/etcd-bundle:0.9.2-39795"
+		bundles[2]    = "quay.io/olmqe/etcd-bundle:0.9.4-39795"
+		bundleName[0] = "etcdoperator.v0.9.0"
+		bundleName[1] = "etcdoperator.v0.9.2"
+		bundleName[2] = "etcdoperator.v0.9.4"
+		containerCLI  := podmanCLI
+
+		indexTmpPath1 := filepath.Join(TestDataPath, "database")
+		err := os.MkdirAll(indexTmpPath1, 0755)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+
+		g.By("Create index image with a,b")
+		index := 1
+		a     := 0
+		b     := 1
+		order := "a,b"
+		s     := fmt.Sprintf("%v,%v", bundles[a], bundles[b])
+		t1    := fmt.Sprintf("%v:%v", indexName, index)
+		defer podmanCLI.RemoveImage(t1)
+		msg, err := opmCLI.Run("index").Args("add", "-b", s, "-t", t1).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf(msg)
+		matched, err = regexp.MatchString(fmt.Sprintf("bundles=.*%v %v", bundles[a], bundles[b]), msg)
+		o.Expect(matched).To(o.BeTrue())
+
+		msg, err = containerCLI.Run("images").Args("-n", t1).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf("IMAGES in %v: %v",order, msg)
+		o.Expect(msg).NotTo(o.BeEmpty())
+		podmanCLI.RemoveImage(t1)
+
+
+		g.By("Generate db with a,b & check with sqlite")
+		msg, err = opmCLI.Run("index").Args("add", "-b", s, "--generate").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf(msg)
+		matched, err = regexp.MatchString(fmt.Sprintf("bundles=.*%v %v", bundles[a], bundles[b]), msg)
+		o.Expect(matched).To(o.BeTrue())
+
+		sqlResults, err = sqlit.QueryOperatorChannel(path.Join(indexTmpPath1, "index.db"))
+		// force string compare
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf("sqlite contents %v: %v", order, sqlResults)
+		o.Expect(fmt.Sprintf("%v",sqlResults[0])).To(o.ContainSubstring(bundleName[1]))
+		o.Expect(fmt.Sprintf("%v",sqlResults[1])).To(o.ContainSubstring(bundleName[0]))
+		os.Remove(path.Join(indexTmpPath1, "index.db"))
+
+
+		g.By("Create index image with b,a")
+		index++
+		a     = 1
+		b     = 0
+		order = "b,a"
+		s     = fmt.Sprintf("%v,%v", bundles[a], bundles[b])
+		t2    := fmt.Sprintf("%v:%v", indexName, index)
+		defer podmanCLI.RemoveImage(t2)
+		msg, err = opmCLI.Run("index").Args("add", "-b", s, "-t", t2).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf(msg)
+		matched, err = regexp.MatchString(fmt.Sprintf("bundles=.*%v %v", bundles[a], bundles[b]), msg)
+		o.Expect(matched).To(o.BeTrue())
+
+		msg, err = containerCLI.Run("images").Args("-n", t2).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf("IMAGES in %v: %v",order, msg)
+		o.Expect(msg).NotTo(o.BeEmpty())
+		podmanCLI.RemoveImage(t2)
+
+
+		g.By("Generate db with b,a & check with sqlite")
+		msg, err = opmCLI.Run("index").Args("add", "-b", s, "--generate").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf(msg)
+		matched, err = regexp.MatchString(fmt.Sprintf("bundles=.*%v %v", bundles[a], bundles[b]), msg)
+		o.Expect(matched).To(o.BeTrue())
+
+		sqlResults, err = sqlit.QueryOperatorChannel(path.Join(indexTmpPath1, "index.db"))
+		// force string compare
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf("sqlite contents %v: %v",order, sqlResults)
+		o.Expect(fmt.Sprintf("%v",sqlResults[0])).To(o.ContainSubstring(bundleName[1]))
+		o.Expect(fmt.Sprintf("%v",sqlResults[1])).To(o.ContainSubstring(bundleName[0]))
+		os.Remove(path.Join(indexTmpPath1, "index.db"))
+		
+
+		g.By("Create index image with a,b,c")
+		index++
+		a     = 0
+		b     = 1
+		c    := 2
+		order = "a,b,c"
+		s     = fmt.Sprintf("%v,%v,%v", bundles[a], bundles[b], bundles[c])
+		t3    := fmt.Sprintf("%v:%v", indexName, index)
+		defer podmanCLI.RemoveImage(t3)
+		msg, err = opmCLI.Run("index").Args("add", "-b", s, "-t", t3).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf(msg)
+		matched, err = regexp.MatchString(fmt.Sprintf("bundles=.*%v %v %v", bundles[a], bundles[b], bundles[c]), msg)
+		o.Expect(matched).To(o.BeTrue())
+
+		msg, err = containerCLI.Run("images").Args("-n", t3).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf("IMAGES in %v: %v",order, msg)
+		o.Expect(msg).NotTo(o.BeEmpty())
+		podmanCLI.RemoveImage(t3)
+
+
+		g.By("Generate db with a,b,c & check with sqlite")
+		msg, err = opmCLI.Run("index").Args("add", "-b", s, "--generate").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf(msg)
+		matched, err = regexp.MatchString(fmt.Sprintf("bundles=.*%v %v %v", bundles[a], bundles[b], bundles[c]), msg)
+		o.Expect(matched).To(o.BeTrue())
+
+		sqlResults, err = sqlit.QueryOperatorChannel(path.Join(indexTmpPath1, "index.db"))
+		// force string compare
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf("sqlite contents %v: %v",order, sqlResults)
+		o.Expect(fmt.Sprintf("%v",sqlResults[0])).To(o.ContainSubstring(bundleName[2]))
+		o.Expect(fmt.Sprintf("%v",sqlResults[1])).To(o.ContainSubstring(bundleName[1]))
+		o.Expect(fmt.Sprintf("%v",sqlResults[2])).To(o.ContainSubstring(bundleName[0]))
+		os.Remove(path.Join(indexTmpPath1, "index.db"))
+
+
+		g.By("Create index image with b,c,a")
+		index++
+		a     = 1
+		b     = 2
+		c     = 0
+		order = "b,c,a"
+		s     = fmt.Sprintf("%v,%v,%v", bundles[a], bundles[b], bundles[c])
+		t4    := fmt.Sprintf("%v:%v", indexName, index)
+		defer podmanCLI.RemoveImage(t4)
+		msg, err = opmCLI.Run("index").Args("add", "-b", s, "-t", t4).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf(msg)
+		matched, err = regexp.MatchString(fmt.Sprintf("bundles=.*%v %v %v", bundles[a], bundles[b], bundles[c]), msg)
+		o.Expect(matched).To(o.BeTrue())
+
+		msg, err = containerCLI.Run("images").Args("-n", t4).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf("IMAGES in %v: %v",order, msg)
+		o.Expect(msg).NotTo(o.BeEmpty())
+		podmanCLI.RemoveImage(t4)
+		// no db check
+
+
+		g.By("Create index image with c,a,b")
+		index++
+		a     = 2
+		b     = 0
+		c     = 1
+		order = "c,a,b"
+		s     = fmt.Sprintf("%v,%v,%v", bundles[a], bundles[b], bundles[c])
+		t5    := fmt.Sprintf("%v:%v", indexName, index)
+		defer podmanCLI.RemoveImage(t5)
+		msg, err = opmCLI.Run("index").Args("add", "-b", s, "-t", t5).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf(msg)
+		matched, err = regexp.MatchString(fmt.Sprintf("bundles=.*%v %v %v", bundles[a], bundles[b], bundles[c]), msg)
+		o.Expect(matched).To(o.BeTrue())
+
+		msg, err = containerCLI.Run("images").Args("-n", t5).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf("IMAGES in %v: %v",order, msg)
+		o.Expect(msg).NotTo(o.BeEmpty())
+		podmanCLI.RemoveImage(t5)
+		// no db check
+
+
+		g.By("Generate db with b,a,c & check with sqlite")
+		a     = 1
+		b     = 0
+		c     = 2
+		order = "b,a,c"
+		s     = fmt.Sprintf("%v,%v,%v", bundles[a], bundles[b], bundles[c])
+		// no image check, just db
+
+		msg, err = opmCLI.Run("index").Args("add", "-b", s, "--generate").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf(msg)
+		matched, err = regexp.MatchString(fmt.Sprintf("bundles=.*%v %v %v", bundles[a], bundles[b], bundles[c]), msg)
+		o.Expect(matched).To(o.BeTrue())
+
+		sqlResults, err = sqlit.QueryOperatorChannel(path.Join(indexTmpPath1, "index.db"))
+		// force string compare
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf("sqlite contents %v: %v",order, sqlResults)
+		o.Expect(fmt.Sprintf("%v",sqlResults[0])).To(o.ContainSubstring(bundleName[2]))
+		o.Expect(fmt.Sprintf("%v",sqlResults[1])).To(o.ContainSubstring(bundleName[1]))
+		o.Expect(fmt.Sprintf("%v",sqlResults[2])).To(o.ContainSubstring(bundleName[0]))
+		os.Remove(path.Join(indexTmpPath1, "index.db"))
+
+		
+		g.By("Finished")
 	})
 
 })
