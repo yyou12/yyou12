@@ -2019,6 +2019,9 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 
 	// author: scolange@redhat.com
 	g.It("Author:scolange-Medium-42041-Available=False despite unavailableReplicas <= maxUnavailable", func() {
+		_, err1 := oc.AsAdmin().WithoutNamespace().Run("patch").Args("csv", "packageserver", "-n", "openshift-operator-lifecycle-manager",
+			"--type=json", "--patch", "[{\"op\": \"add\",\"path\": \"/spec/install/spec/deployments/0/spec/template/metadata/annotations\", \"value\": { \"custom.csv\": \"custom csv value\"} }]").Output()
+		o.Expect(err1).NotTo(o.HaveOccurred())
 		maxUnavailable, err1 := oc.AsAdmin().WithoutNamespace().Run("get").Args("deployment", "packageserver", "-n", "openshift-operator-lifecycle-manager", "-o=jsonpath={.spec.strategy.rollingUpdate.maxUnavailable}").Output()
 		e2e.Logf(maxUnavailable)
 		o.Expect(err1).NotTo(o.HaveOccurred())
@@ -4808,7 +4811,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 			failureNames        = ""
 			msg                 string
 			s                   string
-			since               = "--since=60s"
+			since                             = "--since=60s"
 			snooze              time.Duration = 180
 			step                string
 			tail                = "--tail=10"
