@@ -167,11 +167,12 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
         operatorsdkCLI.showInfo = true
         oc.SetupProject()
         namespace := oc.Namespace()
-        _, err := operatorsdkCLI.Run("run").Args("bundle", "quay.io/olmqe/memcached-bundle:v4.8", "-n", namespace, "--timeout", "5m").Output()
+        defer operatorsdkCLI.Run("cleanup").Args("max-concurrent-reconciles", "-n", namespace).Output()
+        _, err := operatorsdkCLI.Run("run").Args("bundle", "quay.io/olmqe/max-concurrent-reconciles-bundle:v4.8", "-n", namespace, "--timeout", "5m").Output()
         o.Expect(err).NotTo(o.HaveOccurred())
         g.By("Check the reconciles number in logs")
         waitErr := wait.Poll(15*time.Second, 360*time.Second, func() (bool, error) {
-            msg, _ := oc.AsAdmin().WithoutNamespace().Run("logs").Args("deploy/memcached-operator-controller-manager", "-c", "manager", "-n", namespace).Output()
+            msg, _ := oc.AsAdmin().WithoutNamespace().Run("logs").Args("deploy/max-concurrent-reconciles-controller-manager", "-c", "manager", "-n", namespace).Output()
             if strings.Contains(msg, "\"worker count\":4") {
                 e2e.Logf("found worker count:4")
                 return true, nil
