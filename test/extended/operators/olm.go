@@ -4808,8 +4808,8 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 			failureNames        = ""
 			msg                 string
 			s                   string
-			since                             = "--since=60s"
-			snooze              time.Duration = 90
+			since               = "--since=60s"
+			snooze              time.Duration = 180
 			step                string
 			tail                = "--tail=10"
 			waitErr             error
@@ -4863,7 +4863,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		step = "1/4"
 
 		sub.createWithoutCheck(oc, itName, dr)
-		waitErr = wait.Poll(3*time.Second, snooze*time.Second, func() (bool, error) {
+		waitErr = wait.Poll(10*time.Second, snooze*time.Second, func() (bool, error) {
 			msg, err = oc.AsAdmin().WithoutNamespace().Run("logs").Args(catPodname, "-n", "openshift-operator-lifecycle-manager", tail, since).Output()
 			o.Expect(err).NotTo(o.HaveOccurred())
 			if strings.Contains(msg, s) {
@@ -4888,7 +4888,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		step = "2/4"
 
 		sub.createWithoutCheck(oc, itName, dr)
-		waitErr = wait.Poll(3*time.Second, snooze*time.Second, func() (bool, error) {
+		waitErr = wait.Poll(10*time.Second, snooze*time.Second, func() (bool, error) {
 			msg, err = oc.AsAdmin().WithoutNamespace().Run("logs").Args(catPodname, "-n", "openshift-operator-lifecycle-manager", tail, since).Output()
 			o.Expect(err).NotTo(o.HaveOccurred())
 			if strings.Contains(msg, s) {
@@ -4913,7 +4913,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		step = "3/4"
 
 		sub.createWithoutCheck(oc, itName, dr)
-		waitErr = wait.Poll(3*time.Second, snooze*time.Second, func() (bool, error) {
+		waitErr = wait.Poll(10*time.Second, snooze*time.Second, func() (bool, error) {
 			msg, err = oc.AsAdmin().WithoutNamespace().Run("logs").Args(catPodname, "-n", "openshift-operator-lifecycle-manager", tail, since).Output()
 			o.Expect(err).NotTo(o.HaveOccurred())
 			if strings.Contains(msg, s) {
@@ -4936,7 +4936,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		step = "4/4"
 
 		sub.createWithoutCheck(oc, itName, dr)
-		waitErr = wait.Poll(3*time.Second, snooze*time.Second, func() (bool, error) {
+		waitErr = wait.Poll(10*time.Second, snooze*time.Second, func() (bool, error) {
 			msg, err = oc.AsAdmin().WithoutNamespace().Run("logs").Args(catPodname, "-n", "openshift-operator-lifecycle-manager", tail, since).Output()
 			o.Expect(err).NotTo(o.HaveOccurred())
 			if strings.Contains(msg, s) {
