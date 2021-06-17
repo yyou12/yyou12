@@ -1,8 +1,8 @@
 reviewers:
+  - yapei
   - Xia-Zhao-rh
   - kuiwang02
   - bandrade
-  - akostadinov
   - liangxia
   - jianzhangbjz
   - bparees
@@ -10,10 +10,10 @@ reviewers:
   - mfojtik
   - shawn-hurley
 approvers:
+  - yapei
   - Xia-Zhao-rh
   - kuiwang02
   - bandrade
-  - akostadinov
   - liangxia
   - jianzhangbjz
   - bparees
