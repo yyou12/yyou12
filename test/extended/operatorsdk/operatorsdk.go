@@ -613,10 +613,10 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
         o.Expect(result).To(o.ContainSubstring("--metrics-bind-address"))	
     })
     // author: chuo@redhat.com
-    g.It("Author:chuo-High-37914-Bump k8s in SDK to v1.19 and controller-runtime to 0.7.0", func() {
+    g.It("Author:chuo-High-37914-Bump k8s in SDK to v1.20 and controller-runtime to 0.7.0", func() {
         operatorsdkCLI.showInfo = true
         output, _ := operatorsdkCLI.Run("version").Args().Output()
-        o.Expect(output).To(o.ContainSubstring("v1.19.4"))
+        o.Expect(output).To(o.ContainSubstring("v1.20"))
     })
     // author: chuo@redhat.com
     g.It("ConnectedOnly-Author:chuo-Medium-34366-change ansible operator flags from maxWorkers using env MAXCONCURRENTRECONCILES ", func() {
