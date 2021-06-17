@@ -6954,4 +6954,25 @@ var _ = g.Describe("[sig-operators] OLM on VM for an end user handle within a na
 		sub.getCSV().delete(itName, dr)
 	})
 
+	// Test case: OCP-30695, author:kuiwang@redhat.com
+	g.It("VMonly-ConnectedOnly-Author:kuiwang-Medium-30695-oc adm catalog mirror should mirror bundle images", func() {
+		var (
+			// it is prepared index, and no need to remove it.
+			indexImageTag   = "quay.io/olmqe/cockroachdb-index:2.1.11-30695"
+			cockroachdbPath = "operators-cockroachdb-manifests-" + getRandomString()
+		)
+		defer exec.Command("bash", "-c", "rm -fr ./"+cockroachdbPath).Output()
+
+		g.By("mirror to localhost:5000")
+		output, err := oc.AsAdmin().WithoutNamespace().Run("adm", "catalog", "mirror").Args("--manifests-only", "--to-manifests="+cockroachdbPath, indexImageTag, "localhost:5000").Output()
+		e2e.Logf("the output is %v", output)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring("operators-cockroachdb-manifests"))
+
+		g.By("check mapping.txt to localhost:5000")
+		result, err := exec.Command("bash", "-c", "cat ./"+cockroachdbPath+"/mapping.txt|grep -E \"quay.io/kuiwang/cockroachdb-operator\"").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(result).To(o.ContainSubstring("cockroachdb-operator:2.1.11"))
+	})
+
 })
