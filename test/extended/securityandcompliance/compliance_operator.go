@@ -76,7 +76,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			displayName: "openshift-compliance-operator",
 			publisher:   "Red Hat",
 			sourceType:  "grpc",
-			address:     "quay.io/openshift-qe-optional-operators/compliance-operator-index:v4.8",
+			address:     "quay.io/openshift-qe-optional-operators/compliance-operator-index-0.1:latest",
 			template:    catsrcCoTemplate,
 		}
 		ogD = operatorGroupDescription{
@@ -87,9 +87,9 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		subD = subscriptionDescription{
 			subName:                "compliance-operator",
 			namespace:              "",
-			channel:                "4.8",
+			channel:                "release-0.1",
 			ipApproval:             "Automatic",
-			operatorPackage:        "openshift-compliance-operator",
+			operatorPackage:        "compliance-operator",
 			catalogSourceName:      "compliance-operator",
 			catalogSourceNamespace: "",
 			startingCSV:            "",
