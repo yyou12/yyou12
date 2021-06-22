@@ -595,7 +595,7 @@ func checkFipsStatus(oc *exutil.CLI) string {
 	mnodeName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("node", "--selector=node.openshift.io/os_id=rhcos,node-role.kubernetes.io/master=",
 		"-o=jsonpath={.items[0].metadata.name}").Output()
 	o.Expect(err).NotTo(o.HaveOccurred())
-	efips, err := oc.AsAdmin().WithoutNamespace().Run("debug").Args("node/"+mnodeName, "--", "chroot", "/host", "fips-mode-setup", "--check").Output()
+	efips, err := oc.AsAdmin().WithoutNamespace().Run("debug").Args("-n", oc.Namespace(), "node/"+mnodeName, "--", "chroot", "/host", "fips-mode-setup", "--check").Output()
 	if strings.Contains(efips, "FIPS mode is disabled.") {
 		e2e.Logf("Fips is disabled on master node %v ", mnodeName)
 	} else {
