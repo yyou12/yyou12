@@ -55,6 +55,7 @@ oc extract secret/pull-secret -n openshift-config  --confirm
 ocpimaage=`oc adm release info registry.ci.openshift.org/ocp/release:${NIGHTLYVERSION} --image-for=operator-registry -a .dockerconfigjson`
 echo ${ocpimaage}
 podman pull ${ocpimaage} --authfile  .dockerconfigjson
+rm -f .dockerconfigjson
 instanceID=`podman create ${ocpimaage}`
 podman cp ${instanceID}:/bin/opm  .
 podman cp ${instanceID}:/bin/initializer .
