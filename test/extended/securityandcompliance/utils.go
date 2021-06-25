@@ -120,7 +120,7 @@ func (fi1 *fileintegrity) checkKeywordExistInLog(oc *exutil.CLI, podName string,
 }
 
 func (fi1 *fileintegrity) checkArgsInPod(oc *exutil.CLI, expected string) {
-	err := wait.Poll(5*time.Second, 20*time.Second, func() (bool, error) {
+	err := wait.Poll(5*time.Second, 60*time.Second, func() (bool, error) {
 		fioPodArgs, err1 := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-l file-integrity.openshift.io/pod=",
 			"-n", fi1.namespace, "-o=jsonpath={.items[0].spec.containers[].args}").Output()
 		o.Expect(err1).NotTo(o.HaveOccurred())

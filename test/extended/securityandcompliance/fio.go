@@ -171,16 +171,16 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 		g.By("Create fileintegrity with debug=false")
 		fi1.createFIOWithoutConfig(oc, itName, dr)
 		fi1.checkFileintegrityStatus(oc, "running")
-		var podName = fi1.getOneFioPodName(oc)
 		fi1.checkArgsInPod(oc, "debug=false")
+		var podName = fi1.getOneFioPodName(oc)
 		fi1.checkKeywordNotExistInLog(oc, podName, "debug:")
 
 		g.By("Configure fileintegrity with debug=true")
 		fi1.debug = true
 		fi1.createFIOWithoutConfig(oc, itName, dr)
 		fi1.checkFileintegrityStatus(oc, "running")
-		podName = fi1.getOneFioPodName(oc)
 		fi1.checkArgsInPod(oc, "debug=true")
+		podName = fi1.getOneFioPodName(oc)
 		fi1.checkKeywordExistInLog(oc, podName, "debug:")
 
 	})
@@ -212,16 +212,16 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 		g.By("Create fileintegrity with debug=true")
 		fi1.createFIOWithoutConfig(oc, itName, dr)
 		fi1.checkFileintegrityStatus(oc, "running")
-		var podName = fi1.getOneFioPodName(oc)
 		fi1.checkArgsInPod(oc, "debug=true")
+		var podName = fi1.getOneFioPodName(oc)
 		fi1.checkKeywordExistInLog(oc, podName, "debug:")
 
 		g.By("Configure fileintegrity with debug=false")
 		fi1.debug = false
 		fi1.createFIOWithoutConfig(oc, itName, dr)
 		fi1.checkFileintegrityStatus(oc, "running")
-		podName = fi1.getOneFioPodName(oc)
 		fi1.checkArgsInPod(oc, "debug=false")
+		podName = fi1.getOneFioPodName(oc)
 		fi1.checkKeywordNotExistInLog(oc, podName, "debug:")
 
 	})
@@ -322,9 +322,10 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 		fi1.createFIOWithConfig(oc, itName, dr)
 		fi1.checkFileintegrityStatus(oc, "running")
 		newCheck("expect", asAdmin, withoutNamespace, compare, "Error", ok, []string{"fileintegrity", fi1.name, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
-		var podName = fi1.getOneFioPodName(oc)
-		fi1.checkKeywordExistInLog(oc, podName, "aide check returned status 17")
-		fi1.checkFileintegritynodestatus(oc, nodeName, "Errored")
+		newCheck("expect", asAdmin, withoutNamespace, contain, "AIDE error: 17 Invalid configureline error", ok, []string{"events", "-n", sub.namespace, "--field-selector",
+			"reason=NodeIntegrityStatus"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, contain, "AIDE error: 17 Invalid configureline error", ok, []string{"fileintegritynodestatus", "-n", sub.namespace,
+			"-o=jsonpath={.items[*].results}"}).check(oc)
 	})
 
 	//author: xiyuan@redhat.com
