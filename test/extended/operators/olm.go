@@ -2902,16 +2902,14 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
 			ogSingleTemplate    = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
 			subTemplate         = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
-			namespace           = "openshift-storage-41026"
-			ogD                 = operatorGroupDescription{
+			og                 = operatorGroupDescription{
 				name:      "og-singlenamespace",
 				namespace: "",
 				template:  ogSingleTemplate,
 			}
-			subD = subscriptionDescription{
+			sub = subscriptionDescription{
 				subName:                "ocs-operator",
-				namespace:              "openshift-storage",
-				channel:                "stable-4.6",
+				namespace:              "",
 				ipApproval:             "Automatic",
 				operatorPackage:        "ocs-operator",
 				catalogSourceName:      "redhat-operators",
@@ -2922,13 +2920,11 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 				template:               subTemplate,
 				singleNamespace:        true,
 			}
-			og  = ogD
-			sub = subD
 		)
-		defer RemoveNamespace(namespace, oc)
-		CreateNamespaceWithoutPrefix(namespace, oc)
-		og.namespace = namespace
-		sub.namespace = namespace
+
+		oc.SetupProject() //project and its resource are deleted automatically when out of It, so no need derfer or AfterEach
+		og.namespace = oc.Namespace()
+		sub.namespace = oc.Namespace()
 
 		g.By("Create og")
 		og.create(oc, itName, dr)
