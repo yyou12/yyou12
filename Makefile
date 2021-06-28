@@ -3,11 +3,11 @@ all: update update-public build
 OUT_DIR=bin
 
 update-public:
-	export GOFLAGS="" && go get github.com/openshift/openshift-tests@master
+	export GOFLAGS="" && go get -d github.com/openshift/openshift-tests@master
 
 build:
 	mkdir -p "${OUT_DIR}"
-	export GOFLAGS="" && go get ./... && go build -o "${OUT_DIR}" "./cmd/extended-platform-tests"
+	export GO111MODULE="on" && export GOFLAGS="" && go build -mod=mod -o "${OUT_DIR}" "./cmd/extended-platform-tests"
 
 nightly-test: 
 	./hack/nightly_test.sh
@@ -19,8 +19,7 @@ pr-test:
 	python ./hack/pr.py
 
 # Include the library makefile
-include $(addprefix ./vendor/github.com/openshift/library-go/alpha-build-machinery/make/, \
-	targets/openshift/bindata.mk)
+include $(addprefix ./, bindata.mk)
 
 
 IMAGE_REGISTRY :=registry.svc.ci.openshift.org

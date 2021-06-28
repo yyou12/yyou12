@@ -1,11 +1,9 @@
 module github.com/openshift/openshift-tests-private
 
-go 1.13
+go 1.16
 
 require (
 	github.com/RangelReale/osincli v0.0.0-20160924135400-fababb0555f2
-	github.com/blang/semver v3.5.0+incompatible
-	github.com/coreos/rkt v1.30.0 // indirect
 	github.com/davecgh/go-spew v1.1.1
 	github.com/docker/docker v0.7.3-0.20190327010347-be7ac8be2ae0
 	github.com/fsouza/go-dockerclient v0.0.0-20171004212419-da3951ba2e9e
@@ -16,14 +14,13 @@ require (
 	github.com/openshift/api v3.9.1-0.20191201231411-9f834e337466+incompatible
 	github.com/openshift/client-go v0.0.0-20200116152001-92a2713fa240
 	github.com/openshift/library-go v0.0.0-20200120153246-906409ae5e38
-	github.com/openshift/openshift-tests v0.0.0-20210513080030-300d3ca9c31a
+	github.com/openshift/openshift-tests v0.0.0-20210616072155-b0377b51229f
 	github.com/pborman/uuid v1.2.0
 	github.com/prometheus/client_golang v1.1.0
 	github.com/prometheus/client_model v0.0.0-20190129233127-fd36f4220a90
 	github.com/prometheus/common v0.6.0
 	github.com/spf13/cobra v1.0.0
 	github.com/spf13/pflag v1.0.5
-	github.com/stretchr/stew v0.0.0-20130812190256-80ef0842b48b
 	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45
 	k8s.io/api v0.17.1
 	k8s.io/apimachinery v0.17.1

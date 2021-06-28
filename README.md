@@ -1,117 +1,73 @@
 # Extended Platform Tests
-
 This repository holds the non-kubernetes, end-to-end tests that need to pass on a running
 cluster before PRs merge and/or before we ship a release.
 These tests are based on ginkgo and the github.com/kubernetes/kubernetes e2e test framework.
 
 Prerequisites
 -------------
-
-* Git installed.
-* Golang installed.
+* Git installed. See: [Installing Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)
+* Golang installed. See: [Installing Golang](https://golang.org/doc/install), the new the better.
 * Have the environment variable `KUBECONFIG` set pointing to your cluster.
 
-### Update The Public Repo Lib
-We treat the public repo: [openshift-tests](https://github.com/openshift/openshift-tests) as a dependency lib. That means you can also run the test case of that public repo in this private repo. Run the `$ make update-public` command to update this dep lib. Or you can build the binary with `$ make all` command.
+### Include test cases of the Public Repo
+If you want to run the Public [openshift-tests](https://github.com/openshift/openshift-tests) test cases together, you can include the coresponding package [here](https://github.com/openshift/openshift-tests-private/blob/master/test/extended/include.go). For example, include the Public [extended/operators](https://github.com/openshift/openshift-tests-private/blob/master/test/extended/include.go#L28) test cases. And then, run the `$ make update-public` command to get it, or you can run `$ make all` command.
 
-### New Test Folder
-If you create a new folder for your test case, please **add the path** to the [include.go file](https://github.com/openshift/openshift-tests-private/blob/master/test/extended/include.go).
+### Include new test folder
+If you create a new folder for your test case, please **add the path** to the [include.go](https://github.com/openshift/openshift-tests-private/blob/master/test/extended/include.go).
 
-## Compile the executable binary
-The generated `extended-platform-tests` binary in the `./bin/extended-platform-tests/` folder.
-If you want to compile the `openshift-tests` binary, please see the [origin](https://github.com/openshift/origin).
-
+### Create go-bindata for new YAML files
+If you have some **new YAML files** used in your code, you have to generate the bindata first.
+Run `make update` to update the bindata. For example, you can see the bindata has been updated after running the `make update`. As follows:
 ```console
-$ mkdir -p ${GOPATH}/src/github.com/openshift/
-$ cd ${GOPATH}/src/github.com/openshift/
+$ git status
+	modified:   test/extended/testdata/bindata.go
+	new file:   test/extended/testdata/olm/etcd-subscription-manual.yaml
+```
+
+### Compile the executable binary
+Note that: we use the `go module` for package management, the previous `go path` is deprecated.
+```console
 $ git clone git@github.com:openshift/openshift-tests-private.git
 $ cd openshift-tests-private/
-$ make clean
 $ make build
+mkdir -p "bin"
+export GO111MODULE="on" && export GOFLAGS="" && go build -o "bin" "./cmd/extended-platform-tests"
+$ ls -hl ./bin/extended-platform-tests 
+-rwxrwxr-x. 1 cloud-user cloud-user 165M Jun 24 22:17 ./bin/extended-platform-tests
 ```
 
-## How to Contribute 
-Below is an example of how to submit a PR. First, you should **Fork** this repo to yourself Github repo.
-Note that: please use `make build` instead of the `make all`/`make update-public` command in your development. 
-
+## Contribution 
+Below are the general steps about submitting a PR. First, you should **Fork** this repo to yourself Github repo.
 ```console
-$ git remote add <user> git@github.com:<user>/openshift-tests-private.git
+$ git remote add <Your Name> git@github.com:<Your Github Account>/openshift-tests-private.git
 $ git pull origin master
-$ git checkout -b example
+$ git checkout -b <Branch Name>
 $ git add xxx
 $ make build
-$ ./bin/extended-platform-tests xxx
+$ ./bin/extended-platform-tests run all --dry-run |grep <Test Case ID>|./bin/extended-platform-tests run -f -
 $ git commit -m "xxx"
-$ git push <user> example:example
+$ git push <Your Name> <Branch Name>:<Branch Name>
 ```
+And then, there will be have a prompt in your Github repo console, and then click it.
 
-Run `./bin/extended-platform-tests --help` to get started.
-
+### Run the automation test case
+The binary find the test case via searching the test case title. It searches the test case title by RE(`Regular Expression`).So, you can filter your test case by using `grep`. Such as, I want to run all [OLM test cases](https://github.com/openshift/openshift-tests/blob/master/test/extended/operators/olm.go#L21), and all of them containns the `OLM` letter, so I can use the `grep OLM` to filter them, as follows: 
 ```console
-This command verifies behavior of an OpenShift cluster by running remote tests against the cluster API that exercise functionality. In general these tests may be disruptive or require elevated privileges - see the descriptions of each test suite.
-
-Usage:
-   [command]
-
-Available Commands:
-  help        Help about any command
-  run         Run a test suite
-  run-monitor Continuously verify the cluster is functional
-  run-test    Run a single test by name
-  run-upgrade Run an upgrade suite
-
-Flags:
-  -h, --help   help for this command
+$ ./bin/extended-platform-tests run all --dry-run | grep "OLM" | ./bin/extended-platform-tests run -f -
+I0624 22:48:36.599578 2404223 test_context.go:419] Tolerating taints "node-role.kubernetes.io/master" when considering if nodes are ready
+"[sig-operators] OLM for an end user handle common object Author:kuiwang-Medium-22259-marketplace operator CR status on a running cluster [Exclusive] [Serial]"
+...
 ```
-
-## How to run
-
-You can filter your test case by using `grep`. Such as, 
-For example, to filter the [OLM test cases](https://github.com/openshift/openshift-tests/blob/master/test/extended/operators/olm.go#L21), you can run this command: 
-
-```console
-$ ./bin/extended-platform-tests run all --dry-run|grep "\[Feature:Platform\] OLM should"
-I0410 15:33:38.465141    7508 test_context.go:419] Tolerating taints "node-role.kubernetes.io/master" when considering if nodes are ready
-"[Feature:Platform] OLM should Implement packages API server and list packagemanifest info with namespace not NULL [Suite:openshift/conformance/parallel]"
-"[Feature:Platform] OLM should [Serial] olm version should contain the source commit id [Suite:openshift/conformance/serial]"
-"[Feature:Platform] OLM should be installed with catalogsources at version v1alpha1 [Suite:openshift/conformance/parallel]"
-"[Feature:Platform] OLM should be installed with clusterserviceversions at version v1alpha1 [Suite:openshift/conformance/parallel]"
-"[Feature:Platform] OLM should be installed with installplans at version v1alpha1 [Suite:openshift/conformance/parallel]"
-"[Feature:Platform] OLM should be installed with operatorgroups at version v1 [Suite:openshift/conformance/parallel]"
-"[Feature:Platform] OLM should be installed with packagemanifests at version v1 [Suite:openshift/conformance/parallel]"
-"[Feature:Platform] OLM should be installed with subscriptions at version v1alpha1 [Suite:openshift/conformance/parallel]"
-"[Feature:Platform] OLM should have imagePullPolicy:IfNotPresent on thier deployments [Suite:openshift/conformance/parallel]"
-```
-
 You can save the above output to a file and run it:
-
 ```console
 $ ./bin/extended-platform-tests run -f <your file path/name>
 ```
-
-Or you can run it directly:
-
+If you want to run a test case, such as, `g.It("Author:jiazha-Critical-23440-can subscribe to the etcd operator  [Serial]"` Since the `TestCaseID` is uniqueness, you can do:
 ```console
-$ ./bin/extended-platform-tests run all --dry-run | grep "\[Feature:Platform\] OLM should" | ./bin/extended-platform-tests run --junit-dir=./ -f -
+$ ./bin/extended-platform-tests run all --dry-run|grep "23440"|./bin/extended-platform-tests run --junit-dir=./ -f -
 ```
 
-### How to run a specific test case
-It searches the test case title by RE(`Regular Expression`). So you need to specify the title string detailly.
-For example, to run this test case: ["[Serial] olm version should contain the source commit id"](https://github.com/openshift/openshift-tests/blob/master/test/extended/operators/olm.go#L117), you can do it with 2 ways:
-
-* You may filter the list and pass it back to the run command with the --file argument. You may also pipe a list of test names, one per line, on standard input by passing "-f -".
-
-```console
-$ ./bin/extended-platform-tests run all --dry-run|grep "\[Serial\] olm version should contain the source commit id"|./bin/extended-platform-tests run --junit-dir=./ -f -
-```
-
-* You can also run it as follows if you know which test suite it belongs to.
-
-```console
-$ ./bin/extended-platform-tests run openshift/conformance/serial --run "\[Serial\] olm version should contain the source commit id"
-```
-
-## Debug
+### Debugging
 Sometime, we want to **keep the generated namespace for debugging**. Just add the Env Var: `export DELETE_NAMESPACE=false`. These random namespaces will be keep, like below:
 ```console
 ...
@@ -128,17 +84,51 @@ e2e-test-olm-a-a92jyymd-lmgj6                      Active   4m28s
 e2e-test-olm-a-a92jyymd-pr8hx                      Active   4m29s
 ...
 ```
+### Running test cases on GCP
+You will get the below error when running the test cases on GCP platform. 
+```
+E0628 22:11:41.236497   25735 test_context.go:447] Failed to setup provider config for "gce": Error building GCE/GKE provider: google: could not find default credentials. See https://developers.google.com/accounts/docs/application-default-credentials for more information.
+```
+**You need to `export` the below environment variable before running test on GCP.**
+```
+$ export GOOGLE_APPLICATION_CREDENTIALS=`pwd`/secrets/gce/aos-qe-sa.json
+```
+#### Update the GCP SA
+You may get `400 Bad Request` error even if you have `export` the above values. This error means it's time to update the SA.
+```
+E0628 22:18:22.290137   26212 gce.go:876] error fetching initial token: oauth2: cannot fetch token: 400 Bad Request
+Response: {"error":"invalid_grant","error_description":"Invalid JWT Signature."}
+```
+You can update the SA by following this [authentication](https://cloud.google.com/docs/authentication/production#cloud-console). As follows, or you can raise an issue here.
+1. Click the [apis](https://console.cloud.google.com/apis/credentials/serviceaccountkey?_ga=2.126026830.216162210.1593398139-2070485991.1569310149&project=openshift-qe&folder&organizationId=54643501348)
+2. From the `Service account` list, select New service account.
+3. In the `Service account` name field, enter a name.
+4. Click `Create`. A JSON file that contains your key downloads to your computer.
 
-## How to generate bindata
-If you have some new YAML files used in your code, you have to generate the bindata first.
-Run `make update` to update the bindata. For example, you can see the bindata has been updated after running the `make update`. As follows: 
-```console
-$ git status
-	modified:   test/extended/testdata/bindata.go
-	new file:   test/extended/testdata/olm/etcd-subscription-manual.yaml
+### Running test cases on Azure
+In order to execute case on the cluster built on Azure platform, you have to configure the `AZURE_AUTH_LOCATION` env variable which includes Azure subscriptionId, clientId, and clientSecret etc. You can get the `config/credentials/azure.json` from the private repo: `cucushift-internal`.
+Note that: if you cannot get the Azure secret successfully, you can still debug/run your test cases via the **Jenkins job**.
+```
+export AZURE_AUTH_LOCATION=<path to azure.json>
 ```
 
-### How to run the ginkgo-test job with your branch
+#### Update the Azure secret
+- Add your ssh key to https://code.engineering.redhat.com/gerrit/#/settings/ssh-keys
+- Clone the repo: ssh://<your-kerberos-id>@code.engineering.redhat.com:22/cucushift-internal, for example,
+```console
+[root@preserve-olm-env data]# git clone ssh://jiazha@code.engineering.redhat.com:22/cucushift-internal
+Cloning into 'cucushift-internal'...
+remote: Total 1367 (delta 0), reused 1367 (delta 0)
+Receiving objects: 100% (1367/1367), 263.87 KiB | 0 bytes/s, done.
+Resolving deltas: 100% (516/516), done.
+[root@preserve-olm-env data]# cd cucushift-internal/
+[root@preserve-olm-env cucushift-internal]# ls config/credentials/
+azure.json  crw                                  gce.json      micro_eng                      openshift-qe-regional_v4.json    ssp
+ccx-qe      deprecated.openshift-qe-gce_v4.json  gce-ocf.json  msg-client-aos-automation.pem  openshift-qe-shared-vpc_v4.json  vmc.json
+cfme        dockerhub                            gce_v4.json   openshift-qe-gce_v4.json       perf-eng
+```
+
+## Jenkins
 You can take the [ginkgo-test job](https://mastern-jenkins-csb-openshift-qe.apps.ocp4.prod.psi.redhat.com/job/ocp-common/job/ginkgo-test/) to run your test case with your repo. As follows:
 
 Here are the parameters:  
@@ -158,51 +148,3 @@ Here are the procedures:
 > - TIERN_REPO_BRANCH: examplebranch  
 > - JENKINS_SLAVE: goc47  
 
-### Running test cases on GCP
-You will get the below error when running the test cases on GCP platform. 
-```
-E0628 22:11:41.236497   25735 test_context.go:447] Failed to setup provider config for "gce": Error building GCE/GKE provider: google: could not find default credentials. See https://developers.google.com/accounts/docs/application-default-credentials for more information.
-```
-**You need to `export` the below environment variable before running test on GCP.**
-```
-$ export GOOGLE_APPLICATION_CREDENTIALS=`pwd`/secrets/gce/aos-qe-sa.json
-```
-#### How to update the GCP SA
-You may get `400 Bad Request` error even if you have `export` the above values. This error means it's time to update the SA.
-```
-E0628 22:18:22.290137   26212 gce.go:876] error fetching initial token: oauth2: cannot fetch token: 400 Bad Request
-Response: {"error":"invalid_grant","error_description":"Invalid JWT Signature."}
-```
-You can update the SA by following this [authentication](https://cloud.google.com/docs/authentication/production#cloud-console). As follows, or you can raise an issue here.
-1. Click the [apis](https://console.cloud.google.com/apis/credentials/serviceaccountkey?_ga=2.126026830.216162210.1593398139-2070485991.1569310149&project=openshift-qe&folder&organizationId=54643501348)
-2. From the `Service account` list, select New service account.
-3. In the `Service account` name field, enter a name.
-4. Click `Create`. A JSON file that contains your key downloads to your computer.
-
-### Running test cases on Azure
-In order to execute case on the cluster built on Azure platform, you have to configure the `AZURE_AUTH_LOCATION` env variable which includes Azure subscriptionId, clientId, and clientSecret etc. You can get the `config/credentials/azure.json` from the private repo: `cucushift-internal`and run: 
-```
-export AZURE_AUTH_LOCATION=<path to azure.json>
-```
-#### The steps to get the Azure secret
-- Add your ssh key to https://code.engineering.redhat.com/gerrit/#/settings/ssh-keys
-- Clone the repo: ssh://<your-kerberos-id>@code.engineering.redhat.com:22/cucushift-internal, for example,
-```console
-[root@preserve-olm-env data]# git clone ssh://jiazha@code.engineering.redhat.com:22/cucushift-internal
-Cloning into 'cucushift-internal'...
-remote: Total 1367 (delta 0), reused 1367 (delta 0)
-Receiving objects: 100% (1367/1367), 263.87 KiB | 0 bytes/s, done.
-Resolving deltas: 100% (516/516), done.
-[root@preserve-olm-env data]# cd cucushift-internal/
-[root@preserve-olm-env cucushift-internal]# ls config/credentials/
-azure.json  crw                                  gce.json      micro_eng                      openshift-qe-regional_v4.json    ssp
-ccx-qe      deprecated.openshift-qe-gce_v4.json  gce-ocf.json  msg-client-aos-automation.pem  openshift-qe-shared-vpc_v4.json  vmc.json
-cfme        dockerhub                            gce_v4.json   openshift-qe-gce_v4.json       perf-eng
-```
-If you cannot get the Azure secret successfully, you can still debug/run your test cases via the Ginkgo job. See: [running your test case via Ginkgo job doc](https://github.com/jianzhangbjz/openshift-tests-private/tree/azure#how-to-run-the-ginkgo-test-job-with-your-branch).
-
-## Run Certified Operators test
-
-```console
-$ ./bin/extended-platform-tests run openshift/isv --dry-run | grep -E "<REGEX>" | ./bin/extended-platform-tests run -f -
-```
