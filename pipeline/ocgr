@@ -4,27 +4,96 @@ set +x
 
 function get_build_type {
 
+  # the following is Disruptive
+
+  if [[ "${FILTERSO}" == *"Disruptive"* ]] && [[ "${FILTERSO}" != *"~Disruptive"* ]] && [[ "${FILTERSO}" == *"Basic"* ]] && [[ "${FILTERSO}" == *"Serial"* ]] && [[ "${FILTERSO}" != *"~Serial"* ]]; then
+    buildtype="-YDBS"
+    return
+  fi
+
+  if [[ "${FILTERSO}" == *"Disruptive"* ]] && [[ "${FILTERSO}" != *"~Disruptive"* ]] && [[ "${FILTERSO}" == *"Basic"* ]] && [[ "${FILTERSO}" == *"~Serial"* ]]; then
+    buildtype="-YDBP"
+    return
+  fi
+
   if [[ "${FILTERSO}" == *"Disruptive"* ]] && [[ "${FILTERSO}" != *"~Disruptive"* ]] && [[ "${FILTERSO}" == *"Basic"* ]]; then
-    buildtype="-YDB"
+    buildtype="-YDBN"
     return
   fi
+
+  if [[ "${FILTERSO}" == *"Disruptive"* ]] && [[ "${FILTERSO}" != *"~Disruptive"* ]] && [[ "${FILTERSO}" == *"Intermediate"* ]] && [[ "${FILTERSO}" == *"Serial"* ]] && [[ "${FILTERSO}" != *"~Serial"* ]]; then
+    buildtype="-YDIS"
+    return
+  fi
+
+  if [[ "${FILTERSO}" == *"Disruptive"* ]] && [[ "${FILTERSO}" != *"~Disruptive"* ]] && [[ "${FILTERSO}" == *"Intermediate"* ]] && [[ "${FILTERSO}" == *"~Serial"* ]]; then
+    buildtype="-YDIP"
+    return
+  fi
+
   if [[ "${FILTERSO}" == *"Disruptive"* ]] && [[ "${FILTERSO}" != *"~Disruptive"* ]] && [[ "${FILTERSO}" == *"Intermediate"* ]]; then
-    buildtype="-YDI"
+    buildtype="-YDIN"
     return
   fi
+
+  if [[ "${FILTERSO}" == *"Disruptive"* ]] && [[ "${FILTERSO}" != *"~Disruptive"* ]] && [[ "${FILTERSO}" == *"Serial"* ]] && [[ "${FILTERSO}" != *"~Serial"* ]]; then
+    buildtype="-YDNS"
+    return
+  fi
+
+  if [[ "${FILTERSO}" == *"Disruptive"* ]] && [[ "${FILTERSO}" != *"~Disruptive"* ]] && [[ "${FILTERSO}" == *"~Serial"* ]]; then
+    buildtype="-YDNP"
+    return
+  fi
+
   if [[ "${FILTERSO}" == *"Disruptive"* ]] && [[ "${FILTERSO}" != *"~Disruptive"* ]]; then
-    buildtype="-YDN"
+    buildtype="-YDNN"
     return
   fi
+
+  # the following is non-Disruptive
+
+  if [[ "${FILTERSO}" == *"Basic"* ]] && [[ "${FILTERSO}" == *"Serial"* ]] && [[ "${FILTERSO}" != *"~Serial"* ]]; then
+    buildtype="-NDBS"
+    return
+  fi
+
+  if [[ "${FILTERSO}" == *"Basic"* ]] && [[ "${FILTERSO}" == *"~Serial"* ]]; then
+    buildtype="-NDBP"
+    return
+  fi
+
   if [[ "${FILTERSO}" == *"Basic"* ]]; then
-    buildtype="-NDB"
+    buildtype="-NDBN"
     return
   fi
+
+  if [[ "${FILTERSO}" == *"Intermediate"* ]] && [[ "${FILTERSO}" == *"Serial"* ]] && [[ "${FILTERSO}" != *"~Serial"* ]]; then
+    buildtype="-NDIS"
+    return
+  fi
+
+  if [[ "${FILTERSO}" == *"Intermediate"* ]] && [[ "${FILTERSO}" == *"~Serial"* ]]; then
+    buildtype="-NDIP"
+    return
+  fi
+
   if [[ "${FILTERSO}" == *"Intermediate"* ]]; then
-    buildtype="-NDI"
+    buildtype="-NDIN"
     return
   fi
-  buildtype="-NDN"
+
+  if [[ "${FILTERSO}" == *"Serial"* ]] && [[ "${FILTERSO}" != *"~Serial"* ]]; then
+    buildtype="-NDNS"
+    return
+  fi
+
+  if [[ "${FILTERSO}" == *"~Serial"* ]]; then
+    buildtype="-NDNP"
+    return
+  fi
+
+  buildtype="-NDNN"
 
 }
 
