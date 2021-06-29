@@ -696,8 +696,8 @@ func checkVersionAnnotationReady(oc *exutil.CLI, windowsNodeName string) bool {
 }
 
 func getWindowsMachineSetName(oc *exutil.CLI) string {
-	getCMD := "oc get machineset -ojson -n openshift-machine-api | jq -r '.items[] | select(.spec.template.metadata.labels[]==\"Windows\") | .spec.template.metadata.labels.\"machine.openshift.io/cluster-api-machineset\"'"
-	windowsMachineSetName, _ := exec.Command("bash", "-c", getCMD).Output()
+	windowsMachineSetName, err := oc.WithoutNamespace().Run("get").Args("machineset", "-n openshift-machine-api", "-o=jsonpath=.items[?(@.spec.template.metadata.labels.machine\\.openshift\\.io/os-id=='Windows')].metadata.name}").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
 	return strings.TrimSuffix(string(windowsMachineSetName), "\n")
 }
 
