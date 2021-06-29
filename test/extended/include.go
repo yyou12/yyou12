@@ -25,5 +25,6 @@ import (
 	_ "github.com/openshift/openshift-tests-private/test/extended/winc"
 	_ "github.com/openshift/openshift-tests-private/test/extended/workloads"
 	_ "github.com/openshift/openshift-tests-private/test/extended/apiserver_and_auth"
+	_ "github.com/openshift/openshift-tests-private/test/extended/router"
 	_ "github.com/openshift/openshift-tests/test/extended/operators"
 )

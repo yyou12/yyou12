@@ -117,6 +117,7 @@
 // test/extended/testdata/opm/learn_operator/package/0.0.2/learn-operator.v0.0.2.clusterserviceversion.yaml
 // test/extended/testdata/opm/learn_operator/package/0.0.2/learn.crd.yaml
 // test/extended/testdata/opm/learn_operator/package/learn.package.yaml
+// test/extended/testdata/router/ingresscontroller-np.yaml
 // test/extended/testdata/securityandcompliance/aide.conf.rhel8
 // test/extended/testdata/securityandcompliance/aide.conf.rhel8.1
 // test/extended/testdata/securityandcompliance/aide.conf.rhel8.err
@@ -13788,6 +13789,45 @@ func testExtendedTestdataOpmLearn_operatorPackageLearnPackageYaml() (*asset, err
 	return a, nil
 }
 
+var _testExtendedTestdataRouterIngresscontrollerNpYaml = []byte(`apiVersion: template.openshift.io/v1
+kind: Template
+objects:
+- apiVersion: operator.openshift.io/v1
+  kind: IngressController
+  metadata:
+    name: ${NAME}
+    namespace: ${NAMESPACE}
+  spec:
+    defaultCertificate:
+      name: ${DEFAULT_CERT}
+    domain: ${DOMAIN}
+    replicas: 1
+    endpointPublishingStrategy:
+      type: NodePortService
+parameters:
+- name: NAME
+- name: NAMESPACE
+  value: openshift-ingress-operator
+- name: DEFAULT_CERT
+  value: router-certs-default
+- name: DOMAIN
+`)
+
+func testExtendedTestdataRouterIngresscontrollerNpYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataRouterIngresscontrollerNpYaml, nil
+}
+
+func testExtendedTestdataRouterIngresscontrollerNpYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataRouterIngresscontrollerNpYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/router/ingresscontroller-np.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
 var _testExtendedTestdataSecurityandcomplianceAideConfRhel8 = []byte(`# Example configuration file for AIDE.
 
 @@define DBDIR /var/lib/aide
@@ -16990,6 +17030,7 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/opm/learn_operator/package/0.0.2/learn-operator.v0.0.2.clusterserviceversion.yaml":                             testExtendedTestdataOpmLearn_operatorPackage002LearnOperatorV002ClusterserviceversionYaml,
 	"test/extended/testdata/opm/learn_operator/package/0.0.2/learn.crd.yaml":                                                               testExtendedTestdataOpmLearn_operatorPackage002LearnCrdYaml,
 	"test/extended/testdata/opm/learn_operator/package/learn.package.yaml":                                                                 testExtendedTestdataOpmLearn_operatorPackageLearnPackageYaml,
+	"test/extended/testdata/router/ingresscontroller-np.yaml":                                                                              testExtendedTestdataRouterIngresscontrollerNpYaml,
 	"test/extended/testdata/securityandcompliance/aide.conf.rhel8":                                                                         testExtendedTestdataSecurityandcomplianceAideConfRhel8,
 	"test/extended/testdata/securityandcompliance/aide.conf.rhel8.1":                                                                       testExtendedTestdataSecurityandcomplianceAideConfRhel81,
 	"test/extended/testdata/securityandcompliance/aide.conf.rhel8.err":                                                                     testExtendedTestdataSecurityandcomplianceAideConfRhel8Err,
@@ -17241,6 +17282,9 @@ var _bintree = &bintree{nil, map[string]*bintree{
 							"learn.package.yaml": {testExtendedTestdataOpmLearn_operatorPackageLearnPackageYaml, map[string]*bintree{}},
 						}},
 					}},
+				}},
+				"router": {nil, map[string]*bintree{
+					"ingresscontroller-np.yaml": {testExtendedTestdataRouterIngresscontrollerNpYaml, map[string]*bintree{}},
 				}},
 				"securityandcompliance": {nil, map[string]*bintree{
 					"aide.conf.rhel8":                      {testExtendedTestdataSecurityandcomplianceAideConfRhel8, map[string]*bintree{}},
