@@ -4792,12 +4792,12 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 			exists              bool
 			failures            = 0
 			failureNames        = ""
-			since               = "--since=60s"
+			since               = "--since=360s"
 			msg                 string
 			s                   string
-			snooze              time.Duration = 180
+			snooze              time.Duration = 360
 			step                string
-			tail                = "--tail=10"
+			tail                = "--tail=100"
 			waitErr             error
 		)
 
@@ -4857,9 +4857,8 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 			}
 			return false, nil
 		})
-		o.Expect(waitErr).NotTo(o.HaveOccurred())
 		if !strings.Contains(msg, s) {
-			e2e.Logf("STEP %v FAIL log is missing %v in: %v\n", step, s, msg)
+			e2e.Logf("STEP after %v, %v FAIL log is missing %v\nSTEP in: %v\n",  waitErr, step, s, msg)
 			failures++
 			failureNames = s + "\n"
 		}
@@ -4882,12 +4881,10 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 			}
 			return false, nil
 		})
-		o.Expect(waitErr).NotTo(o.HaveOccurred())
 		if !strings.Contains(msg, s) {
-			e2e.Logf("STEP %v FAIL log is missing %v in: %v\n", step, s, msg)
+			e2e.Logf("STEP after %v, %v FAIL log is missing %v\nSTEP in: %v\n",  waitErr, step, s, msg)
 			failures++
 			failureNames = failureNames + s + "\n"
-
 		}
 		sub.deleteCSV(itName, dr)
 		sub.delete(itName, dr)
@@ -4908,7 +4905,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 			return false, nil
 		})
 		if !strings.Contains(msg, s) {
-			e2e.Logf("STEP %v FAIL log is missing %v in: %v\n", step, s, msg)
+			e2e.Logf("STEP after %v, %v FAIL log is missing %v\nSTEP in: %v\n",  waitErr, step, s, msg)
 			failures++
 			failureNames = failureNames + s + "\n"
 		}
@@ -4931,7 +4928,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 			return false, nil
 		})
 		if !strings.Contains(msg, s) {
-			e2e.Logf("STEP %v FAIL log is missing %v in: %v\n", step, s, msg)
+			e2e.Logf("STEP after %v, %v FAIL log is missing %v\nSTEP in: %v\n",  waitErr, step, s, msg)
 			failures++
 			failureNames = failureNames + s + "\n"
 		}
@@ -4940,8 +4937,8 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 
 		g.By("FINISH\n")
 		if failures != 0 {
-			e2e.Failf("FAILED: %v of the log messages were not found", failures)
-		}
+			e2e.Failf("FAILED: %v times for %v", failures, failureNames)
+		} 
 	})
 
 	// author: xzha@redhat.com, test case OCP-40529
