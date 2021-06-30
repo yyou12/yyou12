@@ -45,24 +45,36 @@ if [ $retVal -ne 0 ]; then
 fi
 
 #get opm client
+
 echo $KUBECONFIG
-NIGHTLYVERSION=`oc get clusterversion | grep version | awk '{print $2}'`
-if [ ${NIGHTLYVERSION}"null" == "null" ]; then
-    echo "get clusterversion failed"
-    exit 1
-fi
 oc extract secret/pull-secret -n openshift-config  --confirm
-ocpimaage=`oc adm release info registry.ci.openshift.org/ocp/release:${NIGHTLYVERSION} --image-for=operator-registry -a .dockerconfigjson`
-echo ${ocpimaage}
-podman pull ${ocpimaage} --authfile  .dockerconfigjson
-rm -f .dockerconfigjson
-instanceID=`podman create ${ocpimaage}`
-podman cp ${instanceID}:/bin/opm  .
-podman cp ${instanceID}:/bin/initializer .
-podman cp ${instanceID}:/bin/configmap-server .
-podman cp ${instanceID}:/bin/registry-server .
-podman rm  -a
-podman rmi  -a
+if cat .dockerconfigjson | grep 'registry.ci.openshift.org'; then
+    NIGHTLYVERSION=`oc get clusterversion | grep version | awk '{print $2}'`
+    if [ ${NIGHTLYVERSION}"null" == "null" ]; then
+        echo "get clusterversion failed"
+        exit 1
+    fi
+    ocpimaage=`oc adm release info registry.ci.openshift.org/ocp/release:${NIGHTLYVERSION} --image-for=operator-registry -a .dockerconfigjson`
+    echo ${ocpimaage}
+    podman pull ${ocpimaage} --authfile  .dockerconfigjson
+    rm -f .dockerconfigjson
+    instanceID=`podman create ${ocpimaage}`
+    podman cp ${instanceID}:/bin/opm  .
+    podman cp ${instanceID}:/bin/initializer .
+    podman cp ${instanceID}:/bin/configmap-server .
+    podman cp ${instanceID}:/bin/registry-server .
+    podman rm  -a
+    podman rmi  -a
+else
+    echo "get latest opm"
+    NIGHTLYVERSIOM=${NIGHTLYFLAG:0:1}.${NIGHTLYFLAG:1:${#NIGHTLYFLAG}}
+    wget -nv https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp-dev-preview/latest-$NIGHTLYVERSIOM/opm-linux.tar.gz
+    tar -xzvf opm-linux.tar.gz
+    echo "get opm-linux.tar.gz successfully"
+    rm -f opm-linux.tar.gz
+fi
+
+
 echo "opm version:"
 opm version
 retVal=$?

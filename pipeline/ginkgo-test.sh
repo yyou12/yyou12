@@ -48,7 +48,7 @@ function config_env_for_vm {
   echo 'export GOCACHE=${WORKSPACE}/gocache' >> ${WORKSPACE}/.bash_profile && \
   echo 'export PATH=$PATH:/usr/lib/golang/go/bin:${WORKSPACE}/tool_tmp' >> ${WORKSPACE}/.bash_profile && \
   source ${WORKSPACE}/.bash_profile
-  echo 'unset http_proxy https_proxy'
+  echo 'unset http_proxy https_proxy no_proxy'
   unset http_proxy https_proxy
   if [[ "x${http_proxy}x" != "xx" ]] || [[ "x${https_proxy}x" != "xx" ]]; then
     echo 'unset http_proxy https_proxy failed'
