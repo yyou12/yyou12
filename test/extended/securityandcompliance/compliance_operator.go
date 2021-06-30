@@ -76,7 +76,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			displayName: "openshift-compliance-operator",
 			publisher:   "Red Hat",
 			sourceType:  "grpc",
-			address:     "quay.io/openshift-qe-optional-operators/compliance-operator-index-0.1:latest",
+			address:     "",
 			template:    catsrcCoTemplate,
 		}
 		ogD = operatorGroupDescription{
@@ -129,6 +129,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		var itName = g.CurrentGinkgoTestDescription().TestText
 		oc.SetupProject()
 		catSrc.namespace = oc.Namespace()
+		catSrc.address = getIndexFromUrl("compliance")
 		ogD.namespace = oc.Namespace()
 		subD.namespace = oc.Namespace()
 		subD.catalogSourceName = catSrc.name
@@ -188,6 +189,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		g.BeforeEach(func() {
 			oc.SetupProject()
 			catSrc.namespace = oc.Namespace()
+			catSrc.address = getIndexFromUrl("compliance")
 			ogD.namespace = oc.Namespace()
 			subD.namespace = oc.Namespace()
 			subD.catalogSourceName = catSrc.name
