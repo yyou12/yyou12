@@ -1,0 +1,36 @@
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: pod-modify-template
+objects:
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    name: "${NAME}"
+    namespace: "${NAMESPACE}"
+  spec:
+    containers:
+    - name: hello-pod
+      image: quay.io/openshifttest/hello-pod
+      ports:
+      - containerPort: 80
+      volumeMounts:
+      - name: workdir
+        mountPath: /usr/share/nginx/html
+    initContainers:
+    - name: init
+      image: centos:centos7
+      command: ["${COMMAND}"]
+      args: 
+      - "-c"
+      - "${ARGS}"
+    restartPolicy: "${POLICY}"
+    volumes:
+    - name: workdir
+      emptyDir: {}
+parameters:      
+- name: NAME
+- name: NAMESPACE
+- name: COMMAND
+- name: ARGS  
+- name: POLICY
