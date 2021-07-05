@@ -14,7 +14,13 @@ function run {
     case_timeout=${case_timeout:4}
     echo "case timeout is ${case_timeout}m"
   fi
-
+  
+  http_proxy_tmp=${http_proxy}
+  https_proxy_tmp=${https_proxy}
+  if [[ "x${http_proxy}x" != "xx" ]] || [[ "x${https_proxy}x" != "xx" ]]; then
+    echo "unset http_proxy https_proxy"
+    unset http_proxy https_proxy
+  fi
   make clean
   if [ "${repo_owner}" == "openshift" ]; then
     echo "make all"
@@ -22,6 +28,11 @@ function run {
   else
     echo "make build"
     make build
+  fi
+  if [[ "x${http_proxy_tmp}x" != "xx" ]] || [[ "x${https_proxy_tmp}x" != "xx" ]]; then
+    echo "set env http_proxy https_proxy"
+    export http_proxy=${http_proxy_tmp}
+    export https_proxy=${https_proxy_tmp}
   fi
 
   if [ "${case_importance}" == "all" ]; then

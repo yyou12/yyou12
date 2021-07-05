@@ -67,6 +67,7 @@ if cat .dockerconfigjson | grep 'registry.ci.openshift.org'; then
     podman rmi  -a
 else
     echo "get latest opm"
+    export no_proxy=mirror.openshift.com,github.com,quay.io
     NIGHTLYVERSIOM=${NIGHTLYFLAG:0:1}.${NIGHTLYFLAG:1:${#NIGHTLYFLAG}}
     wget -nv https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp-dev-preview/latest-$NIGHTLYVERSIOM/opm-linux.tar.gz
     tar -xzvf opm-linux.tar.gz
