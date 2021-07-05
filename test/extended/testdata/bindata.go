@@ -119,7 +119,9 @@
 // test/extended/testdata/opm/learn_operator/package/0.0.2/learn-operator.v0.0.2.clusterserviceversion.yaml
 // test/extended/testdata/opm/learn_operator/package/0.0.2/learn.crd.yaml
 // test/extended/testdata/opm/learn_operator/package/learn.package.yaml
+// test/extended/testdata/router/ingress-with-class.yaml
 // test/extended/testdata/router/ingresscontroller-np.yaml
+// test/extended/testdata/router/web-server-rc.yaml
 // test/extended/testdata/securityandcompliance/aide.conf.rhel8
 // test/extended/testdata/securityandcompliance/aide.conf.rhel8.1
 // test/extended/testdata/securityandcompliance/aide.conf.rhel8.err
@@ -13900,6 +13902,40 @@ func testExtendedTestdataOpmLearn_operatorPackageLearnPackageYaml() (*asset, err
 	return a, nil
 }
 
+var _testExtendedTestdataRouterIngressWithClassYaml = []byte(`apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress-with-class
+spec:
+  ingressClassName: mytest
+  rules:
+  - host: foo.bar.com
+    http:
+      paths:
+      - backend:
+          service:
+            name: service-unsecure
+            port:
+              number: 27017
+        path: /test
+        pathType: ImplementationSpecific
+`)
+
+func testExtendedTestdataRouterIngressWithClassYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataRouterIngressWithClassYaml, nil
+}
+
+func testExtendedTestdataRouterIngressWithClassYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataRouterIngressWithClassYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/router/ingress-with-class.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
 var _testExtendedTestdataRouterIngresscontrollerNpYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 objects:
@@ -13935,6 +13971,70 @@ func testExtendedTestdataRouterIngresscontrollerNpYaml() (*asset, error) {
 	}
 
 	info := bindataFileInfo{name: "test/extended/testdata/router/ingresscontroller-np.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataRouterWebServerRcYaml = []byte(`apiVersion: v1
+kind: List
+items:
+- apiVersion: v1
+  kind: ReplicationController
+  metadata:
+    labels:
+      name: web-server-rc
+    name: web-server-rc
+  spec:
+    replicas: 1
+    template:
+      metadata:
+        labels:
+          name: web-server-rc
+      spec:
+        containers:
+        - image: quay.io/openshifttest/nginx-alpine@sha256:5d3f3372288b8a93fc9fc7747925df2328c24db41e4b4226126c3af293c5ad88
+          name: nginx
+- apiVersion: v1
+  kind: Service
+  metadata:
+    labels:
+      name: service-secure
+    name: service-secure
+  spec:
+    ports:
+    - name: https
+      port: 27443
+      protocol: TCP
+      targetPort: 8443
+    selector:
+      name: web-server-rc
+- apiVersion: v1
+  kind: Service
+  metadata:
+    labels:
+      name: service-unsecure
+    name: service-unsecure
+  spec:
+    ports:
+    - name: http
+      port: 27017
+      protocol: TCP
+      targetPort: 8080
+    selector:
+      name: web-server-rc
+`)
+
+func testExtendedTestdataRouterWebServerRcYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataRouterWebServerRcYaml, nil
+}
+
+func testExtendedTestdataRouterWebServerRcYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataRouterWebServerRcYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/router/web-server-rc.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -17143,7 +17243,9 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/opm/learn_operator/package/0.0.2/learn-operator.v0.0.2.clusterserviceversion.yaml":                             testExtendedTestdataOpmLearn_operatorPackage002LearnOperatorV002ClusterserviceversionYaml,
 	"test/extended/testdata/opm/learn_operator/package/0.0.2/learn.crd.yaml":                                                               testExtendedTestdataOpmLearn_operatorPackage002LearnCrdYaml,
 	"test/extended/testdata/opm/learn_operator/package/learn.package.yaml":                                                                 testExtendedTestdataOpmLearn_operatorPackageLearnPackageYaml,
+	"test/extended/testdata/router/ingress-with-class.yaml":                                                                                testExtendedTestdataRouterIngressWithClassYaml,
 	"test/extended/testdata/router/ingresscontroller-np.yaml":                                                                              testExtendedTestdataRouterIngresscontrollerNpYaml,
+	"test/extended/testdata/router/web-server-rc.yaml":                                                                                     testExtendedTestdataRouterWebServerRcYaml,
 	"test/extended/testdata/securityandcompliance/aide.conf.rhel8":                                                                         testExtendedTestdataSecurityandcomplianceAideConfRhel8,
 	"test/extended/testdata/securityandcompliance/aide.conf.rhel8.1":                                                                       testExtendedTestdataSecurityandcomplianceAideConfRhel81,
 	"test/extended/testdata/securityandcompliance/aide.conf.rhel8.err":                                                                     testExtendedTestdataSecurityandcomplianceAideConfRhel8Err,
@@ -17401,7 +17503,9 @@ var _bintree = &bintree{nil, map[string]*bintree{
 					}},
 				}},
 				"router": {nil, map[string]*bintree{
+					"ingress-with-class.yaml":   {testExtendedTestdataRouterIngressWithClassYaml, map[string]*bintree{}},
 					"ingresscontroller-np.yaml": {testExtendedTestdataRouterIngresscontrollerNpYaml, map[string]*bintree{}},
+					"web-server-rc.yaml":        {testExtendedTestdataRouterWebServerRcYaml, map[string]*bintree{}},
 				}},
 				"securityandcompliance": {nil, map[string]*bintree{
 					"aide.conf.rhel8":                      {testExtendedTestdataSecurityandcomplianceAideConfRhel8, map[string]*bintree{}},

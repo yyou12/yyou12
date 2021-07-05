@@ -85,14 +85,29 @@ func waitForCustomIngressControllerAvailable(oc *exutil.CLI, icname string) erro
 func waitForPodWithLabelReady(oc *exutil.CLI, ns, label string) error {
 	return wait.Poll(5*time.Second, 3*time.Minute, func() (bool, error) {
 		status, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-n", ns, "-l", label, "-ojsonpath={.items[*].status.conditions[?(@.type==\"Ready\")].status}").Output()
+		e2e.Logf("the Ready status of pod is %v", status)
 		if err != nil {
 			e2e.Logf("failed to get pod status: %v, retrying...", err)
 			return false, nil
 		}
 		if strings.Contains(status, "False") {
-			e2e.Logf("the pod status Ready not met; wanted True but got %v, retrying...", status)
+			e2e.Logf("the pod Ready status not met; wanted True but got %v, retrying...", status)
 			return false, nil
 		}
 		return true, nil
 	})
+}
+
+func createResourceFromFile(oc *exutil.CLI, file string) {
+	err := oc.Run("create").Args("-f", file).Execute()
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+func patchResourceAsUser(oc *exutil.CLI, resource, patch string) {
+	err := oc.Run("patch").Args(resource, "-p", patch, "--type=merge").Execute()
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+func patchResourceAsAdmin(oc *exutil.CLI, ns, resource, patch string) {
+	err := oc.AsAdmin().WithoutNamespace().Run("patch").Args("-n", ns, resource, "-p", patch, "--type=merge").Execute()
+	o.Expect(err).NotTo(o.HaveOccurred())
 }

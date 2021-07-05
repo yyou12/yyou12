@@ -53,4 +53,31 @@ var _ = g.Describe("[sig-network-edge] Network_Edge should", func() {
 		o.Expect(err).To(o.HaveOccurred())
 		o.Expect(output).To(o.ContainSubstring("NotFound"))
 	})
+	// author: hongli@redhat.com
+	g.It("Author:hongli-Critical-41109-use IngressClass controller for ingress-to-route", func() {
+		var (
+			output              string
+			buildPruningBaseDir = exutil.FixturePath("testdata", "router")
+			testPodSvc          = filepath.Join(buildPruningBaseDir, "web-server-rc.yaml")
+			testIngress         = filepath.Join(buildPruningBaseDir, "ingress-with-class.yaml")
+		)
+
+		g.By("create project, pod, svc, and ingress that mismatch with default ingressclass")
+		oc.SetupProject()
+		createResourceFromFile(oc, testPodSvc)
+		err := waitForPodWithLabelReady(oc, oc.Namespace(), "name=web-server-rc")
+		createResourceFromFile(oc, testIngress)
+
+		g.By("ensure no route is created from the ingress")
+		output, err = oc.Run("get").Args("route").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).NotTo(o.ContainSubstring("ingress-with-clalss"))
+
+		g.By("patch the ingress to use default ingressclass")
+		patchResourceAsUser(oc, "ingress/ingress-with-class", "{\"spec\":{\"ingressClassName\": \"openshift-default\"}}")
+		g.By("ensure one route is created from the ingress")
+		output, err = oc.Run("get").Args("route").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring("ingress-with-class"))
+	})
 })
