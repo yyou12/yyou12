@@ -6459,7 +6459,7 @@ var _ = g.Describe("[sig-operators] OLM on VM for an end user handle within a na
 	})
 
 	// author: xzha@redhat.com
-	g.It("Author:xzha-VMonly-Medium-40528-opm can filter the platform/arch of the index image", func() {
+	g.It("VMonly-ConnectedOnly-Author:xzha-Medium-40528-opm can filter the platform/arch of the index image", func() {
 		baseDir := exutil.FixturePath("testdata", "olm")
 		TestDataPath := filepath.Join(baseDir, "temp")
 		indexTmpPath := filepath.Join(TestDataPath, getRandomString())
