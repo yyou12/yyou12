@@ -2036,9 +2036,9 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	// author: scolange@redhat.com
 	g.It("Author:scolange-Medium-42069-component not found log should be debug level", func() {
 
-		var since               = "--since=60s"
-		var snooze              time.Duration = 90
-		var tail                = "--tail=10"
+		var since = "--since=60s"
+		var snooze time.Duration = 90
+		var tail = "--tail=10"
 
 		oc.SetupProject()
 		g.By("1) Install the OperatorGroup in a random project")
@@ -2088,16 +2088,14 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		waitErr := wait.Poll(3*time.Second, snooze*time.Second, func() (bool, error) {
 			msg, err := oc.AsAdmin().WithoutNamespace().Run("logs").Args(catPodname, "-n", "openshift-operator-lifecycle-manager", tail, since).Output()
 			o.Expect(err).NotTo(o.HaveOccurred())
-			if strings.Contains(msg, "component not found" ) {
+			if strings.Contains(msg, "component not found") {
 				return true, nil
 			}
 			return false, nil
 		})
 		o.Expect(waitErr).To(o.HaveOccurred())
 
-
 	})
-
 
 	// author: scolange@redhat.com
 	g.It("Author:scolange-Medium-23673-Installplan can be created while Install and uninstall operators via Marketplace for 5 times [Slow]", func() {
@@ -2817,11 +2815,11 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 				template:  ogSingleTemplate,
 			}
 			subD = subscriptionDescription{
-				subName:                "hawtio-operator",
+				subName:                "mta-operator",
 				namespace:              "",
 				channel:                "alpha",
 				ipApproval:             "Automatic",
-				operatorPackage:        "hawtio-operator",
+				operatorPackage:        "mta-operator",
 				catalogSourceName:      "community-operators",
 				catalogSourceNamespace: "openshift-marketplace",
 				startingCSV:            "",
@@ -2870,11 +2868,11 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 				template:  ogSingleTemplate,
 			}
 			subD = subscriptionDescription{
-				subName:                "hawtio-operator",
+				subName:                "mta-operator",
 				namespace:              "",
 				channel:                "alpha",
 				ipApproval:             "Automatic",
-				operatorPackage:        "hawtio-operator",
+				operatorPackage:        "mta-operator",
 				catalogSourceName:      "community-operators",
 				catalogSourceNamespace: "openshift-marketplace",
 				startingCSV:            "",
@@ -2920,11 +2918,11 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 				template:  ogSingleTemplate,
 			}
 			subD = subscriptionDescription{
-				subName:                "hawtio-operator",
+				subName:                "mta-operator",
 				namespace:              "",
 				channel:                "alpha",
 				ipApproval:             "Automatic",
-				operatorPackage:        "hawtio-operator",
+				operatorPackage:        "mta-operator",
 				catalogSourceName:      "community-operators",
 				catalogSourceNamespace: "openshift-marketplace",
 				startingCSV:            "",
@@ -2945,7 +2943,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 
 		g.By("prepare for manual approval")
 		sub.ipApproval = "Manual"
-		sub.startingCSV = "hawtio-operator.v0.1.0"
+		sub.startingCSV = "windup-operator.0.0.4"
 
 		g.By("Create Sub which apply manual approve install plan")
 		sub.create(oc, itName, dr)
@@ -2968,7 +2966,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
 			ogSingleTemplate    = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
 			subTemplate         = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
-			og                 = operatorGroupDescription{
+			og                  = operatorGroupDescription{
 				name:      "og-singlenamespace",
 				namespace: "",
 				template:  ogSingleTemplate,
@@ -3023,11 +3021,11 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 				template:  ogSingleTemplate,
 			}
 			subD = subscriptionDescription{
-				subName:                "hawtio-operator",
+				subName:                "mta-operator",
 				namespace:              "",
 				channel:                "alpha",
 				ipApproval:             "Automatic",
-				operatorPackage:        "hawtio-operator",
+				operatorPackage:        "mta-operator",
 				catalogSourceName:      "community-operators",
 				catalogSourceNamespace: "openshift-marketplace",
 				startingCSV:            "",
@@ -3092,11 +3090,11 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 				template:  ogSingleTemplate,
 			}
 			subD = subscriptionDescription{
-				subName:                "hawtio-operator",
+				subName:                "mta-operator",
 				namespace:              "",
 				channel:                "alpha",
 				ipApproval:             "Automatic",
-				operatorPackage:        "hawtio-operator",
+				operatorPackage:        "mta-operator",
 				catalogSourceName:      "community-operators",
 				catalogSourceNamespace: "openshift-marketplace",
 				startingCSV:            "",
@@ -3166,11 +3164,11 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 				template:  ogSingleTemplate,
 			}
 			subD = subscriptionDescription{
-				subName:                "hawtio-operator",
+				subName:                "mta-operator",
 				namespace:              "",
 				channel:                "alpha",
 				ipApproval:             "Automatic",
-				operatorPackage:        "hawtio-operator",
+				operatorPackage:        "mta-operator",
 				catalogSourceName:      "community-operators",
 				catalogSourceNamespace: "openshift-marketplace",
 				startingCSV:            "",
@@ -4924,7 +4922,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 			return false, nil
 		})
 		if !strings.Contains(msg, s) {
-			e2e.Logf("STEP after %v, %v FAIL log is missing %v\nSTEP in: %v\n",  waitErr, step, s, msg)
+			e2e.Logf("STEP after %v, %v FAIL log is missing %v\nSTEP in: %v\n", waitErr, step, s, msg)
 			failures++
 			failureNames = s + "\n"
 		}
@@ -4948,7 +4946,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 			return false, nil
 		})
 		if !strings.Contains(msg, s) {
-			e2e.Logf("STEP after %v, %v FAIL log is missing %v\nSTEP in: %v\n",  waitErr, step, s, msg)
+			e2e.Logf("STEP after %v, %v FAIL log is missing %v\nSTEP in: %v\n", waitErr, step, s, msg)
 			failures++
 			failureNames = failureNames + s + "\n"
 		}
@@ -4971,7 +4969,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 			return false, nil
 		})
 		if !strings.Contains(msg, s) {
-			e2e.Logf("STEP after %v, %v FAIL log is missing %v\nSTEP in: %v\n",  waitErr, step, s, msg)
+			e2e.Logf("STEP after %v, %v FAIL log is missing %v\nSTEP in: %v\n", waitErr, step, s, msg)
 			failures++
 			failureNames = failureNames + s + "\n"
 		}
@@ -4994,7 +4992,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 			return false, nil
 		})
 		if !strings.Contains(msg, s) {
-			e2e.Logf("STEP after %v, %v FAIL log is missing %v\nSTEP in: %v\n",  waitErr, step, s, msg)
+			e2e.Logf("STEP after %v, %v FAIL log is missing %v\nSTEP in: %v\n", waitErr, step, s, msg)
 			failures++
 			failureNames = failureNames + s + "\n"
 		}
@@ -5004,7 +5002,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		g.By("FINISH\n")
 		if failures != 0 {
 			e2e.Failf("FAILED: %v times for %v", failures, failureNames)
-		} 
+		}
 	})
 
 	// author: xzha@redhat.com, test case OCP-40529
