@@ -3217,11 +3217,11 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 				template:  ogSingleTemplate,
 			}
 			subD = subscriptionDescription{
-				subName:                "hawtio-operator",
+				subName:                "mta-operator",
 				namespace:              "",
 				channel:                "alpha",
 				ipApproval:             "Automatic",
-				operatorPackage:        "hawtio-operator",
+				operatorPackage:        "mta-operator",
 				catalogSourceName:      "community-operators",
 				catalogSourceNamespace: "openshift-marketplace",
 				startingCSV:            "",
@@ -3246,20 +3246,20 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 
 		g.By("Get SA of csv")
 		sa := newSa(getResource(oc, asUser, withNamespace, "csv", sub.installedCSV, "-o=jsonpath={.status.requirementStatus[?(@.kind==\"ServiceAccount\")].name}"), sub.namespace)
-		sa.checkAuth(oc, "yes", "Hawtio")
+		sa.checkAuth(oc, "yes", "Windup")
 
 		g.By("Get Role of csv")
 		role := newRole(getResource(oc, asUser, withNamespace, "role", "-n", sub.namespace, fmt.Sprintf("--selector=olm.owner=%s", sub.installedCSV), "-o=jsonpath={.items[0].metadata.name}"), sub.namespace)
 		origRules := role.getRules(oc)
-		modifiedRules := role.getRulesWithDelete(oc, "hawt.io")
+		modifiedRules := role.getRulesWithDelete(oc, "windup.jboss.org")
 
 		g.By("Remove rules")
 		role.patch(oc, fmt.Sprintf("{\"rules\": %s}", modifiedRules))
-		sa.checkAuth(oc, "no", "Hawtio")
+		sa.checkAuth(oc, "no", "Windup")
 
 		g.By("Recovery rules")
 		role.patch(oc, fmt.Sprintf("{\"rules\": %s}", origRules))
-		sa.checkAuth(oc, "yes", "Hawtio")
+		sa.checkAuth(oc, "yes", "Windup")
 	})
 
 	// It will cover test case: OCP-29723, author: kuiwang@redhat.com
@@ -3281,18 +3281,18 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 				displayName: "Test Catsrc 29723 Operators",
 				publisher:   "Red Hat",
 				sourceType:  "grpc",
-				address:     "quay.io/olmqe/olm-api:v1",
+				address:     "quay.io/olmqe/olm-api:v2",
 				template:    catsrcImageTemplate,
 			}
 			sub = subscriptionDescription{
 				subName:                "cockroachdb",
 				namespace:              "",
-				channel:                "stable",
+				channel:                "stable-5.x",
 				ipApproval:             "Automatic",
 				operatorPackage:        "cockroachdb",
 				catalogSourceName:      catsrc.name,
 				catalogSourceNamespace: "",
-				startingCSV:            "cockroachdb.v2.1.11",
+				startingCSV:            "cockroachdb.v5.0.4",
 				currentCSV:             "",
 				installedCSV:           "",
 				template:               subTemplate,
@@ -3317,7 +3317,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		g.By("delete catalog source")
 		catsrc.delete(itName, dr)
 		g.By("delete sa")
-		_, err := doAction(oc, "delete", asAdmin, withoutNamespace, "sa", "cockroachdb-operator", "-n", sub.namespace)
+		_, err := doAction(oc, "delete", asAdmin, withoutNamespace, "sa", "default", "-n", sub.namespace)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		g.By("check abnormal status")
@@ -3351,18 +3351,18 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 				displayName: "Test Catsrc 30762 Operators",
 				publisher:   "Red Hat",
 				sourceType:  "grpc",
-				address:     "quay.io/olmqe/olm-api:v1",
+				address:     "quay.io/olmqe/olm-api:v2",
 				template:    catsrcImageTemplate,
 			}
 			sub = subscriptionDescription{
 				subName:                "cockroachdb",
 				namespace:              "",
-				channel:                "stable",
+				channel:                "stable-5.x",
 				ipApproval:             "Automatic",
 				operatorPackage:        "cockroachdb",
 				catalogSourceName:      catsrc.name,
 				catalogSourceNamespace: "",
-				startingCSV:            "cockroachdb.v2.1.11",
+				startingCSV:            "cockroachdb.v5.0.4",
 				currentCSV:             "",
 				installedCSV:           "",
 				template:               subTemplate,
@@ -3407,18 +3407,18 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 				displayName: "Test Catsrc 27683 Operators",
 				publisher:   "Red Hat",
 				sourceType:  "grpc",
-				address:     "quay.io/olmqe/single-bundle-index:1.0.0",
+				address:     "quay.io/olmqe/mta-index:v0.0.5",
 				template:    catsrcImageTemplate,
 			}
 			sub = subscriptionDescription{
-				subName:                "kiali",
+				subName:                "mta-operator",
 				namespace:              "",
-				channel:                "stable",
+				channel:                "alpha",
 				ipApproval:             "Automatic",
-				operatorPackage:        "kiali",
+				operatorPackage:        "mta-operator",
 				catalogSourceName:      catsrc.name,
 				catalogSourceNamespace: "",
-				startingCSV:            "kiali-operator.v1.4.2",
+				startingCSV:            "windup-operator.0.0.5",
 				currentCSV:             "",
 				installedCSV:           "",
 				template:               subTemplate,
