@@ -4,7 +4,7 @@ Please ask your **team peer** to review your test case first. Once your team pee
 ## logs output
 
 <pre>
-$ ./bin/extended-platform-tests run all --dry-run|grep xxx|./bin/extended-platform-tests run -f -
+$ ./bin/extended-platform-tests run all --dry-run|grep <Your-TestCase-ID>|./bin/extended-platform-tests run -f -
 
 </pre>
 ##### What version of Go are you using (`go version`)?
