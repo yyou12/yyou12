@@ -16,7 +16,7 @@ objects:
       - containerPort: 80
       volumeMounts:
       - name: workdir
-        mountPath: /usr/share/nginx/html
+        mountPath: "${MOUNTPATH}"
     initContainers:
     - name: init
       image: centos:centos7
@@ -24,6 +24,9 @@ objects:
       args: 
       - "-c"
       - "${ARGS}"
+      volumeMounts:
+      - name: workdir
+        mountPath: /work-dir
     restartPolicy: "${POLICY}"
     volumes:
     - name: workdir
@@ -31,6 +34,7 @@ objects:
 parameters:      
 - name: NAME
 - name: NAMESPACE
+- name: MOUNTPATH
 - name: COMMAND
 - name: ARGS  
 - name: POLICY

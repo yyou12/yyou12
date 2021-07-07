@@ -7,19 +7,21 @@ import (
 	o "github.com/onsi/gomega"
 
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
+	//e2e "k8s.io/kubernetes/test/e2e/framework"
 )
 
 var _ = g.Describe("[sig-node] Node initContainer policy,volume,readines,quota", func() {
 	defer g.GinkgoRecover()
 
 	var (
-		oc			= exutil.NewCLI("node-"+getRandomString(), exutil.KubeConfigPath())
-		buildPruningBaseDir	= exutil.FixturePath("testdata", "node")
-		customTemp		= filepath.Join(buildPruningBaseDir, "pod-modify.yaml")
+		oc				= exutil.NewCLI("node-"+getRandomString(), exutil.KubeConfigPath())
+		buildPruningBaseDir		= exutil.FixturePath("testdata", "node")
+		customTemp			= filepath.Join(buildPruningBaseDir, "pod-modify.yaml")
 
 		podModify = podModifyDescription{
 			name:            "",
 			namespace:       "",
+			mountpath:	 "",
 			command:         "",
 			args:            "",
 			restartPolicy:   "",
@@ -32,6 +34,7 @@ var _ = g.Describe("[sig-node] Node initContainer policy,volume,readines,quota",
 		oc.SetupProject()
 		podModify.name			= "init-always-fail"
 		podModify.namespace		= oc.Namespace()
+		podModify.mountpath             = "/init-test"
 		podModify.command		= "/bin/bash"
 		podModify.args			= "exit 1"
 		podModify.restartPolicy		= "Always"
@@ -48,6 +51,7 @@ var _ = g.Describe("[sig-node] Node initContainer policy,volume,readines,quota",
 
 		podModify.name			= "init-always-succ"
 		podModify.namespace		= oc.Namespace()
+		podModify.mountpath             = "/init-test"
 		podModify.command		= "/bin/bash"
 		podModify.args			= "sleep 30"
 		podModify.restartPolicy		= "Always"
@@ -65,6 +69,7 @@ var _ = g.Describe("[sig-node] Node initContainer policy,volume,readines,quota",
 		oc.SetupProject()
 		podModify.name			= "init-onfailure-fail"
 		podModify.namespace		= oc.Namespace()
+		podModify.mountpath             = "/init-test"
 		podModify.command		= "/bin/bash"
 		podModify.args			= "exit 1"
 		podModify.restartPolicy		= "OnFailure"
@@ -81,6 +86,7 @@ var _ = g.Describe("[sig-node] Node initContainer policy,volume,readines,quota",
 
 		podModify.name			= "init-onfailure-succ"
 		podModify.namespace		= oc.Namespace()
+		podModify.mountpath             = "/init-test"
 		podModify.command		= "/bin/bash"
 		podModify.args			= "sleep 30"
 		podModify.restartPolicy		= "OnFailure"
@@ -98,6 +104,7 @@ var _ = g.Describe("[sig-node] Node initContainer policy,volume,readines,quota",
 		oc.SetupProject()
 		podModify.name			= "init-never-fail"
 		podModify.namespace		= oc.Namespace()
+		podModify.mountpath             = "/init-test"
 		podModify.command		= "/bin/bash"
 		podModify.args			= "exit 1"
 		podModify.restartPolicy		= "Never"
@@ -114,6 +121,7 @@ var _ = g.Describe("[sig-node] Node initContainer policy,volume,readines,quota",
 
 		podModify.name			= "init-never-succ"
 		podModify.namespace		= oc.Namespace()
+		podModify.mountpath             = "/init-test"
 		podModify.command		= "/bin/bash"
 		podModify.args			= "sleep 30"
 		podModify.restartPolicy		= "Never"
@@ -131,6 +139,7 @@ var _ = g.Describe("[sig-node] Node initContainer policy,volume,readines,quota",
 		oc.SetupProject()
 		podModify.name			= "init-fail"
 		podModify.namespace		= oc.Namespace()
+		podModify.mountpath             = "/init-test"
 		podModify.command		= "/bin/false"
 		podModify.args			= "sleep 30"
 		podModify.restartPolicy		= "Never"
@@ -146,6 +155,7 @@ var _ = g.Describe("[sig-node] Node initContainer policy,volume,readines,quota",
 		g.By("create SUCCESSFUL init container with command /bin/true")
 		podModify.name			= "init-success"
 		podModify.namespace		= oc.Namespace()
+		podModify.mountpath	        = "/init-test"
 		podModify.command		= "/bin/true"
 		podModify.args			= "sleep 30"
 		podModify.restartPolicy		= "Never"
@@ -155,6 +165,29 @@ var _ = g.Describe("[sig-node] Node initContainer policy,volume,readines,quota",
 		err = podStatus(oc)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		g.By("Delete Pod ")
+		podModify.delete(oc)
+	})
+
+	// author: pmali@redhat.com
+	g.It("Author:pmali-High-12913-Init containers with volume work fine", func() {
+
+		oc.SetupProject()
+		podModify.name			= "init-volume"
+		podModify.namespace		= oc.Namespace()
+		podModify.mountpath	        = "/init-test"
+		podModify.command		= "/bin/bash"
+		podModify.args			= "echo This is OCP volume test > /work-dir/volume-test"
+		podModify.restartPolicy		= "Never"
+
+		g.By("Create a pod with initContainer using volume\n")
+		podModify.create(oc)
+		g.By("Check pod status")
+		err := podStatus(oc)
+	        o.Expect(err).NotTo(o.HaveOccurred())
+		g.By("Check Vol status\n")
+		err = volStatus(oc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		g.By("Delete Pod\n")
 		podModify.delete(oc)
 	})
 })

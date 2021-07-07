@@ -7,7 +7,6 @@
 // test/extended/testdata/ldap/ldapserver-deployment.yaml
 // test/extended/testdata/ldap/ldapserver-scripts-cm.yaml
 // test/extended/testdata/ldap/ldapserver-service.yaml
-// test/extended/testdata/node/pod-modify-volume.yaml
 // test/extended/testdata/node/pod-modify.yaml
 // test/extended/testdata/oauthserver/cabundle-cm.yaml
 // test/extended/testdata/oauthserver/oauth-network.yaml
@@ -1085,62 +1084,6 @@ func testExtendedTestdataLdapLdapserverServiceYaml() (*asset, error) {
 	return a, nil
 }
 
-var _testExtendedTestdataNodePodModifyVolumeYaml = []byte(`apiVersion: template.openshift.io/v1
-kind: Template
-metadata:
-  name: pod-modify-template
-objects:
-- apiVersion: v1
-  kind: Pod
-  metadata:
-    name: "${NAME}"
-    namespace: "${NAMESPACE}"
-  spec:
-    containers:
-    - name: hello-pod
-      image: quay.io/openshifttest/hello-pod
-      ports:
-      - containerPort: 80
-      volumeMounts:
-      - name: workdir
-        mountPath: /usr/share/nginx/html
-    initContainers:
-    - name: init
-      image: centos:centos7
-      command: ["${COMMAND}"]
-      args: 
-      - "-c"
-      - "${ARGS}"
-      volumeMounts:
-      - name: workdir
-        mountPath: /work-dir
-    restartPolicy: "${POLICY}"
-    volumes:
-    - name: workdir
-      emptyDir: {}
-parameters:      
-- name: NAME
-- name: NAMESPACE
-- name: COMMAND
-- name: ARGS  
-- name: POLICY
-`)
-
-func testExtendedTestdataNodePodModifyVolumeYamlBytes() ([]byte, error) {
-	return _testExtendedTestdataNodePodModifyVolumeYaml, nil
-}
-
-func testExtendedTestdataNodePodModifyVolumeYaml() (*asset, error) {
-	bytes, err := testExtendedTestdataNodePodModifyVolumeYamlBytes()
-	if err != nil {
-		return nil, err
-	}
-
-	info := bindataFileInfo{name: "test/extended/testdata/node/pod-modify-volume.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
-	a := &asset{bytes: bytes, info: info}
-	return a, nil
-}
-
 var _testExtendedTestdataNodePodModifyYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
@@ -1159,7 +1102,7 @@ objects:
       - containerPort: 80
       volumeMounts:
       - name: workdir
-        mountPath: /usr/share/nginx/html
+        mountPath: "${MOUNTPATH}"
     initContainers:
     - name: init
       image: centos:centos7
@@ -1167,6 +1110,9 @@ objects:
       args: 
       - "-c"
       - "${ARGS}"
+      volumeMounts:
+      - name: workdir
+        mountPath: /work-dir
     restartPolicy: "${POLICY}"
     volumes:
     - name: workdir
@@ -1174,6 +1120,7 @@ objects:
 parameters:      
 - name: NAME
 - name: NAMESPACE
+- name: MOUNTPATH
 - name: COMMAND
 - name: ARGS  
 - name: POLICY
@@ -17131,7 +17078,6 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/ldap/ldapserver-deployment.yaml":                                                                               testExtendedTestdataLdapLdapserverDeploymentYaml,
 	"test/extended/testdata/ldap/ldapserver-scripts-cm.yaml":                                                                               testExtendedTestdataLdapLdapserverScriptsCmYaml,
 	"test/extended/testdata/ldap/ldapserver-service.yaml":                                                                                  testExtendedTestdataLdapLdapserverServiceYaml,
-	"test/extended/testdata/node/pod-modify-volume.yaml":                                                                                   testExtendedTestdataNodePodModifyVolumeYaml,
 	"test/extended/testdata/node/pod-modify.yaml":                                                                                          testExtendedTestdataNodePodModifyYaml,
 	"test/extended/testdata/oauthserver/cabundle-cm.yaml":                                                                                  testExtendedTestdataOauthserverCabundleCmYaml,
 	"test/extended/testdata/oauthserver/oauth-network.yaml":                                                                                testExtendedTestdataOauthserverOauthNetworkYaml,
@@ -17345,8 +17291,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 					"ldapserver-service.yaml":    {testExtendedTestdataLdapLdapserverServiceYaml, map[string]*bintree{}},
 				}},
 				"node": {nil, map[string]*bintree{
-					"pod-modify-volume.yaml": {testExtendedTestdataNodePodModifyVolumeYaml, map[string]*bintree{}},
-					"pod-modify.yaml":        {testExtendedTestdataNodePodModifyYaml, map[string]*bintree{}},
+					"pod-modify.yaml": {testExtendedTestdataNodePodModifyYaml, map[string]*bintree{}},
 				}},
 				"oauthserver": {nil, map[string]*bintree{
 					"cabundle-cm.yaml":   {testExtendedTestdataOauthserverCabundleCmYaml, map[string]*bintree{}},

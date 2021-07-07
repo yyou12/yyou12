@@ -14,6 +14,7 @@ import (
 type podModifyDescription struct {
 	name               string
 	namespace          string
+	mountpath          string
 	command            string
 	args               string
 	restartPolicy      string
@@ -31,7 +32,7 @@ func getRandomString() string {
 }
 
 func (podModify *podModifyDescription) create(oc *exutil.CLI) {
-	err := createResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", podModify.template, "-p", "NAME="+podModify.name, "NAMESPACE="+podModify.namespace, "COMMAND="+podModify.command, "ARGS="+podModify.args, "POLICY="+podModify.restartPolicy)
+	err := createResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", podModify.template, "-p", "NAME="+podModify.name, "NAMESPACE="+podModify.namespace, "MOUNTPATH="+podModify.mountpath, "COMMAND="+podModify.command, "ARGS="+podModify.args, "POLICY="+podModify.restartPolicy)
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
@@ -94,7 +95,6 @@ func podStatus(oc *exutil.CLI ) error {
 	e2e.Logf("check if pod is available")
 	return wait.Poll(5*time.Second, 3*time.Minute, func() (bool, error) {
 		status, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-o=jsonpath={.items[*].status.phase}", "-n", oc.Namespace()).Output()
-		e2e.Logf("the status of pod is %v", status)
 		if err != nil {
 			e2e.Failf("the result of ReadFile:%v", err)
 			return false, nil
@@ -104,5 +104,22 @@ func podStatus(oc *exutil.CLI ) error {
 			return true, nil
 		}
 		return false, nil
+	})
+}
+
+func volStatus(oc *exutil.CLI ) error {
+	e2e.Logf("check content of volume")
+	return wait.Poll(1*time.Second, 1*time.Minute, func() (bool, error) {
+		status, err := oc.AsAdmin().WithoutNamespace().Run("exec").Args("init-volume", "-c", "hello-pod", "cat", "/init-test/volume-test", "-n", oc.Namespace()).Output()
+		e2e.Logf("The content of the vol is %v", status)
+		if err != nil {
+			e2e.Failf("the result of ReadFile:%v", err)
+			return false, nil
+		}
+		if strings.Contains(status, "This is OCP volume test") {
+			e2e.Logf(" Init containers with volume work fine \n")
+			return true, nil
+		}
+		return false,nil
 	})
 }
