@@ -5041,9 +5041,19 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
 		ogSingleTemplate := filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
 		subTemplate := filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+		catsrcImageTemplate := filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
 		oc.SetupProject()
 		namespaceName := oc.Namespace()
 		var (
+			catsrc = catalogSourceDescription{
+				name:        "catsrc-etcd-40529",
+				namespace:   namespaceName,
+				displayName: "Test Catsrc etcd Operators",
+				publisher:   "Red Hat",
+				sourceType:  "grpc",
+				address:     "quay.io/olmqe/etcd-index:v1-4.8",
+				template:    catsrcImageTemplate,
+			}
 			og = operatorGroupDescription{
 				name:      "og-40529",
 				namespace: namespaceName,
@@ -5052,8 +5062,8 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 			sub = subscriptionDescription{
 				subName:                "sub-40529",
 				namespace:              namespaceName,
-				catalogSourceName:      "community-operators",
-				catalogSourceNamespace: "openshift-marketplace",
+				catalogSourceName:      "catsrc-etcd-40529",
+				catalogSourceNamespace: namespaceName,
 				channel:                "singlenamespace-alpha",
 				ipApproval:             "Manual",
 				operatorPackage:        "etcd",
@@ -5063,7 +5073,9 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 			}
 		)
 		itName := g.CurrentGinkgoTestDescription().TestText
-		g.By("1: create the OperatorGroup ")
+		g.By("1: create the catalog source and OperatorGroup ")
+		defer catsrc.delete(itName, dr)
+		catsrc.create(oc, itName, dr)
 		og.createwithCheck(oc, itName, dr)
 
 		g.By("2: create sub")
@@ -5302,12 +5314,13 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 	})
 
 	// author: xzha@redhat.com
-	g.It("Author:xzha-Medium-41174-Periodically retry InstallPlan execution until a timeout expires", func() {
+	g.It("ConnectedOnly-Author:xzha-Medium-41174-Periodically retry InstallPlan execution until a timeout expires", func() {
 		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
 		roletemplate := filepath.Join(buildPruningBaseDir, "role.yaml")
 		rolebindingtemplate := filepath.Join(buildPruningBaseDir, "role-binding.yaml")
 		ogSAtemplate := filepath.Join(buildPruningBaseDir, "operatorgroup-serviceaccount.yaml")
 		subTemplate := filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+		catsrcImageTemplate := filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
 		oc.SetupProject()
 		namespace := oc.Namespace()
 		itName := g.CurrentGinkgoTestDescription().TestText
@@ -5320,11 +5333,20 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 				serviceAccountName: sa,
 				template:           ogSAtemplate,
 			}
+			catsrc = catalogSourceDescription{
+				name:        "catsrc-etcd-41174",
+				namespace:   namespace,
+				displayName: "Test Catsrc etcd Operators",
+				publisher:   "Red Hat",
+				sourceType:  "grpc",
+				address:     "quay.io/olmqe/etcd-index:v1-4.8",
+				template:    catsrcImageTemplate,
+			}
 			sub = subscriptionDescription{
 				subName:                "etcd",
 				namespace:              namespace,
-				catalogSourceName:      "community-operators",
-				catalogSourceNamespace: "openshift-marketplace",
+				catalogSourceName:      "catsrc-etcd-41174",
+				catalogSourceNamespace: namespace,
 				channel:                "singlenamespace-alpha",
 				ipApproval:             "Automatic",
 				operatorPackage:        "etcd",
@@ -5346,7 +5368,9 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 			}
 		)
 
-		g.By("1) Create the service account and OperatorGroup")
+		g.By("1) Create the service account, catlog resource and OperatorGroup")
+		defer catsrc.delete(itName, dr)
+		catsrc.create(oc, itName, dr)
 		_, err := oc.WithoutNamespace().AsAdmin().Run("create").Args("sa", sa, "-n", sub.namespace).Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		og.createwithCheck(oc, itName, dr)
@@ -6125,18 +6149,31 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within all namesp
 			itName              = g.CurrentGinkgoTestDescription().TestText
 			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
 			subTemplate         = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+			catsrcImageTemplate = filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
 			sub                 = subscriptionDescription{
 				subName:                "sub-40531",
 				namespace:              "openshift-operators",
 				channel:                "clusterwide-alpha",
 				ipApproval:             "Automatic",
 				operatorPackage:        "etcd",
-				catalogSourceName:      "community-operators",
+				catalogSourceName:      "catsrc-etcd-40531",
 				catalogSourceNamespace: "openshift-marketplace",
 				template:               subTemplate,
 				singleNamespace:        false,
 			}
+			catsrc = catalogSourceDescription{
+				name:        "catsrc-etcd-40531",
+				namespace:   "openshift-marketplace",
+				displayName: "Test Catsrc etcd Operators",
+				publisher:   "Red Hat",
+				sourceType:  "grpc",
+				address:     "quay.io/olmqe/etcd-index:v1-4.8",
+				template:    catsrcImageTemplate,
+			}
 		)
+		g.By("0, create catlog resource")
+		defer catsrc.delete(itName, dr)
+		catsrc.create(oc, itName, dr)
 
 		g.By("1, Check if the global operator global-operators support all namesapces")
 		newCheck("expect", asAdmin, withoutNamespace, compare, "[]", ok, []string{"og", "global-operators", "-n", "openshift-operators", "-o=jsonpath={.status.namespaces}"})
