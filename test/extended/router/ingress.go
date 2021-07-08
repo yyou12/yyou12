@@ -64,9 +64,9 @@ var _ = g.Describe("[sig-network-edge] Network_Edge should", func() {
 
 		g.By("create project, pod, svc, and ingress that mismatch with default ingressclass")
 		oc.SetupProject()
-		createResourceFromFile(oc, testPodSvc)
+		createResourceFromFile(oc, oc.Namespace(), testPodSvc)
 		err := waitForPodWithLabelReady(oc, oc.Namespace(), "name=web-server-rc")
-		createResourceFromFile(oc, testIngress)
+		createResourceFromFile(oc, oc.Namespace(), testIngress)
 
 		g.By("ensure no route is created from the ingress")
 		output, err = oc.Run("get").Args("route").Output()
@@ -74,7 +74,7 @@ var _ = g.Describe("[sig-network-edge] Network_Edge should", func() {
 		o.Expect(output).NotTo(o.ContainSubstring("ingress-with-clalss"))
 
 		g.By("patch the ingress to use default ingressclass")
-		patchResourceAsUser(oc, "ingress/ingress-with-class", "{\"spec\":{\"ingressClassName\": \"openshift-default\"}}")
+		patchResourceAsUser(oc, oc.Namespace(), "ingress/ingress-with-class", "{\"spec\":{\"ingressClassName\": \"openshift-default\"}}")
 		g.By("ensure one route is created from the ingress")
 		output, err = oc.Run("get").Args("route").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())

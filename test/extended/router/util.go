@@ -98,16 +98,20 @@ func waitForPodWithLabelReady(oc *exutil.CLI, ns, label string) error {
 	})
 }
 
-func createResourceFromFile(oc *exutil.CLI, file string) {
-	err := oc.Run("create").Args("-f", file).Execute()
-	o.Expect(err).NotTo(o.HaveOccurred())
-}
-func patchResourceAsUser(oc *exutil.CLI, resource, patch string) {
-	err := oc.Run("patch").Args(resource, "-p", patch, "--type=merge").Execute()
+// For normal user to create resources in the specified namespace from the file (not template)
+func createResourceFromFile(oc *exutil.CLI, ns, file string) {
+	err := oc.WithoutNamespace().Run("create").Args("-f", file, "-n", ns).Execute()
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
+// For normal user to patch a resource in the specified namespace
+func patchResourceAsUser(oc *exutil.CLI, ns, resource, patch string) {
+	err := oc.WithoutNamespace().Run("patch").Args(resource, "-p", patch, "--type=merge", "-n", ns).Execute()
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+// For Admin to patch a resource in the specified namespace
 func patchResourceAsAdmin(oc *exutil.CLI, ns, resource, patch string) {
-	err := oc.AsAdmin().WithoutNamespace().Run("patch").Args("-n", ns, resource, "-p", patch, "--type=merge").Execute()
+	err := oc.AsAdmin().WithoutNamespace().Run("patch").Args(resource, "-p", patch, "--type=merge", "-n", ns).Execute()
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
