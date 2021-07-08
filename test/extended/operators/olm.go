@@ -2098,7 +2098,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	})
 
 	// author: scolange@redhat.com
-   	g.It("Author:scolange-Medium-42073-deployment sets neither CPU or memory request on the packageserver container", func() {
+	g.It("Author:scolange-Medium-42073-deployment sets neither CPU or memory request on the packageserver container", func() {
 		cpu, err1 := oc.AsAdmin().WithoutNamespace().Run("get").Args("deployment", "packageserver", "-n", "openshift-operator-lifecycle-manager", "-o=jsonpath={..containers..resources.requests.cpu}").Output()
 		e2e.Logf(cpu)
 		o.Expect(err1).NotTo(o.HaveOccurred())
@@ -2116,16 +2116,16 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		lines := strings.Split(catPodnames, " ")
 		for _, line := range lines {
 			e2e.Logf("line: %v", line)
-		
-			pkg1Cpu, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods",line, "-n", "openshift-operator-lifecycle-manager", "-o=jsonpath={.spec..resources.requests.cpu}").Output()
+
+			pkg1Cpu, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", line, "-n", "openshift-operator-lifecycle-manager", "-o=jsonpath={.spec..resources.requests.cpu}").Output()
 			o.Expect(err).NotTo(o.HaveOccurred())
 			o.Expect(pkg1Cpu).To(o.Equal(cpu))
 
-			pkg1Memory, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods",line, "-n", "openshift-operator-lifecycle-manager", "-o=jsonpath={.spec..resources.requests.memory}").Output()
+			pkg1Memory, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", line, "-n", "openshift-operator-lifecycle-manager", "-o=jsonpath={.spec..resources.requests.memory}").Output()
 			o.Expect(err).NotTo(o.HaveOccurred())
 			o.Expect(pkg1Memory).To(o.Equal(memory))
 		}
-    })
+	})
 
 	// author: scolange@redhat.com
 	g.It("Author:scolange-Medium-23673-Installplan can be created while Install and uninstall operators via Marketplace for 5 times [Slow]", func() {
@@ -2506,7 +2506,6 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		o.Expect(eventOutput).NotTo(o.ContainSubstring("Failed"))
 
 	})
-
 
 	// author: jiazha@redhat.com
 	g.It("Author:jiazha-Medium-21126-OLM Subscription status says CSV is installed when it is not", func() {
@@ -3507,24 +3506,24 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 				displayName: "Test Catsrc 24513 Operators",
 				publisher:   "Red Hat",
 				sourceType:  "grpc",
-				address:     "quay.io/olmqe/olm-dep:venv",
+				address:     "quay.io/olmqe/olm-dep:v1-crdarg",
 				template:    catsrcImageTemplate,
 			}
 			sub = subscriptionDescription{
-				subName:                "teiid",
+				subName:                "buildv2-operator",
 				namespace:              "",
-				channel:                "beta",
+				channel:                "alpha",
 				ipApproval:             "Automatic",
-				operatorPackage:        "teiid",
+				operatorPackage:        "buildv2-operator",
 				catalogSourceName:      catsrc.name,
 				catalogSourceNamespace: "",
-				startingCSV:            "teiid.v0.4.0",
+				startingCSV:            "buildv2-operator.v0.3.0",
 				currentCSV:             "",
 				installedCSV:           "",
 				template:               subTemplate,
 				singleNamespace:        true,
 			}
-			opename = "teiid-operator"
+			opename = "build-operator"
 		)
 		oc.SetupProject() //project and its resource are deleted automatically when out of It, so no need derfer or AfterEach
 		og.namespace = oc.Namespace()
@@ -3557,6 +3556,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 
 	// It will cover test case: OCP-24382, author: kuiwang@redhat.com
 	g.It("ConnectedOnly-Author:kuiwang-Medium-24382-Should restrict CRD update if schema changes [Serial]", func() {
+		// need to change api version from v1beta to v1
 		var (
 			itName              = g.CurrentGinkgoTestDescription().TestText
 			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
@@ -3651,18 +3651,18 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 				displayName: "Test Catsrc 25760 Operators",
 				publisher:   "Red Hat",
 				sourceType:  "grpc",
-				address:     "quay.io/olmqe/olm-dep:vchannel",
+				address:     "quay.io/olmqe/olm-dep:vchannel-crdv1",
 				template:    catsrcImageTemplate,
 			}
 			sub = subscriptionDescription{
-				subName:                "teiid",
+				subName:                "mta-operator",
 				namespace:              "",
 				channel:                "alpha",
 				ipApproval:             "Automatic",
-				operatorPackage:        "teiid",
+				operatorPackage:        "mta-operator",
 				catalogSourceName:      catsrc.name,
 				catalogSourceNamespace: "",
-				startingCSV:            "teiid.v0.3.0",
+				startingCSV:            "windup-operator.0.0.4",
 				currentCSV:             "",
 				installedCSV:           "",
 				template:               subTemplate,
@@ -3714,18 +3714,18 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 				displayName: "Test Catsrc 35895 Operators",
 				publisher:   "Red Hat",
 				sourceType:  "grpc",
-				address:     "quay.io/olmqe/olm-dep:vargo",
+				address:     "quay.io/olmqe/olm-dep:vmtaduprol",
 				template:    catsrcImageTemplate,
 			}
 			sub = subscriptionDescription{
-				subName:                "argocd-operator",
+				subName:                "mta-operator",
 				namespace:              "",
 				channel:                "alpha",
 				ipApproval:             "Automatic",
-				operatorPackage:        "argocd-operator",
+				operatorPackage:        "mta-operator",
 				catalogSourceName:      catsrc.name,
 				catalogSourceNamespace: "",
-				startingCSV:            "argocd-operator.v0.0.11",
+				startingCSV:            "windup-operator.0.0.5",
 				currentCSV:             "",
 				installedCSV:           "",
 				template:               subTemplate,
@@ -3751,7 +3751,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
 
 		g.By("check sa")
-		newCheck("expect", asAdmin, withoutNamespace, contain, "argocd-redis-ha-haproxy", ok, []string{"csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={..serviceAccountName}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, contain, "windup-operator-haproxy", ok, []string{"csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={..serviceAccountName}"}).check(oc)
 	})
 
 	// It will cover test case: OCP-32863, author: kuiwang@redhat.com
