@@ -4532,7 +4532,6 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		ogSingleTemplate := filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
 		subTemplate := filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
 		subTemplateProxy := filepath.Join(buildPruningBaseDir, "olm-proxy-subscription.yaml")
-		catsrcImageTemplate := filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
 		oc.SetupProject()
 		var (
 			og = operatorGroupDescription{
@@ -4540,20 +4539,11 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 				namespace: oc.Namespace(),
 				template:  ogSingleTemplate,
 			}
-			catsrc = catalogSourceDescription{
-				name:        "catsrc-planetscale-operator",
-				namespace:   oc.Namespace(),
-				displayName: "Test planetscale Operators",
-				publisher:   "OLM QE",
-				sourceType:  "grpc",
-				address:     "quay.io/olmqe/planetscale-index:v1-4.8",
-				template:    catsrcImageTemplate,
-			}
 			sub = subscriptionDescription{
 				subName:                "planetscale-sub",
 				namespace:              oc.Namespace(),
-				catalogSourceName:      "catsrc-planetscale-operator",
-				catalogSourceNamespace: oc.Namespace(),
+				catalogSourceName:      "community-operators",
+				catalogSourceNamespace: "openshift-marketplace",
 				channel:                "beta",
 				ipApproval:             "Automatic",
 				operatorPackage:        "planetscale",
@@ -4562,8 +4552,8 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 			}
 			subP = subscriptionDescription{subName: "planetscale-sub",
 				namespace:              oc.Namespace(),
-				catalogSourceName:      "catsrc-planetscale-operator",
-				catalogSourceNamespace: oc.Namespace(),
+				catalogSourceName:      "community-operators",
+				catalogSourceNamespace: "openshift-marketplace",
 				channel:                "beta",
 				ipApproval:             "Automatic",
 				operatorPackage:        "planetscale",
@@ -4591,14 +4581,11 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		itName := g.CurrentGinkgoTestDescription().TestText
 
 		//oc get proxy cluster
-		g.By(fmt.Sprintf("0) get the cluster proxy configuration"))
+		g.By(fmt.Sprintf("0) check the cluster is proxied"))
 		httpProxy := getResource(oc, asAdmin, withoutNamespace, "proxy", "cluster", "-o=jsonpath={.status.httpProxy}")
 		httpsProxy := getResource(oc, asAdmin, withoutNamespace, "proxy", "cluster", "-o=jsonpath={.status.httpsProxy}")
 		noProxy := getResource(oc, asAdmin, withoutNamespace, "proxy", "cluster", "-o=jsonpath={.status.noProxy}")
-
-		g.By(fmt.Sprintf("1) create the catsrc and OperatorGroup in project: %s", oc.Namespace()))
-		defer catsrc.delete(itName, dr)
-		catsrc.create(oc, itName, dr)
+		g.By(fmt.Sprintf("1) create the OperatorGroup in project: %s", oc.Namespace()))
 		og.createwithCheck(oc, itName, dr)
 
 		if httpProxy == "" {
