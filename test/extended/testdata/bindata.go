@@ -1114,6 +1114,11 @@ objects:
       - name: workdir
         mountPath: /work-dir
     restartPolicy: "${POLICY}"
+    securityContext:
+      seLinuxOptions:
+        user: "${USER}"
+        role: "${ROLE}"
+        level: "${LEVEL}"
     volumes:
     - name: workdir
       emptyDir: {}
@@ -1124,6 +1129,9 @@ parameters:
 - name: COMMAND
 - name: ARGS  
 - name: POLICY
+- name: USER
+- name: ROLE
+- name: LEVEL
 `)
 
 func testExtendedTestdataNodePodModifyYamlBytes() ([]byte, error) {

@@ -18,6 +18,9 @@ type podModifyDescription struct {
 	command            string
 	args               string
 	restartPolicy      string
+	user		   string
+	role               string
+	level              string
 	template           string
 }
 
@@ -32,7 +35,7 @@ func getRandomString() string {
 }
 
 func (podModify *podModifyDescription) create(oc *exutil.CLI) {
-	err := createResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", podModify.template, "-p", "NAME="+podModify.name, "NAMESPACE="+podModify.namespace, "MOUNTPATH="+podModify.mountpath, "COMMAND="+podModify.command, "ARGS="+podModify.args, "POLICY="+podModify.restartPolicy)
+	err := createResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", podModify.template, "-p", "NAME="+podModify.name, "NAMESPACE="+podModify.namespace, "MOUNTPATH="+podModify.mountpath, "COMMAND="+podModify.command, "ARGS="+podModify.args, "POLICY="+podModify.restartPolicy, "USER="+podModify.user, "ROLE="+podModify.role, "LEVEL="+podModify.level)
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
@@ -118,6 +121,22 @@ func volStatus(oc *exutil.CLI ) error {
 		}
 		if strings.Contains(status, "This is OCP volume test") {
 			e2e.Logf(" Init containers with volume work fine \n")
+			return true, nil
+		}
+		return false,nil
+	})
+}
+
+func ContainerSccStatus(oc *exutil.CLI ) error {
+	return wait.Poll(1*time.Second, 1*time.Second, func() (bool, error) {
+		status, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "hello-pod", "-o=jsonpath={.spec.securityContext.seLinuxOptions.*}", "-n", oc.Namespace()).Output()
+		e2e.Logf("The Container SCC Content is %v", status)
+		if err != nil {
+			e2e.Failf("the result of ReadFile:%v", err)
+			return false, nil
+		}
+		if strings.Contains(status, "unconfined_u unconfined_r s0:c25,c968") {
+			e2e.Logf("SeLinuxOptions in pod applied to container Sucessfully \n")
 			return true, nil
 		}
 		return false,nil

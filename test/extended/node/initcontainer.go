@@ -25,6 +25,9 @@ var _ = g.Describe("[sig-node] Node initContainer policy,volume,readines,quota",
 			command:         "",
 			args:            "",
 			restartPolicy:   "",
+			user:            "",
+			role:            "",
+			level:           "",
 			template:        customTemp,
 		}
 	)
