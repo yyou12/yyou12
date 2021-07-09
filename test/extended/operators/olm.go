@@ -5128,13 +5128,13 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 				template:  ogSingleTemplate,
 			}
 			sub = subscriptionDescription{
-				subName:                "tidb-40534-operator",
+				subName:                "hive-40534-operator",
 				namespace:              namespaceName,
 				catalogSourceName:      "community-operators",
 				catalogSourceNamespace: "openshift-marketplace",
-				channel:                "stable",
+				channel:                "alpha",
 				ipApproval:             "Automatic",
-				operatorPackage:        "tidb-operator",
+				operatorPackage:        "hive-operator",
 				singleNamespace:        true,
 				template:               subTemplate,
 			}
@@ -5149,13 +5149,13 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		sub.create(oc, itName, dr)
 
 		g.By("STEP 3: check OPERATOR_CONDITION_NAME")
-		cpuCSV := getResource(oc, asAdmin, withoutNamespace, "csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={..containers[?(@.name==\"tidb-operator\")].resources.requests.cpu}")
+		cpuCSV := getResource(oc, asAdmin, withoutNamespace, "csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={..containers[?(@.name==\"hive-operator\")].resources.requests.cpu}")
 		o.Expect(cpuCSV).NotTo(o.BeEmpty())
-		memoryCSV := getResource(oc, asAdmin, withoutNamespace, "csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={..containers[?(@.name==\"tidb-operator\")].resources.requests.memory}")
+		memoryCSV := getResource(oc, asAdmin, withoutNamespace, "csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={..containers[?(@.name==\"hive-operator\")].resources.requests.memory}")
 		o.Expect(memoryCSV).NotTo(o.BeEmpty())
-		cpuDeployment := getResource(oc, asAdmin, withoutNamespace, "deployment", fmt.Sprintf("--selector=olm.owner=%s", sub.installedCSV), "-n", sub.namespace, "-o=jsonpath={..containers[?(@.name==\"tidb-operator\")].resources.requests.cpu}")
+		cpuDeployment := getResource(oc, asAdmin, withoutNamespace, "deployment", fmt.Sprintf("--selector=olm.owner=%s", sub.installedCSV), "-n", sub.namespace, "-o=jsonpath={..containers[?(@.name==\"hive-operator\")].resources.requests.cpu}")
 		o.Expect(cpuDeployment).To(o.Equal(cpuDeployment))
-		memoryDeployment := getResource(oc, asAdmin, withoutNamespace, "deployment", fmt.Sprintf("--selector=olm.owner=%s", sub.installedCSV), "-n", sub.namespace, "-o=jsonpath={..containers[?(@.name==\"tidb-operator\")].resources.requests.memory}")
+		memoryDeployment := getResource(oc, asAdmin, withoutNamespace, "deployment", fmt.Sprintf("--selector=olm.owner=%s", sub.installedCSV), "-n", sub.namespace, "-o=jsonpath={..containers[?(@.name==\"hive-operator\")].resources.requests.memory}")
 		o.Expect(memoryDeployment).To(o.Equal(memoryCSV))
 
 	})
@@ -5174,13 +5174,13 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 				template:  ogSingleTemplate,
 			}
 			sub = subscriptionDescription{
-				subName:                "tidb-40532-operator",
+				subName:                "hive-40532-operator",
 				namespace:              namespaceName,
 				catalogSourceName:      "community-operators",
 				catalogSourceNamespace: "openshift-marketplace",
-				channel:                "stable",
+				channel:                "alpha",
 				ipApproval:             "Automatic",
-				operatorPackage:        "tidb-operator",
+				operatorPackage:        "hive-operator",
 				singleNamespace:        true,
 				template:               subTemplate,
 			}
