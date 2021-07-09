@@ -3845,24 +3845,24 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 				displayName: "OLM 1933 v8 Operator Catalog",
 				publisher:   "QE",
 				sourceType:  "grpc",
-				address:     "quay.io/olmqe/olm-dep:v8",
+				address:     "quay.io/olmqe/olm-dep:v9",
 				template:    catsrcImageTemplate,
 			}
 			sub = subscriptionDescription{
-				subName:                "teiid",
+				subName:                "mta-operator",
 				namespace:              "",
-				channel:                "beta",
+				channel:                "alpha",
 				ipApproval:             "Automatic",
-				operatorPackage:        "teiid",
+				operatorPackage:        "mta-operator",
 				catalogSourceName:      catsrc.name,
 				catalogSourceNamespace: "",
-				startingCSV:            "teiid.v0.4.0",
+				startingCSV:            "windup-operator.0.0.5",
 				currentCSV:             "",
 				installedCSV:           "",
 				template:               subTemplate,
 				singleNamespace:        true,
 			}
-			dependentOperator = "microcks-operator.v1.0.0"
+			dependentOperator = "buildv2-operator.v0.3.0"
 		)
 		oc.SetupProject() //project and its resource are deleted automatically when out of It, so no need derfer or AfterEach
 		og.namespace = oc.Namespace()
@@ -3903,46 +3903,46 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 				displayName: "OLM 1860185 Catalog",
 				publisher:   "QE",
 				sourceType:  "grpc",
-				address:     "quay.io/olmqe/olm-dep:v1860185",
+				address:     "quay.io/olmqe/olm-dep:v1860185-v1",
 				template:    catsrcImageTemplate,
 			}
 			subStrimzi = subscriptionDescription{
 				subName:                "strimzi",
 				namespace:              "",
-				channel:                "strimzi-0.19.x",
+				channel:                "strimzi-0.23.x",
 				ipApproval:             "Automatic",
 				operatorPackage:        "strimzi-kafka-operator",
 				catalogSourceName:      catsrc.name,
 				catalogSourceNamespace: "",
-				startingCSV:            "strimzi-cluster-operator.v0.19.0",
+				startingCSV:            "strimzi-cluster-operator.v0.23.0",
 				currentCSV:             "",
 				installedCSV:           "",
 				template:               subTemplate,
 				singleNamespace:        true,
 			}
-			subCouchbase = subscriptionDescription{
-				subName:                "couchbase",
+			subBuildv2 = subscriptionDescription{
+				subName:                "buildv2-operator",
 				namespace:              "",
-				channel:                "stable",
+				channel:                "alpha",
 				ipApproval:             "Automatic",
-				operatorPackage:        "couchbase-enterprise-certified",
+				operatorPackage:        "buildv2-operator",
 				catalogSourceName:      catsrc.name,
 				catalogSourceNamespace: "",
-				startingCSV:            "couchbase-operator.v1.2.2",
+				startingCSV:            "buildv2-operator.v0.3.0",
 				currentCSV:             "",
 				installedCSV:           "",
 				template:               subTemplate,
 				singleNamespace:        true,
 			}
-			subPortworx = subscriptionDescription{
-				subName:                "portworx",
+			subMta = subscriptionDescription{
+				subName:                "mta-operator",
 				namespace:              "",
-				channel:                "stable",
+				channel:                "alpha",
 				ipApproval:             "Automatic",
-				operatorPackage:        "portworx-certified",
+				operatorPackage:        "mta-operator",
 				catalogSourceName:      catsrc.name,
 				catalogSourceNamespace: "",
-				startingCSV:            "portworx-operator.v1.4.2",
+				startingCSV:            "windup-operator.0.0.5",
 				currentCSV:             "",
 				installedCSV:           "",
 				template:               subTemplate,
@@ -3954,10 +3954,10 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		catsrc.namespace = oc.Namespace()
 		subStrimzi.namespace = oc.Namespace()
 		subStrimzi.catalogSourceNamespace = catsrc.namespace
-		subCouchbase.namespace = oc.Namespace()
-		subCouchbase.catalogSourceNamespace = catsrc.namespace
-		subPortworx.namespace = oc.Namespace()
-		subPortworx.catalogSourceNamespace = catsrc.namespace
+		subBuildv2.namespace = oc.Namespace()
+		subBuildv2.catalogSourceNamespace = catsrc.namespace
+		subMta.namespace = oc.Namespace()
+		subMta.catalogSourceNamespace = catsrc.namespace
 
 		g.By("create catalog source")
 		catsrc.create(oc, itName, dr)
@@ -3972,38 +3972,38 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", subStrimzi.installedCSV, "-n", subStrimzi.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
 
 		g.By("install Portworx")
-		subPortworx.create(oc, itName, dr)
+		subMta.create(oc, itName, dr)
 
 		g.By("check if Portworx is installed")
-		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", subPortworx.installedCSV, "-n", subPortworx.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", subMta.installedCSV, "-n", subMta.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
 
 		g.By("get IP of Portworx")
-		portworxIP := subPortworx.getIP(oc)
+		mtaIP := subMta.getIP(oc)
 
 		g.By("Delete Portworx sub")
-		subPortworx.delete(itName, dr)
+		subMta.delete(itName, dr)
 
 		g.By("check if Portworx sub is Deleted")
-		newCheck("present", asAdmin, withoutNamespace, notPresent, "", ok, []string{"sub", subPortworx.subName, "-n", subPortworx.namespace}).check(oc)
+		newCheck("present", asAdmin, withoutNamespace, notPresent, "", ok, []string{"sub", subMta.subName, "-n", subMta.namespace}).check(oc)
 
 		g.By("Delete Portworx csv")
 		csvPortworx := csvDescription{
-			name:      subPortworx.installedCSV,
-			namespace: subPortworx.namespace,
+			name:      subMta.installedCSV,
+			namespace: subMta.namespace,
 		}
 		csvPortworx.delete(itName, dr)
 
 		g.By("check if Portworx csv is Deleted")
-		newCheck("present", asAdmin, withoutNamespace, notPresent, "", ok, []string{"csv", subPortworx.installedCSV, "-n", subPortworx.namespace}).check(oc)
+		newCheck("present", asAdmin, withoutNamespace, notPresent, "", ok, []string{"csv", subMta.installedCSV, "-n", subMta.namespace}).check(oc)
 
 		g.By("install Couchbase")
-		subCouchbase.create(oc, itName, dr)
+		subBuildv2.create(oc, itName, dr)
 
 		g.By("get IP of Couchbase")
-		couchbaseIP := subCouchbase.getIP(oc)
+		couchbaseIP := subBuildv2.getIP(oc)
 
 		g.By("it takes different IP")
-		o.Expect(couchbaseIP).NotTo(o.Equal(portworxIP))
+		o.Expect(couchbaseIP).NotTo(o.Equal(mtaIP))
 
 	})
 
@@ -4029,7 +4029,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 				displayName: "Test Catsrc 33176 Operators",
 				publisher:   "Red Hat",
 				sourceType:  "grpc",
-				address:     "quay.io/olmqe/olm-api:v1",
+				address:     "quay.io/olmqe/olm-api:v3",
 				template:    catsrcImageTemplate,
 			}
 			subEtcd = subscriptionDescription{
@@ -4049,12 +4049,12 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 			subCockroachdb = subscriptionDescription{
 				subName:                "cockroachdb33176",
 				namespace:              "",
-				channel:                "stable",
+				channel:                "stable-5.x",
 				ipApproval:             "Automatic",
 				operatorPackage:        "cockroachdb",
 				catalogSourceName:      catsrc.name,
 				catalogSourceNamespace: "",
-				startingCSV:            "cockroachdb.v2.1.11", //get it from package based on currentCSV if ipApproval is Automatic
+				startingCSV:            "cockroachdb.v5.0.4", //get it from package based on currentCSV if ipApproval is Automatic
 				currentCSV:             "",
 				installedCSV:           "",
 				template:               subTemplate,
@@ -4162,7 +4162,6 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		defer doAction(oc, "delete", asAdmin, withoutNamespace, "operator", subCockroachdb.operatorPackage+"."+subCockroachdb.namespace)
 
 		g.By("Check all resources of Cockroachdb via operators")
-		newCheck("expect", asAdmin, withoutNamespace, contain, "ServiceAccount", ok, []string{"operator", subCockroachdb.operatorPackage + "." + subCockroachdb.namespace, "-o=jsonpath={.status.components.refs[*].kind}"}).check(oc)
 		newCheck("expect", asAdmin, withoutNamespace, contain, "Role", ok, []string{"operator", subCockroachdb.operatorPackage + "." + subCockroachdb.namespace, "-o=jsonpath={.status.components.refs[*].kind}"}).check(oc)
 		newCheck("expect", asAdmin, withoutNamespace, contain, "RoleBinding", ok, []string{"operator", subCockroachdb.operatorPackage + "." + subCockroachdb.namespace, "-o=jsonpath={.status.components.refs[*].kind}"}).check(oc)
 		newCheck("expect", asAdmin, withoutNamespace, contain, "CustomResourceDefinition", ok, []string{"operator", subCockroachdb.operatorPackage + "." + subCockroachdb.namespace, "-o=jsonpath={.status.components.refs[*].kind}"}).check(oc)
@@ -4211,33 +4210,33 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 				displayName: "Test Catsrc 39897 Operators",
 				publisher:   "Red Hat",
 				sourceType:  "grpc",
-				address:     "quay.io/olmqe/olm-dep:vteiid-1899588",
+				address:     "quay.io/olmqe/mta-index:v0.0.5",
 				template:    catsrcImageTemplate,
 			}
-			subTeiid = subscriptionDescription{
-				subName:                "teiid39897",
+			subMta = subscriptionDescription{
+				subName:                "mta-operator",
 				namespace:              "",
 				channel:                "alpha",
 				ipApproval:             "Automatic",
-				operatorPackage:        "teiid",
+				operatorPackage:        "mta-operator",
 				catalogSourceName:      catsrc.name,
 				catalogSourceNamespace: "",
-				startingCSV:            "teiid.v0.3.0", //get it from package based on currentCSV if ipApproval is Automatic
+				startingCSV:            "windup-operator.0.0.5", //get it from package based on currentCSV if ipApproval is Automatic
 				currentCSV:             "",
 				installedCSV:           "",
 				template:               subTemplate,
 				singleNamespace:        false,
 			}
 			crd = crdDescription{
-				name: "virtualdatabases.teiid.io",
+				name: "windups.windup.jboss.org",
 			}
 		)
 
 		oc.SetupProject() //project and its resource are deleted automatically when out of It, so no need derfer or AfterEach
 		og.namespace = oc.Namespace()
 		catsrc.namespace = oc.Namespace()
-		subTeiid.namespace = oc.Namespace()
-		subTeiid.catalogSourceNamespace = catsrc.namespace
+		subMta.namespace = oc.Namespace()
+		subMta.catalogSourceNamespace = catsrc.namespace
 
 		g.By("create catalog source")
 		catsrc.create(oc, itName, dr)
@@ -4246,24 +4245,24 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		og.create(oc, itName, dr)
 
 		g.By("install Teiid")
-		subTeiid.create(oc, itName, dr)
-		defer doAction(oc, "delete", asAdmin, withoutNamespace, "operator", subTeiid.operatorPackage+"."+subTeiid.namespace)
+		subMta.create(oc, itName, dr)
+		defer doAction(oc, "delete", asAdmin, withoutNamespace, "operator", subMta.operatorPackage+"."+subMta.namespace)
 
 		g.By("Check the resources via operators")
-		newCheck("expect", asAdmin, withoutNamespace, contain, "CustomResourceDefinition", ok, []string{"operator", subTeiid.operatorPackage + "." + subTeiid.namespace, "-o=jsonpath={.status.components.refs[*].kind}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, contain, "CustomResourceDefinition", ok, []string{"operator", subMta.operatorPackage + "." + subMta.namespace, "-o=jsonpath={.status.components.refs[*].kind}"}).check(oc)
 
 		g.By("delete operator and Operator still exists because of crd")
-		subTeiid.delete(itName, dr)
-		_, err := doAction(oc, "delete", asAdmin, withoutNamespace, "csv", subTeiid.installedCSV, "-n", subTeiid.namespace)
+		subMta.delete(itName, dr)
+		_, err := doAction(oc, "delete", asAdmin, withoutNamespace, "csv", subMta.installedCSV, "-n", subMta.namespace)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		newCheck("expect", asAdmin, withoutNamespace, contain, "CustomResourceDefinition", ok, []string{"operator", subTeiid.operatorPackage + "." + subTeiid.namespace, "-o=jsonpath={.status.components.refs[*].kind}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, contain, "CustomResourceDefinition", ok, []string{"operator", subMta.operatorPackage + "." + subMta.namespace, "-o=jsonpath={.status.components.refs[*].kind}"}).check(oc)
 
 		g.By("delete crd")
 		crd.delete(oc)
 
 		g.By("delete Operator resource to check if it is recreated")
-		doAction(oc, "delete", asAdmin, withoutNamespace, "operator", subTeiid.operatorPackage+"."+subTeiid.namespace)
-		newCheck("present", asAdmin, withoutNamespace, notPresent, "", ok, []string{"operator", subTeiid.operatorPackage + "." + subTeiid.namespace}).check(oc)
+		doAction(oc, "delete", asAdmin, withoutNamespace, "operator", subMta.operatorPackage+"."+subMta.namespace)
+		newCheck("present", asAdmin, withoutNamespace, notPresent, "", ok, []string{"operator", subMta.operatorPackage + "." + subMta.namespace}).check(oc)
 	})
 
 	// It will cover test case: OCP-24917, author: tbuskey@redhat.com
