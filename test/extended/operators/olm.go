@@ -6060,13 +6060,13 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within all namesp
 				displayName: "Test Catsrc 33241 Operators",
 				publisher:   "Red Hat",
 				sourceType:  "grpc",
-				address:     "quay.io/olmqe/olm-api:v1",
+				address:     "quay.io/olmqe/olm-api:v2",
 				template:    catsrcImageTemplate,
 			}
 			subCockroachdb = subscriptionDescription{
 				subName:                "cockroachdb33241",
 				namespace:              "openshift-operators",
-				channel:                "stable",
+				channel:                "stable-5.x",
 				ipApproval:             "Automatic",
 				operatorPackage:        "cockroachdb",
 				catalogSourceName:      catsrc.name,
@@ -6102,7 +6102,6 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within all namesp
 			g.By("Check all resources via operators")
 			resourceKind := getResource(oc, asAdmin, withoutNamespace, "operator", subCockroachdb.operatorPackage+"."+subCockroachdb.namespace, "-o=jsonpath={.status.components.refs[*].kind}")
 			o.Expect(resourceKind).To(o.ContainSubstring("Deployment"))
-			o.Expect(resourceKind).To(o.ContainSubstring("ServiceAccount"))
 			o.Expect(resourceKind).To(o.ContainSubstring("Role"))
 			o.Expect(resourceKind).To(o.ContainSubstring("RoleBinding"))
 			o.Expect(resourceKind).To(o.ContainSubstring("ClusterRole"))
@@ -6115,11 +6114,11 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within all namesp
 			newCheck("expect", asAdmin, withoutNamespace, contain, "InstallSucceeded", ok, []string{"operator", subCockroachdb.operatorPackage + "." + subCockroachdb.namespace, "-o=jsonpath={.status.components.refs[?(.kind=='ClusterServiceVersion')].conditions[*].reason}"}).check(oc)
 
 			g.By("unlabel resource and it is relabeled automatically")
-			clusterRoleName := getResource(oc, asAdmin, withoutNamespace, "operator", subCockroachdb.operatorPackage+"."+subCockroachdb.namespace, "-o=jsonpath={.status.components.refs[?(.kind=='ClusterRole')].name}")
-			o.Expect(clusterRoleName).NotTo(o.BeEmpty())
-			_, err := doAction(oc, "label", asAdmin, withoutNamespace, "ClusterRole", clusterRoleName, "operators.coreos.com/"+subCockroachdb.operatorPackage+"."+subCockroachdb.namespace+"-")
+			roleName := getResource(oc, asAdmin, withoutNamespace, "operator", subCockroachdb.operatorPackage+"."+subCockroachdb.namespace, "-o=jsonpath={.status.components.refs[?(.kind=='Role')].name}")
+			o.Expect(roleName).NotTo(o.BeEmpty())
+			_, err := doAction(oc, "label", asAdmin, withoutNamespace, "-n", subCockroachdb.namespace, "Role", roleName, "operators.coreos.com/"+subCockroachdb.operatorPackage+"."+subCockroachdb.namespace+"-")
 			o.Expect(err).NotTo(o.HaveOccurred())
-			newCheck("expect", asAdmin, withoutNamespace, contain, "ClusterRole", ok, []string{"operator", subCockroachdb.operatorPackage + "." + subCockroachdb.namespace, "-o=jsonpath={.status.components.refs[*].kind}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "Role", ok, []string{"operator", subCockroachdb.operatorPackage + "." + subCockroachdb.namespace, "-o=jsonpath={.status.components.refs[*].kind}"}).check(oc)
 
 			g.By("delete opertor and the Operator still exists because of crd")
 			subCockroachdb.delete(itName, dr)

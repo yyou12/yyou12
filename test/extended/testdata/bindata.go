@@ -2175,7 +2175,7 @@ objects:
             name: Containers & PaaS CoP
           version: 0.0.3
     customResourceDefinitions: |
-      - apiVersion: apiextensions.k8s.io/v1beta1
+      - apiVersion: apiextensions.k8s.io/v1
         kind: CustomResourceDefinition
         metadata:
           name: readytest.stable.example.com
@@ -2185,6 +2185,22 @@ objects:
             - name: v1
               served: true
               storage: true
+              schema:
+                openAPIV3Schema:
+                  type: object
+                  properties:
+                    apiVersion:
+                      type: string
+                    kind:
+                      type: string
+                    metadata:
+                      type: object
+                    spec:
+                      type: object
+                      x-kubernetes-preserve-unknown-fields: true
+                    status:
+                      type: object
+                      x-kubernetes-preserve-unknown-fields: true
           scope: Namespaced
           names:
             plural: readytests
@@ -2408,7 +2424,7 @@ objects:
             name: Containers & PaaS CoP
           version: 0.0.3
     customResourceDefinitions: |
-      - apiVersion: apiextensions.k8s.io/v1beta1
+      - apiVersion: apiextensions.k8s.io/v1
         kind: CustomResourceDefinition
         metadata:
           name: readytests.stable.example.com
@@ -2418,6 +2434,22 @@ objects:
             - name: v1
               served: true
               storage: true
+              schema:
+                openAPIV3Schema:
+                  type: object
+                  properties:
+                    apiVersion:
+                      type: string
+                    kind:
+                      type: string
+                    metadata:
+                      type: object
+                    spec:
+                      type: object
+                      x-kubernetes-preserve-unknown-fields: true
+                    status:
+                      type: object
+                      x-kubernetes-preserve-unknown-fields: true
           scope: Namespaced
           names:
             plural: readytests
@@ -3483,7 +3515,7 @@ objects:
           provider: {}
           version: 0.0.1
     customResourceDefinitions: |
-      - apiVersion: apiextensions.k8s.io/v1beta1
+      - apiVersion: apiextensions.k8s.io/v1
         kind: CustomResourceDefinition
         metadata:
           name: learns.app.learn.com
@@ -3495,36 +3527,26 @@ objects:
             plural: learns
             singular: learn
           scope: Namespaced
-          subresources:
-            status: {}
-          validation:
-            openAPIV3Schema:
-              description: Learn is the Schema for the learns API
-              properties:
-                apiVersion:
-                  description: 'APIVersion defines the versioned schema of this representation
-                    of an object. Servers should convert recognized schemas to the latest
-                    internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources'
-                  type: string
-                kind:
-                  description: 'Kind is a string value representing the REST resource this
-                    object represents. Servers may infer this from the endpoint the client
-                    submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds'
-                  type: string
-                metadata:
-                  type: object
-                spec:
-                  description: LearnSpec defines the desired state of Learn
-                  type: object
-                status:
-                  description: LearnStatus defines the observed state of Learn
-                  type: object
-              type: object
-          version: v1
           versions:
           - name: v1
             served: true
             storage: true
+            schema:
+              openAPIV3Schema:
+                type: object
+                properties:
+                  apiVersion:
+                    type: string
+                  kind:
+                    type: string
+                  metadata:
+                    type: object
+                  spec:
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
+                  status:
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
     packages: |
       - channels:
         - currentCSV: learn-operator.v0.0.1
@@ -3840,7 +3862,7 @@ objects:
           provider: {}
           version: 0.0.1
     customResourceDefinitions: |
-      - apiVersion: apiextensions.k8s.io/v1beta1
+      - apiVersion: apiextensions.k8s.io/v1
         kind: CustomResourceDefinition
         metadata:
           name: learns.app.learn.com
@@ -3852,39 +3874,45 @@ objects:
             plural: learns
             singular: learn
           scope: Namespaced
-          subresources:
-            status: {}
-          validation:
-            openAPIV3Schema:
-              description: Learn is the Schema for the learns API
-              properties:
-                apiVersion:
-                  description: 'APIVersion defines the versioned schema of this representation
-                    of an object. Servers should convert recognized schemas to the latest
-                    internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources'
-                  type: string
-                kind:
-                  description: 'Kind is a string value representing the REST resource this
-                    object represents. Servers may infer this from the endpoint the client
-                    submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds'
-                  type: string
-                metadata:
-                  type: object
-                spec:
-                  description: LearnSpec defines the desired state of Learn
-                  type: object
-                status:
-                  description: LearnStatus defines the observed state of Learn
-                  type: object
-              type: object
-          version: v2
           versions:
           - name: v2
             served: true
             storage: true
+            schema:
+              openAPIV3Schema:
+                type: object
+                properties:
+                  apiVersion:
+                    type: string
+                  kind:
+                    type: string
+                  metadata:
+                    type: object
+                  spec:
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
+                  status:
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
           - name: v1
             served: true
             storage: false
+            schema:
+              openAPIV3Schema:
+                type: object
+                properties:
+                  apiVersion:
+                    type: string
+                  kind:
+                    type: string
+                  metadata:
+                    type: object
+                  spec:
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
+                  status:
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
     packages: |
       - channels:
         - currentCSV: learn-operator.v0.0.1
@@ -4713,7 +4741,7 @@ objects:
                 serviceAccountName: namespace-configuration-operator
             strategy: deployment
     customResourceDefinitions: |
-      - apiVersion: apiextensions.k8s.io/v1beta1
+      - apiVersion: apiextensions.k8s.io/v1
         kind: CustomResourceDefinition
         metadata:
           name: namespaceconfigs.redhatcop.redhat.io
@@ -4725,50 +4753,26 @@ objects:
             plural: namespaceconfigs
             singular: namespaceconfig
           scope: Namespaced
-          subresources:
-            status: {}
-          validation:
-            openAPIV3Schema:
-              properties:
-                apiVersion:
-                  description: 'APIVersion defines the versioned schema of this representation
-                    of an object. Servers should convert recognized schemas to the latest
-                    internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources'
-                  type: string
-                kind:
-                  description: 'Kind is a string value representing the REST resource this
-                    object represents. Servers may infer this from the endpoint the client
-                    submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds'
-                  type: string
-                metadata:
-                  type: object
-                spec:
-                  properties:
-                    resources:
-                      items:
-                        type: object
-                      type: array
-                    selector:
-                      type: object
-                  type: object
-                status:
-                  properties:
-                    lastUpdate:
-                      format: date-time
-                      type: string
-                    reason:
-                      type: string
-                    status:
-                      enum:
-                      - Success
-                      - Failure
-                      type: string
-                  type: object
-          version: v1alpha1
           versions:
           - name: v1alpha1
             served: true
             storage: true
+            schema:
+              openAPIV3Schema:
+                type: object
+                properties:
+                  apiVersion:
+                    type: string
+                  kind:
+                    type: string
+                  metadata:
+                    type: object
+                  spec:
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
+                  status:
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
     packages: |
       - channels:
         - currentCSV: namespace-configuration-operator.v0.1.0
