@@ -48,7 +48,7 @@ fi
 
 echo $KUBECONFIG
 oc extract secret/pull-secret -n openshift-config  --confirm
-if cat .dockerconfigjson | grep 'registry.ci.openshift.org'; then
+if cat .dockerconfigjson | grep 'registry.ci.openshift.org' > /dev/null; then
     NIGHTLYVERSION=`oc get clusterversion | grep version | awk '{print $2}'`
     if [ ${NIGHTLYVERSION}"null" == "null" ]; then
         echo "get clusterversion failed"
