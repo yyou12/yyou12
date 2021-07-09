@@ -12086,7 +12086,7 @@ func testExtendedTestdataOpmCockroachdbSupportsemver504CockroachdbClusterservice
 	return a, nil
 }
 
-var _testExtendedTestdataOpmEtcd_operator092ManifestsEtcdbackupsEtcdDatabaseCoreosComCrdYaml = []byte(`apiVersion: apiextensions.k8s.io/v1beta1
+var _testExtendedTestdataOpmEtcd_operator092ManifestsEtcdbackupsEtcdDatabaseCoreosComCrdYaml = []byte(`apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   name: etcdbackups.etcd.database.coreos.com
@@ -12098,7 +12098,26 @@ spec:
     plural: etcdbackups
     singular: etcdbackup
   scope: Namespaced
-  version: v1beta2
+  versions:
+  - name: v1beta2
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          apiVersion:
+            type: string
+          kind:
+            type: string
+          metadata:
+            type: object
+          spec:
+            type: object
+            x-kubernetes-preserve-unknown-fields: true
+          status:
+            type: object
+            x-kubernetes-preserve-unknown-fields: true
 `)
 
 func testExtendedTestdataOpmEtcd_operator092ManifestsEtcdbackupsEtcdDatabaseCoreosComCrdYamlBytes() ([]byte, error) {
@@ -12116,7 +12135,7 @@ func testExtendedTestdataOpmEtcd_operator092ManifestsEtcdbackupsEtcdDatabaseCore
 	return a, nil
 }
 
-var _testExtendedTestdataOpmEtcd_operator092ManifestsEtcdclustersEtcdDatabaseCoreosComCrdYaml = []byte(`apiVersion: apiextensions.k8s.io/v1beta1
+var _testExtendedTestdataOpmEtcd_operator092ManifestsEtcdclustersEtcdDatabaseCoreosComCrdYaml = []byte(`apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   name: etcdclusters.etcd.database.coreos.com
@@ -12131,7 +12150,26 @@ spec:
     - etcd
     singular: etcdcluster
   scope: Namespaced
-  version: v1beta2
+  versions:
+  - name: v1beta2
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          apiVersion:
+            type: string
+          kind:
+            type: string
+          metadata:
+            type: object
+          spec:
+            type: object
+            x-kubernetes-preserve-unknown-fields: true
+          status:
+            type: object
+            x-kubernetes-preserve-unknown-fields: true
 `)
 
 func testExtendedTestdataOpmEtcd_operator092ManifestsEtcdclustersEtcdDatabaseCoreosComCrdYamlBytes() ([]byte, error) {
@@ -12449,7 +12487,6 @@ spec:
   maturity: alpha
   provider:
     name: CNCF
-  replaces: etcdoperator.v0.9.0
   selector:
     matchLabels:
       alm-owner-etcd: etcdoperator
@@ -12472,7 +12509,7 @@ func testExtendedTestdataOpmEtcd_operator092ManifestsEtcdoperatorV092Clusterserv
 	return a, nil
 }
 
-var _testExtendedTestdataOpmEtcd_operator092ManifestsEtcdrestoresEtcdDatabaseCoreosComCrdYaml = []byte(`apiVersion: apiextensions.k8s.io/v1beta1
+var _testExtendedTestdataOpmEtcd_operator092ManifestsEtcdrestoresEtcdDatabaseCoreosComCrdYaml = []byte(`apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   name: etcdrestores.etcd.database.coreos.com
@@ -12484,7 +12521,26 @@ spec:
     plural: etcdrestores
     singular: etcdrestore
   scope: Namespaced
-  version: v1beta2
+  versions:
+  - name: v1beta2
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          apiVersion:
+            type: string
+          kind:
+            type: string
+          metadata:
+            type: object
+          spec:
+            type: object
+            x-kubernetes-preserve-unknown-fields: true
+          status:
+            type: object
+            x-kubernetes-preserve-unknown-fields: true
 `)
 
 func testExtendedTestdataOpmEtcd_operator092ManifestsEtcdrestoresEtcdDatabaseCoreosComCrdYamlBytes() ([]byte, error) {
@@ -12526,7 +12582,7 @@ func testExtendedTestdataOpmEtcd_operator092MetadataAnnotationsYaml() (*asset, e
 	return a, nil
 }
 
-var _testExtendedTestdataOpmEtcd_operatorEtcd_community094EtcdbackupsEtcdDatabaseCoreosComCrdYaml = []byte(`apiVersion: apiextensions.k8s.io/v1beta1
+var _testExtendedTestdataOpmEtcd_operatorEtcd_community094EtcdbackupsEtcdDatabaseCoreosComCrdYaml = []byte(`apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   name: etcdbackups.etcd.database.coreos.com
@@ -12538,7 +12594,27 @@ spec:
     plural: etcdbackups
     singular: etcdbackup
   scope: Namespaced
-  version: v1beta2
+  versions:
+  - name: v1beta2
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          apiVersion:
+            type: string
+          kind:
+            type: string
+          metadata:
+            type: object
+          spec:
+            type: object
+            x-kubernetes-preserve-unknown-fields: true
+          status:
+            type: object
+            x-kubernetes-preserve-unknown-fields: true
+
 `)
 
 func testExtendedTestdataOpmEtcd_operatorEtcd_community094EtcdbackupsEtcdDatabaseCoreosComCrdYamlBytes() ([]byte, error) {
@@ -12556,7 +12632,7 @@ func testExtendedTestdataOpmEtcd_operatorEtcd_community094EtcdbackupsEtcdDatabas
 	return a, nil
 }
 
-var _testExtendedTestdataOpmEtcd_operatorEtcd_community094EtcdclustersEtcdDatabaseCoreosComCrdYaml = []byte(`apiVersion: apiextensions.k8s.io/v1beta1
+var _testExtendedTestdataOpmEtcd_operatorEtcd_community094EtcdclustersEtcdDatabaseCoreosComCrdYaml = []byte(`apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   name: etcdclusters.etcd.database.coreos.com
@@ -12571,7 +12647,27 @@ spec:
     - etcd
     singular: etcdcluster
   scope: Namespaced
-  version: v1beta2
+  versions:
+  - name: v1beta2
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          apiVersion:
+            type: string
+          kind:
+            type: string
+          metadata:
+            type: object
+          spec:
+            type: object
+            x-kubernetes-preserve-unknown-fields: true
+          status:
+            type: object
+            x-kubernetes-preserve-unknown-fields: true
+
 `)
 
 func testExtendedTestdataOpmEtcd_operatorEtcd_community094EtcdclustersEtcdDatabaseCoreosComCrdYamlBytes() ([]byte, error) {
@@ -12914,7 +13010,7 @@ func testExtendedTestdataOpmEtcd_operatorEtcd_community094EtcdoperatorV094Cluste
 	return a, nil
 }
 
-var _testExtendedTestdataOpmEtcd_operatorEtcd_community094EtcdrestoresEtcdDatabaseCoreosComCrdYaml = []byte(`apiVersion: apiextensions.k8s.io/v1beta1
+var _testExtendedTestdataOpmEtcd_operatorEtcd_community094EtcdrestoresEtcdDatabaseCoreosComCrdYaml = []byte(`apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   name: etcdrestores.etcd.database.coreos.com
@@ -12926,7 +13022,27 @@ spec:
     plural: etcdrestores
     singular: etcdrestore
   scope: Namespaced
-  version: v1beta2
+  versions:
+  - name: v1beta2
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          apiVersion:
+            type: string
+          kind:
+            type: string
+          metadata:
+            type: object
+          spec:
+            type: object
+            x-kubernetes-preserve-unknown-fields: true
+          status:
+            type: object
+            x-kubernetes-preserve-unknown-fields: true
+
 `)
 
 func testExtendedTestdataOpmEtcd_operatorEtcd_community094EtcdrestoresEtcdDatabaseCoreosComCrdYamlBytes() ([]byte, error) {
@@ -12944,7 +13060,7 @@ func testExtendedTestdataOpmEtcd_operatorEtcd_community094EtcdrestoresEtcdDataba
 	return a, nil
 }
 
-var _testExtendedTestdataOpmEtcd_operatorEtcd_community094ClusterwideEtcdbackupsEtcdDatabaseCoreosComCrdYaml = []byte(`apiVersion: apiextensions.k8s.io/v1beta1
+var _testExtendedTestdataOpmEtcd_operatorEtcd_community094ClusterwideEtcdbackupsEtcdDatabaseCoreosComCrdYaml = []byte(`apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   name: etcdbackups.etcd.database.coreos.com
@@ -12956,7 +13072,27 @@ spec:
     plural: etcdbackups
     singular: etcdbackup
   scope: Namespaced
-  version: v1beta2
+  versions:
+  - name: v1beta2
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          apiVersion:
+            type: string
+          kind:
+            type: string
+          metadata:
+            type: object
+          spec:
+            type: object
+            x-kubernetes-preserve-unknown-fields: true
+          status:
+            type: object
+            x-kubernetes-preserve-unknown-fields: true
+
 `)
 
 func testExtendedTestdataOpmEtcd_operatorEtcd_community094ClusterwideEtcdbackupsEtcdDatabaseCoreosComCrdYamlBytes() ([]byte, error) {
@@ -12974,7 +13110,7 @@ func testExtendedTestdataOpmEtcd_operatorEtcd_community094ClusterwideEtcdbackups
 	return a, nil
 }
 
-var _testExtendedTestdataOpmEtcd_operatorEtcd_community094ClusterwideEtcdclustersEtcdDatabaseCoreosComCrdYaml = []byte(`apiVersion: apiextensions.k8s.io/v1beta1
+var _testExtendedTestdataOpmEtcd_operatorEtcd_community094ClusterwideEtcdclustersEtcdDatabaseCoreosComCrdYaml = []byte(`apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   name: etcdclusters.etcd.database.coreos.com
@@ -12989,7 +13125,27 @@ spec:
     - etcd
     singular: etcdcluster
   scope: Namespaced
-  version: v1beta2
+  versions:
+  - name: v1beta2
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          apiVersion:
+            type: string
+          kind:
+            type: string
+          metadata:
+            type: object
+          spec:
+            type: object
+            x-kubernetes-preserve-unknown-fields: true
+          status:
+            type: object
+            x-kubernetes-preserve-unknown-fields: true
+
 `)
 
 func testExtendedTestdataOpmEtcd_operatorEtcd_community094ClusterwideEtcdclustersEtcdDatabaseCoreosComCrdYamlBytes() ([]byte, error) {
@@ -13334,7 +13490,7 @@ func testExtendedTestdataOpmEtcd_operatorEtcd_community094ClusterwideEtcdoperato
 	return a, nil
 }
 
-var _testExtendedTestdataOpmEtcd_operatorEtcd_community094ClusterwideEtcdrestoresEtcdDatabaseCoreosComCrdYaml = []byte(`apiVersion: apiextensions.k8s.io/v1beta1
+var _testExtendedTestdataOpmEtcd_operatorEtcd_community094ClusterwideEtcdrestoresEtcdDatabaseCoreosComCrdYaml = []byte(`apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   name: etcdrestores.etcd.database.coreos.com
@@ -13346,7 +13502,27 @@ spec:
     plural: etcdrestores
     singular: etcdrestore
   scope: Namespaced
-  version: v1beta2
+  versions:
+  - name: v1beta2
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          apiVersion:
+            type: string
+          kind:
+            type: string
+          metadata:
+            type: object
+          spec:
+            type: object
+            x-kubernetes-preserve-unknown-fields: true
+          status:
+            type: object
+            x-kubernetes-preserve-unknown-fields: true
+
 `)
 
 func testExtendedTestdataOpmEtcd_operatorEtcd_community094ClusterwideEtcdrestoresEtcdDatabaseCoreosComCrdYamlBytes() ([]byte, error) {
