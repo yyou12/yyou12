@@ -5964,13 +5964,23 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within all namesp
 			itName              = g.CurrentGinkgoTestDescription().TestText
 			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
 			subTemplate         = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
-			sub                 = subscriptionDescription{
+			catsrcImageTemplate = filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
+			catsrc              = catalogSourceDescription{
+				name:        "olm-21532-catalog",
+				namespace:   "openshift-marketplace",
+				displayName: "OLM 21532 Catalog",
+				publisher:   "QE",
+				sourceType:  "grpc",
+				address:     "quay.io/olmqe/olm-dep:vcompos-v1",
+				template:    catsrcImageTemplate,
+			}
+			sub = subscriptionDescription{
 				subName:                "composable-operator",
 				namespace:              "openshift-operators",
 				channel:                "alpha",
 				ipApproval:             "Automatic",
 				operatorPackage:        "composable-operator",
-				catalogSourceName:      "community-operators",
+				catalogSourceName:      "olm-21532-catalog",
 				catalogSourceNamespace: "openshift-marketplace",
 				// startingCSV:            "composable-operator.v0.1.3",
 				startingCSV:     "", //get it from package based on currentCSV if ipApproval is Automatic
@@ -5991,12 +6001,16 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within all namesp
 		g.By("Check the global operator global-operators support all namesapces")
 		cl.add(newCheck("expect", asAdmin, withoutNamespace, compare, "[]", ok, []string{"og", "global-operators", "-n", "openshift-operators", "-o=jsonpath={.status.namespaces}"}))
 
+		g.By("create catsrc")
+		catsrc.create(oc, itName, dr)
+		defer catsrc.delete(itName, dr)
+
 		// OCP-21484, OCP-21532
 		g.By("Create operator targeted at all namespace")
-		sub.create(oc, itName, dr)
+		sub.create(oc, itName, dr) // the resource is cleaned within g.AfterEach
 
 		g.By("Create new namespace")
-		project.create(oc, itName, dr)
+		project.create(oc, itName, dr) // the resource is cleaned within g.AfterEach
 
 		// OCP-21532
 		g.By("New annotations is added to copied CSV in current namespace")
@@ -6017,19 +6031,18 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within all namesp
 			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
 			subTemplate         = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
 			sub                 = subscriptionDescription{
-				subName:                "amq-streams",
+				subName:                "keda",
 				namespace:              "openshift-operators",
-				channel:                "stable",
+				channel:                "alpha",
 				ipApproval:             "Automatic",
-				operatorPackage:        "amq-streams",
-				catalogSourceName:      "redhat-operators",
+				operatorPackage:        "keda",
+				catalogSourceName:      "community-operators",
 				catalogSourceNamespace: "openshift-marketplace",
-				// startingCSV:            "amqstreams.v1.3.0",
-				startingCSV:     "", //get it from package based on currentCSV if ipApproval is Automatic
-				currentCSV:      "",
-				installedCSV:    "",
-				template:        subTemplate,
-				singleNamespace: false,
+				startingCSV:            "", //get it from package based on currentCSV if ipApproval is Automatic
+				currentCSV:             "",
+				installedCSV:           "",
+				template:               subTemplate,
+				singleNamespace:        false,
 			}
 			cl = checkList{}
 		)
