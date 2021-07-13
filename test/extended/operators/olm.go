@@ -7123,4 +7123,99 @@ var _ = g.Describe("[sig-operators] OLM on VM for an end user handle within a na
 		o.Expect(result).To(o.ContainSubstring("cockroachdb-operator:2.1.11"))
 	})
 
+	// author: tbuskey@redhat.com
+	g.It("Author:tbuskey@redhat.com-High-21953-Ensure that operator deployment is in the master node", func() {
+		var (
+			err            error
+			msg            string
+			olmErrs        = true
+			olmJpath       = "-o=jsonpath={@.spec.template.spec.nodeSelector}"
+			olmNamespace   = "openshift-marketplace"
+			olmNodeName    string
+			olmPodFullName string
+			olmPodName     = "marketplace-operator"
+			nodeRole       = "node-role.kubernetes.io/master"
+			nodes          string
+			nodeStatus     bool
+			pod            string
+			pods           string
+			status         []string
+			x              []string
+		)
+
+		g.By("Get deployment")
+		msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("deployment", "-n", olmNamespace, olmPodName, olmJpath).Output()
+		if err != nil {
+			e2e.Logf("Unable to get deployment -n %v %v %v.", olmNamespace, olmPodName, olmJpath)
+		}
+		o.Expect(err).NotTo(o.HaveOccurred())
+		if len(msg) < 1 || !strings.Contains(msg, nodeRole) {
+			e2e.Failf("Could not find %v variable %v for %v: %v", olmJpath, nodeRole, olmPodName, msg)
+		}
+
+		g.By("Look at pods")
+		// look for the marketplace-operator pod's full name
+		pods, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-n", olmNamespace, "-o", "wide").Output()
+		if err != nil {
+			e2e.Logf("Unable to query pods -n %v %v %v.", olmNamespace, err, pods)
+		}
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(pods).NotTo(o.ContainSubstring("No resources found"))
+		// e2e.Logf("Pods %v ", pods)
+
+		for _, pod = range strings.Split(pods, "\n") {
+			if len(pod) <= 0 {
+				continue
+			}
+			// Find the node in the pod
+			if strings.Contains(pod, olmPodName) {
+				x = strings.Fields(pod)
+				olmPodFullName = x[0]
+				olmNodeName = x[6]
+				olmErrs = false
+				e2e.Logf("Found pod is %v", pod)
+				break
+			}
+		}
+		if olmErrs {
+			e2e.Failf("Unable to find the full pod name for %v in %v: %v.", olmPodName, olmNamespace, pods)
+		}
+
+		g.By("Query node label value")
+		// Look at the setting for the node to be on the master
+		olmErrs = true
+		olmJpath = fmt.Sprintf("-o=go-template=$'{{index .metadata.labels \"%v\"}}'", nodeRole)
+		nodes, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("nodes", "-n", olmNamespace, olmNodeName, olmJpath).Output()
+		if err != nil {
+			e2e.Failf("Unable to query nodes -n %v %v %v.", olmNamespace, err, nodes)
+		}
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(nodes).NotTo(o.ContainSubstring("No resources found"))
+		// if nodes has no value, the variable was not set, so fail
+		if nodes == "$'<no value>'" {
+			e2e.Failf("The %v node of pod %v does not have %v set", olmNodeName, olmPodFullName, nodeRole)
+		}
+		e2e.Logf("node %v label for %v == %v", olmNodeName, nodeRole, nodes)
+
+		g.By("look at oc get nodes")
+		// Found the setting, verify that it's really on the master node
+		msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("nodes", "-n", olmNamespace, olmNodeName, "--show-labels", "--no-headers").Output()
+		if err != nil {
+			e2e.Failf("Unable to query the %v node of pod %v for %v's status", olmNodeName, olmPodFullName, err, msg)
+		}
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(msg).NotTo(o.ContainSubstring("No resources found"))
+		status = strings.Fields(msg)
+		if strings.Contains(status[2], "master") {
+				olmErrs = false
+				nodeStatus = true
+				e2e.Logf("node %v is a %v", olmNodeName, status[2])
+		}
+		if olmErrs || !nodeStatus {
+			e2e.Failf("The node %v of %v pod is not a master:%v", olmNodeName, olmPodFullName, msg)
+		}
+		g.By("Finish")
+		e2e.Logf("The pod %v is on the master node %v", olmPodFullName, olmNodeName)
+	})
+
 })
