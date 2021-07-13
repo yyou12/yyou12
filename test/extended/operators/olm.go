@@ -6262,7 +6262,7 @@ var _ = g.Describe("[sig-operators] OLM on VM for an end user handle within a na
 		defer DeleteDir(buildPruningBaseDir, "fixture-testdata")
 		ogSingleTemplate := filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
 		subTemplate := filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
-		catsrcImageTemplate := filepath.Join(buildPruningBaseDir, "catalogsource-without-secret.yaml")
+		catsrcImageTemplate := filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
 		bundleImageTag1 := "quay.io/olmqe/ditto-operator:0.1.0"
 		bundleImageTag2 := "quay.io/olmqe/ditto-operator:0.1.1"
 		indexTag := "quay.io/olmqe/ditto-index:" + getRandomString()
@@ -6388,7 +6388,7 @@ var _ = g.Describe("[sig-operators] OLM on VM for an end user handle within a na
 		defer DeleteDir(buildPruningBaseDir, "fixture-testdata")
 		ogSingleTemplate := filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
 		subTemplate := filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
-		catsrcImageTemplate := filepath.Join(buildPruningBaseDir, "catalogsource-without-secret.yaml")
+		catsrcImageTemplate := filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
 		bundleImageTag1 := "quay.io/olmqe/ditto-operator:0.1.0"
 		bundleImageTag2 := "quay.io/olmqe/ditto-operator:0.1.1"
 		indexTag := "quay.io/olmqe/ditto-index:" + getRandomString()

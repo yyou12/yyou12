@@ -20,7 +20,7 @@ objects:
     sourceType: "${SOURCETYPE}"
     updateStrategy:
       registryPoll:
-        interval: 10m0s
+        interval: "${INTERVAL}"
 parameters:
 - name: NAME
 - name: NAMESPACE
@@ -29,3 +29,5 @@ parameters:
 - name: PUBLISHER
 - name: SOURCETYPE
 - name: SECRET
+- name: INTERVAL
+  value: "10m0s"

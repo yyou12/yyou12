@@ -405,6 +405,10 @@ type catalogSourceDescription struct {
 
 //the method is to create catalogsource with template, and save it to dr.
 func (catsrc *catalogSourceDescription) create(oc *exutil.CLI, itName string, dr describerResrouce) {
+	if strings.Compare(catsrc.interval, "") == 0 {
+		catsrc.interval = "10m0s"
+		e2e.Logf("set interval to be 10m0s")
+	}
 	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", catsrc.template,
 		"-p", "NAME="+catsrc.name, "NAMESPACE="+catsrc.namespace, "ADDRESS="+catsrc.address, "SECRET="+catsrc.secret,
 		"DISPLAYNAME="+"\""+catsrc.displayName+"\"", "PUBLISHER="+"\""+catsrc.publisher+"\"", "SOURCETYPE="+catsrc.sourceType,
