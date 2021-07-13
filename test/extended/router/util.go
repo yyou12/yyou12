@@ -115,3 +115,41 @@ func patchResourceAsAdmin(oc *exutil.CLI, ns, resource, patch string) {
 	err := oc.AsAdmin().WithoutNamespace().Run("patch").Args(resource, "-p", patch, "--type=merge", "-n", ns).Execute()
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
+
+func exposeRoute(oc *exutil.CLI, ns, resource string) {
+	err := oc.Run("expose").Args(resource, "-n", ns).Execute()
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+func setAnnotation(oc *exutil.CLI, ns, resource, annotation string) {
+	err := oc.Run("annotate").Args("-n", ns, resource, annotation, "--overwrite").Execute()
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+// for collecting a single pod name
+func getRouterPod(oc *exutil.CLI) string {
+	podName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-l", "ingresscontroller.operator.openshift.io/deployment-ingresscontroller=default", "-o=jsonpath={.items[0].metadata.name}", "-n", "openshift-ingress").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	e2e.Logf("the result of podname:%v", podName)
+	return podName
+}
+
+// to collect pod name and check parameter related to OCP-42230
+func readHaproxyConfig(oc *exutil.CLI) error {
+	e2e.Logf("check Haproxy config file")
+	return wait.Poll(5*time.Second, 3*time.Minute, func() (bool, error) {
+		e2e.Logf("Get podname")
+		podName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-l", "ingresscontroller.operator.openshift.io/deployment-ingresscontroller=default", "-o=jsonpath={.items[0].metadata.name}", "-n", "openshift-ingress").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		final, err1 := oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-ingress", podName, "--", "grep", "-w", `backend be_http:`+oc.Namespace()+`:service-unsecure`, "-A7", "/var/lib/haproxy/conf/haproxy.config").Output()
+		if err1 != nil {
+			e2e.Logf("Something went wrong, string search failed")
+			return false, nil
+		}
+		if strings.Contains(final, "acl whitelist") {
+			e2e.Logf("string search successful")
+			return true, nil
+		}
+		return false, nil
+	})
+}
