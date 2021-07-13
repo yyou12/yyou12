@@ -595,9 +595,9 @@ var _ = g.Describe("[sig-windows] Windows_Containers", func() {
 	// author: sgao@redhat.com
 	g.It("Author:sgao-Medium-39030-Re queue on Windows machine's edge cases [Slow][Disruptive]", func() {
 		g.By("Scale down WMCO")
-		_, err := oc.WithoutNamespace().Run("scale").Args("--replicas=0", "deployment", "windows-machine-config-operator", "-n", "openshift-windows-machine-config-operator").Output()
-		defer restoreWMCODeployment(oc)
-		o.Expect(err).NotTo(o.HaveOccurred())
+		namespace := "openshift-windows-machine-config-operator"
+		scaleDownWMCO(oc)
+		defer scaleDeployment(oc, "wmco", 1, namespace)
 
 		g.By("Scale up the MachineSet")
 		windowsMachineSetName := getWindowsMachineSetName(oc)
@@ -605,7 +605,7 @@ var _ = g.Describe("[sig-windows] Windows_Containers", func() {
 		defer scaleWindowsMachineSet(oc, windowsMachineSetName, 2)
 
 		g.By("Scale up WMCO")
-		restoreWMCODeployment(oc)
+		scaleDeployment(oc, "wmco", 1, namespace)
 
 		g.By("Check Windows machines created before WMCO starts are successfully reconciling and Windows nodes added")
 		waitWindowsNodesReady(oc, 3, 60*time.Second, 1200*time.Second)
@@ -650,12 +650,6 @@ var _ = g.Describe("[sig-windows] Windows_Containers", func() {
 	})
 })
 
-func restoreWMCODeployment(oc *exutil.CLI) {
-	_, err := oc.WithoutNamespace().Run("scale").Args("--replicas=1", "deployment", "windows-machine-config-operator", "-n", "openshift-windows-machine-config-operator").Output()
-	o.Expect(err).NotTo(o.HaveOccurred())
-	// TODO: check WMCO is ready
-}
-
 func waitWindowsNodesReady(oc *exutil.CLI, nodesNumber int, interval time.Duration, timeout time.Duration) {
 	pollErr := wait.Poll(interval, timeout, func() (bool, error) {
 		msg, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("nodes", "-l", "kubernetes.io/os=windows", "--no-headers").Output()
@@ -696,9 +690,12 @@ func checkVersionAnnotationReady(oc *exutil.CLI, windowsNodeName string) bool {
 }
 
 func getWindowsMachineSetName(oc *exutil.CLI) string {
-	windowsMachineSetName, err := oc.WithoutNamespace().Run("get").Args("machineset", "-n openshift-machine-api", "-o=jsonpath=.items[?(@.spec.template.metadata.labels.machine\\.openshift\\.io/os-id=='Windows')].metadata.name}").Output()
+	// fetch the Windows MachineSet from all machinesets list
+	myJSON := "-o=jsonpath={.items[?(@.spec.template.metadata.labels.machine\\.openshift\\.io\\/os-id==\"Windows\")].metadata.name}"
+	windowsMachineSetName, err := oc.WithoutNamespace().Run("get").Args("machineset", "-n", "openshift-machine-api", myJSON).Output()
+	e2e.Logf("***** Name is %v ******", windowsMachineSetName)
 	o.Expect(err).NotTo(o.HaveOccurred())
-	return strings.TrimSuffix(string(windowsMachineSetName), "\n")
+	return windowsMachineSetName
 }
 
 func getWindowsHostNames(oc *exutil.CLI) []string {
@@ -763,11 +760,12 @@ func checkWindowsWorkloadCreated(oc *exutil.CLI, namespace string) bool {
 	return true
 }
 
-func checkWindowsWorkloadScaled(oc *exutil.CLI, namespace string, replicas int) bool {
-	msg, _ := oc.WithoutNamespace().Run("get").Args("deployment", "win-webserver", "-o=jsonpath={.status.readyReplicas}", "-n", namespace).Output()
+func checkWindowsWorkloadScaled(oc *exutil.CLI, deploymentName string, namespace string, replicas int) bool {
+	msg, _ := oc.WithoutNamespace().Run("get").Args("deployment", deploymentName, "-o=jsonpath={.status.readyReplicas}", "-n", namespace).Output()
+	e2e.Logf("msg is %v", msg)
 	workloads := strconv.Itoa(replicas)
 	if msg != workloads {
-		e2e.Logf("Windows workload did not scaled to " + workloads)
+		e2e.Logf("Deployment " + deploymentName + " did not scaled to " + workloads)
 		return false
 	}
 	return true
@@ -799,8 +797,10 @@ func getWorkloadName(os string) string {
 	name := ""
 	if os == "windows" {
 		name = "win-webserver"
-	} else {
+	} else if os == "linux" {
 		name = "linux-webserver"
+	} else {
+		name = "windows-machine-config-operator"
 	}
 	return name
 }
@@ -845,10 +845,10 @@ func scaleDeployment(oc *exutil.CLI, os string, replicas int, namespace string) 
 	_, err := oc.WithoutNamespace().Run("scale").Args("--replicas="+strconv.Itoa(replicas), "deployment", deploymentName, "-n", namespace).Output()
 	o.Expect(err).NotTo(o.HaveOccurred())
 	poolErr := wait.Poll(60*time.Second, 300*time.Second, func() (bool, error) {
-		return checkWindowsWorkloadScaled(oc, namespace, replicas), nil
+		return checkWindowsWorkloadScaled(oc, deploymentName, namespace, replicas), nil
 	})
 	if poolErr != nil {
-		e2e.Failf("Windows workload did not scaled after waiting up to 5 minutes ...")
+		e2e.Failf("Workload did not scaled after waiting up to 5 minutes ...")
 	}
 }
 
@@ -902,4 +902,9 @@ func getWorkloadsHostIP(oc *exutil.CLI, os string, namespace string) []string {
 	o.Expect(err).NotTo(o.HaveOccurred())
 	ips := strings.Split(workloads, " ")
 	return ips
+}
+
+func scaleDownWMCO(oc *exutil.CLI) {
+	_, err := oc.WithoutNamespace().Run("scale").Args("--replicas=0", "deployment", "windows-machine-config-operator", "-n", "openshift-windows-machine-config-operator").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
 }
