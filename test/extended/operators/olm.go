@@ -94,6 +94,112 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 
 	})
 
+	// author: chuo@redhat.com
+	g.It("Author:jiazha-High-24028-need to set priorityClassName as system-cluster-critical", func() {
+		var deploymentResource = [3]string{"catalog-operator", "olm-operator", "packageserver"}
+		for _, v := range deploymentResource {
+			msg, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", "openshift-operator-lifecycle-manager", "deployment", v, "-o=jsonpath={.spec.template.spec.priorityClassName}").Output()
+			e2e.Logf("%s.priorityClassName:%s", v, msg)
+			if err != nil {
+				e2e.Failf("Unable to get %s, error:%v", msg, err)
+			}
+			o.Expect(err).NotTo(o.HaveOccurred())
+			o.Expect(msg).To(o.Equal("system-cluster-critical"))
+		}
+	})
+
+	// author: jiazha@redhat.com
+	g.It("Author:jiazha-High-21548-aggregates CR roles to standard admin/view/edit", func() {
+		oc.SetupProject()
+		msg, err := oc.Run("whoami").Args("").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf("oc whoami: %s", msg)
+		o.Expect(msg).NotTo(o.Equal("system:admin"))
+
+		authorizations := []struct {
+			resource string
+			action   []string
+			result   bool
+		}{
+			{
+				resource: "subscriptions",
+				action:   []string{"create", "update", "patch", "delete", "get", "list", "watch"},
+				result:   true,
+			},
+			{
+				resource: "installplans",
+				action:   []string{"create", "update", "patch"},
+				result:   false,
+			},
+			{
+				resource: "installplans",
+				action:   []string{"get", "list", "watch", "delete"},
+				result:   true,
+			},
+			{
+				resource: "catalogsources",
+				action:   []string{"get", "list", "watch", "delete"},
+				result:   true,
+			},
+			{
+				resource: "catalogsources",
+				action:   []string{"create", "update", "patch"},
+				result:   false,
+			},
+			{
+				resource: "clusterserviceversions",
+				action:   []string{"get", "list", "watch", "delete"},
+				result:   true,
+			},
+			{
+				resource: "clusterserviceversions",
+				action:   []string{"create", "update", "patch"},
+				result:   false,
+			},
+			{
+				resource: "operatorgroups",
+				action:   []string{"get", "list", "watch"},
+				result:   true,
+			},
+			{
+				resource: "operatorgroups",
+				action:   []string{"create", "update", "patch", "delete"},
+				result:   false,
+			},
+			{
+				resource: "packagemanifests",
+				action:   []string{"get", "list", "watch"},
+				result:   true,
+			},
+			// Based on https://github.com/openshift/operator-framework-olm/blob/master/staging/operator-lifecycle-manager/deploy/chart/templates/0000_50_olm_09-aggregated.clusterrole.yaml#L30
+			// But, it returns '*', I will reseach it later.
+			// $ oc get clusterrole admin -o yaml |grep packagemanifests -A5
+			// - packagemanifests
+			// verbs:
+			// - '*'
+			// {
+			// 	resource: "packagemanifests",
+			// 	action:   []string{"create", "update", "patch", "delete"},
+			// 	result:   false,
+			// },
+		}
+
+		for _, v := range authorizations {
+			for _, act := range v.action {
+				res, err := oc.Run("auth").Args("can-i", act, v.resource).Output()
+				e2e.Logf(fmt.Sprintf("oc auth can-i %s %s", act, v.resource))
+				if res != "no" && err != nil {
+					o.Expect(err).NotTo(o.HaveOccurred())
+				}
+				if v.result {
+					o.Expect(res).To(o.Equal("yes"))
+				} else {
+					o.Expect(res).To(o.Equal("no"))
+				}
+			}
+		}
+	})
+
 	// author: jiazha@redhat.com
 	g.It("Author:jiazha-High-37442-create a Conditions CR for each Operator it installs", func() {
 		g.By("1) Install the OperatorGroup in a random project")
