@@ -136,6 +136,8 @@
 // test/extended/testdata/securityandcompliance/compliancesuitetaint.yaml
 // test/extended/testdata/securityandcompliance/compliancesuitetpconfmap.yaml
 // test/extended/testdata/securityandcompliance/fileintegrity.yaml
+// test/extended/testdata/securityandcompliance/oc-compliance-scansetting.yaml
+// test/extended/testdata/securityandcompliance/oc-compliance-scansettingbinding.yaml
 // test/extended/testdata/securityandcompliance/operator-group.yaml
 // test/extended/testdata/securityandcompliance/pod_modify.yaml
 // test/extended/testdata/securityandcompliance/profilebundle.yaml
@@ -15823,6 +15825,97 @@ func testExtendedTestdataSecurityandcomplianceFileintegrityYaml() (*asset, error
 	return a, nil
 }
 
+var _testExtendedTestdataSecurityandcomplianceOcComplianceScansettingYaml = []byte(`apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: scansetting-template
+objects:
+- apiVersion: compliance.openshift.io/v1alpha1
+  kind: ScanSetting
+  metadata:
+    name: "${NAME}"
+    namespace: "${NAMESPACE}" 
+  # Suite-specific settings
+  autoApplyRemediations: ${{AUTOAPPLYREMEDIATIONS}}
+  schedule: "${SCHEDULE}"
+  # Scan-specific settings
+  rawResultStorage:
+    size: "${SIZE}"
+    rotation: ${{ROTATION}}
+  # For each role, a separate scan will be created pointing
+  # to a node-role specified in roles
+  roles:
+    - "${ROLES1}"
+
+parameters:
+- name: NAME
+- name: NAMESPACE
+- name: AUTOAPPLYREMEDIATIONS
+- name: SCHEDULE
+- name: SIZE
+- name: ROTATION
+- name: ROLES1
+`)
+
+func testExtendedTestdataSecurityandcomplianceOcComplianceScansettingYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataSecurityandcomplianceOcComplianceScansettingYaml, nil
+}
+
+func testExtendedTestdataSecurityandcomplianceOcComplianceScansettingYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataSecurityandcomplianceOcComplianceScansettingYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/securityandcompliance/oc-compliance-scansetting.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataSecurityandcomplianceOcComplianceScansettingbindingYaml = []byte(`apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: scansettingbinding-template
+objects:
+- apiVersion: compliance.openshift.io/v1alpha1
+  kind: ScanSettingBinding
+  metadata:
+    name: "${NAME}"
+    namespace: "${NAMESPACE}"
+  profiles:
+    # Node checks
+    - name: "${PROFILENAME1}"
+      kind: "${PROFILEKIND1}"
+      apiGroup: compliance.openshift.io/v1alpha1
+  settingsRef:
+    name: "${SCANSETTINGNAME}"
+    kind: ScanSetting
+    apiGroup: compliance.openshift.io/v1alpha1
+
+parameters:
+- name: NAME
+- name: NAMESPACE
+- name: PROFILENAME1
+- name: PROFILEKIND1
+- name: SCANSETTINGNAME
+
+`)
+
+func testExtendedTestdataSecurityandcomplianceOcComplianceScansettingbindingYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataSecurityandcomplianceOcComplianceScansettingbindingYaml, nil
+}
+
+func testExtendedTestdataSecurityandcomplianceOcComplianceScansettingbindingYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataSecurityandcomplianceOcComplianceScansettingbindingYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/securityandcompliance/oc-compliance-scansettingbinding.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
 var _testExtendedTestdataSecurityandcomplianceOperatorGroupYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
@@ -17435,6 +17528,8 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/securityandcompliance/compliancesuitetaint.yaml":                                                               testExtendedTestdataSecurityandcomplianceCompliancesuitetaintYaml,
 	"test/extended/testdata/securityandcompliance/compliancesuitetpconfmap.yaml":                                                           testExtendedTestdataSecurityandcomplianceCompliancesuitetpconfmapYaml,
 	"test/extended/testdata/securityandcompliance/fileintegrity.yaml":                                                                      testExtendedTestdataSecurityandcomplianceFileintegrityYaml,
+	"test/extended/testdata/securityandcompliance/oc-compliance-scansetting.yaml":                                                          testExtendedTestdataSecurityandcomplianceOcComplianceScansettingYaml,
+	"test/extended/testdata/securityandcompliance/oc-compliance-scansettingbinding.yaml":                                                   testExtendedTestdataSecurityandcomplianceOcComplianceScansettingbindingYaml,
 	"test/extended/testdata/securityandcompliance/operator-group.yaml":                                                                     testExtendedTestdataSecurityandcomplianceOperatorGroupYaml,
 	"test/extended/testdata/securityandcompliance/pod_modify.yaml":                                                                         testExtendedTestdataSecurityandcompliancePod_modifyYaml,
 	"test/extended/testdata/securityandcompliance/profilebundle.yaml":                                                                      testExtendedTestdataSecurityandcomplianceProfilebundleYaml,
@@ -17683,30 +17778,32 @@ var _bintree = &bintree{nil, map[string]*bintree{
 					"web-server-rc.yaml":        {testExtendedTestdataRouterWebServerRcYaml, map[string]*bintree{}},
 				}},
 				"securityandcompliance": {nil, map[string]*bintree{
-					"aide.conf.rhel8":                      {testExtendedTestdataSecurityandcomplianceAideConfRhel8, map[string]*bintree{}},
-					"aide.conf.rhel8.1":                    {testExtendedTestdataSecurityandcomplianceAideConfRhel81, map[string]*bintree{}},
-					"aide.conf.rhel8.err":                  {testExtendedTestdataSecurityandcomplianceAideConfRhel8Err, map[string]*bintree{}},
-					"catalogsource-image.yaml":             {testExtendedTestdataSecurityandcomplianceCatalogsourceImageYaml, map[string]*bintree{}},
-					"compliancescan.yaml":                  {testExtendedTestdataSecurityandcomplianceCompliancescanYaml, map[string]*bintree{}},
-					"compliancescanStorageClass.yaml":      {testExtendedTestdataSecurityandcomplianceCompliancescanstorageclassYaml, map[string]*bintree{}},
-					"compliancescantaint.yaml":             {testExtendedTestdataSecurityandcomplianceCompliancescantaintYaml, map[string]*bintree{}},
-					"compliancescantaints.yaml":            {testExtendedTestdataSecurityandcomplianceCompliancescantaintsYaml, map[string]*bintree{}},
-					"compliancesuite.yaml":                 {testExtendedTestdataSecurityandcomplianceCompliancesuiteYaml, map[string]*bintree{}},
-					"compliancesuiteStorageClass.yaml":     {testExtendedTestdataSecurityandcomplianceCompliancesuitestorageclassYaml, map[string]*bintree{}},
-					"compliancesuitenodes.yaml":            {testExtendedTestdataSecurityandcomplianceCompliancesuitenodesYaml, map[string]*bintree{}},
-					"compliancesuitetaint.yaml":            {testExtendedTestdataSecurityandcomplianceCompliancesuitetaintYaml, map[string]*bintree{}},
-					"compliancesuitetpconfmap.yaml":        {testExtendedTestdataSecurityandcomplianceCompliancesuitetpconfmapYaml, map[string]*bintree{}},
-					"fileintegrity.yaml":                   {testExtendedTestdataSecurityandcomplianceFileintegrityYaml, map[string]*bintree{}},
-					"operator-group.yaml":                  {testExtendedTestdataSecurityandcomplianceOperatorGroupYaml, map[string]*bintree{}},
-					"pod_modify.yaml":                      {testExtendedTestdataSecurityandcompliancePod_modifyYaml, map[string]*bintree{}},
-					"profilebundle.yaml":                   {testExtendedTestdataSecurityandcomplianceProfilebundleYaml, map[string]*bintree{}},
-					"pv-extract-pod.yaml":                  {testExtendedTestdataSecurityandcompliancePvExtractPodYaml, map[string]*bintree{}},
-					"scansetting.yaml":                     {testExtendedTestdataSecurityandcomplianceScansettingYaml, map[string]*bintree{}},
-					"scansettingbinding.yaml":              {testExtendedTestdataSecurityandcomplianceScansettingbindingYaml, map[string]*bintree{}},
-					"storage_class.yaml":                   {testExtendedTestdataSecurityandcomplianceStorage_classYaml, map[string]*bintree{}},
-					"subscription.yaml":                    {testExtendedTestdataSecurityandcomplianceSubscriptionYaml, map[string]*bintree{}},
-					"tailoredprofile-withoutvariable.yaml": {testExtendedTestdataSecurityandcomplianceTailoredprofileWithoutvariableYaml, map[string]*bintree{}},
-					"tailoredprofile.yaml":                 {testExtendedTestdataSecurityandcomplianceTailoredprofileYaml, map[string]*bintree{}},
+					"aide.conf.rhel8":                       {testExtendedTestdataSecurityandcomplianceAideConfRhel8, map[string]*bintree{}},
+					"aide.conf.rhel8.1":                     {testExtendedTestdataSecurityandcomplianceAideConfRhel81, map[string]*bintree{}},
+					"aide.conf.rhel8.err":                   {testExtendedTestdataSecurityandcomplianceAideConfRhel8Err, map[string]*bintree{}},
+					"catalogsource-image.yaml":              {testExtendedTestdataSecurityandcomplianceCatalogsourceImageYaml, map[string]*bintree{}},
+					"compliancescan.yaml":                   {testExtendedTestdataSecurityandcomplianceCompliancescanYaml, map[string]*bintree{}},
+					"compliancescanStorageClass.yaml":       {testExtendedTestdataSecurityandcomplianceCompliancescanstorageclassYaml, map[string]*bintree{}},
+					"compliancescantaint.yaml":              {testExtendedTestdataSecurityandcomplianceCompliancescantaintYaml, map[string]*bintree{}},
+					"compliancescantaints.yaml":             {testExtendedTestdataSecurityandcomplianceCompliancescantaintsYaml, map[string]*bintree{}},
+					"compliancesuite.yaml":                  {testExtendedTestdataSecurityandcomplianceCompliancesuiteYaml, map[string]*bintree{}},
+					"compliancesuiteStorageClass.yaml":      {testExtendedTestdataSecurityandcomplianceCompliancesuitestorageclassYaml, map[string]*bintree{}},
+					"compliancesuitenodes.yaml":             {testExtendedTestdataSecurityandcomplianceCompliancesuitenodesYaml, map[string]*bintree{}},
+					"compliancesuitetaint.yaml":             {testExtendedTestdataSecurityandcomplianceCompliancesuitetaintYaml, map[string]*bintree{}},
+					"compliancesuitetpconfmap.yaml":         {testExtendedTestdataSecurityandcomplianceCompliancesuitetpconfmapYaml, map[string]*bintree{}},
+					"fileintegrity.yaml":                    {testExtendedTestdataSecurityandcomplianceFileintegrityYaml, map[string]*bintree{}},
+					"oc-compliance-scansetting.yaml":        {testExtendedTestdataSecurityandcomplianceOcComplianceScansettingYaml, map[string]*bintree{}},
+					"oc-compliance-scansettingbinding.yaml": {testExtendedTestdataSecurityandcomplianceOcComplianceScansettingbindingYaml, map[string]*bintree{}},
+					"operator-group.yaml":                   {testExtendedTestdataSecurityandcomplianceOperatorGroupYaml, map[string]*bintree{}},
+					"pod_modify.yaml":                       {testExtendedTestdataSecurityandcompliancePod_modifyYaml, map[string]*bintree{}},
+					"profilebundle.yaml":                    {testExtendedTestdataSecurityandcomplianceProfilebundleYaml, map[string]*bintree{}},
+					"pv-extract-pod.yaml":                   {testExtendedTestdataSecurityandcompliancePvExtractPodYaml, map[string]*bintree{}},
+					"scansetting.yaml":                      {testExtendedTestdataSecurityandcomplianceScansettingYaml, map[string]*bintree{}},
+					"scansettingbinding.yaml":               {testExtendedTestdataSecurityandcomplianceScansettingbindingYaml, map[string]*bintree{}},
+					"storage_class.yaml":                    {testExtendedTestdataSecurityandcomplianceStorage_classYaml, map[string]*bintree{}},
+					"subscription.yaml":                     {testExtendedTestdataSecurityandcomplianceSubscriptionYaml, map[string]*bintree{}},
+					"tailoredprofile-withoutvariable.yaml":  {testExtendedTestdataSecurityandcomplianceTailoredprofileWithoutvariableYaml, map[string]*bintree{}},
+					"tailoredprofile.yaml":                  {testExtendedTestdataSecurityandcomplianceTailoredprofileYaml, map[string]*bintree{}},
 				}},
 				"winc": {nil, map[string]*bintree{
 					"aws_windows_machineset_no_label.yaml":   {testExtendedTestdataWincAws_windows_machineset_no_labelYaml, map[string]*bintree{}},
