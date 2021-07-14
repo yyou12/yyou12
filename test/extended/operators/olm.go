@@ -1509,87 +1509,6 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	})
 
 	// author: xzha@redhat.com
-	g.It("ConnectedOnly-Author:xzha-High-30206-Medium-30242-can include secrets and configmaps in the bundle", func() {
-		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
-		operatorGroup := filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
-		catsrcImage := filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
-		cockroachdbSub := filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
-
-		g.By("create new catalogsource")
-		configFile, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", catsrcImage, "-p", "NAME=cockroachdb-catalog-30206", "NAMESPACE=openshift-marketplace", "ADDRESS=quay.io/olmqe/cockroachdb-index:2.0.9new", "DISPLAYNAME=OLMCOCKROACHDB-30206", "PUBLISHER=QE", "SOURCETYPE=grpc").OutputToFile("config-30206.json")
-		o.Expect(err).NotTo(o.HaveOccurred())
-		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", configFile).Execute()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("catalogsource", "cockroachdb-catalog-30206", "-n", "openshift-marketplace").Execute()
-
-		g.By("create new namespace")
-		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("ns", "test-operators-30206").Execute()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("ns", "test-operators-30206").Execute()
-
-		g.By("create operatorGroup")
-		configFile, err = oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", operatorGroup, "-p", "NAME=test-operator", "NAMESPACE=test-operators-30206").OutputToFile("config-30206.json")
-		o.Expect(err).NotTo(o.HaveOccurred())
-		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", configFile).Execute()
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		g.By("create subscription")
-		configFile, err = oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", cockroachdbSub, "-p", "SUBNAME=test-operator", "SUBNAMESPACE=test-operators-30206", "CHANNEL=alpha", "APPROVAL=Automatic", "OPERATORNAME=cockroachdb", "SOURCENAME=cockroachdb-catalog-30206", "SOURCENAMESPACE=openshift-marketplace", "STARTINGCSV=cockroachdb.v2.0.9").OutputToFile("config-30206.json")
-		o.Expect(err).NotTo(o.HaveOccurred())
-		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", configFile).Execute()
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		g.By("check secrets")
-		err = wait.Poll(30*time.Second, 240*time.Second, func() (bool, error) {
-			err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", "test-operators-30206", "secrets", "mysecret").Execute()
-			if err != nil {
-				e2e.Logf("Failed to create secrets, error:%v", err)
-				return false, nil
-			}
-			return true, nil
-		})
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		g.By("check configmaps")
-		err = wait.Poll(30*time.Second, 240*time.Second, func() (bool, error) {
-			err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", "test-operators-30206", "configmaps", "my-config-map").Execute()
-			if err != nil {
-				e2e.Logf("Failed to create secrets, error:%v", err)
-				return false, nil
-			}
-			return true, nil
-		})
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		g.By("start to test OCP-30242")
-		g.By("delete csv")
-		err = oc.AsAdmin().WithoutNamespace().Run("delete").Args("-n", "test-operators-30206", "csv", "cockroachdb.v2.0.9").Execute()
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		g.By("check secrets has been deleted")
-		err = wait.Poll(20*time.Second, 120*time.Second, func() (bool, error) {
-			err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", "test-operators-30206", "secrets", "mysecret").Execute()
-			if err != nil {
-				e2e.Logf("The secrets has been deleted")
-				return true, nil
-			}
-			return false, nil
-		})
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		g.By("check configmaps has been deleted")
-		err = wait.Poll(20*time.Second, 120*time.Second, func() (bool, error) {
-			err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", "test-operators-30206", "configmaps", "my-config-map").Execute()
-			if err != nil {
-				e2e.Logf("The configmaps has been deleted")
-				return true, nil
-			}
-			return false, nil
-		})
-		o.Expect(err).NotTo(o.HaveOccurred())
-	})
-
-	// author: xzha@redhat.com
 	g.It("ConnectedOnly-Author:xzha-Medium-30312-can allow admission webhook definitions in CSV", func() {
 		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
 		operatorGroup := filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
@@ -1823,56 +1742,6 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 				return false, nil
 			}
 			return true, nil
-		})
-		o.Expect(err).NotTo(o.HaveOccurred())
-	})
-
-	// author: xzha@redhat.com
-	g.It("ConnectedOnly-Author:xzha-High-29809-can complete automatical updates based on replaces", func() {
-		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
-		operatorGroup := filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
-		catsrcImage := filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
-		cockroachdbSub := filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
-
-		g.By("create new catalogsource")
-		configFile, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", catsrcImage, "-p", "NAME=cockroachdb-catalog-29809",
-			"NAMESPACE=openshift-marketplace", "ADDRESS=quay.io/olmqe/cockroachdb-index:2.1.11", "DISPLAYNAME=OLMCOCKROACHDB-REPLACE", "PUBLISHER=QE", "SOURCETYPE=grpc").OutputToFile("config-29809.json")
-		o.Expect(err).NotTo(o.HaveOccurred())
-		err = oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", configFile).Execute()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("catalogsource", "cockroachdb-catalog-29809", "-n", "openshift-marketplace").Execute()
-
-		g.By("create new namespace")
-		newNamespace := "test-operators-29809"
-		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("ns", newNamespace).Execute()
-		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("ns", newNamespace).Execute()
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		g.By("create operatorGroup")
-		configFile, err = oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", operatorGroup, "-p",
-			"NAME=test-operator", "NAMESPACE="+newNamespace).OutputToFile("config-29809.json")
-		o.Expect(err).NotTo(o.HaveOccurred())
-		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", configFile).Execute()
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		g.By("create subscription")
-		configFile, err = oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", cockroachdbSub, "-p", "SUBNAME=test-operator", "SUBNAMESPACE="+newNamespace,
-			"CHANNEL=alpha", "APPROVAL=Automatic", "OPERATORNAME=cockroachdb", "SOURCENAME=cockroachdb-catalog-29809", "SOURCENAMESPACE=openshift-marketplace", "STARTINGCSV=cockroachdb.v2.0.9").OutputToFile("config-29809.json")
-		o.Expect(err).NotTo(o.HaveOccurred())
-		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", configFile).Execute()
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		err = wait.Poll(15*time.Second, 480*time.Second, func() (bool, error) {
-			output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", newNamespace, "csv", "cockroachdb.v2.1.11", "-o=jsonpath={.spec.replaces}").Output()
-			e2e.Logf(output)
-			if err != nil {
-				e2e.Logf("The csv is not created, error:%v", err)
-				return false, nil
-			}
-			if strings.Contains(output, "cockroachdb.v2.1.1") {
-				return true, nil
-			}
-			return false, nil
 		})
 		o.Expect(err).NotTo(o.HaveOccurred())
 	})
@@ -4716,6 +4585,175 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 
 		g.By("SUCCESS")
 
+	})
+
+	// author: xzha@redhat.com
+	g.It("ConnectedOnly-Author:xzha-High-29809-can complete automatical updates based on replaces", func() {
+		var (
+			itName              = g.CurrentGinkgoTestDescription().TestText
+			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
+			ogSingleTemplate    = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+			catsrcImageTemplate = filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
+			subTemplate         = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+			og                  = operatorGroupDescription{
+				name:      "og-29809",
+				namespace: "",
+				template:  ogSingleTemplate,
+			}
+			catsrc = catalogSourceDescription{
+				name:        "catsrc-29809",
+				namespace:   "",
+				displayName: "Test Catsrc 29809 Operators",
+				publisher:   "Red Hat",
+				sourceType:  "grpc",
+				address:     "quay.io/olmqe/cockroachdb-index:29809",
+				template:    catsrcImageTemplate,
+			}
+			sub = subscriptionDescription{
+				subName:                "cockroachdb-operator-29809",
+				namespace:              "",
+				channel:                "alpha",
+				ipApproval:             "Automatic",
+				operatorPackage:        "cockroachdb",
+				catalogSourceName:      catsrc.name,
+				catalogSourceNamespace: "",
+				template:               subTemplate,
+				singleNamespace:        true,
+				startingCSV:            "cockroachdb.v5.0.3",
+			}
+		)
+		oc.SetupProject() //project and its resource are deleted automatically when out of It, so no need derfer or AfterEach
+		og.namespace = oc.Namespace()
+		sub.namespace = oc.Namespace()
+		catsrc.namespace = oc.Namespace()
+		sub.catalogSourceNamespace = catsrc.namespace
+
+		g.By("create og")
+		og.create(oc, itName, dr)
+
+		g.By("create catalog source")
+		defer catsrc.delete(itName, dr)
+		catsrc.create(oc, itName, dr)
+
+		g.By("install operator")
+		defer sub.delete(itName, dr)
+		sub.create(oc, itName, dr)
+
+		g.By("check the operator upgrade to cockroachdb.v5.0.4")
+		err := wait.Poll(15*time.Second, 480*time.Second, func() (bool, error) {
+			output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", sub.namespace, "csv", "cockroachdb.v5.0.4", "-o=jsonpath={.spec.replaces}").Output()
+			e2e.Logf(output)
+			if err != nil {
+				e2e.Logf("The csv is not created, error:%v", err)
+				return false, nil
+			}
+			if strings.Contains(output, "cockroachdb.v5.0.3") {
+				return true, nil
+			}
+			return false, nil
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
+	})
+
+	// author: xzha@redhat.com
+	g.It("ConnectedOnly-Author:xzha-High-30206-Medium-30242-can include secrets and configmaps in the bundle", func() {
+		var (
+			itName              = g.CurrentGinkgoTestDescription().TestText
+			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
+			ogSingleTemplate    = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+			catsrcImageTemplate = filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
+			subTemplate         = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+			og                  = operatorGroupDescription{
+				name:      "og-30206",
+				namespace: "",
+				template:  ogSingleTemplate,
+			}
+			catsrc = catalogSourceDescription{
+				name:        "catsrc-30206",
+				namespace:   "",
+				displayName: "Test Catsrc 30206 Operators",
+				publisher:   "Red Hat",
+				sourceType:  "grpc",
+				address:     "quay.io/olmqe/cockroachdb-index:5.0.4-30206",
+				template:    catsrcImageTemplate,
+			}
+			sub = subscriptionDescription{
+				subName:                "cockroachdb-operator-30206",
+				namespace:              "",
+				channel:                "alpha",
+				ipApproval:             "Automatic",
+				operatorPackage:        "cockroachdb",
+				catalogSourceName:      catsrc.name,
+				catalogSourceNamespace: "",
+				template:               subTemplate,
+				singleNamespace:        true,
+				startingCSV:            "cockroachdb.v5.0.4",
+			}
+		)
+		oc.SetupProject() //project and its resource are deleted automatically when out of It, so no need derfer or AfterEach
+		og.namespace = oc.Namespace()
+		catsrc.namespace = oc.Namespace()
+		sub.namespace = oc.Namespace()
+		sub.catalogSourceNamespace = catsrc.namespace
+
+		g.By("create og")
+		og.create(oc, itName, dr)
+
+		g.By("create catalog source")
+		defer catsrc.delete(itName, dr)
+		catsrc.create(oc, itName, dr)
+
+		g.By("install operator")
+		defer sub.delete(itName, dr)
+		sub.create(oc, itName, dr)
+
+		g.By("check secrets")
+		errWait := wait.Poll(30*time.Second, 240*time.Second, func() (bool, error) {
+			err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", sub.namespace, "secrets", "mysecret").Execute()
+			if err != nil {
+				e2e.Logf("Failed to create secrets, error:%v", err)
+				return false, nil
+			}
+			return true, nil
+		})
+		o.Expect(errWait).NotTo(o.HaveOccurred())
+
+		g.By("check configmaps")
+		errWait = wait.Poll(30*time.Second, 240*time.Second, func() (bool, error) {
+			err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", sub.namespace, "configmaps", "my-config-map").Execute()
+			if err != nil {
+				e2e.Logf("Failed to create secrets, error:%v", err)
+				return false, nil
+			}
+			return true, nil
+		})
+		o.Expect(errWait).NotTo(o.HaveOccurred())
+
+		g.By("start to test OCP-30242")
+		g.By("delete csv")
+		sub.deleteCSV(itName, dr)
+
+		g.By("check secrets has been deleted")
+		errWait = wait.Poll(20*time.Second, 120*time.Second, func() (bool, error) {
+			err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", sub.namespace, "secrets", "mysecret").Execute()
+			if err != nil {
+				e2e.Logf("The secrets has been deleted")
+				return true, nil
+			}
+			return false, nil
+		})
+		o.Expect(errWait).NotTo(o.HaveOccurred())
+
+		g.By("check configmaps has been deleted")
+		errWait = wait.Poll(20*time.Second, 120*time.Second, func() (bool, error) {
+			err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", sub.namespace, "configmaps", "my-config-map").Execute()
+			if err != nil {
+				e2e.Logf("The configmaps has been deleted")
+				return true, nil
+			}
+			return false, nil
+		})
+		o.Expect(errWait).NotTo(o.HaveOccurred())
 	})
 
 	// Test case: OCP-24566, author:xzha@redhat.com
