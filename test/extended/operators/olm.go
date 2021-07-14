@@ -1508,8 +1508,8 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		}
 	})
 
-	// author: yhui@redhat.com
-	g.It("ConnectedOnly-Author:kuiwang-High-30206-Medium-30242-can include secrets and configmaps in the bundle", func() {
+	// author: xzha@redhat.com
+	g.It("ConnectedOnly-Author:xzha-High-30206-Medium-30242-can include secrets and configmaps in the bundle", func() {
 		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
 		operatorGroup := filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
 		catsrcImage := filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
@@ -1589,8 +1589,8 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 	})
 
-	// author: yhui@redhat.com
-	g.It("ConnectedOnly-Author:kuiwang-Medium-30312-can allow admission webhook definitions in CSV", func() {
+	// author: xzha@redhat.com
+	g.It("ConnectedOnly-Author:xzha-Medium-30312-can allow admission webhook definitions in CSV", func() {
 		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
 		operatorGroup := filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
 		validatingCsv := filepath.Join(buildPruningBaseDir, "validatingwebhook-csv.yaml")
@@ -1645,8 +1645,8 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 	})
 
-	// author: yhui@redhat.com
-	g.It("ConnectedOnly-Author:kuiwang-Medium-30317-can allow mutating admission webhook definitions in CSV", func() {
+	// author: xzha@redhat.com
+	g.It("ConnectedOnly-Author:xzha-Medium-30317-can allow mutating admission webhook definitions in CSV", func() {
 		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
 		operatorGroup := filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
 		mutatingCsv := filepath.Join(buildPruningBaseDir, "mutatingwebhook-csv.yaml")
@@ -1702,8 +1702,8 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 	})
 
-	// author: yhui@redhat.com
-	g.It("ConnectedOnly-Author:kuiwang-Medium-30319-Admission Webhook Configuration names should be unique", func() {
+	// author: xzha@redhat.com
+	g.It("ConnectedOnly-Author:xzha-Medium-30319-Admission Webhook Configuration names should be unique", func() {
 		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
 		operatorGroup := filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
 		validatingCsv := filepath.Join(buildPruningBaseDir, "validatingwebhook-csv.yaml")
@@ -1756,8 +1756,8 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		}
 	})
 
-	// author: yhui@redhat.com
-	g.It("ConnectedOnly-Author:kuiwang-High-34181-can add conversion webhooks for singleton operators", func() {
+	// author: xzha@redhat.com
+	g.It("ConnectedOnly-Author:xzha-High-34181-can add conversion webhooks for singleton operators", func() {
 		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
 		catsrcImage := filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
 		cockroachdbSub := filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
@@ -1827,8 +1827,8 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 	})
 
-	// author: yhui@redhat.com
-	g.It("ConnectedOnly-Author:kuiwang-High-29809-can complete automatical updates based on replaces", func() {
+	// author: xzha@redhat.com
+	g.It("ConnectedOnly-Author:xzha-High-29809-can complete automatical updates based on replaces", func() {
 		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
 		operatorGroup := filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
 		catsrcImage := filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
@@ -5865,8 +5865,8 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle to support", func
 		o.Expect(strings.Contains(sub.ipCsv, skippedVersion)).To(o.BeFalse())
 	})
 
-	// It will cover test case: OCP-24664, author: kuiwang@redhat.com
-	g.It("ConnectedOnly-Author:kuiwang-Medium-24664-CRD updates if new schemas are backwards compatible", func() {
+	// It will cover test case: OCP-24664, author: xzha@redhat.com
+	g.It("ConnectedOnly-Author:xzha-Medium-24664-CRD updates if new schemas are backwards compatible", func() {
 		var (
 			itName              = g.CurrentGinkgoTestDescription().TestText
 			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
@@ -5953,8 +5953,8 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle to support", func
 		newCheck("expect", asAdmin, withoutNamespace, contain, "v2", ok, []string{"crd", crd.name, "-A", "-o=jsonpath={.status.storedVersions}"}).check(oc)
 	})
 
-	// It will cover test case: OCP-21824, author: kuiwang@redhat.com
-	g.It("ConnectedOnly-Author:kuiwang-Medium-21824-verify CRD should be ready before installing the operator", func() {
+	// It will cover test case: OCP-21824, author: xzha@redhat.com
+	g.It("ConnectedOnly-Author:xzha-Medium-21824-verify CRD should be ready before installing the operator", func() {
 		var (
 			itName               = g.CurrentGinkgoTestDescription().TestText
 			buildPruningBaseDir  = exutil.FixturePath("testdata", "olm")
@@ -7313,9 +7313,9 @@ var _ = g.Describe("[sig-operators] OLM on VM for an end user handle within a na
 		o.Expect(msg).NotTo(o.ContainSubstring("No resources found"))
 		status = strings.Fields(msg)
 		if strings.Contains(status[2], "master") {
-				olmErrs = false
-				nodeStatus = true
-				e2e.Logf("node %v is a %v", olmNodeName, status[2])
+			olmErrs = false
+			nodeStatus = true
+			e2e.Logf("node %v is a %v", olmNodeName, status[2])
 		}
 		if olmErrs || !nodeStatus {
 			e2e.Failf("The node %v of %v pod is not a master:%v", olmNodeName, olmPodFullName, msg)
