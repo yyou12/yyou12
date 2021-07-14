@@ -2613,6 +2613,62 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 
 	})
 
+	// author: scolange@redhat.com
+	g.It("ConnectedOnly-Author:scolange-Medium-25674-restart the marketplace-operator when the cluster is in bad state [Disruptive]", func() {
+
+		var buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
+		var Sub = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+		var og1 = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+
+		oc.SetupProject()
+		namespace := oc.Namespace()
+		dr := make(describerResrouce)
+		itName := g.CurrentGinkgoTestDescription().TestText
+		dr.addIr(itName)
+
+		og := operatorGroupDescription{
+			name:      "test-operators-og",
+			namespace: namespace,
+			template:  og1,
+		}
+		og.createwithCheck(oc, itName, dr)
+
+		sub := subscriptionDescription{
+			subName:                "jagerk",
+			namespace:              namespace,
+			catalogSourceName:      "kaka",
+			catalogSourceNamespace: "openshift-marketplace",
+			channel:                "alpha",
+			ipApproval:             "Automatic",
+			operatorPackage:        "",
+			singleNamespace:        true,
+			template:               Sub,
+		}
+
+		defer sub.delete(itName, dr)
+		defer sub.deleteCSV(itName, dr)
+		sub.createWithoutCheck(oc, itName, dr)
+
+
+		e2e.Logf("Check 1 first")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "", ok, []string{"sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.items[*].spec.name}"}).check(oc)
+
+		g.By("get pod of marketplace")
+		podName := getResource(oc, asAdmin, withoutNamespace, "pod", "--selector=name=marketplace-operator", "-n", "openshift-marketplace", "-o=jsonpath={...metadata.name}")
+		o.Expect(podName).NotTo(o.BeEmpty())
+
+		g.By("delete pod of marketplace")
+		_, err := doAction(oc, "delete", asAdmin, withoutNamespace, "pod", podName, "-n", "openshift-marketplace")
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		exec.Command("bash", "-c", "sleep 10").Output()
+
+		g.By("pod of marketplace restart")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "TrueFalseFalse", ok, []string{"clusteroperator", "marketplace",
+			"-o=jsonpath={.status.conditions[?(@.type==\"Available\")].status}{.status.conditions[?(@.type==\"Progressing\")].status}{.status.conditions[?(@.type==\"Degraded\")].status}"}).check(oc)
+
+	})
+
 	// author: jiazha@redhat.com
 	g.It("Author:jiazha-Medium-21126-OLM Subscription status says CSV is installed when it is not", func() {
 		g.By("1) Install the OperatorGroup in a random project")
