@@ -590,6 +590,37 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
         })
         o.Expect(waitErr).NotTo(o.HaveOccurred())
     })
+
+    // author: jfan@redhat.com
+    g.It("ConnectedOnly-Author:jfan-Medium-38757-SDK operator bundle upgrade from traditional operator installation", func() {
+        buildPruningBaseDir := exutil.FixturePath("testdata", "operatorsdk")
+        var catalogofwso2am = filepath.Join(buildPruningBaseDir, "catalogsource.yaml")
+        var ogofwso2am = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+        var subofwso2am = filepath.Join(buildPruningBaseDir, "sub.yaml")
+        operatorsdkCLI.showInfo = true
+        oc.SetupProject()
+        namespace := oc.Namespace()
+        // install wso2am from sub
+        createCatalog, _ := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", catalogofwso2am, "-p", "NAME=cs-wso2am", "NAMESPACE=" + namespace, "ADDRESS=quay.io/olmqe/wso2am-index:0.1", "DISPLAYNAME=KakaTest").OutputToFile("catalogsource-41497.json")
+        err := oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", createCatalog, "-n", namespace).Execute()
+        createOg, _ := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", ogofwso2am, "-p", "NAME=kakatest-single", "NAMESPACE=" + namespace, "KAKA=" + namespace).OutputToFile("createog-41497.json")
+        err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", createOg, "-n", namespace).Execute()
+        createSub, _ := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", subofwso2am, "-p", "NAME=wso2aminstall", "NAMESPACE=" + namespace, "SOURCENAME=cs-wso2am", "OPERATORNAME=wso2am-operator", "SOURCENAMESPACE=" + namespace, "STARTINGCSV=wso2am-operator.v1.0.0").OutputToFile("createsub-41497.json")
+        err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", createSub, "-n", namespace).Execute()
+        waitErr := wait.Poll(15*time.Second, 360*time.Second, func() (bool, error) {
+            msg, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", "wso2am-operator.v1.0.0", "-o=jsonpath={.status.phase}", "-n", namespace).Output()
+            if strings.Contains(msg, "Succeeded") {
+                e2e.Logf("wso2am installed successfully")
+                return true, nil
+            }
+            return false, nil
+        })
+        o.Expect(waitErr).NotTo(o.HaveOccurred())
+        // upgrade wso2m by operator-sdk
+        msg, err := operatorsdkCLI.Run("run").Args("bundle-upgrade", "quay.io/olmqe/wso2am-operator-bundle:1.0.1", "-n", namespace, "--timeout", "5m").Output()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        o.Expect(msg).To(o.ContainSubstring("Successfully upgraded to"))
+    })
    
     // author: chuo@redhat.com
     g.It("Author:chuo-Medium-27718-scorecard remove version flag", func() {

@@ -79,8 +79,10 @@
 // test/extended/testdata/operatorsdk/cache1_v1_blacklist.yaml
 // test/extended/testdata/operatorsdk/cache_v1_collectiontest.yaml
 // test/extended/testdata/operatorsdk/cache_v1_memcached.yaml
+// test/extended/testdata/operatorsdk/catalogsource.yaml
 // test/extended/testdata/operatorsdk/demo_v1_nginx.yaml
 // test/extended/testdata/operatorsdk/operatorgroup.yaml
+// test/extended/testdata/operatorsdk/sub.yaml
 // test/extended/testdata/opm/aqua/1.0.1/aqua-operator.v1.0.1.clusterserviceversion.yaml
 // test/extended/testdata/opm/aqua/1.0.1/aquacsps.operator.aquasec.com.crd.yaml
 // test/extended/testdata/opm/aqua/1.0.1/aquadatabases.operator.aquasec.com.crd.yaml
@@ -9343,6 +9345,46 @@ func testExtendedTestdataOperatorsdkCache_v1_memcachedYaml() (*asset, error) {
 	return a, nil
 }
 
+var _testExtendedTestdataOperatorsdkCatalogsourceYaml = []byte(`apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: catalogsource-image-template
+objects:
+- apiVersion: operators.coreos.com/v1alpha1
+  kind: CatalogSource
+  metadata:
+    name: "${NAME}"
+    namespace: "${NAMESPACE}"
+  spec:
+    image: "${ADDRESS}" 
+    displayName: "${DISPLAYNAME}"
+    publisher: Kaka
+    sourceType: grpc
+    updateStrategy:
+      registryPoll:
+        interval: 10m0s
+parameters:
+- name: NAME
+- name: NAMESPACE
+- name: ADDRESS
+- name: DISPLAYNAME
+`)
+
+func testExtendedTestdataOperatorsdkCatalogsourceYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataOperatorsdkCatalogsourceYaml, nil
+}
+
+func testExtendedTestdataOperatorsdkCatalogsourceYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataOperatorsdkCatalogsourceYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/operatorsdk/catalogsource.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
 var _testExtendedTestdataOperatorsdkDemo_v1_nginxYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
@@ -9435,6 +9477,51 @@ func testExtendedTestdataOperatorsdkOperatorgroupYaml() (*asset, error) {
 	}
 
 	info := bindataFileInfo{name: "test/extended/testdata/operatorsdk/operatorgroup.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataOperatorsdkSubYaml = []byte(`apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: subscription-template
+objects:
+  - apiVersion: operators.coreos.com/v1alpha1
+    kind: Subscription
+    metadata:
+      name: "${NAME}"
+      namespace: "${NAMESPACE}"
+    spec:
+      channel: "${CHANNEL}"
+      installPlanApproval: "${APPROVAL}"
+      name: "${OPERATORNAME}"
+      source: "${SOURCENAME}"
+      sourceNamespace: "${SOURCENAMESPACE}"
+      startingCSV: "${STARTINGCSV}"
+parameters:
+  - name: NAME
+  - name: NAMESPACE
+  - name: SOURCENAME
+  - name: OPERATORNAME
+  - name: SOURCENAMESPACE
+  - name: STARTINGCSV
+  - name: CHANNEL
+    value: "alpha"
+  - name: APPROVAL
+    value: "Automatic"
+`)
+
+func testExtendedTestdataOperatorsdkSubYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataOperatorsdkSubYaml, nil
+}
+
+func testExtendedTestdataOperatorsdkSubYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataOperatorsdkSubYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/operatorsdk/sub.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -17291,8 +17378,10 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/operatorsdk/cache1_v1_blacklist.yaml":                                                                          testExtendedTestdataOperatorsdkCache1_v1_blacklistYaml,
 	"test/extended/testdata/operatorsdk/cache_v1_collectiontest.yaml":                                                                      testExtendedTestdataOperatorsdkCache_v1_collectiontestYaml,
 	"test/extended/testdata/operatorsdk/cache_v1_memcached.yaml":                                                                           testExtendedTestdataOperatorsdkCache_v1_memcachedYaml,
+	"test/extended/testdata/operatorsdk/catalogsource.yaml":                                                                                testExtendedTestdataOperatorsdkCatalogsourceYaml,
 	"test/extended/testdata/operatorsdk/demo_v1_nginx.yaml":                                                                                testExtendedTestdataOperatorsdkDemo_v1_nginxYaml,
 	"test/extended/testdata/operatorsdk/operatorgroup.yaml":                                                                                testExtendedTestdataOperatorsdkOperatorgroupYaml,
+	"test/extended/testdata/operatorsdk/sub.yaml":                                                                                          testExtendedTestdataOperatorsdkSubYaml,
 	"test/extended/testdata/opm/aqua/1.0.1/aqua-operator.v1.0.1.clusterserviceversion.yaml":                                                testExtendedTestdataOpmAqua101AquaOperatorV101ClusterserviceversionYaml,
 	"test/extended/testdata/opm/aqua/1.0.1/aquacsps.operator.aquasec.com.crd.yaml":                                                         testExtendedTestdataOpmAqua101AquacspsOperatorAquasecComCrdYaml,
 	"test/extended/testdata/opm/aqua/1.0.1/aquadatabases.operator.aquasec.com.crd.yaml":                                                    testExtendedTestdataOpmAqua101AquadatabasesOperatorAquasecComCrdYaml,
@@ -17511,8 +17600,10 @@ var _bintree = &bintree{nil, map[string]*bintree{
 					"cache1_v1_blacklist.yaml":     {testExtendedTestdataOperatorsdkCache1_v1_blacklistYaml, map[string]*bintree{}},
 					"cache_v1_collectiontest.yaml": {testExtendedTestdataOperatorsdkCache_v1_collectiontestYaml, map[string]*bintree{}},
 					"cache_v1_memcached.yaml":      {testExtendedTestdataOperatorsdkCache_v1_memcachedYaml, map[string]*bintree{}},
+					"catalogsource.yaml":           {testExtendedTestdataOperatorsdkCatalogsourceYaml, map[string]*bintree{}},
 					"demo_v1_nginx.yaml":           {testExtendedTestdataOperatorsdkDemo_v1_nginxYaml, map[string]*bintree{}},
 					"operatorgroup.yaml":           {testExtendedTestdataOperatorsdkOperatorgroupYaml, map[string]*bintree{}},
+					"sub.yaml":                     {testExtendedTestdataOperatorsdkSubYaml, map[string]*bintree{}},
 				}},
 				"opm": {nil, map[string]*bintree{
 					"aqua": {nil, map[string]*bintree{
