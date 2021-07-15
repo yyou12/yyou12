@@ -229,5 +229,32 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The OC Compliance plugin m
 			g.By("The ocp-40681 The oc compliance plugin has performed rescan on command successfully... !!!!\n ")
 
 		})
+
+		// author: pdhamdhe@redhat.com
+		g.It("Author:pdhamdhe-High-41185-The oc compliance controls command reports the compliance standards and controls that is benchmark fulfil for profiles [Slow]", func() {
+
+			g.By("Check default profilebundles name and status.. !!!\n")
+			subD.getProfileBundleNameandStatus(oc, "ocp4")
+			subD.getProfileBundleNameandStatus(oc, "rhcos4")
+
+			g.By("Check default profiles name.. !!!\n")
+			subD.getProfileName(oc, "ocp4-cis")
+			subD.getProfileName(oc, "ocp4-cis-node")
+			subD.getProfileName(oc, "ocp4-e8")
+			subD.getProfileName(oc, "ocp4-moderate")
+			subD.getProfileName(oc, "rhcos4-e8")
+			subD.getProfileName(oc, "rhcos4-moderate")
+
+			g.By("Check profile standards and controls.. !!!\n")
+			checkProfileControls(oc, "ocp4-cis", [...]string{"CIS-OCP     | 1.2.1", "NIST-800-53 | AC-2"})
+			checkProfileControls(oc, "ocp4-cis-node", [...]string{"NIST-800-53 | CM-6", "CIS-OCP     | 1.1.1"})
+			checkProfileControls(oc, "ocp4-e8", [...]string{"CIS-OCP     | 1.2.34", "NIST-800-53 | AC-2(1)"})
+			checkProfileControls(oc, "ocp4-moderate", [...]string{"CIS-OCP     | 1.2.1", "NIST-800-53 | AC-12"})
+			checkProfileControls(oc, "rhcos4-e8", [...]string{"NIST-800-53", "AC-17(2)"})
+			checkProfileControls(oc, "rhcos4-moderate", [...]string{"NIST-800-53", "AC-12"})
+
+			g.By("The ocp-40681 Successfully verify compliance standards and controls for all profiles ... !!!!\n ")
+
+		})
 	})
 })

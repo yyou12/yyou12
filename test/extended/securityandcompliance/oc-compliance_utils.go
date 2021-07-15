@@ -9,6 +9,8 @@ import (
 	"strings"
 
 	g "github.com/onsi/ginkgo"
+	o "github.com/onsi/gomega"
+	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 )
 
@@ -107,5 +109,26 @@ func (c *CLI) Output() (string, error) {
 		FatalErr(fmt.Errorf("unable to execute %q: %v", c.execPath, err))
 		// unreachable code
 		return "", nil
+	}
+}
+
+func checkProfileControls(oc *exutil.CLI, profl string, keyword [2]string) {
+	var kw string
+	var flag bool = true
+	proControl, err := OcComplianceCLI().Run("controls").Args("profile", profl, "-n", oc.Namespace()).Output()
+	//rsl := strings.Fields(proControl)
+	o.Expect(err).NotTo(o.HaveOccurred())
+	for _, v := range keyword {
+		kw = fmt.Sprintf("%s", v)
+		if !strings.Contains(proControl, kw) {
+			e2e.Failf("The keyword %v not exist!", v)
+			flag = false
+			break
+		} else {
+			e2e.Logf("keyword matches '%v' with profile '%v' standards and controls", v, profl)
+		}
+	}
+	if flag == false {
+		e2e.Failf("The keyword not exist!")
 	}
 }
