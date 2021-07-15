@@ -3587,7 +3587,6 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 
 	// It will cover test case: OCP-24382, author: kuiwang@redhat.com
 	g.It("ConnectedOnly-Author:kuiwang-Medium-24382-Should restrict CRD update if schema changes [Serial]", func() {
-		// need to change api version from v1beta to v1
 		var (
 			itName              = g.CurrentGinkgoTestDescription().TestText
 			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
@@ -3606,7 +3605,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 				displayName: "Test Catsrc 24382 Operators",
 				publisher:   "Red Hat",
 				sourceType:  "grpc",
-				address:     "quay.io/olmqe/olm-dep:vschema",
+				address:     "quay.io/olmqe/olm-dep:vschema-crdv1",
 				template:    catsrcImageTemplate,
 			}
 			sub = subscriptionDescription{
