@@ -7324,7 +7324,7 @@ var _ = g.Describe("[sig-operators] OLM on VM for an end user handle within a na
 	})
 
 	// author: tbuskey@redhat.com
-	g.It("Author:tbuskey@redhat.com-High-21953-Ensure that operator deployment is in the master node", func() {
+	g.It("Author:tbuskey-High-21953-Ensure that operator deployment is in the master node", func() {
 		var (
 			err            error
 			msg            string
