@@ -27,5 +27,6 @@ import (
 	_ "github.com/openshift/openshift-tests-private/test/extended/apiserver_and_auth"
 	_ "github.com/openshift/openshift-tests-private/test/extended/router"
 	_ "github.com/openshift/openshift-tests-private/test/extended/node"
+	_ "github.com/openshift/openshift-tests-private/test/extended/networking"
 	_ "github.com/openshift/openshift-tests/test/extended/operators"
 )

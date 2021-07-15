@@ -7,6 +7,9 @@
 // test/extended/testdata/ldap/ldapserver-deployment.yaml
 // test/extended/testdata/ldap/ldapserver-scripts-cm.yaml
 // test/extended/testdata/ldap/ldapserver-service.yaml
+// test/extended/testdata/networking/egressfirewall1.yaml
+// test/extended/testdata/networking/egressip-config1.yaml
+// test/extended/testdata/networking/ping-for-pod.yaml
 // test/extended/testdata/node/pod-modify.yaml
 // test/extended/testdata/oauthserver/cabundle-cm.yaml
 // test/extended/testdata/oauthserver/oauth-network.yaml
@@ -1083,6 +1086,115 @@ func testExtendedTestdataLdapLdapserverServiceYaml() (*asset, error) {
 	}
 
 	info := bindataFileInfo{name: "test/extended/testdata/ldap/ldapserver-service.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataNetworkingEgressfirewall1Yaml = []byte(`apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: egressfirewall1
+objects:
+- kind: EgressFirewall
+  apiVersion: k8s.ovn.org/v1
+  metadata:
+    name: ${NAME} 
+    namespace: "${NAMESPACE}"
+  spec:
+    egress:
+    - type: Deny 
+      to: 
+        dnsName: www.test.com 
+    - type: Allow
+      to: 
+        cidrSelector: 0.0.0.0/0
+parameters:
+- name: NAME
+- name: NAMESPACE
+                     `)
+
+func testExtendedTestdataNetworkingEgressfirewall1YamlBytes() ([]byte, error) {
+	return _testExtendedTestdataNetworkingEgressfirewall1Yaml, nil
+}
+
+func testExtendedTestdataNetworkingEgressfirewall1Yaml() (*asset, error) {
+	bytes, err := testExtendedTestdataNetworkingEgressfirewall1YamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/networking/egressfirewall1.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataNetworkingEgressipConfig1Yaml = []byte(`apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: egressip-config1
+objects:
+- kind: EgressIP
+  apiVersion: k8s.ovn.org/v1 
+  metadata:
+    name: "${NAME}"
+  spec:
+    egressIPs:
+      - "${EGRESSIP1}"
+      - "${EGRESSIP2}"
+    namespaceSelector:
+      matchLabels:
+        name: test
+parameters:
+- name: NAME
+- name: EGRESSIP1
+- name: EGRESSIP2`)
+
+func testExtendedTestdataNetworkingEgressipConfig1YamlBytes() ([]byte, error) {
+	return _testExtendedTestdataNetworkingEgressipConfig1Yaml, nil
+}
+
+func testExtendedTestdataNetworkingEgressipConfig1Yaml() (*asset, error) {
+	bytes, err := testExtendedTestdataNetworkingEgressipConfig1YamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/networking/egressip-config1.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataNetworkingPingForPodYaml = []byte(`apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: hello-pod-template
+objects:
+- kind: Pod
+  apiVersion: v1
+  metadata:
+    name: "${NAME}"
+    namespace: "${NAMESPACE}"
+    labels:
+      name: hello-pod
+  spec:
+    containers:
+    - image: "quay.io/openshifttest/hello-sdn@sha256:d5785550cf77b7932b090fcd1a2625472912fb3189d5973f177a5a2c347a1f95"
+      name: hello-pod
+parameters:
+- name: NAME
+- name: NAMESPACE`)
+
+func testExtendedTestdataNetworkingPingForPodYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataNetworkingPingForPodYaml, nil
+}
+
+func testExtendedTestdataNetworkingPingForPodYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataNetworkingPingForPodYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/networking/ping-for-pod.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -17399,6 +17511,9 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/ldap/ldapserver-deployment.yaml":                                                                               testExtendedTestdataLdapLdapserverDeploymentYaml,
 	"test/extended/testdata/ldap/ldapserver-scripts-cm.yaml":                                                                               testExtendedTestdataLdapLdapserverScriptsCmYaml,
 	"test/extended/testdata/ldap/ldapserver-service.yaml":                                                                                  testExtendedTestdataLdapLdapserverServiceYaml,
+	"test/extended/testdata/networking/egressfirewall1.yaml":                                                                               testExtendedTestdataNetworkingEgressfirewall1Yaml,
+	"test/extended/testdata/networking/egressip-config1.yaml":                                                                              testExtendedTestdataNetworkingEgressipConfig1Yaml,
+	"test/extended/testdata/networking/ping-for-pod.yaml":                                                                                  testExtendedTestdataNetworkingPingForPodYaml,
 	"test/extended/testdata/node/pod-modify.yaml":                                                                                          testExtendedTestdataNodePodModifyYaml,
 	"test/extended/testdata/oauthserver/cabundle-cm.yaml":                                                                                  testExtendedTestdataOauthserverCabundleCmYaml,
 	"test/extended/testdata/oauthserver/oauth-network.yaml":                                                                                testExtendedTestdataOauthserverOauthNetworkYaml,
@@ -17613,6 +17728,11 @@ var _bintree = &bintree{nil, map[string]*bintree{
 					"ldapserver-deployment.yaml": {testExtendedTestdataLdapLdapserverDeploymentYaml, map[string]*bintree{}},
 					"ldapserver-scripts-cm.yaml": {testExtendedTestdataLdapLdapserverScriptsCmYaml, map[string]*bintree{}},
 					"ldapserver-service.yaml":    {testExtendedTestdataLdapLdapserverServiceYaml, map[string]*bintree{}},
+				}},
+				"networking": {nil, map[string]*bintree{
+					"egressfirewall1.yaml":  {testExtendedTestdataNetworkingEgressfirewall1Yaml, map[string]*bintree{}},
+					"egressip-config1.yaml": {testExtendedTestdataNetworkingEgressipConfig1Yaml, map[string]*bintree{}},
+					"ping-for-pod.yaml":     {testExtendedTestdataNetworkingPingForPodYaml, map[string]*bintree{}},
 				}},
 				"node": {nil, map[string]*bintree{
 					"pod-modify.yaml": {testExtendedTestdataNodePodModifyYaml, map[string]*bintree{}},
