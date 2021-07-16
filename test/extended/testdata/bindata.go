@@ -102,6 +102,8 @@
 // test/extended/testdata/opm/cockroachdb/supportsemver/5.0.4/cockroachdb-controller-manager-metrics-service_v1_service.yaml
 // test/extended/testdata/opm/cockroachdb/supportsemver/5.0.4/cockroachdb-metrics-reader_rbac.authorization.k8s.io_v1_clusterrole.yaml
 // test/extended/testdata/opm/cockroachdb/supportsemver/5.0.4/cockroachdb.clusterserviceversion.yaml
+// test/extended/testdata/opm/eclipse-che/7.32.2/checlusters.org.eclipse.che.crd.yaml
+// test/extended/testdata/opm/eclipse-che/7.32.2/eclipse-che.v7.32.2.clusterserviceversion.yaml
 // test/extended/testdata/opm/etcd_operator/0.9.2/manifests/etcdbackups.etcd.database.coreos.com.crd.yaml
 // test/extended/testdata/opm/etcd_operator/0.9.2/manifests/etcdclusters.etcd.database.coreos.com.crd.yaml
 // test/extended/testdata/opm/etcd_operator/0.9.2/manifests/etcdoperator.v0.9.2.clusterserviceversion.yaml
@@ -1111,7 +1113,7 @@ objects:
 parameters:
 - name: NAME
 - name: NAMESPACE
-                     `)
+`)
 
 func testExtendedTestdataNetworkingEgressfirewall1YamlBytes() ([]byte, error) {
 	return _testExtendedTestdataNetworkingEgressfirewall1Yaml, nil
@@ -1147,7 +1149,8 @@ objects:
 parameters:
 - name: NAME
 - name: EGRESSIP1
-- name: EGRESSIP2`)
+- name: EGRESSIP2
+`)
 
 func testExtendedTestdataNetworkingEgressipConfig1YamlBytes() ([]byte, error) {
 	return _testExtendedTestdataNetworkingEgressipConfig1Yaml, nil
@@ -1182,7 +1185,8 @@ objects:
       name: hello-pod
 parameters:
 - name: NAME
-- name: NAMESPACE`)
+- name: NAMESPACE
+`)
 
 func testExtendedTestdataNetworkingPingForPodYamlBytes() ([]byte, error) {
 	return _testExtendedTestdataNetworkingPingForPodYaml, nil
@@ -12244,6 +12248,2653 @@ func testExtendedTestdataOpmCockroachdbSupportsemver504CockroachdbClusterservice
 	return a, nil
 }
 
+var _testExtendedTestdataOpmEclipseChe7322CheclustersOrgEclipseCheCrdYaml = []byte(`#
+#  Copyright (c) 2019-2021 Red Hat, Inc.
+#    This program and the accompanying materials are made
+#    available under the terms of the Eclipse Public License 2.0
+#    which is available at https://www.eclipse.org/legal/epl-2.0/
+#
+#  SPDX-License-Identifier: EPL-2.0
+#
+#  Contributors:
+#    Red Hat, Inc. - initial API and implementation
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: checlusters.org.eclipse.che
+spec:
+  group: org.eclipse.che
+  names:
+    kind: CheCluster
+    listKind: CheClusterList
+    plural: checlusters
+    singular: checluster
+  preserveUnknownFields: false
+  scope: Namespaced
+  versions:
+    - name: v1
+      schema:
+        openAPIV3Schema:
+          description: The ` + "`" + `CheCluster` + "`" + ` custom resource allows defining and managing
+            a Che server installation
+          properties:
+            apiVersion:
+              description: 'APIVersion defines the versioned schema of this representation
+                of an object. Servers should convert recognized schemas to the latest
+                internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+              type: string
+            kind:
+              description: 'Kind is a string value representing the REST resource
+                this object represents. Servers may infer this from the endpoint the
+                client submits requests to. Cannot be updated. In CamelCase. More
+                info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: Desired configuration of the Che installation. Based on
+                these settings, the  Operator automatically creates and maintains
+                several ConfigMaps that will contain the appropriate environment variables
+                the various components of the Che installation. These generated ConfigMaps
+                must NOT be updated manually.
+              properties:
+                auth:
+                  description: Configuration settings related to the Authentication
+                    used by the Che installation.
+                  properties:
+                    externalIdentityProvider:
+                      description: 'Instructs the Operator on whether or not to deploy
+                        a dedicated Identity Provider (Keycloak or RH SSO instance).
+                        Instructs the Operator on whether to deploy a dedicated Identity
+                        Provider (Keycloak or RH-SSO instance). By default, a dedicated
+                        Identity Provider server is deployed as part of the Che installation.
+                        When ` + "`" + `externalIdentityProvider` + "`" + ` is ` + "`" + `true` + "`" + `, no dedicated identity
+                        provider will be deployed by the Operator and you will need
+                        to provide details about the external identity provider you
+                        are about to use. See also all the other fields starting with:
+                        ` + "`" + `identityProvider` + "`" + `.'
+                      type: boolean
+                    identityProviderAdminUserName:
+                      description: Overrides the name of the Identity Provider administrator
+                        user. Defaults to ` + "`" + `admin` + "`" + `.
+                      type: string
+                    identityProviderClientId:
+                      description: Name of a Identity provider, Keycloak or RH-SSO,
+                        ` + "`" + `client-id` + "`" + ` that is used for Che. Override this when an external
+                        Identity Provider is in use. See the ` + "`" + `externalIdentityProvider` + "`" + `
+                        field. When omitted or left blank, it is set to the value
+                        of the ` + "`" + `flavour` + "`" + ` field suffixed with ` + "`" + `-public` + "`" + `.
+                      type: string
+                    identityProviderContainerResources:
+                      description: Identity provider container custom settings.
+                      properties:
+                        limits:
+                          description: Limits describes the maximum amount of compute
+                            resources allowed.
+                          properties:
+                            cpu:
+                              description: CPU, in cores. (500m = .5 cores)
+                              type: string
+                            memory:
+                              description: Memory, in bytes. (500Gi = 500GiB = 500
+                                * 1024 * 1024 * 1024)
+                              type: string
+                          type: object
+                        request:
+                          description: Requests describes the minimum amount of compute
+                            resources required.
+                          properties:
+                            cpu:
+                              description: CPU, in cores. (500m = .5 cores)
+                              type: string
+                            memory:
+                              description: Memory, in bytes. (500Gi = 500GiB = 500
+                                * 1024 * 1024 * 1024)
+                              type: string
+                          type: object
+                      type: object
+                    identityProviderImage:
+                      description: Overrides the container image used in the Identity
+                        Provider, Keycloak or RH-SSO, deployment. This includes the
+                        image tag. Omit it or leave it empty to use the default container
+                        image provided by the Operator.
+                      type: string
+                    identityProviderImagePullPolicy:
+                      description: Overrides the image pull policy used in the Identity
+                        Provider, Keycloak or RH-SSO, deployment. Default value is
+                        ` + "`" + `Always` + "`" + ` for ` + "`" + `nightly` + "`" + ` or ` + "`" + `latest` + "`" + ` images, and ` + "`" + `IfNotPresent` + "`" + `
+                        in other cases.
+                      type: string
+                    identityProviderIngress:
+                      description: Ingress custom settings.
+                      properties:
+                        annotations:
+                          additionalProperties:
+                            type: string
+                          description: Unstructured key value map stored with a resource
+                            that may be set by external tools to store and retrieve
+                            arbitrary metadata.
+                          type: object
+                        labels:
+                          description: Comma separated list of labels that can be
+                            used to organize and categorize objects by scoping and
+                            selecting.
+                          type: string
+                      type: object
+                    identityProviderPassword:
+                      description: Overrides the password of Keycloak administrator
+                        user. Override this when an external Identity Provider is
+                        in use. See the ` + "`" + `externalIdentityProvider` + "`" + ` field. When omitted
+                        or left blank, it is set to an auto-generated password.
+                      type: string
+                    identityProviderPostgresPassword:
+                      description: Password for a Identity Provider, Keycloak or RH-SSO,
+                        to connect to the database. Override this when an external
+                        Identity Provider is in use. See the ` + "`" + `externalIdentityProvider` + "`" + `
+                        field. When omitted or left blank, it is set to an auto-generated
+                        password.
+                      type: string
+                    identityProviderPostgresSecret:
+                      description: 'The secret that contains ` + "`" + `password` + "`" + ` for the Identity
+                        Provider, Keycloak or RH-SSO, to connect to the database.
+                        When the secret is defined, the ` + "`" + `identityProviderPostgresPassword` + "`" + `
+                        is ignored. When the value is omitted or left blank, the one
+                        of following scenarios applies: 1. ` + "`" + `identityProviderPostgresPassword` + "`" + `
+                        is defined, then it will be used to connect to the database.
+                        2. ` + "`" + `identityProviderPostgresPassword` + "`" + ` is not defined, then
+                        a new secret with the name ` + "`" + `che-identity-postgres-secret` + "`" + `
+                        will be created with an auto-generated value for ` + "`" + `password` + "`" + `.'
+                      type: string
+                    identityProviderRealm:
+                      description: Name of a Identity provider, Keycloak or RH-SSO,
+                        realm that is used for Che. Override this when an external
+                        Identity Provider is in use. See the ` + "`" + `externalIdentityProvider` + "`" + `
+                        field. When omitted or left blank, it is set to the value
+                        of the ` + "`" + `flavour` + "`" + ` field.
+                      type: string
+                    identityProviderRoute:
+                      description: Route custom settings.
+                      properties:
+                        annotations:
+                          additionalProperties:
+                            type: string
+                          description: Unstructured key value map stored with a resource
+                            that may be set by external tools to store and retrieve
+                            arbitrary metadata.
+                          type: object
+                        domain:
+                          description: 'Operator uses the domain to generate a hostname
+                            for a route. In a conjunction with labels it creates a
+                            route, which is served by a non-default Ingress controller.
+                            The generated host name will follow this pattern: ` + "`" + `<route-name>-<route-namespace>.<domain>` + "`" + `.'
+                          type: string
+                        labels:
+                          description: Comma separated list of labels that can be
+                            used to organize and categorize objects by scoping and
+                            selecting.
+                          type: string
+                      type: object
+                    identityProviderSecret:
+                      description: 'The secret that contains ` + "`" + `user` + "`" + ` and ` + "`" + `password` + "`" + `
+                        for Identity Provider. When the secret is defined, the ` + "`" + `identityProviderAdminUserName` + "`" + `
+                        and ` + "`" + `identityProviderPassword` + "`" + ` are ignored. When the value
+                        is omitted or left blank, the one of following scenarios applies:
+                        1. ` + "`" + `identityProviderAdminUserName` + "`" + ` and ` + "`" + `identityProviderPassword` + "`" + `
+                        are defined, then they will be used. 2. ` + "`" + `identityProviderAdminUserName` + "`" + `
+                        or ` + "`" + `identityProviderPassword` + "`" + ` are not defined, then a new
+                        secret with the name ` + "`" + `che-identity-secret` + "`" + ` will be created
+                        with default value ` + "`" + `admin` + "`" + ` for ` + "`" + `user` + "`" + ` and with an auto-generated
+                        value for ` + "`" + `password` + "`" + `.'
+                      type: string
+                    identityProviderURL:
+                      description: Public URL of the Identity Provider server (Keycloak
+                        / RH-SSO server). Set this ONLY when a use of an external
+                        Identity Provider is needed. See the ` + "`" + `externalIdentityProvider` + "`" + `
+                        field. By default, this will be automatically calculated and
+                        set by the Operator.
+                      type: string
+                    initialOpenShiftOAuthUser:
+                      description: For operating with the OpenShift OAuth authentication,
+                        create a new user account since the kubeadmin can not be used.
+                        If the value is true, then a new OpenShift OAuth user will
+                        be created for the HTPasswd identity provider. If the value
+                        is false and the user has already been created, then it will
+                        be removed. If value is an empty, then do nothing. The user's
+                        credentials are stored in the ` + "`" + `openshift-oauth-user-credentials` + "`" + `
+                        secret in 'openshift-config' namespace by Operator. Note that
+                        this solution is Openshift 4 platform-specific.
+                      type: boolean
+                    oAuthClientName:
+                      description: Name of the OpenShift ` + "`" + `OAuthClient` + "`" + ` resource used
+                        to setup identity federation on the OpenShift side. Auto-generated
+                        when left blank. See also the ` + "`" + `OpenShiftoAuth` + "`" + ` field.
+                      type: string
+                    oAuthSecret:
+                      description: Name of the secret set in the OpenShift ` + "`" + `OAuthClient` + "`" + `
+                        resource used to setup identity federation on the OpenShift
+                        side. Auto-generated when left blank. See also the ` + "`" + `OAuthClientName` + "`" + `
+                        field.
+                      type: string
+                    openShiftoAuth:
+                      description: 'Enables the integration of the identity provider
+                        (Keycloak / RHSSO) with OpenShift OAuth. Empty value on OpenShift
+                        by default. This will allow users to directly login with their
+                        OpenShift user through the OpenShift login, and have their
+                        workspaces created under personal OpenShift namespaces. WARNING:
+                        the ` + "`" + `kubeadmin` + "`" + ` user is NOT supported, and logging through
+                        it will NOT allow accessing the Che Dashboard.'
+                      type: boolean
+                    updateAdminPassword:
+                      description: Forces the default ` + "`" + `admin` + "`" + ` Che user to update password
+                        on first login. Defaults to ` + "`" + `false` + "`" + `.
+                      type: boolean
+                  type: object
+                database:
+                  description: Configuration settings related to the database used
+                    by the Che installation.
+                  properties:
+                    chePostgresContainerResources:
+                      description: PostgreSQL container custom settings
+                      properties:
+                        limits:
+                          description: Limits describes the maximum amount of compute
+                            resources allowed.
+                          properties:
+                            cpu:
+                              description: CPU, in cores. (500m = .5 cores)
+                              type: string
+                            memory:
+                              description: Memory, in bytes. (500Gi = 500GiB = 500
+                                * 1024 * 1024 * 1024)
+                              type: string
+                          type: object
+                        request:
+                          description: Requests describes the minimum amount of compute
+                            resources required.
+                          properties:
+                            cpu:
+                              description: CPU, in cores. (500m = .5 cores)
+                              type: string
+                            memory:
+                              description: Memory, in bytes. (500Gi = 500GiB = 500
+                                * 1024 * 1024 * 1024)
+                              type: string
+                          type: object
+                      type: object
+                    chePostgresDb:
+                      description: PostgreSQL database name that the Che server uses
+                        to connect to the DB. Defaults to ` + "`" + `dbche` + "`" + `.
+                      type: string
+                    chePostgresHostName:
+                      description: PostgreSQL Database host name that the Che server
+                        uses to connect to. Defaults is ` + "`" + `postgres` + "`" + `. Override this
+                        value ONLY when using an external database. See field ` + "`" + `externalDb` + "`" + `.
+                        In the default case it will be automatically set by the Operator.
+                      type: string
+                    chePostgresPassword:
+                      description: PostgreSQL password that the Che server uses to
+                        connect to the DB. When omitted or left blank, it will be
+                        set to an automatically generated value.
+                      type: string
+                    chePostgresPort:
+                      description: PostgreSQL Database port that the Che server uses
+                        to connect to. Defaults to 5432. Override this value ONLY
+                        when using an external database. See field ` + "`" + `externalDb` + "`" + `. In
+                        the default case it will be automatically set by the Operator.
+                      type: string
+                    chePostgresSecret:
+                      description: 'The secret that contains PostgreSQL` + "`" + `user` + "`" + ` and
+                        ` + "`" + `password` + "`" + ` that the Che server uses to connect to the DB.
+                        When the secret is defined, the ` + "`" + `chePostgresUser` + "`" + ` and ` + "`" + `chePostgresPassword` + "`" + `
+                        are ignored. When the value is omitted or left blank, the
+                        one of following scenarios applies: 1. ` + "`" + `chePostgresUser` + "`" + ` and
+                        ` + "`" + `chePostgresPassword` + "`" + ` are defined, then they will be used
+                        to connect to the DB. 2. ` + "`" + `chePostgresUser` + "`" + ` or ` + "`" + `chePostgresPassword` + "`" + `
+                        are not defined, then a new secret with the name ` + "`" + `che-postgres-secret` + "`" + `
+                        will be created with default value of ` + "`" + `pgche` + "`" + ` for ` + "`" + `user` + "`" + ` and
+                        with an auto-generated value for ` + "`" + `password` + "`" + `.'
+                      type: string
+                    chePostgresUser:
+                      description: PostgreSQL user that the Che server uses to connect
+                        to the DB. Defaults to ` + "`" + `pgche` + "`" + `.
+                      type: string
+                    externalDb:
+                      description: 'Instructs the Operator on whether to deploy a
+                        dedicated database. By default, a dedicated PostgreSQL database
+                        is deployed as part of the Che installation. When ` + "`" + `externalDb` + "`" + `
+                        is ` + "`" + `true` + "`" + `, no dedicated database will be deployed by the Operator
+                        and you will need to provide connection details to the external
+                        DB you are about to use. See also all the fields starting
+                        with: ` + "`" + `chePostgres` + "`" + `.'
+                      type: boolean
+                    postgresImage:
+                      description: Overrides the container image used in the PostgreSQL
+                        database deployment. This includes the image tag. Omit it
+                        or leave it empty to use the default container image provided
+                        by the Operator.
+                      type: string
+                    postgresImagePullPolicy:
+                      description: Overrides the image pull policy used in the PostgreSQL
+                        database deployment. Default value is ` + "`" + `Always` + "`" + ` for ` + "`" + `nightly` + "`" + `
+                        or ` + "`" + `latest` + "`" + ` images, and ` + "`" + `IfNotPresent` + "`" + ` in other cases.
+                      type: string
+                  type: object
+                devWorkspace:
+                  description: Dev Workspace operator configuration
+                  properties:
+                    controllerImage:
+                      description: Overrides the container image used in the DevWorkspace
+                        controller deployment. This includes the image tag. Omit it
+                        or leave it empty to use the default container image provided
+                        by the Operator.
+                      type: string
+                    enable:
+                      description: Deploys the DevWorkspace Operator in the cluster.
+                        Does nothing when a matching version of the Operator is already
+                        installed. Fails when a non-matching version of the Operator
+                        is already installed.
+                      type: boolean
+                  required:
+                    - enable
+                  type: object
+                imagePuller:
+                  description: Kubernetes Image Puller configuration
+                  properties:
+                    enable:
+                      description: "Install and configure the Community Supported\
+                        \ Kubernetes Image Puller Operator. When set to ` + "`" + `true` + "`" + ` and\
+                        \ no spec is provided, it will create a default KubernetesImagePuller\
+                        \ object to be managed by the Operator. When set to ` + "`" + `false` + "`" + `,\
+                        \ the KubernetesImagePuller object will be deleted, and the\
+                        \ Operator will be uninstalled, regardless of whether a spec\
+                        \ is provided. Note that while this the Operator and its behavior\
+                        \ is community-supported, its payload may be commercially-supported\
+                        \ for pulling commercially-supported images."
+                      type: boolean
+                    spec:
+                      description: A KubernetesImagePullerSpec to configure the image
+                        puller in the CheCluster
+                      properties:
+                        cachingCPULimit:
+                          type: string
+                        cachingCPURequest:
+                          type: string
+                        cachingIntervalHours:
+                          type: string
+                        cachingMemoryLimit:
+                          type: string
+                        cachingMemoryRequest:
+                          type: string
+                        configMapName:
+                          type: string
+                        daemonsetName:
+                          type: string
+                        deploymentName:
+                          type: string
+                        images:
+                          type: string
+                        nodeSelector:
+                          type: string
+                      type: object
+                  required:
+                    - enable
+                  type: object
+                k8s:
+                  description: Configuration settings specific to Che installations
+                    made on upstream Kubernetes.
+                  properties:
+                    ingressClass:
+                      description: 'Ingress class that will define the which controller
+                        will manage ingresses. Defaults to ` + "`" + `nginx` + "`" + `. NB: This drives
+                        the ` + "`" + `kubernetes.io/ingress.class` + "`" + ` annotation on Che-related
+                        ingresses.'
+                      type: string
+                    ingressDomain:
+                      description: 'Global ingress domain for a Kubernetes cluster.
+                        This MUST be explicitly specified: there are no defaults.'
+                      type: string
+                    ingressStrategy:
+                      description: 'Strategy for ingress creation. Options are: ` + "`" + `multi-host` + "`" + `
+                        (host is explicitly provided in ingress), ` + "`" + `single-host` + "`" + ` (host
+                        is provided, path-based rules) and ` + "`" + `default-host` + "`" + ` (no host
+                        is provided, path-based rules). Defaults to ` + "`" + `multi-host` + "`" + ` Deprecated
+                        in favor of ` + "`" + `serverExposureStrategy` + "`" + ` in the ` + "`" + `server` + "`" + ` section,
+                        which defines this regardless of the cluster type. When both
+                        are defined, the ` + "`" + `serverExposureStrategy` + "`" + ` option takes precedence.'
+                      type: string
+                    securityContextFsGroup:
+                      description: The FSGroup in which the Che Pod and workspace
+                        Pods containers runs in. Default value is ` + "`" + `1724` + "`" + `.
+                      type: string
+                    securityContextRunAsUser:
+                      description: ID of the user the Che Pod and workspace Pods containers
+                        run as. Default value is ` + "`" + `1724` + "`" + `.
+                      type: string
+                    singleHostExposureType:
+                      description: When the serverExposureStrategy is set to ` + "`" + `single-host` + "`" + `,
+                        the way the server, registries and workspaces are exposed
+                        is further configured by this property. The possible values
+                        are ` + "`" + `native` + "`" + `, which means that the server and workspaces are
+                        exposed using ingresses on K8s or ` + "`" + `gateway` + "`" + ` where the server
+                        and workspaces are exposed using a custom gateway based on
+                        link:https://doc.traefik.io/traefik/[Traefik]. All the endpoints
+                        whether backed by the ingress or gateway ` + "`" + `route` + "`" + ` always point
+                        to the subpaths on the same domain. Defaults to ` + "`" + `native` + "`" + `.
+                      type: string
+                    tlsSecretName:
+                      description: Name of a secret that will be used to setup ingress
+                        TLS termination when TLS is enabled. When the field is empty
+                        string, the default cluster certificate will be used. See
+                        also the ` + "`" + `tlsSupport` + "`" + ` field.
+                      type: string
+                  type: object
+                metrics:
+                  description: Configuration settings related to the metrics collection
+                    used by the Che installation.
+                  properties:
+                    enable:
+                      description: Enables ` + "`" + `metrics` + "`" + ` the Che server endpoint. Default
+                        to ` + "`" + `true` + "`" + `.
+                      type: boolean
+                  type: object
+                server:
+                  description: General configuration settings related to the Che server
+                    and the plugin and devfile registries
+                  properties:
+                    airGapContainerRegistryHostname:
+                      description: Optional host name, or URL, to an alternate container
+                        registry to pull images from. This value overrides the container
+                        registry host name defined in all the default container images
+                        involved in a Che deployment. This is particularly useful
+                        to install Che in a restricted environment.
+                      type: string
+                    airGapContainerRegistryOrganization:
+                      description: Optional repository name of an alternate container
+                        registry to pull images from. This value overrides the container
+                        registry organization defined in all the default container
+                        images involved in a Che deployment. This is particularly
+                        useful to install Eclipse Che in a restricted environment.
+                      type: string
+                    allowUserDefinedWorkspaceNamespaces:
+                      description: Deprecated. The value of this flag is ignored.
+                        Defines that a user is allowed to specify a Kubernetes namespace,
+                        or an OpenShift project, which differs from the default. It's
+                        NOT RECOMMENDED to set to ` + "`" + `true` + "`" + ` without OpenShift OAuth configured.
+                        The OpenShift infrastructure also uses this property.
+                      type: boolean
+                    cheClusterRoles:
+                      description: A comma-separated list of ClusterRoles that will
+                        be assigned to Che ServiceAccount. Be aware that the Che Operator
+                        has to already have all permissions in these ClusterRoles
+                        to grant them.
+                      type: string
+                    cheDebug:
+                      description: Enables the debug mode for Che server. Defaults
+                        to ` + "`" + `false` + "`" + `.
+                      type: string
+                    cheFlavor:
+                      description: Specifies a variation of the installation. The
+                        options are ` + "`" + `che` + "`" + ` for upstream Che installations, or ` + "`" + `codeready` + "`" + `
+                        for link:https://developers.redhat.com/products/codeready-workspaces/overview[CodeReady
+                        Workspaces] installation. Override the default value only
+                        on necessary occasions.
+                      type: string
+                    cheHost:
+                      description: Public host name of the installed Che server. When
+                        value is omitted, the value it will be automatically set by
+                        the Operator. See the ` + "`" + `cheHostTLSSecret` + "`" + ` field.
+                      type: string
+                    cheHostTLSSecret:
+                      description: Name of a secret containing certificates to secure
+                        ingress or route for the custom host name of the installed
+                        Che server. See the ` + "`" + `cheHost` + "`" + ` field.
+                      type: string
+                    cheImage:
+                      description: Overrides the container image used in Che deployment.
+                        This does NOT include the container image tag. Omit it or
+                        leave it empty to use the default container image provided
+                        by the Operator.
+                      type: string
+                    cheImagePullPolicy:
+                      description: Overrides the image pull policy used in Che deployment.
+                        Default value is ` + "`" + `Always` + "`" + ` for ` + "`" + `nightly` + "`" + ` or ` + "`" + `latest` + "`" + ` images,
+                        and ` + "`" + `IfNotPresent` + "`" + ` in other cases.
+                      type: string
+                    cheImageTag:
+                      description: Overrides the tag of the container image used in
+                        Che deployment. Omit it or leave it empty to use the default
+                        image tag provided by the Operator.
+                      type: string
+                    cheLogLevel:
+                      description: 'Log level for the Che server: ` + "`" + `INFO` + "`" + ` or ` + "`" + `DEBUG` + "`" + `.
+                        Defaults to ` + "`" + `INFO` + "`" + `.'
+                      type: string
+                    cheServerIngress:
+                      description: The Che server ingress custom settings.
+                      properties:
+                        annotations:
+                          additionalProperties:
+                            type: string
+                          description: Unstructured key value map stored with a resource
+                            that may be set by external tools to store and retrieve
+                            arbitrary metadata.
+                          type: object
+                        labels:
+                          description: Comma separated list of labels that can be
+                            used to organize and categorize objects by scoping and
+                            selecting.
+                          type: string
+                      type: object
+                    cheServerRoute:
+                      description: The Che server route custom settings.
+                      properties:
+                        annotations:
+                          additionalProperties:
+                            type: string
+                          description: Unstructured key value map stored with a resource
+                            that may be set by external tools to store and retrieve
+                            arbitrary metadata.
+                          type: object
+                        domain:
+                          description: 'Operator uses the domain to generate a hostname
+                            for a route. In a conjunction with labels it creates a
+                            route, which is served by a non-default Ingress controller.
+                            The generated host name will follow this pattern: ` + "`" + `<route-name>-<route-namespace>.<domain>` + "`" + `.'
+                          type: string
+                        labels:
+                          description: Comma separated list of labels that can be
+                            used to organize and categorize objects by scoping and
+                            selecting.
+                          type: string
+                      type: object
+                    cheWorkspaceClusterRole:
+                      description: Custom cluster role bound to the user for the Che
+                        workspaces. The default roles are used when omitted or left
+                        blank.
+                      type: string
+                    customCheProperties:
+                      additionalProperties:
+                        type: string
+                      description: Map of additional environment variables that will
+                        be applied in the generated ` + "`" + `che` + "`" + ` ConfigMap to be used by
+                        the Che server, in addition to the values already generated
+                        from other fields of the ` + "`" + `CheCluster` + "`" + ` custom resource (CR).
+                        When ` + "`" + `customCheProperties` + "`" + ` contains a property that would
+                        be normally generated in ` + "`" + `che` + "`" + ` ConfigMap from other CR fields,
+                        the value defined in the ` + "`" + `customCheProperties` + "`" + ` is used instead.
+                      type: object
+                    dashboardCpuLimit:
+                      description: Overrides the CPU limit used in the dashboard deployment.
+                        In cores. (500m = .5 cores). Default to 500m.
+                      type: string
+                    dashboardCpuRequest:
+                      description: Overrides the CPU request used in the dashboard
+                        deployment. In cores. (500m = .5 cores). Default to 100m.
+                      type: string
+                    dashboardImage:
+                      description: Overrides the container image used in the dashboard
+                        deployment. This includes the image tag. Omit it or leave
+                        it empty to use the default container image provided by the
+                        Operator.
+                      type: string
+                    dashboardImagePullPolicy:
+                      description: Overrides the image pull policy used in the dashboard
+                        deployment. Default value is ` + "`" + `Always` + "`" + ` for ` + "`" + `nightly` + "`" + ` or ` + "`" + `latest` + "`" + `
+                        images, and ` + "`" + `IfNotPresent` + "`" + ` in other cases.
+                      type: string
+                    dashboardIngress:
+                      description: Dashboard ingress custom settings.
+                      properties:
+                        annotations:
+                          additionalProperties:
+                            type: string
+                          description: Unstructured key value map stored with a resource
+                            that may be set by external tools to store and retrieve
+                            arbitrary metadata.
+                          type: object
+                        labels:
+                          description: Comma separated list of labels that can be
+                            used to organize and categorize objects by scoping and
+                            selecting.
+                          type: string
+                      type: object
+                    dashboardMemoryLimit:
+                      description: Overrides the memory limit used in the dashboard
+                        deployment. Defaults to 256Mi.
+                      type: string
+                    dashboardMemoryRequest:
+                      description: Overrides the memory request used in the dashboard
+                        deployment. Defaults to 16Mi.
+                      type: string
+                    dashboardRoute:
+                      description: Dashboard route custom settings.
+                      properties:
+                        annotations:
+                          additionalProperties:
+                            type: string
+                          description: Unstructured key value map stored with a resource
+                            that may be set by external tools to store and retrieve
+                            arbitrary metadata.
+                          type: object
+                        domain:
+                          description: 'Operator uses the domain to generate a hostname
+                            for a route. In a conjunction with labels it creates a
+                            route, which is served by a non-default Ingress controller.
+                            The generated host name will follow this pattern: ` + "`" + `<route-name>-<route-namespace>.<domain>` + "`" + `.'
+                          type: string
+                        labels:
+                          description: Comma separated list of labels that can be
+                            used to organize and categorize objects by scoping and
+                            selecting.
+                          type: string
+                      type: object
+                    devfileRegistryCpuLimit:
+                      description: Overrides the CPU limit used in the devfile registry
+                        deployment. In cores. (500m = .5 cores). Default to 500m.
+                      type: string
+                    devfileRegistryCpuRequest:
+                      description: Overrides the CPU request used in the devfile registry
+                        deployment. In cores. (500m = .5 cores). Default to 100m.
+                      type: string
+                    devfileRegistryImage:
+                      description: Overrides the container image used in the devfile
+                        registry deployment. This includes the image tag. Omit it
+                        or leave it empty to use the default container image provided
+                        by the Operator.
+                      type: string
+                    devfileRegistryIngress:
+                      description: The devfile registry ingress custom settings.
+                      properties:
+                        annotations:
+                          additionalProperties:
+                            type: string
+                          description: Unstructured key value map stored with a resource
+                            that may be set by external tools to store and retrieve
+                            arbitrary metadata.
+                          type: object
+                        labels:
+                          description: Comma separated list of labels that can be
+                            used to organize and categorize objects by scoping and
+                            selecting.
+                          type: string
+                      type: object
+                    devfileRegistryMemoryLimit:
+                      description: Overrides the memory limit used in the devfile
+                        registry deployment. Defaults to 256Mi.
+                      type: string
+                    devfileRegistryMemoryRequest:
+                      description: Overrides the memory request used in the devfile
+                        registry deployment. Defaults to 16Mi.
+                      type: string
+                    devfileRegistryPullPolicy:
+                      description: Overrides the image pull policy used in the devfile
+                        registry deployment. Default value is ` + "`" + `Always` + "`" + ` for ` + "`" + `nightly` + "`" + `
+                        or ` + "`" + `latest` + "`" + ` images, and ` + "`" + `IfNotPresent` + "`" + ` in other cases.
+                      type: string
+                    devfileRegistryRoute:
+                      description: The devfile registry route custom settings.
+                      properties:
+                        annotations:
+                          additionalProperties:
+                            type: string
+                          description: Unstructured key value map stored with a resource
+                            that may be set by external tools to store and retrieve
+                            arbitrary metadata.
+                          type: object
+                        domain:
+                          description: 'Operator uses the domain to generate a hostname
+                            for a route. In a conjunction with labels it creates a
+                            route, which is served by a non-default Ingress controller.
+                            The generated host name will follow this pattern: ` + "`" + `<route-name>-<route-namespace>.<domain>` + "`" + `.'
+                          type: string
+                        labels:
+                          description: Comma separated list of labels that can be
+                            used to organize and categorize objects by scoping and
+                            selecting.
+                          type: string
+                      type: object
+                    devfileRegistryUrl:
+                      description: Deprecated in favor of ` + "`" + `externalDevfileRegistries` + "`" + `
+                        fields.
+                      type: string
+                    externalDevfileRegistries:
+                      description: External devfile registries, that serves sample,
+                        ready-to-use devfiles. Configure this in addition to a dedicated
+                        devfile registry (when ` + "`" + `externalDevfileRegistry` + "`" + ` is ` + "`" + `false` + "`" + `)
+                        or instead of it (when ` + "`" + `externalDevfileRegistry` + "`" + ` is ` + "`" + `true` + "`" + `)
+                      items:
+                        description: Settings for a configuration of the external
+                          devfile registries.
+                        properties:
+                          url:
+                            description: Public URL of the devfile registry.
+                            type: string
+                        type: object
+                      type: array
+                    externalDevfileRegistry:
+                      description: Instructs the Operator on whether to deploy a dedicated
+                        devfile registry server. By default, a dedicated devfile registry
+                        server is started. When ` + "`" + `externalDevfileRegistry` + "`" + ` is ` + "`" + `true` + "`" + `,
+                        no such dedicated server will be started by the Operator and
+                        configure at least one devfile registry with ` + "`" + `externalDevfileRegistries` + "`" + `
+                        field.
+                      type: boolean
+                    externalPluginRegistry:
+                      description: Instructs the Operator on whether to deploy a dedicated
+                        plugin registry server. By default, a dedicated plugin registry
+                        server is started. When ` + "`" + `externalPluginRegistry` + "`" + ` is ` + "`" + `true` + "`" + `,
+                        no such dedicated server will be started by the Operator and
+                        you will have to manually set the ` + "`" + `pluginRegistryUrl` + "`" + ` field.
+                      type: boolean
+                    gitSelfSignedCert:
+                      description: When enabled, the certificate from ` + "`" + `che-git-self-signed-cert` + "`" + `
+                        ConfigMap will be propagated to the Che components and provide
+                        particular configuration for Git.
+                      type: boolean
+                    nonProxyHosts:
+                      description: 'List of hosts that will be reached directly, bypassing
+                        the proxy. Specify wild card domain use the following form
+                        ` + "`" + `.<DOMAIN>` + "`" + ` and ` + "`" + `|` + "`" + ` as delimiter, for example: ` + "`" + `localhost|.my.host.com|123.42.12.32` + "`" + `
+                        Only use when configuring a proxy is required. Operator respects
+                        OpenShift cluster wide proxy configuration and no additional
+                        configuration is required, but defining ` + "`" + `nonProxyHosts` + "`" + ` in
+                        a custom resource leads to merging non proxy hosts lists from
+                        the cluster proxy configuration and ones defined in the custom
+                        resources. See the doc https://docs.openshift.com/container-platform/4.4/networking/enable-cluster-wide-proxy.html.
+                        See also the ` + "`" + `proxyURL` + "`" + ` fields.'
+                      type: string
+                    pluginRegistryCpuLimit:
+                      description: Overrides the CPU limit used in the plugin registry
+                        deployment. In cores. (500m = .5 cores). Default to 500m.
+                      type: string
+                    pluginRegistryCpuRequest:
+                      description: Overrides the CPU request used in the plugin registry
+                        deployment. In cores. (500m = .5 cores). Default to 100m.
+                      type: string
+                    pluginRegistryImage:
+                      description: Overrides the container image used in the plugin
+                        registry deployment. This includes the image tag. Omit it
+                        or leave it empty to use the default container image provided
+                        by the Operator.
+                      type: string
+                    pluginRegistryIngress:
+                      description: Plugin registry ingress custom settings.
+                      properties:
+                        annotations:
+                          additionalProperties:
+                            type: string
+                          description: Unstructured key value map stored with a resource
+                            that may be set by external tools to store and retrieve
+                            arbitrary metadata.
+                          type: object
+                        labels:
+                          description: Comma separated list of labels that can be
+                            used to organize and categorize objects by scoping and
+                            selecting.
+                          type: string
+                      type: object
+                    pluginRegistryMemoryLimit:
+                      description: Overrides the memory limit used in the plugin registry
+                        deployment. Defaults to 256Mi.
+                      type: string
+                    pluginRegistryMemoryRequest:
+                      description: Overrides the memory request used in the plugin
+                        registry deployment. Defaults to 16Mi.
+                      type: string
+                    pluginRegistryPullPolicy:
+                      description: Overrides the image pull policy used in the plugin
+                        registry deployment. Default value is ` + "`" + `Always` + "`" + ` for ` + "`" + `nightly` + "`" + `
+                        or ` + "`" + `latest` + "`" + ` images, and ` + "`" + `IfNotPresent` + "`" + ` in other cases.
+                      type: string
+                    pluginRegistryRoute:
+                      description: Plugin registry route custom settings.
+                      properties:
+                        annotations:
+                          additionalProperties:
+                            type: string
+                          description: Unstructured key value map stored with a resource
+                            that may be set by external tools to store and retrieve
+                            arbitrary metadata.
+                          type: object
+                        domain:
+                          description: 'Operator uses the domain to generate a hostname
+                            for a route. In a conjunction with labels it creates a
+                            route, which is served by a non-default Ingress controller.
+                            The generated host name will follow this pattern: ` + "`" + `<route-name>-<route-namespace>.<domain>` + "`" + `.'
+                          type: string
+                        labels:
+                          description: Comma separated list of labels that can be
+                            used to organize and categorize objects by scoping and
+                            selecting.
+                          type: string
+                      type: object
+                    pluginRegistryUrl:
+                      description: Public URL of the plugin registry that serves sample
+                        ready-to-use devfiles. Set this ONLY when a use of an external
+                        devfile registry is needed. See the ` + "`" + `externalPluginRegistry` + "`" + `
+                        field. By default, this will be automatically calculated by
+                        the Operator.
+                      type: string
+                    proxyPassword:
+                      description: Password of the proxy server. Only use when proxy
+                        configuration is required. See the ` + "`" + `proxyURL` + "`" + `, ` + "`" + `proxyUser` + "`" + `
+                        and ` + "`" + `proxySecret` + "`" + ` fields.
+                      type: string
+                    proxyPort:
+                      description: Port of the proxy server. Only use when configuring
+                        a proxy is required. See also the ` + "`" + `proxyURL` + "`" + ` and ` + "`" + `nonProxyHosts` + "`" + `
+                        fields.
+                      type: string
+                    proxySecret:
+                      description: The secret that contains ` + "`" + `user` + "`" + ` and ` + "`" + `password` + "`" + `
+                        for a proxy server. When the secret is defined, the ` + "`" + `proxyUser` + "`" + `
+                        and ` + "`" + `proxyPassword` + "`" + ` are ignored.
+                      type: string
+                    proxyURL:
+                      description: URL (protocol+host name) of the proxy server. This
+                        drives the appropriate changes in the ` + "`" + `JAVA_OPTS` + "`" + ` and ` + "`" + `https(s)_proxy` + "`" + `
+                        variables in the Che server and workspaces containers. Only
+                        use when configuring a proxy is required. Operator respects
+                        OpenShift cluster wide proxy configuration and no additional
+                        configuration is required, but defining ` + "`" + `proxyUrl` + "`" + ` in a custom
+                        resource leads to overrides the cluster proxy configuration
+                        with fields ` + "`" + `proxyUrl` + "`" + `, ` + "`" + `proxyPort` + "`" + `, ` + "`" + `proxyUser` + "`" + ` and ` + "`" + `proxyPassword` + "`" + `
+                        from the custom resource. See the doc https://docs.openshift.com/container-platform/4.4/networking/enable-cluster-wide-proxy.html.
+                        See also the ` + "`" + `proxyPort` + "`" + ` and ` + "`" + `nonProxyHosts` + "`" + ` fields.
+                      type: string
+                    proxyUser:
+                      description: User name of the proxy server. Only use when configuring
+                        a proxy is required. See also the ` + "`" + `proxyURL` + "`" + `, ` + "`" + `proxyPassword` + "`" + `
+                        and ` + "`" + `proxySecret` + "`" + ` fields.
+                      type: string
+                    selfSignedCert:
+                      description: Deprecated. The value of this flag is ignored.
+                        The Che Operator will automatically detect whether the router
+                        certificate is self-signed and propagate it to other components,
+                        such as the Che server.
+                      type: boolean
+                    serverCpuLimit:
+                      description: Overrides the CPU limit used in the Che server
+                        deployment In cores. (500m = .5 cores). Default to 1.
+                      type: string
+                    serverCpuRequest:
+                      description: Overrides the CPU request used in the Che server
+                        deployment In cores. (500m = .5 cores). Default to 100m.
+                      type: string
+                    serverExposureStrategy:
+                      description: Sets the server and workspaces exposure type. Possible
+                        values are ` + "`" + `multi-host` + "`" + `, ` + "`" + `single-host` + "`" + `, ` + "`" + `default-host` + "`" + `. Defaults
+                        to ` + "`" + `multi-host` + "`" + `, which creates a separate ingress, or OpenShift
+                        routes, for every required endpoint. ` + "`" + `single-host` + "`" + ` makes Che
+                        exposed on a single host name with workspaces exposed on subpaths.
+                        Read the docs to learn about the limitations of this approach.
+                        Also consult the ` + "`" + `singleHostExposureType` + "`" + ` property to further
+                        configure how the Operator and the Che server make that happen
+                        on Kubernetes. ` + "`" + `default-host` + "`" + ` exposes the Che server on the
+                        host of the cluster. Read the docs to learn about the limitations
+                        of this approach.
+                      type: string
+                    serverMemoryLimit:
+                      description: Overrides the memory limit used in the Che server
+                        deployment. Defaults to 1Gi.
+                      type: string
+                    serverMemoryRequest:
+                      description: Overrides the memory request used in the Che server
+                        deployment. Defaults to 512Mi.
+                      type: string
+                    serverTrustStoreConfigMapName:
+                      description: Name of the ConfigMap with public certificates
+                        to add to Java trust store of the Che server. This is often
+                        required when adding the OpenShift OAuth provider, which has
+                        HTTPS endpoint signed with self-signed cert. The Che server
+                        must be aware of its CA cert to be able to request it. This
+                        is disabled by default.
+                      type: string
+                    singleHostGatewayConfigMapLabels:
+                      additionalProperties:
+                        type: string
+                      description: The labels that need to be present in the ConfigMaps
+                        representing the gateway configuration.
+                      type: object
+                    singleHostGatewayConfigSidecarImage:
+                      description: The image used for the gateway sidecar that provides
+                        configuration to the gateway. Omit it or leave it empty to
+                        use the default container image provided by the Operator.
+                      type: string
+                    singleHostGatewayImage:
+                      description: The image used for the gateway in the single host
+                        mode. Omit it or leave it empty to use the default container
+                        image provided by the Operator.
+                      type: string
+                    tlsSupport:
+                      description: Deprecated. Instructs the Operator to deploy Che
+                        in TLS mode. This is enabled by default. Disabling TLS sometimes
+                        cause malfunction of some Che components.
+                      type: boolean
+                    useInternalClusterSVCNames:
+                      description: Use internal cluster SVC names to communicate between
+                        components to speed up the traffic and avoid proxy issues.
+                        The default value is ` + "`" + `true` + "`" + `.
+                      type: boolean
+                    workspaceNamespaceDefault:
+                      description: Defines Kubernetes default namespace in which user's
+                        workspaces are created for a case when a user does not override
+                        it. It's possible to use ` + "`" + `<username>` + "`" + `, ` + "`" + `<userid>` + "`" + ` and ` + "`" + `<workspaceid>` + "`" + `
+                        placeholders, such as che-workspace-<username>. In that case,
+                        a new namespace will be created for each user or workspace.
+                      type: string
+                  type: object
+                storage:
+                  description: Configuration settings related to the persistent storage
+                    used by the Che installation.
+                  properties:
+                    postgresPVCStorageClassName:
+                      description: Storage class for the Persistent Volume Claim dedicated
+                        to the PostgreSQL database. When omitted or left blank, a
+                        default storage class is used.
+                      type: string
+                    preCreateSubPaths:
+                      description: Instructs the Che server to start a special Pod
+                        to pre-create a sub-path in the Persistent Volumes. Defaults
+                        to ` + "`" + `false` + "`" + `, however it will need to enable it according to
+                        the configuration of your Kubernetes cluster.
+                      type: boolean
+                    pvcClaimSize:
+                      description: Size of the persistent volume claim for workspaces.
+                        Defaults to ` + "`" + `1Gi` + "`" + `.
+                      type: string
+                    pvcJobsImage:
+                      description: Overrides the container image used to create sub-paths
+                        in the Persistent Volumes. This includes the image tag. Omit
+                        it or leave it empty to use the default container image provided
+                        by the Operator. See also the ` + "`" + `preCreateSubPaths` + "`" + ` field.
+                      type: string
+                    pvcStrategy:
+                      description: Persistent volume claim strategy for the Che server.
+                        This Can be:` + "`" + `common` + "`" + ` (all workspaces PVCs in one volume),
+                        ` + "`" + `per-workspace` + "`" + ` (one PVC per workspace for all declared volumes)
+                        and ` + "`" + `unique` + "`" + ` (one PVC per declared volume). Defaults to ` + "`" + `common` + "`" + `.
+                      type: string
+                    workspacePVCStorageClassName:
+                      description: Storage class for the Persistent Volume Claims
+                        dedicated to the Che workspaces. When omitted or left blank,
+                        a default storage class is used.
+                      type: string
+                  type: object
+              type: object
+            status:
+              description: CheClusterStatus defines the observed state of Che installation
+              properties:
+                cheClusterRunning:
+                  description: Status of a Che installation. Can be ` + "`" + `Available` + "`" + `, ` + "`" + `Unavailable` + "`" + `,
+                    or ` + "`" + `Available, Rolling Update in Progress` + "`" + `.
+                  type: string
+                cheURL:
+                  description: Public URL to the Che server.
+                  type: string
+                cheVersion:
+                  description: Current installed Che version.
+                  type: string
+                dbProvisioned:
+                  description: Indicates that a PostgreSQL instance has been correctly
+                    provisioned or not.
+                  type: boolean
+                devfileRegistryURL:
+                  description: Public URL to the devfile registry.
+                  type: string
+                devworkspaceStatus:
+                  description: The status of the Devworkspace subsystem
+                  properties:
+                    gatewayHost:
+                      description: GatewayHost is the resolved host of the ingress/route.
+                        This is equal to the Host in the spec on Kubernetes but contains
+                        the actual host name of the route if Host is unspecified on
+                        OpenShift.
+                      type: string
+                    gatewayPhase:
+                      description: GatewayPhase specifies the phase in which the gateway
+                        deployment currently is. If the gateway is disabled, the phase
+                        is "Inactive".
+                      type: string
+                    message:
+                      description: Message contains further human-readable info for
+                        why the Che cluster is in the phase it currently is.
+                      type: string
+                    phase:
+                      description: Phase is the phase in which the Che cluster as
+                        a whole finds itself in.
+                      type: string
+                    reason:
+                      description: A brief CamelCase message indicating details about
+                        why the Che cluster is in this state.
+                      type: string
+                    workspaceBaseDomain:
+                      description: The resolved workspace base domain. This is either
+                        the copy of the explicitly defined property of the same name
+                        in the spec or, if it is undefined in the spec and we're running
+                        on OpenShift, the automatically resolved basedomain for routes.
+                      type: string
+                  type: object
+                gitHubOAuthProvisioned:
+                  description: Indicates whether an Identity Provider instance, Keycloak
+                    or RH-SSO, has been configured to integrate with the GitHub OAuth.
+                  type: boolean
+                helpLink:
+                  description: A URL that points to some URL where to find help related
+                    to the current Operator status.
+                  type: string
+                keycloakProvisioned:
+                  description: Indicates whether an Identity Provider instance, Keycloak
+                    or RH-SSO, has been provisioned with realm, client and user.
+                  type: boolean
+                keycloakURL:
+                  description: Public URL to the Identity Provider server, Keycloak
+                    or RH-SSO,.
+                  type: string
+                message:
+                  description: A human readable message indicating details about why
+                    the Pod is in this condition.
+                  type: string
+                openShiftOAuthUserCredentialsSecret:
+                  description: OpenShift OAuth secret in ` + "`" + `openshift-config` + "`" + ` namespace
+                    that contains user credentials for HTPasswd identity provider.
+                  type: string
+                openShiftoAuthProvisioned:
+                  description: Indicates whether an Identity Provider instance, Keycloak
+                    or RH-SSO, has been configured to integrate with the OpenShift
+                    OAuth.
+                  type: boolean
+                pluginRegistryURL:
+                  description: Public URL to the plugin registry.
+                  type: string
+                reason:
+                  description: A brief CamelCase message indicating details about
+                    why the Pod is in this state.
+                  type: string
+              type: object
+          type: object
+      served: true
+      storage: true
+      subresources:
+        status: {}
+`)
+
+func testExtendedTestdataOpmEclipseChe7322CheclustersOrgEclipseCheCrdYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataOpmEclipseChe7322CheclustersOrgEclipseCheCrdYaml, nil
+}
+
+func testExtendedTestdataOpmEclipseChe7322CheclustersOrgEclipseCheCrdYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataOpmEclipseChe7322CheclustersOrgEclipseCheCrdYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/opm/eclipse-che/7.32.2/checlusters.org.eclipse.che.crd.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataOpmEclipseChe7322EclipseCheV7322ClusterserviceversionYaml = []byte(`apiVersion: operators.coreos.com/v1alpha1
+kind: ClusterServiceVersion
+metadata:
+  annotations:
+    alm-examples: |-
+      [
+        {
+          "apiVersion": "org.eclipse.che/v1",
+          "kind": "CheCluster",
+          "metadata": {
+            "name": "eclipse-che"
+          },
+          "spec": {
+            "auth": {
+              "externalIdentityProvider": false,
+              "identityProviderAdminUserName": "",
+              "identityProviderClientId": "",
+              "identityProviderPassword": "",
+              "identityProviderRealm": "",
+              "identityProviderURL": "",
+              "initialOpenShiftOAuthUser": true,
+              "oAuthClientName": "",
+              "oAuthSecret": ""
+            },
+            "database": {
+              "chePostgresDb": "",
+              "chePostgresHostName": "",
+              "chePostgresPassword": "",
+              "chePostgresPort": "",
+              "chePostgresUser": "",
+              "externalDb": false
+            },
+            "devWorkspace": {
+              "enable": false
+            },
+            "metrics": {
+              "enable": true
+            },
+            "server": {
+              "allowUserDefinedWorkspaceNamespaces": false,
+              "cheClusterRoles": "",
+              "cheFlavor": "",
+              "cheWorkspaceClusterRole": "",
+              "gitSelfSignedCert": false,
+              "nonProxyHosts": "",
+              "proxyPassword": "",
+              "proxyPort": "",
+              "proxyURL": "",
+              "proxyUser": "",
+              "serverExposureStrategy": "",
+              "serverTrustStoreConfigMapName": "",
+              "tlsSupport": true,
+              "useInternalClusterSVCNames": true,
+              "workspaceNamespaceDefault": "<username>-che"
+            },
+            "storage": {
+              "postgresPVCStorageClassName": "",
+              "preCreateSubPaths": true,
+              "pvcClaimSize": "10Gi",
+              "pvcStrategy": "common",
+              "workspacePVCStorageClassName": ""
+            }
+          }
+        }
+      ]
+    capabilities: Seamless Upgrades
+    categories: Developer Tools, OpenShift Optional
+    certified: "false"
+    containerImage: quay.io/eclipse/che-operator@sha256:03c59c6f668194bcb08b61c3a4ed4e9e1effa66b5c01ac1c3dae5fe1363a5d58
+    createdAt: "2021-06-30T16:07:03Z"
+    description: A Kube-native development solution that delivers portable and collaborative
+      developer workspaces in OpenShift.
+    operatorframework.io/suggested-namespace: eclipse-che
+    repository: https://github.com/eclipse-che/che-operator
+    support: Eclipse Foundation
+  name: eclipse-che.v7.32.2
+  namespace: placeholder
+spec:
+  apiservicedefinitions: {}
+  customresourcedefinitions:
+    owned:
+      - description: The ` + "`" + `CheCluster` + "`" + ` custom resource allows defining and managing
+          a Che server installation
+        displayName: Eclipse Che Cluster
+        kind: CheCluster
+        name: checlusters.org.eclipse.che
+        statusDescriptors:
+          - description: Status of a Che installation. Can be ` + "`" + `Available` + "`" + `, ` + "`" + `Unavailable` + "`" + `,
+              or ` + "`" + `Available, Rolling Update in Progress` + "`" + `.
+            displayName: Status
+            path: cheClusterRunning
+            x-descriptors:
+              - urn:alm:descriptor:io.kubernetes.phase
+          - description: Public URL to the Che server.
+            displayName: Eclipse Che URL
+            path: cheURL
+            x-descriptors:
+              - urn:alm:descriptor:org.w3:link
+          - description: Current installed Che version.
+            displayName: 'displayName: Eclipse Che version'
+            path: cheVersion
+            x-descriptors:
+              - urn:alm:descriptor:org.w3:link
+          - description: Public URL to the devfile registry.
+            displayName: Devfile registry URL
+            path: devfileRegistryURL
+            x-descriptors:
+              - urn:alm:descriptor:org.w3:link
+          - description: A URL that points to some URL where to find help related
+              to the current Operator status.
+            displayName: Help link
+            path: helpLink
+            x-descriptors:
+              - urn:alm:descriptor:org.w3:link
+          - description: Public URL to the Identity Provider server, Keycloak or RH-SSO,.
+            displayName: Keycloak Admin Console URL
+            path: keycloakURL
+            x-descriptors:
+              - urn:alm:descriptor:org.w3:link
+          - description: A human readable message indicating details about why the
+              Pod is in this condition.
+            displayName: Message
+            path: message
+            x-descriptors:
+              - urn:alm:descriptor:text
+          - description: OpenShift OAuth secret in ` + "`" + `openshift-config` + "`" + ` namespace that
+              contains user credentials for HTPasswd identity provider.
+            displayName: OpenShift OAuth secret in ` + "`" + `openshift-config` + "`" + ` namespace that
+              contains user credentials for HTPasswd identity provider.
+            path: openShiftOAuthUserCredentialsSecret
+            x-descriptors:
+              - urn:alm:descriptor:text
+          - description: Public URL to the plugin registry.
+            displayName: Plugin registry URL
+            path: pluginRegistryURL
+            x-descriptors:
+              - urn:alm:descriptor:org.w3:link
+          - description: A brief CamelCase message indicating details about why the
+              Pod is in this state.
+            displayName: Reason
+            path: reason
+            x-descriptors:
+              - urn:alm:descriptor:io.kubernetes.phase:reason
+              - urn:alm:descriptor:text
+        version: v1
+  description: |
+    A collaborative Kubernetes-native development solution that delivers OpenShift workspaces and in-browser IDE for rapid cloud application development.
+    This operator installs PostgreSQL, Keycloak, and the Eclipse Che server, as well as configures all three services.
+
+    ## How to Install
+
+    Press the **Install** button, choose the upgrade strategy, and wait for the **Installed** Operator status.
+
+    When the operator is installed, create a new CR of Kind CheCluster (click the **Create New** button).
+    The CR spec contains all defaults (see below).
+
+    You can start using Eclipse Che when the CR status is set to **Available**, and you see a URL to Eclipse Che.
+
+    ## Defaults
+
+    By default, the operator deploys Eclipse Che with:
+
+    * Bundled PostgreSQL and Keycloak
+
+    * Per-Workspace PVC strategy
+
+    * Auto-generated passwords
+
+    * TLS mode (secure routes)
+
+    * Regular login extended with OpenShift OAuth authentication
+
+    ## Installation Options
+
+    Eclipse Che operator installation options include:
+
+    * Connection to external database and Keycloak
+
+    * Configuration of default passwords and object names
+
+    * PVC strategy (once shared PVC for all workspaces, PVC per workspace, or PVC per volume)
+
+    * Authentication options
+
+    ### External Database and Keycloak
+
+    To instruct the operator to skip deploying PostgreSQL and Keycloak and connect to an existing DB and Keycloak instead:
+
+    * set respective fields to ` + "`" + `true` + "`" + ` in a custom resource spec
+
+    * provide the operator with connection and authentication details:
+
+
+
+      ` + "`" + `externalDb: true` + "`" + `
+
+
+      ` + "`" + `chePostgresHostname: 'yourPostgresHost'` + "`" + `
+
+
+      ` + "`" + `chePostgresPort: '5432'` + "`" + `
+
+
+      ` + "`" + `chePostgresUser: 'myuser'` + "`" + `
+
+
+      ` + "`" + `chePostgresPassword: 'mypass'` + "`" + `
+
+
+      ` + "`" + `chePostgresDb: 'mydb'` + "`" + `
+
+
+      ` + "`" + `externalIdentityProvider: true` + "`" + `
+
+
+      ` + "`" + `identityProviderURL: 'https://my-keycloak.com'` + "`" + `
+
+
+      ` + "`" + `identityProviderRealm: 'myrealm'` + "`" + `
+
+
+      ` + "`" + `identityProviderClientId: 'myClient'` + "`" + `
+
+
+    #### Self-signed Certificates
+
+    Eclipse Che uses self-signed certificates by default.
+
+    You can also manually create a secret:
+
+
+
+    ` + "`" + `` + "`" + `` + "`" + `
+    oc create secret generic self-signed-certificate  --from-file=/path/to/certificate/ca.crt -n=$codeReadyNamespace
+    ` + "`" + `` + "`" + `` + "`" + `
+  displayName: Eclipse Che
+  icon:
+    - base64data: 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
+      mediatype: image/png
+  install:
+    spec:
+      clusterPermissions:
+        - rules:
+            - apiGroups:
+                - oauth.openshift.io
+              resources:
+                - oauthclients
+              verbs:
+                - create
+                - get
+                - delete
+                - list
+                - patch
+                - update
+                - watch
+            - apiGroups:
+                - config.openshift.io
+              resources:
+                - oauths
+              verbs:
+                - get
+                - list
+                - watch
+                - patch
+            - apiGroups:
+                - config.openshift.io
+              resources:
+                - infrastructures
+                - proxies
+              verbs:
+                - get
+                - list
+                - watch
+            - apiGroups:
+                - user.openshift.io
+              resources:
+                - users
+              verbs:
+                - list
+                - delete
+            - apiGroups:
+                - user.openshift.io
+              resources:
+                - identities
+              verbs:
+                - delete
+            - apiGroups:
+                - console.openshift.io
+              resources:
+                - consolelinks
+              verbs:
+                - get
+                - list
+                - create
+                - update
+                - patch
+                - delete
+            - apiGroups:
+                - rbac.authorization.k8s.io
+              resources:
+                - clusterrolebindings
+              verbs:
+                - list
+                - create
+                - watch
+                - update
+                - get
+                - delete
+            - apiGroups:
+                - rbac.authorization.k8s.io
+              resources:
+                - clusterroles
+              verbs:
+                - list
+                - create
+                - watch
+                - update
+                - get
+                - delete
+            - apiGroups:
+                - authorization.openshift.io
+              resources:
+                - roles
+              verbs:
+                - get
+                - create
+                - delete
+            - apiGroups:
+                - authorization.openshift.io
+              resources:
+                - rolebindings
+              verbs:
+                - get
+                - create
+                - update
+                - delete
+            - apiGroups:
+                - rbac.authorization.k8s.io
+              resources:
+                - roles
+              verbs:
+                - get
+                - create
+                - delete
+            - apiGroups:
+                - rbac.authorization.k8s.io
+              resources:
+                - rolebindings
+              verbs:
+                - get
+                - create
+                - update
+                - delete
+            - apiGroups:
+                - org.eclipse.che
+              resources:
+                - checlusters
+                - checlusters/finalizers
+              verbs:
+                - '*'
+            - apiGroups:
+                - project.openshift.io
+              resources:
+                - projectrequests
+              verbs:
+                - create
+                - update
+            - apiGroups:
+                - project.openshift.io
+              resources:
+                - projects
+              verbs:
+                - get
+                - list
+            - apiGroups:
+                - ""
+              resources:
+                - namespaces
+              verbs:
+                - get
+                - list
+                - create
+                - update
+            - apiGroups:
+                - ""
+              resources:
+                - serviceaccounts
+              verbs:
+                - get
+                - create
+                - watch
+            - apiGroups:
+                - ""
+              resources:
+                - pods/exec
+              verbs:
+                - create
+            - apiGroups:
+                - apps
+              resources:
+                - secrets
+              verbs:
+                - list
+            - apiGroups:
+                - ""
+              resources:
+                - secrets
+              verbs:
+                - list
+                - get
+                - create
+                - delete
+            - apiGroups:
+                - ""
+              resources:
+                - persistentvolumeclaims
+              verbs:
+                - create
+                - get
+                - list
+                - watch
+                - delete
+            - apiGroups:
+                - ""
+              resources:
+                - pods
+              verbs:
+                - get
+                - list
+                - create
+                - watch
+                - delete
+            - apiGroups:
+                - apps
+              resources:
+                - deployments
+              verbs:
+                - get
+                - list
+                - create
+                - patch
+                - watch
+                - delete
+            - apiGroups:
+                - ""
+              resources:
+                - services
+              verbs:
+                - list
+                - create
+                - delete
+            - apiGroups:
+                - ""
+              resources:
+                - configmaps
+              verbs:
+                - get
+                - create
+                - delete
+                - list
+            - apiGroups:
+                - route.openshift.io
+              resources:
+                - routes
+              verbs:
+                - list
+                - create
+                - delete
+            - apiGroups:
+                - ""
+              resources:
+                - events
+              verbs:
+                - watch
+            - apiGroups:
+                - apps
+              resources:
+                - replicasets
+              verbs:
+                - list
+                - get
+                - patch
+                - delete
+            - apiGroups:
+                - extensions
+              resources:
+                - ingresses
+              verbs:
+                - list
+                - create
+                - watch
+                - get
+                - delete
+            - apiGroups:
+                - apiextensions.k8s.io
+              resources:
+                - customresourcedefinitions
+              verbs:
+                - get
+                - create
+                - update
+            - apiGroups:
+                - operators.coreos.com
+              resources:
+                - subscriptions
+              verbs:
+                - get
+            - apiGroups:
+                - workspace.devfile.io
+              resources:
+                - devworkspaces
+                - devworkspacetemplates
+              verbs:
+                - create
+                - delete
+                - deletecollection
+                - patch
+                - update
+            - apiGroups:
+                - controller.devfile.io
+              resources:
+                - devworkspaceroutings
+                - components
+              verbs:
+                - create
+                - delete
+                - deletecollection
+                - patch
+                - update
+            - apiGroups:
+                - authentication.k8s.io
+              resources:
+                - tokenreviews
+              verbs:
+                - create
+            - apiGroups:
+                - authorization.k8s.io
+              resources:
+                - subjectaccessreviews
+              verbs:
+                - create
+            - apiGroups:
+                - ""
+              resources:
+                - configmaps
+                - persistentvolumeclaims
+                - pods
+                - secrets
+                - serviceaccounts
+              verbs:
+                - '*'
+            - apiGroups:
+                - ""
+              resources:
+                - namespaces
+              verbs:
+                - get
+                - list
+                - watch
+            - apiGroups:
+                - metrics.k8s.io
+              resources:
+                - pods
+                - nodes
+              verbs:
+                - get
+                - list
+                - watch
+            - apiGroups:
+                - batch
+                - ""
+              resources:
+                - pods/exec
+              verbs:
+                - create
+            - apiGroups:
+                - ""
+              resources:
+                - services
+              verbs:
+                - '*'
+            - apiGroups:
+                - admissionregistration.k8s.io
+              resources:
+                - mutatingwebhookconfigurations
+                - validatingwebhookconfigurations
+              verbs:
+                - create
+                - delete
+                - get
+                - list
+                - patch
+                - update
+                - watch
+            - apiGroups:
+                - apps
+              resourceNames:
+                - devworkspace-controller
+              resources:
+                - deployments/finalizers
+              verbs:
+                - update
+            - apiGroups:
+                - apps
+                - extensions
+              resources:
+                - deployments
+              verbs:
+                - get
+                - list
+                - watch
+            - apiGroups:
+                - apps
+                - extensions
+              resources:
+                - deployments
+                - replicasets
+              verbs:
+                - '*'
+            - apiGroups:
+                - apps
+                - extensions
+              resources:
+                - replicasets
+              verbs:
+                - get
+                - list
+                - watch
+            - apiGroups:
+                - batch
+              resources:
+                - jobs
+              verbs:
+                - create
+                - delete
+                - get
+                - list
+                - patch
+                - update
+                - watch
+            - apiGroups:
+                - controller.devfile.io
+              resources:
+                - '*'
+              verbs:
+                - '*'
+            - apiGroups:
+                - controller.devfile.io
+              resources:
+                - devworkspaceroutings
+              verbs:
+                - '*'
+            - apiGroups:
+                - controller.devfile.io
+              resources:
+                - devworkspaceroutings/status
+              verbs:
+                - get
+                - patch
+                - update
+            - apiGroups:
+                - extensions
+              resources:
+                - ingresses
+              verbs:
+                - '*'
+            - apiGroups:
+                - monitoring.coreos.com
+              resources:
+                - servicemonitors
+              verbs:
+                - create
+                - get
+            - apiGroups:
+                - oauth.openshift.io
+              resources:
+                - oauthclients
+              verbs:
+                - create
+                - delete
+                - deletecollection
+                - get
+                - list
+                - patch
+                - update
+                - watch
+            - apiGroups:
+                - rbac.authorization.k8s.io
+              resources:
+                - clusterrolebindings
+                - clusterroles
+                - rolebindings
+                - roles
+              verbs:
+                - create
+                - get
+                - list
+                - update
+                - watch
+            - apiGroups:
+                - route.openshift.io
+              resources:
+                - routes
+              verbs:
+                - '*'
+            - apiGroups:
+                - route.openshift.io
+              resources:
+                - routes/custom-host
+              verbs:
+                - create
+            - apiGroups:
+                - workspace.devfile.io
+              resources:
+                - '*'
+              verbs:
+                - '*'
+            - apiGroups:
+                - workspace.devfile.io
+              resources:
+                - devworkspaces
+                - devworkspacetemplates
+              verbs:
+                - get
+                - list
+                - watch
+            - apiGroups:
+                - controller.devfile.io
+              resources:
+                - devworkspaceroutings
+                - components
+              verbs:
+                - get
+                - list
+                - watch
+            - nonResourceURLs:
+                - /metrics
+              verbs:
+                - get
+            - apiGroups:
+                - ""
+              resources:
+                - configmaps
+              verbs:
+                - get
+                - list
+                - watch
+                - create
+                - update
+                - patch
+                - delete
+            - apiGroups:
+                - ""
+              resources:
+                - configmaps/status
+              verbs:
+                - get
+                - update
+                - patch
+            - apiGroups:
+                - ""
+              resources:
+                - events
+              verbs:
+                - create
+                - patch
+            - apiGroups:
+                - ""
+              resources:
+                - configmaps
+                - persistentvolumeclaims
+                - pods
+                - secrets
+                - serviceaccounts
+              verbs:
+                - '*'
+            - apiGroups:
+                - ""
+              resources:
+                - namespaces
+              verbs:
+                - get
+            - apiGroups:
+                - ""
+              resources:
+                - pods/exec
+              verbs:
+                - create
+            - apiGroups:
+                - ""
+              resources:
+                - services
+              verbs:
+                - '*'
+            - apiGroups:
+                - apps
+              resourceNames:
+                - devworkspace-che-operator
+              resources:
+                - deployments/finalizers
+              verbs:
+                - update
+            - apiGroups:
+                - apps
+                - extensions
+              resources:
+                - deployments
+              verbs:
+                - get
+                - list
+                - watch
+            - apiGroups:
+                - apps
+                - extensions
+              resources:
+                - deployments
+                - replicasets
+              verbs:
+                - '*'
+            - apiGroups:
+                - apps
+                - extensions
+              resources:
+                - replicasets
+              verbs:
+                - get
+                - list
+                - watch
+            - apiGroups:
+                - batch
+              resources:
+                - jobs
+              verbs:
+                - create
+                - delete
+                - get
+                - update
+                - watch
+            - apiGroups:
+                - che.eclipse.org
+              resources:
+                - '*'
+              verbs:
+                - '*'
+            - apiGroups:
+                - che.eclipse.org
+              resources:
+                - chemanagers
+              verbs:
+                - '*'
+            - apiGroups:
+                - che.eclipse.org
+              resources:
+                - chemanagers/status
+              verbs:
+                - get
+                - patch
+                - update
+            - apiGroups:
+                - che.eclipse.org
+              resources:
+                - chemanagers/finalizers
+              verbs:
+                - update
+            - apiGroups:
+                - controller.devfile.io
+              resources:
+                - devworkspaceroutings
+              verbs:
+                - '*'
+            - apiGroups:
+                - controller.devfile.io
+              resources:
+                - devworkspaceroutings/finalizers
+              verbs:
+                - update
+            - apiGroups:
+                - controller.devfile.io
+              resources:
+                - devworkspaceroutings/status
+              verbs:
+                - get
+                - patch
+                - update
+            - apiGroups:
+                - ""
+              resources:
+                - configmap
+              verbs:
+                - create
+                - delete
+                - get
+                - list
+                - patch
+                - update
+                - watch
+            - apiGroups:
+                - extensions
+              resources:
+                - ingresses
+              verbs:
+                - '*'
+            - apiGroups:
+                - monitoring.coreos.com
+              resources:
+                - servicemonitors
+              verbs:
+                - create
+                - get
+            - apiGroups:
+                - oauth.openshift.io
+              resources:
+                - oauthclients
+              verbs:
+                - create
+                - delete
+                - deletecollection
+                - get
+                - list
+                - patch
+                - update
+                - watch
+            - apiGroups:
+                - rbac.authorization.k8s.io
+              resources:
+                - clusterrolebindings
+                - clusterroles
+                - rolebindings
+                - roles
+              verbs:
+                - create
+                - get
+                - list
+                - update
+                - watch
+            - apiGroups:
+                - route.openshift.io
+              resources:
+                - routes
+              verbs:
+                - '*'
+            - apiGroups:
+                - route.openshift.io
+              resources:
+                - routes/custom-host
+              verbs:
+                - create
+          serviceAccountName: che-operator
+      deployments:
+        - name: che-operator
+          spec:
+            replicas: 1
+            selector:
+              matchLabels:
+                app: che-operator
+            strategy:
+              type: RollingUpdate
+            template:
+              metadata:
+                labels:
+                  app: che-operator
+                  app.kubernetes.io/component: che-operator
+                  app.kubernetes.io/instance: che
+                  app.kubernetes.io/managed-by: olm
+                  app.kubernetes.io/name: che
+              spec:
+                containers:
+                  - command:
+                      - /usr/local/bin/che-operator
+                    env:
+                      - name: WATCH_NAMESPACE
+                        valueFrom:
+                          fieldRef:
+                            fieldPath: metadata.annotations['olm.targetNamespaces']
+                      - name: POD_NAME
+                        valueFrom:
+                          fieldRef:
+                            fieldPath: metadata.name
+                      - name: OPERATOR_NAME
+                        value: che-operator
+                      - name: CHE_VERSION
+                        value: 7.32.2
+                      - name: RELATED_IMAGE_che_server
+                        value: quay.io/eclipse/che-server@sha256:1582a12aa8c895fd7c5c78dba8d71fc49db7970ec1e79dab9b236e20f47087b7
+                      - name: RELATED_IMAGE_dashboard
+                        value: quay.io/eclipse/che-dashboard@sha256:28fe113359d64456eace0d40a573a4a7aa277243b9ae54b76f5ac6bc3dfe082f
+                      - name: RELATED_IMAGE_plugin_registry
+                        value: quay.io/eclipse/che-plugin-registry@sha256:f97201e45c362a48a043f7513dd420ed46be428fa7ec063f1b89971fddac6e43
+                      - name: RELATED_IMAGE_devfile_registry
+                        value: quay.io/eclipse/che-devfile-registry@sha256:60919b12fcdcfe94865644064079097c1fca209e74763934fae1e9432a6e8451
+                      - name: RELATED_IMAGE_pvc_jobs
+                        value: registry.access.redhat.com/ubi8-minimal@sha256:fa95fe99ae271240513a91c17fd2869936286eae5c18eded1149a1005f8db383
+                      - name: RELATED_IMAGE_postgres
+                        value: quay.io/eclipse/che--centos--postgresql-96-centos7@sha256:b681d78125361519180a6ac05242c296f8906c11eab7e207b5ca9a89b6344392
+                      - name: RELATED_IMAGE_keycloak
+                        value: quay.io/eclipse/che-keycloak@sha256:fe88b8a6c59b3819258294a290e5d306c3b342895bbb8b149654a2d003f2c211
+                      - name: RELATED_IMAGE_che_workspace_plugin_broker_metadata
+                        value: quay.io/eclipse/che-plugin-metadata-broker@sha256:df1ea2eadb28dbc97761adf4ea984af5ca941025a67b39c6abe373816a84bba9
+                      - name: RELATED_IMAGE_che_workspace_plugin_broker_artifacts
+                        value: quay.io/eclipse/che-plugin-artifacts-broker@sha256:4891a6e19be9eae59372f4b31144653f9bd1284e0301ecfe896a099ca6a12b58
+                      - name: RELATED_IMAGE_che_server_secure_exposer_jwt_proxy_image
+                        value: quay.io/eclipse/che-jwtproxy@sha256:881d1c91e7f5840314f25104ef5c0acee59ed484a5f9ef39daf3008725ea1033
+                      - name: RELATED_IMAGE_single_host_gateway
+                        value: quay.io/eclipse/che--traefik@sha256:6e6d4dc5a19afe06778ca092cdbbb98e31cb9f9c313edafa23f81a0e6ddf8a23
+                      - name: RELATED_IMAGE_single_host_gateway_config_sidecar
+                        value: quay.io/che-incubator/configbump@sha256:175ff2ba1bd74429de192c0a9facf39da5699c6da9f151bd461b3dc8624dd532
+                      - name: RELATED_IMAGE_devworkspace_che_operator
+                        value: quay.io/che-incubator/devworkspace-che-operator@sha256:697343dd56a9dad2f9a5e4215d7fa820dcfb59cc15cb53a5649b154d3bd8e23a
+                      - name: RELATED_IMAGE_devworkspace_controller
+                        value: quay.io/devfile/devworkspace-controller@sha256:077d48c0f5b849a66161610c9ead556b321f7eb5a3a896a2ee58b0db1387ba6f
+                      - name: CHE_FLAVOR
+                        value: che
+                      - name: CONSOLE_LINK_NAME
+                        value: che
+                      - name: CONSOLE_LINK_DISPLAY_NAME
+                        value: Eclipse Che
+                      - name: CONSOLE_LINK_SECTION
+                        value: Red Hat Applications
+                      - name: CONSOLE_LINK_IMAGE
+                        value: /dashboard/assets/branding/loader.svg
+                      - name: CHE_IDENTITY_SECRET
+                        value: che-identity-secret
+                      - name: CHE_IDENTITY_POSTGRES_SECRET
+                        value: che-identity-postgres-secret
+                      - name: CHE_POSTGRES_SECRET
+                        value: che-postgres-secret
+                      - name: CHE_SERVER_TRUST_STORE_CONFIGMAP_NAME
+                        value: ca-certs
+                      - name: RELATED_IMAGE_che_plugin_sidecar_plugin_registry_image_IBZWQYJSGU3DUNDCMNSTEZJTHFTGKZJWMI4WKNDBHBRDIZJYGY4DCMZYGBRWKMRUGYZDMNZUGU4TOYJUHBRDQMLDGEZTCY3CMJTDANJVMRSDKZBQMMZQ____
+                        value: quay.io/eclipse/che-plugin-sidecar@sha256:4bce2e39fee6b9e4a8b4e8681380ce2462674597a48b81c131cbbf055dd5d0c3
+                      - name: RELATED_IMAGE_che_plugin_sidecar_plugin_registry_image_IBZWQYJSGU3DUN3DMY3GMMBQMQZWMMTEMFTDANBWG42TMMJYMM2DAODFGA4GMMBRHFTDENLCHEYWKYZQHBSDENZZGA4TIZTEMRRDAMLGGU2TSNJQGJRA____
+                        value: quay.io/eclipse/che-plugin-sidecar@sha256:7cf6f00d3f2daf04675618c408e08f019f25b91ec08d279094fddb01f559502b
+                      - name: RELATED_IMAGE_che_plugin_sidecar_plugin_registry_image_IBZWQYJSGU3DUMTFGJRDGNLGMIZTGYZXHA3TGOBTGY4DIMRXMIYGEMJUME2DMNJZMI3GEMBTGEYTGZBYHA3TINZSMM2DINLBMU3DCNLEHE3TMMLEGM4Q____
+                        value: quay.io/eclipse/che-plugin-sidecar@sha256:2e2b35fb33c78738368427b0b14a4659b6b03113d887472c445ae615d9761d39
+                      - name: RELATED_IMAGE_che_plugin_sidecar_plugin_registry_image_IBZWQYJSGU3DUYLFGUYTENDFGMYTSODBMM3DSNZXMNQTSNZTMFQWMNBYHA2WCMJUMU4DAMDEGY2DOYZZGZQTEM3EGE2WCMTCGZRGCYTCMU4GMZLGGJQQ____
+                        value: quay.io/eclipse/che-plugin-sidecar@sha256:ae5124e3198ac6977ca973aaf4885a14e800d647c96a23d15a2b6babbe8fef2a
+                      - name: RELATED_IMAGE_che_plugin_sidecar_plugin_registry_image_IBZWQYJSGU3DUMTFGQ4WMYLGMI4WCYJWGUYTSZTDGYZTAMJZME3TEYJUGUZDMMRSGJRDMOJQGVSWIMBRMRRTIOBUMMZWKOLGGUYTGMLBMUYDAYRVGQ3A____
+                        value: quay.io/eclipse/che-plugin-sidecar@sha256:2e49fafb9aa6519fc63019a72a4526222b6905ed01dc484c3e9f5131ae00b546
+                      - name: RELATED_IMAGE_che_plugin_sidecar_plugin_registry_image_IBZWQYJSGU3DUNZZGE4WIOJWGVQTON3GGFSWGOJWHFSTANZTMEYWGYZYGY3DQNTGHEZGKOJZMZRTKM3BGBRDAYZYMQZGKYRRGNQWKYJWGFRTMMZUGY3Q____
+                        value: quay.io/eclipse/che-plugin-sidecar@sha256:7919d965a77f1ec969e073a1cc86686f92e99fc53a0b0c8d2eb13aea61c63467
+                      - name: RELATED_IMAGE_che_plugin_sidecar_plugin_registry_image_IBZWQYJSGU3DUZBVGY2WEOJYMYYTCMDFMZSTIMRUGZTGKMLGGI2WKZJWGJSDONDEG4YGMNDGHE4TSZJUGY3TSZJYMY3TAOBVMYYTQYRRG4YTCZRXGZSA____
+                        value: quay.io/eclipse/che-plugin-sidecar@sha256:d565b98f110efe4246fe1f25ee62d74d70f4f999e4679e8f7085f18b1711f76d
+                      - name: RELATED_IMAGE_che_plugin_sidecar_plugin_registry_image_IBZWQYJSGU3DUOBWGE2WCMRZGQZTKYRQGI2TMYTGMZQWMOBVMFRDEY3GHEZTEN3CGA2TSZRRGRSWCYJWGYYTIMZUGZSGMZBVGFSTGYJWMRSDSZRQGQYQ____
+                        value: quay.io/eclipse/che-plugin-sidecar@sha256:8615a29435b0256bffaf85ab2cf9327b059f14eaa6614346dfd51e3a6dd9f041
+                      - name: RELATED_IMAGE_che_plugin_sidecar_plugin_registry_image_IBZWQYJSGU3DUNJVG4YDGYLFGVTGCZLCMVSGKZJVGZTGIY3FGM4DOOLGMEZDEOBRMNRTENRQGQ4DQZBYME2DQODGMY3TOZLEGNSDIMDGG43TQZDEMY3Q____
+                        value: quay.io/eclipse/che-plugin-sidecar@sha256:55703ae5faebedee56fdce3879fa2281cc260488d8a488ff77ed3d40f778ddf7
+                      - name: RELATED_IMAGE_che_plugin_sidecar_plugin_registry_image_IBZWQYJSGU3DUNRZHFQTQZTEME3DOYTBMJRWGMLGMFSWIY3GGJSTIYLCGIZGMNTDMYYGGZRWMFSDAODDGQYWGMRZGM4TQM3CHAYTMOJRMM2TSYLFGRSA____
+                        value: quay.io/eclipse/che-plugin-sidecar@sha256:699a8fda67babcc1faedcf2e4ab22f6cf0cf6ad08c41c293983b81691c59ae4d
+                      - name: RELATED_IMAGE_che_plugin_sidecar_plugin_registry_image_IBZWQYJSGU3DUOJXGRSGIMDBGVQWEN3FGA3TKZBXMQZTINDBMYZGKODFGJQTEZRYGBQTANRZMU4GCNLBGRRTSZTGMMZGCNJXMU2DEMLCGYZGCYJRG5QQ____
+                        value: quay.io/eclipse/che-plugin-sidecar@sha256:974dd0a5ab7e075d7d344af2e8e2a2f80a069e8a5a4c9ffc2a57e421b62aa17a
+                      - name: RELATED_IMAGE_che_plugin_sidecar_plugin_registry_image_IBZWQYJSGU3DUOBSHE3WMYRRG4ZTEZBYG5SDKNTBGBQWCNDDGY4TCMBVMU3WEY3GGRRDKMBQMU2DAYTCGE3DINBWMQ3DEOBWMMYDOYRYHA2GKYRXGNSA____
+                        value: quay.io/eclipse/che-plugin-sidecar@sha256:8297fb1732d87d56a0aa4c69105e7bcf4b500e40bb16446d6286c07b884eb73d
+                      - name: RELATED_IMAGE_che_plugin_sidecar_plugin_registry_image_IBZWQYJSGU3DUMBZGVRTENBQGU2TAMZTMUZDCOLEGVQTSZRWMZSTSOBTGVRDOOLDGVSDGNBRGZTDAZDGMJRDEMRYMQZDSNJXGEZWKOBRMQZDOYZWGYYQ____
+                        value: quay.io/eclipse/che-plugin-sidecar@sha256:095c24055033e219d5a9f6fe9835b79c5d3416f0dfbb228d295713e81d27c661
+                      - name: RELATED_IMAGE_che_plugin_sidecar_plugin_registry_image_IBZWQYJSGU3DUNJWMU3TSNRQHA2TOOBYGZQTANLGMM2DKOLFMQ3GKNZTMEYGCMZYGZTDCNBVMEZDINZUMMZDEODDGJRDOY3DMI4TOYJRMQYTQYRUMRTA____
+                        value: quay.io/eclipse/che-plugin-sidecar@sha256:56e7960857886a05fc459ed6e73a0a386f145a2474c228c2b7ccb97a1d18b4df
+                      - name: RELATED_IMAGE_che_plugin_sidecar_plugin_registry_image_IBZWQYJSGU3DUZDCHA3GGOJSGQYTQYRZMY2DAYRSGY2TIYRYMZRTINZTGA3TGNJWHFSTAZDDHBQTAMLEG5QWIYZTGFRTSOJSGVSTKNBWHFSDEYRRGE2A____
+                        value: quay.io/eclipse/che-plugin-sidecar@sha256:db86c92418b9f40b2654b8fc473073569e0dc8a01d7adc31c9925e5469d2b114
+                      - name: RELATED_IMAGE_mta_vscode_extension_plugin_registry_image_IBZWQYJSGU3DUNBVGEZWIMZYGIZDAYZWGVRGINJUHE2DIOBWME4WIMBRG44TEODFHBTDCZRVMUYWCMRVMU3TMYZUGFSDGYRRGI4TOM3FMYYDQODCMI4A____
+                        value: quay.io/windupeng/mta-vscode-extension@sha256:4513d38220c65bd5494486a9d017928e8f1f5e1a25e76c41d3b12973ef088bb8
+                      - name: RELATED_IMAGE_che_plugin_sidecar_plugin_registry_image_IBZWQYJSGU3DUNJQGJQWEY3GGY2TSOLGMRQWIYLCMVTDEOBZMRRWCZDDGVRTGMTDME3DEMTGMEYDEYRXGNQTOMTCGEYTGY3BGFSTKZJVMIYTOOJTG42Q____
+                        value: quay.io/eclipse/che-plugin-sidecar@sha256:502abcf6599fdadabef289dcadc5c32ca622fa02b73a72b113ca1e5e5b179375
+                      - name: RELATED_IMAGE_che_plugin_sidecar_plugin_registry_image_IBZWQYJSGU3DUZRTHE4GKM3GMZSDKMRQGBRTKNTCMY2TMYJWMY3WMOLFHBSGENDBMEZWMNRTHFQTMMJSGU4DKMDGGE3DSNBRGQ2TEOBSGYYGIY3FHBQQ____
+                        value: quay.io/eclipse/che-plugin-sidecar@sha256:f398e3ffd5200c56bf56a6f7f9e8db4aa3f639a6125850f169414528260dce8a
+                      - name: RELATED_IMAGE_che_plugin_sidecar_plugin_registry_image_IBZWQYJSGU3DUZJTG42GKYZTGY3TINBXMFTGKYJZMIYTEZRVME4GMNRWHEYGCNTGHE4TGNJSGY2DAODBGM3TGMLGGUZDEYJVGNSTKZBQMJTGGMRYG5TA____
+                        value: quay.io/eclipse/che-plugin-sidecar@sha256:e374ec367447afea9b12f5a8f6690a6f993526408a3731f522a53e5d0bfc287f
+                      - name: RELATED_IMAGE_che_plugin_sidecar_plugin_registry_image_IBZWQYJSGU3DUMTDMI2GMNZQMVSGEY3EMFRDGYRSG44WIYLFGUZWENTBG42TGZBWGNTGKZJQGNRGGYLFGNSDEYJTHA2WKMRUMYZDKZJWHE2WGMBTMRTA____
+                        value: quay.io/eclipse/che-plugin-sidecar@sha256:2cb4f70edbcdab3b279dae53b6a753d63fee03bcae3d2a385e24f25e695c03df
+                      - name: RELATED_IMAGE_che_plugin_sidecar_plugin_registry_image_IBZWQYJSGU3DUNDGMRRDANBQGI3GGYTFMRSGEZTFGUZTCOBUMFTGGZBWMZRTKY3CGYYTGMTBGIZGEZJVHAYTAYRRGNSDGODBGEZDKYLGMQYDQMZSGIYQ____
+                        value: quay.io/eclipse/che-plugin-sidecar@sha256:4fdb04026cbeddbfe53184afcd6fc5cb6132a22be5810b13d38a125afd083221
+                      - name: RELATED_IMAGE_che_plugin_sidecar_plugin_registry_image_IBZWQYJSGU3DUNBZGFRTMMTBGNQWGNZXGVSDKNBSGZSDOMTBGU4WCYZRHBRGIZBVGBTDKZRVMQ3DCZBQG5TGEZTCGM2GKMDDMQ3WMZLEGNSDIZDBGIYQ____
+                        value: quay.io/eclipse/che-plugin-sidecar@sha256:491c62a3ac775d5426d72a59ac18bdd50f5f5d61d07fbfb34e0cd7fed3d4da21
+                      - name: RELATED_IMAGE_che_plugin_sidecar_plugin_registry_image_IBZWQYJSGU3DUNJZG5QTGMDDHFRTGZTDG5SGEYTGMI4WKMBYMIYWEYRSGE3TSZBYMVRDANRSMFSDCNBYGQ4DAZTGGMZDIOBZMI2GMMBRMVRTMNZVMY2A____
+                        value: quay.io/eclipse/che-plugin-sidecar@sha256:597a30c9c3fc7dbbfb9e08b1bb2179d8eb062ad148480ff32489b4f01ec675f4
+                      - name: RELATED_IMAGE_che_plugin_sidecar_plugin_registry_image_IBZWQYJSGU3DUNTEGBRTINBQME3WIYZWGQ4DQMJWMZRWINBYHA2WEOLDMM4DKZRQMVRDAZRTHEYTMNJZMJRDSZTDHBQTSMJSGMYDONLCMVQTONJRGY2Q____
+                        value: quay.io/eclipse/che-plugin-sidecar@sha256:6d0c440a7dc648816fcd4885b9cc85f0eb0f391659bb9fc8a9123075bea75165
+                      - name: RELATED_IMAGE_che_plugin_sidecar_plugin_registry_image_IBZWQYJSGU3DUOLDGU3WINTGMM4DCYJZHE3WEMDEGZSTSYLDMMZTEZLCGUZGGOLEGIYGIMRWGUZTANBYMRRGCZJQMVSTSYJZME3GKODEMNSWKYZZMQZA____
+                        value: quay.io/eclipse/che-plugin-sidecar@sha256:9c57d6fc81a997b0d6e9acc32eb52c9d20d2653048dbae0ee9a9a6e8dceec9d2
+                      - name: RELATED_IMAGE_che_plugin_sidecar_plugin_registry_image_IBZWQYJSGU3DUYTCGQYDIZTGMFQTCMRVGY2WEZLCGEZGENDDMQ4DCNRQMNTGCM3GMYZWKZRTMJSTIMRQGQZTAYJWGU3DEZRRMZSTIOBWGM4WGYTGGFTA____
+                        value: quay.io/eclipse/che-plugin-sidecar@sha256:bb404ffaa12565beb12b4cd8160cfa3ff3ef3be420430a6562f1fe48639cbf1f
+                      - name: RELATED_IMAGE_che_machine_exec_plugin_registry_image_NZSXQ5A_
+                        value: quay.io/eclipse/che-machine-exec@sha256:1b20c764e5a3fc8482a080ec36c2a5797a25dee2437e8509a3a47d6485989fda
+                      - name: RELATED_IMAGE_che_theia_plugin_registry_image_IBZWQYJSGU3DUMJVGBQTSM3DGEZTMMTDMJRTMOBTG5STMYLFMVRDMNBUME4TCYJXGBQTKZTCGYZTAMZRMUZDGNJVGJTDAMLEHEZTMYJSMIZTCMTFMQ3Q____
+                        value: quay.io/eclipse/che-theia@sha256:150a93c1362cbc6837e6aeeb644a91a70a5fb63031e23552f01d936a2b312ed7
+                      - name: RELATED_IMAGE_che_machine_exec_plugin_registry_image_IBZWQYJSGU3DUYJVGQ2TCMZWHFRWINRXMMYTIZDDMRSTIMLBMJSTEYJXMFSDQNBZHFRTCMDEGFTDKMZUGNQTKNZZMQ3TMMBRHBRWMNTDMJSWIN3DMY4Q____
+                        value: quay.io/eclipse/che-machine-exec@sha256:a5451369cd67c14dcde41abe2a7ad8499c10d1f5343a579d76018cf6cbed7cf9
+                      - name: RELATED_IMAGE_che_theia_endpoint_runtime_binary_plugin_registry_image_IBZWQYJSGU3DUZLEGBRGGMTBGNRDCYJZMNSWMNRXMQ4DIYRQGUZGKZBSGQ4GMZBUHBTGIYZZGNRDGOBUMY4DAYLGHAYDINBWMQ2TENTCMU2GKNBXGUYQ____
+                        value: quay.io/eclipse/che-theia-endpoint-runtime-binary@sha256:ed0bc2a3b1a9cef67d84b052ed248fd48fdc93b384f80af80446d526be4e4751
+                      - name: RELATED_IMAGE_che_editor_jupyter_plugin_registry_image_IBZWQYJSGU3DUOBTGQZTSYLFHFSWIY3BMEZWCOJXGUZTMNZUGIZTCNLBG44TCMTGHEZWKNBZHFTDIOJYGQ3WIYJQHE2GGNBYGAYDGMLFMFSTIYTBGQ3Q____
+                        value: index.docker.io/ksmster/che-editor-jupyter@sha256:83439ae9edcaa3a97536742315a7912f93e499f49847da094c480031eae4ba47
+                      - name: RELATED_IMAGE_dirigible_openshift_plugin_registry_image_IBZWQYJSGU3DUMZTGY2TMMZVMQYWKMBUGAZTMOJXMRSWCMBWG42GEYTCMRRTONBZMM2GEZJSMRRDEOJYGE4GCOJTMI4GKMLFGUZWGM3DGUYTINBRGEZQ____
+                        value: index.docker.io/dirigiblelabs/dirigible-openshift@sha256:3365635d1e0403697dea0674bbbdc749c4be2db29818a93b8e1e53c3c5144113
+                      - name: RELATED_IMAGE_che_editor_intellij_community_plugin_registry_image_IBZWQYJSGU3DUMRZGAZDKZDCHA2TSMRWHBTDKZDDMYZDCYTBGZSWENDFGI4DINZUGRRDKM3DHEZGINTEGIZTKMJUMU2TMNLBGAZDCMJWGA3GMNRYGYZQ____
+                        value: quay.io/che-incubator/che-editor-intellij-community@sha256:29025db859268f5dcf21ba6eb4e284744b53c92d6d23514e565a0211606f6863
+                      - name: RELATED_IMAGE_eclipse_broadway_plugin_registry_image_IBZWQYJSGU3DUNJXMM4DEY3EHAYDMYJVGZTDMOLBME4DMNRTMY3DQNBQGVSDANZXHBRDMMRYMEZDSYJWGRTGEMJWHA4DCYRRGFRWKOLGGQ4DIZDEME3Q____
+                        value: index.docker.io/wsskeleton/eclipse-broadway@sha256:57c82cd806a56f69aa8663f68405d0778b628a29a64fb16881b11ce9f484dda7
+                      - name: RELATED_IMAGE_code_server_plugin_registry_image_IBZWQYJSGU3DUZLGGA3TEOBRGAYDIOJQHFRGEMTDGIZDQNBSGJSGMMTFHE4WCNLCME2WKNBVGBTGGZJXGU2DMYRYMZQTCOBWHA2TEZRSGNRGMNRXGUYQ____
+                        value: index.docker.io/codercom/code-server@sha256:ef07281004909bb2c228422df2e99a5ba5e450fce7546b8fa186852f23bf6751
+                      - name: RELATED_IMAGE_che_buildah_base_plugin_registry_image_IBZWQYJSGU3DUNBRG4ZDAM3EHA3DEOLFMRSDSMTGGE4DOYLGMQZWKYTCGNSDQZDDGI4DGMZYMQZTIOBQHFSWENZVMZTGGMTFGA4GCNBQGBTDQZBVGZRA____
+                        value: quay.io/eclipse/che-buildah-base@sha256:417203d8629edd92f187afd3ebb3d8dc28338d34809eb75ffc2e08a400f8d56b
+                      - name: RELATED_IMAGE_che_sidecar_workspace_data_sync_plugin_registry_image_IBZWQYJSGU3DUOBYMQYDCMRVHAZTOZBVME2TOY3CGI2GEYRTMVSDQMLFGZQTQZRUGEYTSYJVGA2DGYRXHEZDMYTEGJRGIMBRG4YTAOBVGRRTINDGGEYA____
+                        value: quay.io/eclipse/che-sidecar-workspace-data-sync@sha256:88d0125837d5a57cb24bb3ed81e6a8f4119a5043b7926bd2bd01710854c44f10
+                      - name: RELATED_IMAGE_che_buildkit_base_plugin_registry_image_IBZWQYJSGU3DUZLGMZQTSODEMQZGGZLEGMYGENJSGBRDENLBMZTGMMLBHA4DAZBRGIYWGZRWMIZWMODBMI2DEYJVGE2DSZLBMRQTINTCME3TSM3DMU4Q____
+                        value: quay.io/eclipse/che-buildkit-base@sha256:effa98dd2ced30b520b25afff1a880d121cf6b3f8ab42a5149eada46ba793ce9
+                      - name: RELATED_IMAGE_che__centos__mongodb_36_centos7_devfile_registry_image_NRQXIZLTOQWWCOJRGVSGEN3CMVRWCOBXGE4TQZTDMQ3TQNRQGA4DMOJYHFTGKODBGMZDOYJRME2GMNRVGA4DAMRVMI3DIYLCGI4GMY3DG42DEM3CGI______
+                        value: quay.io/eclipse/che--centos--mongodb-36-centos7@sha256:a915db7beca87198fcd7860086989fe8a327a1a4f6508025b64ab28fcc7423b2
+                      - name: RELATED_IMAGE_che__centos__mysql_57_centos7_devfile_registry_image_NRQXIZLTOQWWKMBYMVSTIZBUGNRDOMZVGY3DANZWHA2WENRZMJSGKNRTGM2WKMRXMNTDEMDDGAZDAZRTGQ2WENTDGZRTKOJUGAYDCOBTHA4DENZWGQ______
+                        value: quay.io/eclipse/che--centos--mysql-57-centos7@sha256:e08ee4d43b7356607685b69bde6335e27cf20c020f345b6c6c59400183882764
+                      - name: RELATED_IMAGE_che_cpp_rhel7_devfile_registry_image_G4XDGMROGI______
+                        value: quay.io/eclipse/che-cpp-rhel7@sha256:8182090bbe5f2f0d3d1469dde5e9a6f62d9ba22d297702cc26b88fcf671409b2
+                      - name: RELATED_IMAGE_che_dotnet_2_2_devfile_registry_image_G4XDGMROGI______
+                        value: quay.io/eclipse/che-dotnet-2.2@sha256:61ddb07608a1761b119a3a6388a821ab59db94961857e8df141003d1bd618e4e
+                      - name: RELATED_IMAGE_che_dotnet_3_1_devfile_registry_image_G4XDGMROGI______
+                        value: quay.io/eclipse/che-dotnet-3.1@sha256:a06b17b761c880bc5cf5fef65028303ff684c9b517593e8c71896cdf78eb4fae
+                      - name: RELATED_IMAGE_che_golang_1_14_devfile_registry_image_G4XDGMROGI______
+                        value: quay.io/eclipse/che-golang-1.14@sha256:3d6039fde76a7e09cbc6f4825ed1ad7c2d960eb054b05f7220ecfe55aa75b1e6
+                      - name: RELATED_IMAGE_che_java11_gradle_devfile_registry_image_G4XDGMROGI______
+                        value: quay.io/eclipse/che-java11-gradle@sha256:909215b418f8ff976ed6529cbeef4681e2b663e2bd6f59cc87664e1362404457
+                      - name: RELATED_IMAGE_che_java11_maven_devfile_registry_image_G4XDGMROGI______
+                        value: quay.io/eclipse/che-java11-maven@sha256:e4be1573efd37a8b8da4b34d23dbbe82ae29932de83d7c530a46bc2d958a726c
+                      - name: RELATED_IMAGE_che_java8_maven_devfile_registry_image_G4XDGMROGI______
+                        value: quay.io/eclipse/che-java8-maven@sha256:bcd1d1af6cec19fae9372e984b1664283eca4517ce7a4dec923e4c49c8b7a5d8
+                      - name: RELATED_IMAGE_che_nodejs10_community_devfile_registry_image_G4XDGMROGI______
+                        value: quay.io/eclipse/che-nodejs10-community@sha256:67e6995885568a8d7b183a007ad8baf80a5f06f77d2dc3ae7b6f4fc14d416e58
+                      - name: RELATED_IMAGE_che_nodejs10_ubi_devfile_registry_image_G4XDGMROGI______
+                        value: quay.io/eclipse/che-nodejs10-ubi@sha256:f39fdc871651a9db381477f7671d0fcabf81ff6199cc00b15922b931ba587fa2
+                      - name: RELATED_IMAGE_che_nodejs12_community_devfile_registry_image_G4XDGMROGI______
+                        value: quay.io/eclipse/che-nodejs12-community@sha256:7556742b08597331b0c0b90bff17c7c09f38dcc80b7e3b4dfc7b7e1f91c0308d
+                      - name: RELATED_IMAGE_che_nodejs8_centos_devfile_registry_image_G4XDGMROGI______
+                        value: quay.io/eclipse/che-nodejs8-centos@sha256:70c46725e7868985f0a2b01b99e6d1f00e17831f2149da87d8e41f20d5172224
+                      - name: RELATED_IMAGE_che_php_7_devfile_registry_image_G4XDGMROGI______
+                        value: quay.io/eclipse/che-php-7@sha256:9b4ab7a151283006a983ff20f204d4739e3a9fef7b81bbab7205dbcaac4cab04
+                      - name: RELATED_IMAGE_che_python_3_8_devfile_registry_image_G4XDGMROGI______
+                        value: quay.io/eclipse/che-python-3.8@sha256:d08702c35e09ffe8b87cfd22f312c08ecaae9d1bcdd288ba94bd0d740e9777b7
+                      - name: RELATED_IMAGE_che_quarkus_devfile_registry_image_G4XDGMROGI______
+                        value: quay.io/eclipse/che-quarkus@sha256:ec8c9a17c33c754aac5dd8de80196ca2e9d8161d67f5081a8b54e0a8c3eba7e8
+                      - name: RELATED_IMAGE_che_rust_1_39_devfile_registry_image_G4XDGMROGI______
+                        value: quay.io/eclipse/che-rust-1.39@sha256:75ed72fe11bf73a0f19cd7f8b8e65ae452fb0516ebdec104af4cc7ab595cb565
+                      - name: RELATED_IMAGE_ubi8_minimal_devfile_registry_image_HAXDG___
+                        value: registry.access.redhat.com/ubi8-minimal@sha256:2f6b88c037c0503da7704bccd3fc73cb76324101af39ad28f16460e7bce98324
+                      - name: RELATED_IMAGE_ubi_minimal_devfile_registry_image_
+                        value: registry.access.redhat.com/ubi8/ubi-minimal@sha256:b6b0c30bb747dfacee216e5ae2ad02adb18920d8f744c04f29354278e19df2a9
+                    image: quay.io/eclipse/che-operator@sha256:03c59c6f668194bcb08b61c3a4ed4e9e1effa66b5c01ac1c3dae5fe1363a5d58
+                    imagePullPolicy: IfNotPresent
+                    livenessProbe:
+                      failureThreshold: 10
+                      httpGet:
+                        path: /healthz
+                        port: 6789
+                      initialDelaySeconds: 15
+                      periodSeconds: 10
+                      successThreshold: 1
+                      timeoutSeconds: 5
+                    name: che-operator
+                    ports:
+                      - containerPort: 60000
+                        name: metrics
+                    readinessProbe:
+                      exec:
+                        command:
+                          - stat
+                          - /tmp/operator-sdk-ready
+                      failureThreshold: 10
+                      initialDelaySeconds: 5
+                      periodSeconds: 10
+                      successThreshold: 1
+                      timeoutSeconds: 5
+                    resources:
+                      limits:
+                        cpu: 500m
+                        memory: 256Mi
+                      requests:
+                        cpu: 100m
+                        memory: 64Mi
+                    securityContext:
+                      allowPrivilegeEscalation: false
+                      capabilities:
+                        drop:
+                          - ALL
+                      privileged: false
+                      readOnlyRootFilesystem: false
+                      runAsNonRoot: true
+                hostIPC: false
+                hostNetwork: false
+                hostPID: false
+                restartPolicy: Always
+                serviceAccountName: che-operator
+                terminationGracePeriodSeconds: 20
+      permissions:
+        - rules:
+            - apiGroups:
+                - extensions
+              resources:
+                - ingresses
+              verbs:
+                - '*'
+            - apiGroups:
+                - batch
+              resources:
+                - jobs
+              verbs:
+                - '*'
+            - apiGroups:
+                - route.openshift.io
+              resources:
+                - routes
+                - routes/custom-host
+              verbs:
+                - '*'
+            - apiGroups:
+                - rbac.authorization.k8s.io
+              resources:
+                - roles
+                - rolebindings
+              verbs:
+                - '*'
+            - apiGroups:
+                - rbac.authorization.k8s.io
+              resources:
+                - clusterroles
+                - clusterrolebindings
+              verbs:
+                - '*'
+            - apiGroups:
+                - ""
+              resources:
+                - pods
+                - services
+                - serviceaccounts
+                - endpoints
+                - persistentvolumeclaims
+                - events
+                - configmaps
+                - secrets
+                - pods/exec
+                - pods/log
+              verbs:
+                - '*'
+            - apiGroups:
+                - ""
+              resources:
+                - namespaces
+              verbs:
+                - get
+            - apiGroups:
+                - apps
+              resources:
+                - deployments
+              verbs:
+                - '*'
+            - apiGroups:
+                - monitoring.coreos.com
+              resources:
+                - servicemonitors
+              verbs:
+                - get
+                - create
+            - apiGroups:
+                - org.eclipse.che
+              resources:
+                - checlusters
+                - checlusters/status
+                - checlusters/finalizers
+              verbs:
+                - '*'
+            - apiGroups:
+                - metrics.k8s.io
+              resources:
+                - pods
+                - nodes
+              verbs:
+                - get
+                - list
+                - watch
+            - apiGroups:
+                - che.eclipse.org
+              resources:
+                - kubernetesimagepullers
+              verbs:
+                - '*'
+            - apiGroups:
+                - operators.coreos.com
+              resources:
+                - subscriptions
+                - clusterserviceversions
+                - operatorgroups
+              verbs:
+                - '*'
+            - apiGroups:
+                - packages.operators.coreos.com
+              resources:
+                - packagemanifests
+              verbs:
+                - get
+                - list
+          serviceAccountName: che-operator
+    strategy: deployment
+  installModes:
+    - supported: true
+      type: OwnNamespace
+    - supported: true
+      type: SingleNamespace
+    - supported: true
+      type: MultiNamespace
+    - supported: false
+      type: AllNamespaces
+  keywords:
+    - workspaces
+    - devtools
+    - developer
+    - ide
+    - java
+  links:
+    - name: Product Page
+      url: http://www.eclipse.org/che
+    - name: Documentation
+      url: https://www.eclipse.org/che/docs
+    - name: Operator GitHub Repo
+      url: https://github.com/eclipse-che/che-operator
+  maintainers:
+    - email: dfestal@redhat.com
+      name: David Festal
+  maturity: stable
+  provider:
+    name: Eclipse Foundation
+  replaces: eclipse-che.v7.32.1
+  version: 7.32.2
+  relatedImages:
+    - name: che-operator-7.32.2
+      image: quay.io/eclipse/che-operator@sha256:03c59c6f668194bcb08b61c3a4ed4e9e1effa66b5c01ac1c3dae5fe1363a5d58
+      # tag: quay.io/eclipse/che-operator:7.32.2
+    - name: configbump-0.1.4
+      image: quay.io/che-incubator/configbump@sha256:175ff2ba1bd74429de192c0a9facf39da5699c6da9f151bd461b3dc8624dd532
+      # tag: quay.io/che-incubator/configbump:0.1.4
+    - name: devworkspace-che-operator-ci
+      image: quay.io/che-incubator/devworkspace-che-operator@sha256:697343dd56a9dad2f9a5e4215d7fa820dcfb59cc15cb53a5649b154d3bd8e23a
+      # tag: quay.io/che-incubator/devworkspace-che-operator:ci
+    - name: devworkspace-controller-next
+      image: quay.io/devfile/devworkspace-controller@sha256:077d48c0f5b849a66161610c9ead556b321f7eb5a3a896a2ee58b0db1387ba6f
+      # tag: quay.io/devfile/devworkspace-controller:next
+    - name: che--centos--postgresql-96-centos7-9.6-b681d78125361519180a6ac05242c296f8906c11eab7e207b5ca9a89b6344392
+      image: quay.io/eclipse/che--centos--postgresql-96-centos7@sha256:b681d78125361519180a6ac05242c296f8906c11eab7e207b5ca9a89b6344392
+      # tag: quay.io/eclipse/che--centos--postgresql-96-centos7:9.6-b681d78125361519180a6ac05242c296f8906c11eab7e207b5ca9a89b6344392
+    - name: che--traefik-v2.3.2-6e6d4dc5a19afe06778ca092cdbbb98e31cb9f9c313edafa23f81a0e6ddf8a23
+      image: quay.io/eclipse/che--traefik@sha256:6e6d4dc5a19afe06778ca092cdbbb98e31cb9f9c313edafa23f81a0e6ddf8a23
+      # tag: quay.io/eclipse/che--traefik:v2.3.2-6e6d4dc5a19afe06778ca092cdbbb98e31cb9f9c313edafa23f81a0e6ddf8a23
+    - name: che-dashboard-7.32.2
+      image: quay.io/eclipse/che-dashboard@sha256:28fe113359d64456eace0d40a573a4a7aa277243b9ae54b76f5ac6bc3dfe082f
+      # tag: quay.io/eclipse/che-dashboard:7.32.2
+    - name: che-devfile-registry-7.32.2
+      image: quay.io/eclipse/che-devfile-registry@sha256:60919b12fcdcfe94865644064079097c1fca209e74763934fae1e9432a6e8451
+      # tag: quay.io/eclipse/che-devfile-registry:7.32.2
+    - name: che-jwtproxy-0.10.0
+      image: quay.io/eclipse/che-jwtproxy@sha256:881d1c91e7f5840314f25104ef5c0acee59ed484a5f9ef39daf3008725ea1033
+      # tag: quay.io/eclipse/che-jwtproxy:0.10.0
+    - name: che-keycloak-7.32.2
+      image: quay.io/eclipse/che-keycloak@sha256:fe88b8a6c59b3819258294a290e5d306c3b342895bbb8b149654a2d003f2c211
+      # tag: quay.io/eclipse/che-keycloak:7.32.2
+    - name: che-plugin-artifacts-broker-v3.4.0
+      image: quay.io/eclipse/che-plugin-artifacts-broker@sha256:4891a6e19be9eae59372f4b31144653f9bd1284e0301ecfe896a099ca6a12b58
+      # tag: quay.io/eclipse/che-plugin-artifacts-broker:v3.4.0
+    - name: che-plugin-metadata-broker-v3.4.0
+      image: quay.io/eclipse/che-plugin-metadata-broker@sha256:df1ea2eadb28dbc97761adf4ea984af5ca941025a67b39c6abe373816a84bba9
+      # tag: quay.io/eclipse/che-plugin-metadata-broker:v3.4.0
+    - name: che-plugin-registry-7.32.2
+      image: quay.io/eclipse/che-plugin-registry@sha256:f97201e45c362a48a043f7513dd420ed46be428fa7ec063f1b89971fddac6e43
+      # tag: quay.io/eclipse/che-plugin-registry:7.32.2
+    - name: che-server-7.32.2
+      image: quay.io/eclipse/che-server@sha256:1582a12aa8c895fd7c5c78dba8d71fc49db7970ec1e79dab9b236e20f47087b7
+      # tag: quay.io/eclipse/che-server:7.32.2
+    - name: ubi8-minimal-8.4-200.1622548483
+      image: registry.access.redhat.com/ubi8-minimal@sha256:fa95fe99ae271240513a91c17fd2869936286eae5c18eded1149a1005f8db383
+      # tag: registry.access.redhat.com/ubi8-minimal:8.4-200.1622548483
+    - name: che-plugin-sidecar-@sha256:4bce2e39fee6b9e4a8b4e8681380ce2462674597a48b81c131cbbf055dd5d0c3
+      image: quay.io/eclipse/che-plugin-sidecar@sha256:4bce2e39fee6b9e4a8b4e8681380ce2462674597a48b81c131cbbf055dd5d0c3
+      # tag: quay.io/eclipse/che-plugin-sidecar@sha256:4bce2e39fee6b9e4a8b4e8681380ce2462674597a48b81c131cbbf055dd5d0c3
+    - name: che-plugin-sidecar-@sha256:7cf6f00d3f2daf04675618c408e08f019f25b91ec08d279094fddb01f559502b
+      image: quay.io/eclipse/che-plugin-sidecar@sha256:7cf6f00d3f2daf04675618c408e08f019f25b91ec08d279094fddb01f559502b
+      # tag: quay.io/eclipse/che-plugin-sidecar@sha256:7cf6f00d3f2daf04675618c408e08f019f25b91ec08d279094fddb01f559502b
+    - name: che-plugin-sidecar-@sha256:2e2b35fb33c78738368427b0b14a4659b6b03113d887472c445ae615d9761d39
+      image: quay.io/eclipse/che-plugin-sidecar@sha256:2e2b35fb33c78738368427b0b14a4659b6b03113d887472c445ae615d9761d39
+      # tag: quay.io/eclipse/che-plugin-sidecar@sha256:2e2b35fb33c78738368427b0b14a4659b6b03113d887472c445ae615d9761d39
+    - name: che-plugin-sidecar-@sha256:ae5124e3198ac6977ca973aaf4885a14e800d647c96a23d15a2b6babbe8fef2a
+      image: quay.io/eclipse/che-plugin-sidecar@sha256:ae5124e3198ac6977ca973aaf4885a14e800d647c96a23d15a2b6babbe8fef2a
+      # tag: quay.io/eclipse/che-plugin-sidecar@sha256:ae5124e3198ac6977ca973aaf4885a14e800d647c96a23d15a2b6babbe8fef2a
+    - name: che-plugin-sidecar-@sha256:2e49fafb9aa6519fc63019a72a4526222b6905ed01dc484c3e9f5131ae00b546
+      image: quay.io/eclipse/che-plugin-sidecar@sha256:2e49fafb9aa6519fc63019a72a4526222b6905ed01dc484c3e9f5131ae00b546
+      # tag: quay.io/eclipse/che-plugin-sidecar@sha256:2e49fafb9aa6519fc63019a72a4526222b6905ed01dc484c3e9f5131ae00b546
+    - name: che-plugin-sidecar-@sha256:7919d965a77f1ec969e073a1cc86686f92e99fc53a0b0c8d2eb13aea61c63467
+      image: quay.io/eclipse/che-plugin-sidecar@sha256:7919d965a77f1ec969e073a1cc86686f92e99fc53a0b0c8d2eb13aea61c63467
+      # tag: quay.io/eclipse/che-plugin-sidecar@sha256:7919d965a77f1ec969e073a1cc86686f92e99fc53a0b0c8d2eb13aea61c63467
+    - name: che-plugin-sidecar-@sha256:d565b98f110efe4246fe1f25ee62d74d70f4f999e4679e8f7085f18b1711f76d
+      image: quay.io/eclipse/che-plugin-sidecar@sha256:d565b98f110efe4246fe1f25ee62d74d70f4f999e4679e8f7085f18b1711f76d
+      # tag: quay.io/eclipse/che-plugin-sidecar@sha256:d565b98f110efe4246fe1f25ee62d74d70f4f999e4679e8f7085f18b1711f76d
+    - name: che-plugin-sidecar-@sha256:8615a29435b0256bffaf85ab2cf9327b059f14eaa6614346dfd51e3a6dd9f041
+      image: quay.io/eclipse/che-plugin-sidecar@sha256:8615a29435b0256bffaf85ab2cf9327b059f14eaa6614346dfd51e3a6dd9f041
+      # tag: quay.io/eclipse/che-plugin-sidecar@sha256:8615a29435b0256bffaf85ab2cf9327b059f14eaa6614346dfd51e3a6dd9f041
+    - name: che-plugin-sidecar-@sha256:55703ae5faebedee56fdce3879fa2281cc260488d8a488ff77ed3d40f778ddf7
+      image: quay.io/eclipse/che-plugin-sidecar@sha256:55703ae5faebedee56fdce3879fa2281cc260488d8a488ff77ed3d40f778ddf7
+      # tag: quay.io/eclipse/che-plugin-sidecar@sha256:55703ae5faebedee56fdce3879fa2281cc260488d8a488ff77ed3d40f778ddf7
+    - name: che-plugin-sidecar-@sha256:699a8fda67babcc1faedcf2e4ab22f6cf0cf6ad08c41c293983b81691c59ae4d
+      image: quay.io/eclipse/che-plugin-sidecar@sha256:699a8fda67babcc1faedcf2e4ab22f6cf0cf6ad08c41c293983b81691c59ae4d
+      # tag: quay.io/eclipse/che-plugin-sidecar@sha256:699a8fda67babcc1faedcf2e4ab22f6cf0cf6ad08c41c293983b81691c59ae4d
+    - name: che-plugin-sidecar-@sha256:974dd0a5ab7e075d7d344af2e8e2a2f80a069e8a5a4c9ffc2a57e421b62aa17a
+      image: quay.io/eclipse/che-plugin-sidecar@sha256:974dd0a5ab7e075d7d344af2e8e2a2f80a069e8a5a4c9ffc2a57e421b62aa17a
+      # tag: quay.io/eclipse/che-plugin-sidecar@sha256:974dd0a5ab7e075d7d344af2e8e2a2f80a069e8a5a4c9ffc2a57e421b62aa17a
+    - name: che-plugin-sidecar-@sha256:8297fb1732d87d56a0aa4c69105e7bcf4b500e40bb16446d6286c07b884eb73d
+      image: quay.io/eclipse/che-plugin-sidecar@sha256:8297fb1732d87d56a0aa4c69105e7bcf4b500e40bb16446d6286c07b884eb73d
+      # tag: quay.io/eclipse/che-plugin-sidecar@sha256:8297fb1732d87d56a0aa4c69105e7bcf4b500e40bb16446d6286c07b884eb73d
+    - name: che-plugin-sidecar-@sha256:095c24055033e219d5a9f6fe9835b79c5d3416f0dfbb228d295713e81d27c661
+      image: quay.io/eclipse/che-plugin-sidecar@sha256:095c24055033e219d5a9f6fe9835b79c5d3416f0dfbb228d295713e81d27c661
+      # tag: quay.io/eclipse/che-plugin-sidecar@sha256:095c24055033e219d5a9f6fe9835b79c5d3416f0dfbb228d295713e81d27c661
+    - name: che-plugin-sidecar-@sha256:56e7960857886a05fc459ed6e73a0a386f145a2474c228c2b7ccb97a1d18b4df
+      image: quay.io/eclipse/che-plugin-sidecar@sha256:56e7960857886a05fc459ed6e73a0a386f145a2474c228c2b7ccb97a1d18b4df
+      # tag: quay.io/eclipse/che-plugin-sidecar@sha256:56e7960857886a05fc459ed6e73a0a386f145a2474c228c2b7ccb97a1d18b4df
+    - name: che-plugin-sidecar-@sha256:db86c92418b9f40b2654b8fc473073569e0dc8a01d7adc31c9925e5469d2b114
+      image: quay.io/eclipse/che-plugin-sidecar@sha256:db86c92418b9f40b2654b8fc473073569e0dc8a01d7adc31c9925e5469d2b114
+      # tag: quay.io/eclipse/che-plugin-sidecar@sha256:db86c92418b9f40b2654b8fc473073569e0dc8a01d7adc31c9925e5469d2b114
+    - name: mta-vscode-extension-@sha256:4513d38220c65bd5494486a9d017928e8f1f5e1a25e76c41d3b12973ef088bb8
+      image: quay.io/windupeng/mta-vscode-extension@sha256:4513d38220c65bd5494486a9d017928e8f1f5e1a25e76c41d3b12973ef088bb8
+      # tag: quay.io/windupeng/mta-vscode-extension@sha256:4513d38220c65bd5494486a9d017928e8f1f5e1a25e76c41d3b12973ef088bb8
+    - name: che-plugin-sidecar-@sha256:502abcf6599fdadabef289dcadc5c32ca622fa02b73a72b113ca1e5e5b179375
+      image: quay.io/eclipse/che-plugin-sidecar@sha256:502abcf6599fdadabef289dcadc5c32ca622fa02b73a72b113ca1e5e5b179375
+      # tag: quay.io/eclipse/che-plugin-sidecar@sha256:502abcf6599fdadabef289dcadc5c32ca622fa02b73a72b113ca1e5e5b179375
+    - name: che-plugin-sidecar-@sha256:f398e3ffd5200c56bf56a6f7f9e8db4aa3f639a6125850f169414528260dce8a
+      image: quay.io/eclipse/che-plugin-sidecar@sha256:f398e3ffd5200c56bf56a6f7f9e8db4aa3f639a6125850f169414528260dce8a
+      # tag: quay.io/eclipse/che-plugin-sidecar@sha256:f398e3ffd5200c56bf56a6f7f9e8db4aa3f639a6125850f169414528260dce8a
+    - name: che-plugin-sidecar-@sha256:e374ec367447afea9b12f5a8f6690a6f993526408a3731f522a53e5d0bfc287f
+      image: quay.io/eclipse/che-plugin-sidecar@sha256:e374ec367447afea9b12f5a8f6690a6f993526408a3731f522a53e5d0bfc287f
+      # tag: quay.io/eclipse/che-plugin-sidecar@sha256:e374ec367447afea9b12f5a8f6690a6f993526408a3731f522a53e5d0bfc287f
+    - name: che-plugin-sidecar-@sha256:2cb4f70edbcdab3b279dae53b6a753d63fee03bcae3d2a385e24f25e695c03df
+      image: quay.io/eclipse/che-plugin-sidecar@sha256:2cb4f70edbcdab3b279dae53b6a753d63fee03bcae3d2a385e24f25e695c03df
+      # tag: quay.io/eclipse/che-plugin-sidecar@sha256:2cb4f70edbcdab3b279dae53b6a753d63fee03bcae3d2a385e24f25e695c03df
+    - name: che-plugin-sidecar-@sha256:4fdb04026cbeddbfe53184afcd6fc5cb6132a22be5810b13d38a125afd083221
+      image: quay.io/eclipse/che-plugin-sidecar@sha256:4fdb04026cbeddbfe53184afcd6fc5cb6132a22be5810b13d38a125afd083221
+      # tag: quay.io/eclipse/che-plugin-sidecar@sha256:4fdb04026cbeddbfe53184afcd6fc5cb6132a22be5810b13d38a125afd083221
+    - name: che-plugin-sidecar-@sha256:491c62a3ac775d5426d72a59ac18bdd50f5f5d61d07fbfb34e0cd7fed3d4da21
+      image: quay.io/eclipse/che-plugin-sidecar@sha256:491c62a3ac775d5426d72a59ac18bdd50f5f5d61d07fbfb34e0cd7fed3d4da21
+      # tag: quay.io/eclipse/che-plugin-sidecar@sha256:491c62a3ac775d5426d72a59ac18bdd50f5f5d61d07fbfb34e0cd7fed3d4da21
+    - name: che-plugin-sidecar-@sha256:597a30c9c3fc7dbbfb9e08b1bb2179d8eb062ad148480ff32489b4f01ec675f4
+      image: quay.io/eclipse/che-plugin-sidecar@sha256:597a30c9c3fc7dbbfb9e08b1bb2179d8eb062ad148480ff32489b4f01ec675f4
+      # tag: quay.io/eclipse/che-plugin-sidecar@sha256:597a30c9c3fc7dbbfb9e08b1bb2179d8eb062ad148480ff32489b4f01ec675f4
+    - name: che-plugin-sidecar-@sha256:6d0c440a7dc648816fcd4885b9cc85f0eb0f391659bb9fc8a9123075bea75165
+      image: quay.io/eclipse/che-plugin-sidecar@sha256:6d0c440a7dc648816fcd4885b9cc85f0eb0f391659bb9fc8a9123075bea75165
+      # tag: quay.io/eclipse/che-plugin-sidecar@sha256:6d0c440a7dc648816fcd4885b9cc85f0eb0f391659bb9fc8a9123075bea75165
+    - name: che-plugin-sidecar-@sha256:9c57d6fc81a997b0d6e9acc32eb52c9d20d2653048dbae0ee9a9a6e8dceec9d2
+      image: quay.io/eclipse/che-plugin-sidecar@sha256:9c57d6fc81a997b0d6e9acc32eb52c9d20d2653048dbae0ee9a9a6e8dceec9d2
+      # tag: quay.io/eclipse/che-plugin-sidecar@sha256:9c57d6fc81a997b0d6e9acc32eb52c9d20d2653048dbae0ee9a9a6e8dceec9d2
+    - name: che-plugin-sidecar-@sha256:bb404ffaa12565beb12b4cd8160cfa3ff3ef3be420430a6562f1fe48639cbf1f
+      image: quay.io/eclipse/che-plugin-sidecar@sha256:bb404ffaa12565beb12b4cd8160cfa3ff3ef3be420430a6562f1fe48639cbf1f
+      # tag: quay.io/eclipse/che-plugin-sidecar@sha256:bb404ffaa12565beb12b4cd8160cfa3ff3ef3be420430a6562f1fe48639cbf1f
+    - name: che-machine-exec-next
+      image: quay.io/eclipse/che-machine-exec@sha256:1b20c764e5a3fc8482a080ec36c2a5797a25dee2437e8509a3a47d6485989fda
+      # tag: quay.io/eclipse/che-machine-exec:next
+    - name: che-theia-@sha256:150a93c1362cbc6837e6aeeb644a91a70a5fb63031e23552f01d936a2b312ed7
+      image: quay.io/eclipse/che-theia@sha256:150a93c1362cbc6837e6aeeb644a91a70a5fb63031e23552f01d936a2b312ed7
+      # tag: quay.io/eclipse/che-theia@sha256:150a93c1362cbc6837e6aeeb644a91a70a5fb63031e23552f01d936a2b312ed7
+    - name: che-machine-exec-@sha256:a5451369cd67c14dcde41abe2a7ad8499c10d1f5343a579d76018cf6cbed7cf9
+      image: quay.io/eclipse/che-machine-exec@sha256:a5451369cd67c14dcde41abe2a7ad8499c10d1f5343a579d76018cf6cbed7cf9
+      # tag: quay.io/eclipse/che-machine-exec@sha256:a5451369cd67c14dcde41abe2a7ad8499c10d1f5343a579d76018cf6cbed7cf9
+    - name: che-theia-endpoint-runtime-binary-@sha256:ed0bc2a3b1a9cef67d84b052ed248fd48fdc93b384f80af80446d526be4e4751
+      image: quay.io/eclipse/che-theia-endpoint-runtime-binary@sha256:ed0bc2a3b1a9cef67d84b052ed248fd48fdc93b384f80af80446d526be4e4751
+      # tag: quay.io/eclipse/che-theia-endpoint-runtime-binary@sha256:ed0bc2a3b1a9cef67d84b052ed248fd48fdc93b384f80af80446d526be4e4751
+    - name: che-editor-jupyter-@sha256:83439ae9edcaa3a97536742315a7912f93e499f49847da094c480031eae4ba47
+      image: index.docker.io/ksmster/che-editor-jupyter@sha256:83439ae9edcaa3a97536742315a7912f93e499f49847da094c480031eae4ba47
+      # tag: index.docker.io/ksmster/che-editor-jupyter@sha256:83439ae9edcaa3a97536742315a7912f93e499f49847da094c480031eae4ba47
+    - name: dirigible-openshift-@sha256:3365635d1e0403697dea0674bbbdc749c4be2db29818a93b8e1e53c3c5144113
+      image: index.docker.io/dirigiblelabs/dirigible-openshift@sha256:3365635d1e0403697dea0674bbbdc749c4be2db29818a93b8e1e53c3c5144113
+      # tag: index.docker.io/dirigiblelabs/dirigible-openshift@sha256:3365635d1e0403697dea0674bbbdc749c4be2db29818a93b8e1e53c3c5144113
+    - name: che-editor-intellij-community-@sha256:29025db859268f5dcf21ba6eb4e284744b53c92d6d23514e565a0211606f6863
+      image: quay.io/che-incubator/che-editor-intellij-community@sha256:29025db859268f5dcf21ba6eb4e284744b53c92d6d23514e565a0211606f6863
+      # tag: quay.io/che-incubator/che-editor-intellij-community@sha256:29025db859268f5dcf21ba6eb4e284744b53c92d6d23514e565a0211606f6863
+    - name: eclipse-broadway-@sha256:57c82cd806a56f69aa8663f68405d0778b628a29a64fb16881b11ce9f484dda7
+      image: index.docker.io/wsskeleton/eclipse-broadway@sha256:57c82cd806a56f69aa8663f68405d0778b628a29a64fb16881b11ce9f484dda7
+      # tag: index.docker.io/wsskeleton/eclipse-broadway@sha256:57c82cd806a56f69aa8663f68405d0778b628a29a64fb16881b11ce9f484dda7
+    - name: code-server-@sha256:ef07281004909bb2c228422df2e99a5ba5e450fce7546b8fa186852f23bf6751
+      image: index.docker.io/codercom/code-server@sha256:ef07281004909bb2c228422df2e99a5ba5e450fce7546b8fa186852f23bf6751
+      # tag: index.docker.io/codercom/code-server@sha256:ef07281004909bb2c228422df2e99a5ba5e450fce7546b8fa186852f23bf6751
+    - name: che-buildah-base-@sha256:417203d8629edd92f187afd3ebb3d8dc28338d34809eb75ffc2e08a400f8d56b
+      image: quay.io/eclipse/che-buildah-base@sha256:417203d8629edd92f187afd3ebb3d8dc28338d34809eb75ffc2e08a400f8d56b
+      # tag: quay.io/eclipse/che-buildah-base@sha256:417203d8629edd92f187afd3ebb3d8dc28338d34809eb75ffc2e08a400f8d56b
+    - name: che-sidecar-workspace-data-sync-@sha256:88d0125837d5a57cb24bb3ed81e6a8f4119a5043b7926bd2bd01710854c44f10
+      image: quay.io/eclipse/che-sidecar-workspace-data-sync@sha256:88d0125837d5a57cb24bb3ed81e6a8f4119a5043b7926bd2bd01710854c44f10
+      # tag: quay.io/eclipse/che-sidecar-workspace-data-sync@sha256:88d0125837d5a57cb24bb3ed81e6a8f4119a5043b7926bd2bd01710854c44f10
+    - name: che-buildkit-base-@sha256:effa98dd2ced30b520b25afff1a880d121cf6b3f8ab42a5149eada46ba793ce9
+      image: quay.io/eclipse/che-buildkit-base@sha256:effa98dd2ced30b520b25afff1a880d121cf6b3f8ab42a5149eada46ba793ce9
+      # tag: quay.io/eclipse/che-buildkit-base@sha256:effa98dd2ced30b520b25afff1a880d121cf6b3f8ab42a5149eada46ba793ce9
+    - name: che--centos--mongodb-36-centos7-latest-a915db7beca87198fcd7860086989fe8a327a1a4f6508025b64ab28fcc7423b2
+      image: quay.io/eclipse/che--centos--mongodb-36-centos7@sha256:a915db7beca87198fcd7860086989fe8a327a1a4f6508025b64ab28fcc7423b2
+      # tag: quay.io/eclipse/che--centos--mongodb-36-centos7:latest-a915db7beca87198fcd7860086989fe8a327a1a4f6508025b64ab28fcc7423b2
+    - name: che--centos--mysql-57-centos7-latest-e08ee4d43b7356607685b69bde6335e27cf20c020f345b6c6c59400183882764
+      image: quay.io/eclipse/che--centos--mysql-57-centos7@sha256:e08ee4d43b7356607685b69bde6335e27cf20c020f345b6c6c59400183882764
+      # tag: quay.io/eclipse/che--centos--mysql-57-centos7:latest-e08ee4d43b7356607685b69bde6335e27cf20c020f345b6c6c59400183882764
+    - name: che-cpp-rhel7-7.32.2
+      image: quay.io/eclipse/che-cpp-rhel7@sha256:8182090bbe5f2f0d3d1469dde5e9a6f62d9ba22d297702cc26b88fcf671409b2
+      # tag: quay.io/eclipse/che-cpp-rhel7:7.32.2
+    - name: che-dotnet-2.2-7.32.2
+      image: quay.io/eclipse/che-dotnet-2.2@sha256:61ddb07608a1761b119a3a6388a821ab59db94961857e8df141003d1bd618e4e
+      # tag: quay.io/eclipse/che-dotnet-2.2:7.32.2
+    - name: che-dotnet-3.1-7.32.2
+      image: quay.io/eclipse/che-dotnet-3.1@sha256:a06b17b761c880bc5cf5fef65028303ff684c9b517593e8c71896cdf78eb4fae
+      # tag: quay.io/eclipse/che-dotnet-3.1:7.32.2
+    - name: che-golang-1.14-7.32.2
+      image: quay.io/eclipse/che-golang-1.14@sha256:3d6039fde76a7e09cbc6f4825ed1ad7c2d960eb054b05f7220ecfe55aa75b1e6
+      # tag: quay.io/eclipse/che-golang-1.14:7.32.2
+    - name: che-java11-gradle-7.32.2
+      image: quay.io/eclipse/che-java11-gradle@sha256:909215b418f8ff976ed6529cbeef4681e2b663e2bd6f59cc87664e1362404457
+      # tag: quay.io/eclipse/che-java11-gradle:7.32.2
+    - name: che-java11-maven-7.32.2
+      image: quay.io/eclipse/che-java11-maven@sha256:e4be1573efd37a8b8da4b34d23dbbe82ae29932de83d7c530a46bc2d958a726c
+      # tag: quay.io/eclipse/che-java11-maven:7.32.2
+    - name: che-java8-maven-7.32.2
+      image: quay.io/eclipse/che-java8-maven@sha256:bcd1d1af6cec19fae9372e984b1664283eca4517ce7a4dec923e4c49c8b7a5d8
+      # tag: quay.io/eclipse/che-java8-maven:7.32.2
+    - name: che-nodejs10-community-7.32.2
+      image: quay.io/eclipse/che-nodejs10-community@sha256:67e6995885568a8d7b183a007ad8baf80a5f06f77d2dc3ae7b6f4fc14d416e58
+      # tag: quay.io/eclipse/che-nodejs10-community:7.32.2
+    - name: che-nodejs10-ubi-7.32.2
+      image: quay.io/eclipse/che-nodejs10-ubi@sha256:f39fdc871651a9db381477f7671d0fcabf81ff6199cc00b15922b931ba587fa2
+      # tag: quay.io/eclipse/che-nodejs10-ubi:7.32.2
+    - name: che-nodejs12-community-7.32.2
+      image: quay.io/eclipse/che-nodejs12-community@sha256:7556742b08597331b0c0b90bff17c7c09f38dcc80b7e3b4dfc7b7e1f91c0308d
+      # tag: quay.io/eclipse/che-nodejs12-community:7.32.2
+    - name: che-nodejs8-centos-7.32.2
+      image: quay.io/eclipse/che-nodejs8-centos@sha256:70c46725e7868985f0a2b01b99e6d1f00e17831f2149da87d8e41f20d5172224
+      # tag: quay.io/eclipse/che-nodejs8-centos:7.32.2
+    - name: che-php-7-7.32.2
+      image: quay.io/eclipse/che-php-7@sha256:9b4ab7a151283006a983ff20f204d4739e3a9fef7b81bbab7205dbcaac4cab04
+      # tag: quay.io/eclipse/che-php-7:7.32.2
+    - name: che-python-3.8-7.32.2
+      image: quay.io/eclipse/che-python-3.8@sha256:d08702c35e09ffe8b87cfd22f312c08ecaae9d1bcdd288ba94bd0d740e9777b7
+      # tag: quay.io/eclipse/che-python-3.8:7.32.2
+    - name: che-quarkus-7.32.2
+      image: quay.io/eclipse/che-quarkus@sha256:ec8c9a17c33c754aac5dd8de80196ca2e9d8161d67f5081a8b54e0a8c3eba7e8
+      # tag: quay.io/eclipse/che-quarkus:7.32.2
+    - name: che-rust-1.39-7.32.2
+      image: quay.io/eclipse/che-rust-1.39@sha256:75ed72fe11bf73a0f19cd7f8b8e65ae452fb0516ebdec104af4cc7ab595cb565
+      # tag: quay.io/eclipse/che-rust-1.39:7.32.2
+    - name: ubi8-minimal-8.3
+      image: registry.access.redhat.com/ubi8-minimal@sha256:2f6b88c037c0503da7704bccd3fc73cb76324101af39ad28f16460e7bce98324
+      # tag: registry.access.redhat.com/ubi8-minimal:8.3
+    - name: ubi-minimal-
+      image: registry.access.redhat.com/ubi8/ubi-minimal@sha256:b6b0c30bb747dfacee216e5ae2ad02adb18920d8f744c04f29354278e19df2a9
+      # tag: registry.access.redhat.com/ubi8/ubi-minimal
+`)
+
+func testExtendedTestdataOpmEclipseChe7322EclipseCheV7322ClusterserviceversionYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataOpmEclipseChe7322EclipseCheV7322ClusterserviceversionYaml, nil
+}
+
+func testExtendedTestdataOpmEclipseChe7322EclipseCheV7322ClusterserviceversionYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataOpmEclipseChe7322EclipseCheV7322ClusterserviceversionYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/opm/eclipse-che/7.32.2/eclipse-che.v7.32.2.clusterserviceversion.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
 var _testExtendedTestdataOpmEtcd_operator092ManifestsEtcdbackupsEtcdDatabaseCoreosComCrdYaml = []byte(`apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
@@ -17606,6 +20257,8 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/opm/cockroachdb/supportsemver/5.0.4/cockroachdb-controller-manager-metrics-service_v1_service.yaml":            testExtendedTestdataOpmCockroachdbSupportsemver504CockroachdbControllerManagerMetricsService_v1_serviceYaml,
 	"test/extended/testdata/opm/cockroachdb/supportsemver/5.0.4/cockroachdb-metrics-reader_rbac.authorization.k8s.io_v1_clusterrole.yaml":  testExtendedTestdataOpmCockroachdbSupportsemver504CockroachdbMetricsReader_rbacAuthorizationK8sIo_v1_clusterroleYaml,
 	"test/extended/testdata/opm/cockroachdb/supportsemver/5.0.4/cockroachdb.clusterserviceversion.yaml":                                    testExtendedTestdataOpmCockroachdbSupportsemver504CockroachdbClusterserviceversionYaml,
+	"test/extended/testdata/opm/eclipse-che/7.32.2/checlusters.org.eclipse.che.crd.yaml":                                                   testExtendedTestdataOpmEclipseChe7322CheclustersOrgEclipseCheCrdYaml,
+	"test/extended/testdata/opm/eclipse-che/7.32.2/eclipse-che.v7.32.2.clusterserviceversion.yaml":                                         testExtendedTestdataOpmEclipseChe7322EclipseCheV7322ClusterserviceversionYaml,
 	"test/extended/testdata/opm/etcd_operator/0.9.2/manifests/etcdbackups.etcd.database.coreos.com.crd.yaml":                               testExtendedTestdataOpmEtcd_operator092ManifestsEtcdbackupsEtcdDatabaseCoreosComCrdYaml,
 	"test/extended/testdata/opm/etcd_operator/0.9.2/manifests/etcdclusters.etcd.database.coreos.com.crd.yaml":                              testExtendedTestdataOpmEtcd_operator092ManifestsEtcdclustersEtcdDatabaseCoreosComCrdYaml,
 	"test/extended/testdata/opm/etcd_operator/0.9.2/manifests/etcdoperator.v0.9.2.clusterserviceversion.yaml":                              testExtendedTestdataOpmEtcd_operator092ManifestsEtcdoperatorV092ClusterserviceversionYaml,
@@ -17847,6 +20500,12 @@ var _bintree = &bintree{nil, map[string]*bintree{
 								"cockroachdb-metrics-reader_rbac.authorization.k8s.io_v1_clusterrole.yaml": {testExtendedTestdataOpmCockroachdbSupportsemver504CockroachdbMetricsReader_rbacAuthorizationK8sIo_v1_clusterroleYaml, map[string]*bintree{}},
 								"cockroachdb.clusterserviceversion.yaml":                                   {testExtendedTestdataOpmCockroachdbSupportsemver504CockroachdbClusterserviceversionYaml, map[string]*bintree{}},
 							}},
+						}},
+					}},
+					"eclipse-che": {nil, map[string]*bintree{
+						"7.32.2": {nil, map[string]*bintree{
+							"checlusters.org.eclipse.che.crd.yaml":           {testExtendedTestdataOpmEclipseChe7322CheclustersOrgEclipseCheCrdYaml, map[string]*bintree{}},
+							"eclipse-che.v7.32.2.clusterserviceversion.yaml": {testExtendedTestdataOpmEclipseChe7322EclipseCheV7322ClusterserviceversionYaml, map[string]*bintree{}},
 						}},
 					}},
 					"etcd_operator": {nil, map[string]*bintree{

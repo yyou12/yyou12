@@ -401,37 +401,55 @@ var _ = g.Describe("[sig-operators] OLM opm with podman", func() {
 	})
 
 	g.It("Author:xzha-VMonly-Medium-26594-Related Images", func() {
-		var initializerCLI = NewInitializer()
+		containerCLI := podmanCLI
+		containerTool := "podman"
 		opmBaseDir := exutil.FixturePath("testdata", "opm")
-		TestDataPath := filepath.Join(opmBaseDir, "etcd_operator", "etcd_community")
+		TestDataPath := filepath.Join(opmBaseDir, "eclipse-che")
 		TmpDataPath := filepath.Join(opmBaseDir, "tmp")
 		err := os.MkdirAll(TmpDataPath, 0755)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		initializerCLI.ExecCommandPath = TmpDataPath
+		bundleImageTag := "quay.io/olmqe/eclipse-che:7.32.2-" + getRandomString()
+
 		defer exec.Command("kill", "-9", "$(lsof -t -i:26594)").Output()
 		defer DeleteDir(TestDataPath, "fixture-testdata")
+		defer containerCLI.RemoveImage(bundleImageTag)
+		defer quayCLI.DeleteTag(strings.Replace(bundleImageTag, "quay.io/", "", 1))
 
-		g.By("step: Run the initializer binary to get a database.")
-		dbFilePath := filepath.Join(TmpDataPath, "bundles.db")
-		output, err := initializerCLI.Run("-m").Args(TestDataPath, "-o", dbFilePath).Output()
+		g.By("step: build bundle image ")
+		opmCLI.ExecCommandPath = TestDataPath
+		output, err := opmCLI.Run("alpha").Args("bundle", "build", "-d", "7.32.2", "-b", containerTool, "-t", bundleImageTag, "-p", "eclipse-che", "-c", "alpha", "-e", "alpha", "--overwrite").Output()
 		if err != nil {
 			e2e.Logf(output)
+			o.Expect(err).NotTo(o.HaveOccurred())
 		}
-		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(string(output)).To(o.ContainSubstring("Writing annotations.yaml"))
+		o.Expect(string(output)).To(o.ContainSubstring("Writing bundle.Dockerfile"))
+
+		if output, err = containerCLI.Run("push").Args(bundleImageTag).Output(); err != nil {
+			e2e.Logf(output)
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}
+
+		g.By("step: build bundle.db")
+		dbFilePath := TmpDataPath + "bundles.db"
+		if output, err := opmCLI.Run("registry").Args("add", "-b", bundleImageTag, "-d", dbFilePath, "-c", containerTool, "--mode", "semver").Output(); err != nil {
+			e2e.Logf(output)
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}
 
 		g.By("step: Check if the related images stores in this database")
-		image := "quay.io/coreos/etcd-operator@sha256:66a37fd61a06a43969854ee6d3e21087a98b93838e284a6086b13917f96b0d9b"
+		image := "quay.io/che-incubator/configbump@sha256:175ff2ba1bd74429de192c0a9facf39da5699c6da9f151bd461b3dc8624dd532"
 
-		result, err := sqlit.DBMatch(dbFilePath, "package", "name", []string{"etcd"})
+		result, err := sqlit.DBMatch(dbFilePath, "package", "name", []string{"eclipse-che"})
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(result).To(o.BeTrue())
 		result, err = sqlit.DBHas(dbFilePath, "related_image", "image", []string{image})
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(result).To(o.BeTrue())
 
-		g.By("step: Run the registry-server binary to load manifest and serves a grpc API to query it.")
+		g.By("step: Run the opm registry server binary to load manifest and serves a grpc API to query it.")
 		e2e.Logf("step: Run the registry-server ")
-		cmd := exec.Command("registry-server", "-d", dbFilePath, "-t", filepath.Join(TmpDataPath, "26594.log"), "-p", "26594")
+		cmd := exec.Command("opm", "registry", "serve", "-d", dbFilePath, "-t", filepath.Join(TmpDataPath, "26594.log"), "-p", "26594")
 		cmd.Dir = TmpDataPath
 		err = cmd.Start()
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -439,12 +457,9 @@ var _ = g.Describe("[sig-operators] OLM opm with podman", func() {
 		e2e.Logf("step: check api.Registry/ListPackages")
 		outputCurl, err := exec.Command("grpcurl", "-plaintext", "localhost:26594", "api.Registry/ListPackages").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(string(outputCurl)).To(o.ContainSubstring("etcd"))
+		o.Expect(string(outputCurl)).To(o.ContainSubstring("eclipse-che"))
 		e2e.Logf("step: check api.Registry/GetBundleForChannel")
-		outputCurl, err = exec.Command("grpcurl", "-plaintext", "-d", "{\"pkgName\":\"etcd\",\"channelName\":\"singlenamespace-alpha\"}", "localhost:26594", "api.Registry/GetBundleForChannel").Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(string(outputCurl)).To(o.ContainSubstring(image))
-		outputCurl, err = exec.Command("grpcurl", "-plaintext", "-d", "{\"pkgName\":\"etcd\",\"channelName\":\"clusterwide-alpha\"}", "localhost:26594", "api.Registry/GetBundleForChannel").Output()
+		outputCurl, err = exec.Command("grpcurl", "-plaintext", "-d", "{\"pkgName\":\"eclipse-che\",\"channelName\":\"alpha\"}", "localhost:26594", "api.Registry/GetBundleForChannel").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(string(outputCurl)).To(o.ContainSubstring(image))
 		cmd.Process.Kill()
