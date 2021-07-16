@@ -2518,7 +2518,6 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		defer sub.deleteCSV(itName, dr)
 		sub.createWithoutCheck(oc, itName, dr)
 
-
 		e2e.Logf("Check 1 first")
 		newCheck("expect", asAdmin, withoutNamespace, compare, "", ok, []string{"sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.items[*].spec.name}"}).check(oc)
 
@@ -5406,6 +5405,64 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(catalogs).NotTo(o.BeEmpty())
 		o.Expect(catalogs).NotTo(o.ContainSubstring("level=debug"))
+	})
+
+	// Test case: OCP-42829, author:xzha@redhat.com
+	g.It("ConnectedOnly-Author:xzha-Medium-42829-Install plan should be blocked till a valid OperatorGroup is detected", func() {
+		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
+		ogSingleTemplate := filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+		subTemplate := filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+		catsrcImageTemplate := filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
+		oc.SetupProject()
+		var (
+			og = operatorGroupDescription{
+				name:      "test-og",
+				namespace: oc.Namespace(),
+				template:  ogSingleTemplate,
+			}
+			catsrc = catalogSourceDescription{
+				name:        "catsrc-42829",
+				namespace:   "openshift-marketplace",
+				displayName: "Test planetscale Operators",
+				publisher:   "OLM QE",
+				sourceType:  "grpc",
+				address:     "quay.io/olmqe/planetscale-index:v1-4.8",
+				template:    catsrcImageTemplate,
+			}
+			sub = subscriptionDescription{
+				subName:                "planetscale-sub",
+				namespace:              oc.Namespace(),
+				catalogSourceName:      "catsrc-42829",
+				catalogSourceNamespace: "openshift-marketplace",
+				channel:                "beta",
+				ipApproval:             "Automatic",
+				operatorPackage:        "planetscale",
+				singleNamespace:        true,
+				template:               subTemplate,
+			}
+		)
+		itName := g.CurrentGinkgoTestDescription().TestText
+		g.By(fmt.Sprintf("1) create the catsrc in project: %s", oc.Namespace()))
+		defer catsrc.delete(itName, dr)
+		catsrc.create(oc, itName, dr)
+
+		g.By("2) install sub")
+		sub.createWithoutCheck(oc, itName, dr)
+
+		g.By("3) check ip status")
+		installPlan := sub.getIP(oc)
+		o.Expect(installPlan).NotTo(o.BeEmpty())
+		newCheck("expect", asAdmin, withoutNamespace, contain, "no operator group found", ok, []string{"ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.conditions}"}).check(oc)
+		phase := getResource(oc, asAdmin, withoutNamespace, "ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.phase}")
+		o.Expect(phase).To(o.Equal("Installing"))
+
+		g.By("4) install og")
+		og.createwithCheck(oc, itName, dr)
+
+		g.By("check ip and csv")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Complete", ok, []string{"ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+		sub.findInstalledCSV(oc, itName, dr)
+		newCheck("expect", asUser, withNamespace, compare, "Succeeded", ok, []string{"csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={..status.phase}"}).check(oc)
 	})
 
 	// It will cover test case: OCP-40958, author: kuiwang@redhat.com
