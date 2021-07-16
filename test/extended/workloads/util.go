@@ -365,3 +365,53 @@ func getPodNodeName(oc *exutil.CLI, namespace string, podName string) string {
         e2e.Logf("The pod %s lands on node %q", podName, nodeName)
         return nodeName
 }
+
+
+func createLdapService(oc *exutil.CLI, namespace string, podName string, initGroup string) {
+	err := oc.Run("run").Args(podName, "--image", "quay.io/openshifttest/ldap:openldap-2441-centos7", "-n", namespace).Execute()
+	if err != nil {
+		oc.Run("delete").Args("pod/ldapserver", "-n", namespace).Execute()
+		e2e.Failf("failed to run the ldap pod")
+	}
+	err = wait.Poll(5*time.Second, 20*time.Second, func() (bool, error) {
+		podStatus, _ := oc.AsAdmin().Run("get").Args("pod", podName, "-n", namespace, "-o=jsonpath={.status.phase}").Output()
+		if strings.Compare(podStatus, "Running") != 0 {
+                        e2e.Logf("the podstatus is :%v, and try next round", podStatus)
+                        return false, nil
+		} 
+                return true, nil
+	})
+	if err != nil {
+		oc.Run("delete").Args("pod/ldapserver", "-n", namespace).Execute()
+		e2e.Failf("ldap pod run failed")
+	}
+	err = oc.Run("cp").Args("-n", namespace, initGroup, podName+":/tmp/").Execute()
+	if err != nil {
+		oc.Run("delete").Args("pod/ldapserver", "-n", oc.Namespace()).Execute()
+		e2e.Failf("failed to copy the init group to ldap server")
+	}
+	err = oc.Run("exec").Args(podName, "-n", namespace, "--", "ldapadd", "-x", "-h", "127.0.0.1", "-p", "389", "-D", "cn=Manager,dc=example,dc=com", "-w", "admin", "-f", "/tmp/init.ldif").Execute()
+	if err != nil {
+		oc.Run("delete").Args("pod/ldapserver", "-n", namespace).Execute()
+		e2e.Failf("failed to config the ldap server ")
+	}  
+	
+}
+
+func getSyncGroup(oc *exutil.CLI, syncConfig string) string {
+	var groupFile string
+	err := wait.Poll(5*time.Second, 200*time.Second, func() (bool, error) {
+		output, err := oc.AsAdmin().Run("adm").Args("groups", "sync",  "--sync-config="+syncConfig).OutputToFile(getRandomString() + "workload-group.json")
+                if err != nil {
+                        e2e.Logf("the err:%v, and try next round", err)
+                        return false, nil
+                }
+		groupFile = output
+		return true, nil
+	})
+	o.Expect(err).NotTo(o.HaveOccurred())
+	if strings.Compare(groupFile, "") == 0 {
+                e2e.Failf("Failed to get group infomation!")
+	}
+	return groupFile
+}

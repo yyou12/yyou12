@@ -161,6 +161,7 @@
 // test/extended/testdata/workloads/deploy_nodeaffinity.yaml
 // test/extended/testdata/workloads/deploy_nodeselect.yaml
 // test/extended/testdata/workloads/deploy_single_pts.yaml
+// test/extended/testdata/workloads/init.ldif
 // test/extended/testdata/workloads/pod_multipts.yaml
 // test/extended/testdata/workloads/pod_nodeselect.yaml
 // test/extended/testdata/workloads/pod_pts_nodeaffinity_required.yaml
@@ -170,6 +171,7 @@
 // test/extended/testdata/workloads/pod_singlepts_prefer.yaml
 // test/extended/testdata/workloads/pod_singlepts_required.yaml
 // test/extended/testdata/workloads/pod_tolerationseconds.yaml
+// test/extended/testdata/workloads/sync-config-user-defined.yaml
 // DO NOT EDIT!
 
 package testdata
@@ -19597,6 +19599,318 @@ func testExtendedTestdataWorkloadsDeploy_single_ptsYaml() (*asset, error) {
 	return a, nil
 }
 
+var _testExtendedTestdataWorkloadsInitLdif = []byte(`dn: ou=rfc2307,dc=example,dc=com
+objectClass: organizationalUnit
+ou: rfc2307
+description: RFC2307-style Entries
+
+dn: ou=groups,ou=rfc2307,dc=example,dc=com
+objectClass: organizationalUnit
+ou: groups
+description: User Groups
+
+dn: ou=people,ou=rfc2307,dc=example,dc=com
+objectClass: organizationalUnit
+ou: people
+description: Users
+
+dn: cn=Person1,ou=people,ou=rfc2307,dc=example,dc=com
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+sn: Smith
+cn: Person1
+displayName: person1smith
+mail: person1smith@example.com
+
+dn: cn=Person2,ou=people,ou=rfc2307,dc=example,dc=com
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+sn: Smith
+cn: Person2
+displayName: person2smith
+mail: person2smith@example.com
+
+dn: cn=Person3,ou=people,ou=rfc2307,dc=example,dc=com
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+sn: Smith
+cn: Person3
+displayName: person3smith
+mail: person3smith@example.com
+
+dn: cn=Person4,ou=people,ou=rfc2307,dc=example,dc=com
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+sn: Smith
+cn: Person4
+displayName: person4smith
+mail: person4smith@example.com
+
+dn: cn=Person5,ou=people,ou=rfc2307,dc=example,dc=com
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+sn: Smith
+cn: Person5
+displayName: person5smith
+mail: person5smith@example.com
+
+dn: cn=group1,ou=groups,ou=rfc2307,dc=example,dc=com
+objectClass: groupOfNames
+cn: group1
+owner: cn=Person1,ou=people,ou=rfc2307,dc=example,dc=com
+description: Person1's Group
+member: cn=Person1,ou=people,ou=rfc2307,dc=example,dc=com
+member: cn=Person2,ou=people,ou=rfc2307,dc=example,dc=com
+member: cn=Person3,ou=people,ou=rfc2307,dc=example,dc=com
+member: cn=Person4,ou=people,ou=rfc2307,dc=example,dc=com
+member: cn=Person5,ou=people,ou=rfc2307,dc=example,dc=com
+
+dn: cn=group2,ou=groups,ou=rfc2307,dc=example,dc=com
+objectClass: groupOfNames
+cn: group2
+owner: cn=Person2,ou=people,ou=rfc2307,dc=example,dc=com
+description: Person2's Group
+member: cn=Person1,ou=people,ou=rfc2307,dc=example,dc=com
+member: cn=Person2,ou=people,ou=rfc2307,dc=example,dc=com
+member: cn=Person3,ou=people,ou=rfc2307,dc=example,dc=com
+
+dn: cn=group3,ou=groups,ou=rfc2307,dc=example,dc=com
+objectClass: groupOfNames
+cn: group3
+owner: cn=Person3,ou=people,ou=rfc2307,dc=example,dc=com
+description: Person3's Group
+member: cn=Person1,ou=people,ou=rfc2307,dc=example,dc=com
+member: cn=Person5,ou=people,ou=rfc2307,dc=example,dc=com
+
+dn: ou=ad,dc=example,dc=com
+objectClass: organizationalUnit
+ou: ad
+description: Active Directory-style Entries
+
+dn: ou=people,ou=ad,dc=example,dc=com
+objectClass: organizationalUnit
+ou: people
+description: AD-style users
+
+dn: cn=Person1,ou=people,ou=ad,dc=example,dc=com
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+objectClass: testPerson
+sn: Smith
+cn: Person1
+displayName: person1smith
+mail: person1smith@example.com
+testMemberOf: group1
+testMemberOf: group2
+testMemberOf: group3
+
+dn: cn=Person2,ou=people,ou=ad,dc=example,dc=com
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+objectClass: testPerson
+sn: Smith
+cn: Person2
+displayName: person2smith
+mail: person2smith@example.com
+testMemberOf: group1
+testMemberOf: group2
+
+dn: cn=Person3,ou=people,ou=ad,dc=example,dc=com
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+objectClass: testPerson
+sn: Smith
+cn: Person3
+displayName: person3smith
+mail: person3smith@example.com
+testMemberOf: group1
+testMemberOf: group2
+
+dn: cn=Person4,ou=people,ou=ad,dc=example,dc=com
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+objectClass: testPerson
+sn: Smith
+cn: Person4
+displayName: person4smith
+mail: person4smith@example.com
+testMemberOf: group1
+
+dn: cn=Person5,ou=people,ou=ad,dc=example,dc=com
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+objectClass: testPerson
+sn: Smith
+cn: Person5
+displayName: person5smith
+mail: person5smith@example.com
+testMemberOf: group1
+testMemberOf: group3
+
+dn: ou=adextended,dc=example,dc=com
+objectClass: organizationalUnit
+ou: adextended
+description: AD-style Entries with Group Entries
+
+dn: ou=people,ou=adextended,dc=example,dc=com
+objectClass: organizationalUnit
+ou: people
+description: AD-style users
+
+dn: cn=Person1,ou=people,ou=adextended,dc=example,dc=com
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+objectClass: testPerson
+sn: Smith
+cn: Person1
+displayName: person1smith
+mail: person1smith@example.com
+testMemberOf: cn=group1,ou=groups,ou=adextended,dc=example,dc=com
+testMemberOf: cn=group2,ou=groups,ou=adextended,dc=example,dc=com
+testMemberOf: cn=group3,ou=groups,ou=adextended,dc=example,dc=com
+
+dn: cn=Person2,ou=people,ou=adextended,dc=example,dc=com
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+objectClass: testPerson
+sn: Smith
+cn: Person2
+displayName: person2smith
+mail: person2smith@example.com
+testMemberOf: cn=group1,ou=groups,ou=adextended,dc=example,dc=com
+testMemberOf: cn=group2,ou=groups,ou=adextended,dc=example,dc=com
+
+dn: cn=Person3,ou=people,ou=adextended,dc=example,dc=com
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+objectClass: testPerson
+sn: Smith
+cn: Person3
+displayName: person3smith
+mail: person3smith@example.com
+testMemberOf: cn=group1,ou=groups,ou=adextended,dc=example,dc=com
+testMemberOf: cn=group2,ou=groups,ou=adextended,dc=example,dc=com
+
+dn: cn=Person4,ou=people,ou=adextended,dc=example,dc=com
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+objectClass: testPerson
+sn: Smith
+cn: Person4
+displayName: person4smith
+mail: person4smith@example.com
+testMemberOf: cn=group1,ou=groups,ou=adextended,dc=example,dc=com
+
+dn: cn=Person5,ou=people,ou=adextended,dc=example,dc=com
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+objectClass: testPerson
+sn: Smith
+cn: person5smith
+displayName: person5smith
+mail: person5smith@example.com
+testMemberOf: cn=group1,ou=groups,ou=adextended,dc=example,dc=com
+testMemberOf: cn=group3,ou=groups,ou=adextended,dc=example,dc=com
+
+dn: ou=groups,ou=adextended,dc=example,dc=com
+objectClass: organizationalUnit
+ou: groups
+description: Group entries with metadata
+
+dn: cn=group1,ou=groups,ou=adextended,dc=example,dc=com
+objectClass: groupOfNames
+cn: extended-group1
+owner: cn=Person1,ou=people,ou=adextended,dc=example,dc=com
+description: Person1's Group
+member: cn=Person5,ou=people,ou=rfc2307,dc=example,dc=com
+
+dn: cn=group2,ou=groups,ou=adextended,dc=example,dc=com
+objectClass: groupOfNames
+cn: extended-group2
+owner: cn=Person2,ou=people,ou=adextended,dc=example,dc=com
+description: Person2's Group
+member: cn=fake
+
+dn: cn=group3,ou=groups,ou=adextended,dc=example,dc=com
+objectClass: groupOfNames
+cn: extended-group3
+owner: cn=Person3,ou=people,ou=adextended,dc=example,dc=com
+description: Person3's Group
+member: cn=fake
+
+dn: ou=incomplete-rfc2307,dc=example,dc=com
+objectClass: organizationalUnit
+ou: incomplete-rfc2307
+description: OrganizationalUnit to hold malformed entries
+
+dn: ou=groups,ou=incomplete-rfc2307,dc=example,dc=com
+objectClass: organizationalUnit
+ou: groups
+description: Group entries with member lists containing missing members
+
+dn: cn=group1,ou=groups,ou=incomplete-rfc2307,dc=example,dc=com
+objectClass: groupOfNames
+cn: group1
+owner: cn=Person1,ou=people,ou=rfc2307,dc=example,dc=com
+description: Person1's Group
+member: cn=Person1,ou=people,ou=rfc2307,dc=example,dc=com
+member: cn=Person2,ou=people,ou=rfc2307,dc=example,dc=com
+member: cn=Person3,ou=people,ou=rfc2307,dc=example,dc=com
+member: cn=Person4,ou=people,ou=rfc2307,dc=example,dc=com
+member: cn=Person5,ou=people,ou=rfc2307,dc=example,dc=com
+member: cn=INVALID,ou=people,ou=rfc2307,dc=example,dc=com
+
+dn: cn=group2,ou=groups,ou=incomplete-rfc2307,dc=example,dc=com
+objectClass: groupOfNames
+cn: group2
+owner: cn=Person2,ou=people,ou=rfc2307,dc=example,dc=com
+description: Person2's Group
+member: cn=Person1,ou=people,ou=rfc2307,dc=example,dc=com
+member: cn=Person2,ou=people,ou=rfc2307,dc=example,dc=com
+member: cn=Person3,ou=people,ou=rfc2307,dc=example,dc=com
+member: cn=OUTOFSCOPE,ou=people,ou=OUTOFSCOPE,dc=example,dc=com
+
+dn: cn=group3,ou=groups,ou=incomplete-rfc2307,dc=example,dc=com
+objectClass: groupOfNames
+cn: group3
+owner: cn=Person3,ou=people,ou=rfc2307,dc=example,dc=com
+description: Person3's Group
+member: cn=Person1,ou=people,ou=rfc2307,dc=example,dc=com
+member: cn=Person5,ou=people,ou=rfc2307,dc=example,dc=com
+member: cn=INVALID,ou=people,ou=rfc2307,dc=example,dc=com
+member: cn=OUTOFSCOPE,ou=people,ou=OUTOFSCOPE,dc=example,dc=com
+`)
+
+func testExtendedTestdataWorkloadsInitLdifBytes() ([]byte, error) {
+	return _testExtendedTestdataWorkloadsInitLdif, nil
+}
+
+func testExtendedTestdataWorkloadsInitLdif() (*asset, error) {
+	bytes, err := testExtendedTestdataWorkloadsInitLdifBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/workloads/init.ldif", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
 var _testExtendedTestdataWorkloadsPod_multiptsYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
@@ -20103,6 +20417,46 @@ func testExtendedTestdataWorkloadsPod_tolerationsecondsYaml() (*asset, error) {
 	return a, nil
 }
 
+var _testExtendedTestdataWorkloadsSyncConfigUserDefinedYaml = []byte(`kind: LDAPSyncConfig
+apiVersion: v1
+url: ldap://127.0.0.1:59738
+insecure: true
+groupUIDNameMapping:
+  "cn=group1,ou=groups,ou=rfc2307,dc=example,dc=com": tc509128group1
+  "cn=group2,ou=groups,ou=rfc2307,dc=example,dc=com": tc509128group2
+  "cn=group3,ou=groups,ou=rfc2307,dc=example,dc=com": tc509128group3
+rfc2307:
+  groupsQuery:
+    baseDN: "ou=groups,ou=rfc2307,dc=example,dc=com"
+    scope: sub
+    derefAliases: never
+    filter: (objectclass=groupOfNames)
+  groupUIDAttribute: dn
+  groupNameAttributes: [ cn ]
+  groupMembershipAttributes: [ member ]
+  usersQuery:
+    baseDN: "ou=people,ou=rfc2307,dc=example,dc=com"
+    scope: sub
+    derefAliases: never
+  userUIDAttribute: dn
+  userNameAttributes: [ mail ]
+`)
+
+func testExtendedTestdataWorkloadsSyncConfigUserDefinedYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataWorkloadsSyncConfigUserDefinedYaml, nil
+}
+
+func testExtendedTestdataWorkloadsSyncConfigUserDefinedYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataWorkloadsSyncConfigUserDefinedYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/workloads/sync-config-user-defined.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
 // Asset loads and returns the asset for the given name.
 // It returns an error if the asset could not be found or
 // could not be loaded.
@@ -20316,6 +20670,7 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/workloads/deploy_nodeaffinity.yaml":                                                                            testExtendedTestdataWorkloadsDeploy_nodeaffinityYaml,
 	"test/extended/testdata/workloads/deploy_nodeselect.yaml":                                                                              testExtendedTestdataWorkloadsDeploy_nodeselectYaml,
 	"test/extended/testdata/workloads/deploy_single_pts.yaml":                                                                              testExtendedTestdataWorkloadsDeploy_single_ptsYaml,
+	"test/extended/testdata/workloads/init.ldif":                                                                                           testExtendedTestdataWorkloadsInitLdif,
 	"test/extended/testdata/workloads/pod_multipts.yaml":                                                                                   testExtendedTestdataWorkloadsPod_multiptsYaml,
 	"test/extended/testdata/workloads/pod_nodeselect.yaml":                                                                                 testExtendedTestdataWorkloadsPod_nodeselectYaml,
 	"test/extended/testdata/workloads/pod_pts_nodeaffinity_required.yaml":                                                                  testExtendedTestdataWorkloadsPod_pts_nodeaffinity_requiredYaml,
@@ -20325,6 +20680,7 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/workloads/pod_singlepts_prefer.yaml":                                                                           testExtendedTestdataWorkloadsPod_singlepts_preferYaml,
 	"test/extended/testdata/workloads/pod_singlepts_required.yaml":                                                                         testExtendedTestdataWorkloadsPod_singlepts_requiredYaml,
 	"test/extended/testdata/workloads/pod_tolerationseconds.yaml":                                                                          testExtendedTestdataWorkloadsPod_tolerationsecondsYaml,
+	"test/extended/testdata/workloads/sync-config-user-defined.yaml":                                                                       testExtendedTestdataWorkloadsSyncConfigUserDefinedYaml,
 }
 
 // AssetDir returns the file names below a certain
@@ -20595,6 +20951,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 					"deploy_nodeaffinity.yaml":              {testExtendedTestdataWorkloadsDeploy_nodeaffinityYaml, map[string]*bintree{}},
 					"deploy_nodeselect.yaml":                {testExtendedTestdataWorkloadsDeploy_nodeselectYaml, map[string]*bintree{}},
 					"deploy_single_pts.yaml":                {testExtendedTestdataWorkloadsDeploy_single_ptsYaml, map[string]*bintree{}},
+					"init.ldif":                             {testExtendedTestdataWorkloadsInitLdif, map[string]*bintree{}},
 					"pod_multipts.yaml":                     {testExtendedTestdataWorkloadsPod_multiptsYaml, map[string]*bintree{}},
 					"pod_nodeselect.yaml":                   {testExtendedTestdataWorkloadsPod_nodeselectYaml, map[string]*bintree{}},
 					"pod_pts_nodeaffinity_required.yaml":    {testExtendedTestdataWorkloadsPod_pts_nodeaffinity_requiredYaml, map[string]*bintree{}},
@@ -20604,6 +20961,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 					"pod_singlepts_prefer.yaml":             {testExtendedTestdataWorkloadsPod_singlepts_preferYaml, map[string]*bintree{}},
 					"pod_singlepts_required.yaml":           {testExtendedTestdataWorkloadsPod_singlepts_requiredYaml, map[string]*bintree{}},
 					"pod_tolerationseconds.yaml":            {testExtendedTestdataWorkloadsPod_tolerationsecondsYaml, map[string]*bintree{}},
+					"sync-config-user-defined.yaml":         {testExtendedTestdataWorkloadsSyncConfigUserDefinedYaml, map[string]*bintree{}},
 				}},
 			}},
 		}},
