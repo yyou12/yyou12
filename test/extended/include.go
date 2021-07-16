@@ -29,4 +29,5 @@ import (
 	_ "github.com/openshift/openshift-tests-private/test/extended/node"
 	_ "github.com/openshift/openshift-tests-private/test/extended/networking"
 	_ "github.com/openshift/openshift-tests/test/extended/operators"
+	_ "github.com/openshift/openshift-tests-private/test/extended/image_registry"
 )
