@@ -10,6 +10,7 @@
 // test/extended/testdata/networking/egressfirewall1.yaml
 // test/extended/testdata/networking/egressip-config1.yaml
 // test/extended/testdata/networking/ping-for-pod.yaml
+// test/extended/testdata/node/containerRuntimeConfig.yaml
 // test/extended/testdata/node/pod-modify.yaml
 // test/extended/testdata/oauthserver/cabundle-cm.yaml
 // test/extended/testdata/oauthserver/oauth-network.yaml
@@ -1201,6 +1202,46 @@ func testExtendedTestdataNetworkingPingForPodYaml() (*asset, error) {
 	}
 
 	info := bindataFileInfo{name: "test/extended/testdata/networking/ping-for-pod.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataNodeContainerruntimeconfigYaml = []byte(`apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: ContainerRuntimeConfig-template
+objects:
+- apiVersion: machineconfiguration.openshift.io/v1
+  kind: ContainerRuntimeConfig
+  metadata:
+   name: parameter-testing
+  spec:
+   machineConfigPoolSelector:
+     matchLabels:
+       pools.operator.machineconfiguration.openshift.io/worker: '' 
+   containerRuntimeConfig: 
+     pidsLimit: 2048
+     logLevel: "${LOGLEVEL}"
+     overlaySize: "${OVERLAY}"
+     logSizeMax: "${LOGSIZEMAX}"
+parameters:      
+#- name: NAMESPACE
+- name: LOGLEVEL
+- name: OVERLAY
+- name: LOGSIZEMAX   
+`)
+
+func testExtendedTestdataNodeContainerruntimeconfigYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataNodeContainerruntimeconfigYaml, nil
+}
+
+func testExtendedTestdataNodeContainerruntimeconfigYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataNodeContainerruntimeconfigYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/node/containerRuntimeConfig.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -20519,6 +20560,7 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/networking/egressfirewall1.yaml":                                                                               testExtendedTestdataNetworkingEgressfirewall1Yaml,
 	"test/extended/testdata/networking/egressip-config1.yaml":                                                                              testExtendedTestdataNetworkingEgressipConfig1Yaml,
 	"test/extended/testdata/networking/ping-for-pod.yaml":                                                                                  testExtendedTestdataNetworkingPingForPodYaml,
+	"test/extended/testdata/node/containerRuntimeConfig.yaml":                                                                              testExtendedTestdataNodeContainerruntimeconfigYaml,
 	"test/extended/testdata/node/pod-modify.yaml":                                                                                          testExtendedTestdataNodePodModifyYaml,
 	"test/extended/testdata/oauthserver/cabundle-cm.yaml":                                                                                  testExtendedTestdataOauthserverCabundleCmYaml,
 	"test/extended/testdata/oauthserver/oauth-network.yaml":                                                                                testExtendedTestdataOauthserverOauthNetworkYaml,
@@ -20744,7 +20786,8 @@ var _bintree = &bintree{nil, map[string]*bintree{
 					"ping-for-pod.yaml":     {testExtendedTestdataNetworkingPingForPodYaml, map[string]*bintree{}},
 				}},
 				"node": {nil, map[string]*bintree{
-					"pod-modify.yaml": {testExtendedTestdataNodePodModifyYaml, map[string]*bintree{}},
+					"containerRuntimeConfig.yaml": {testExtendedTestdataNodeContainerruntimeconfigYaml, map[string]*bintree{}},
+					"pod-modify.yaml":             {testExtendedTestdataNodePodModifyYaml, map[string]*bintree{}},
 				}},
 				"oauthserver": {nil, map[string]*bintree{
 					"cabundle-cm.yaml":   {testExtendedTestdataOauthserverCabundleCmYaml, map[string]*bintree{}},

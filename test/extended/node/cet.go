@@ -17,6 +17,7 @@ var _ = g.Describe("[sig-node] Node Container Engine Tools crio,scc", func() {
 		oc				= exutil.NewCLI("node-"+getRandomString(), exutil.KubeConfigPath())
 		buildPruningBaseDir		= exutil.FixturePath("testdata", "node")
 		customTemp			= filepath.Join(buildPruningBaseDir, "pod-modify.yaml")
+		customctrcfgTemp		= filepath.Join(buildPruningBaseDir, "containerRuntimeConfig.yaml")
 
 		podModify = podModifyDescription{
 			name:            "",
@@ -29,6 +30,15 @@ var _ = g.Describe("[sig-node] Node Container Engine Tools crio,scc", func() {
 			role:            "",
 			level:           "",
 			template:        customTemp,
+		}
+
+		ctrcfg = ctrcfgDescription{
+			loglevel:	"",
+			overlay:	"",
+			logsizemax:	"",
+			command:	"",
+			configFile:	"",
+			template:        customctrcfgTemp,
 		}
 	)
 
@@ -57,5 +67,21 @@ var _ = g.Describe("[sig-node] Node Container Engine Tools crio,scc", func() {
 			o.Expect(err).NotTo(o.HaveOccurred())
 			g.By("Delete Pod\n")
 			podModify.delete(oc)
+		})
+
+		// author: pmali@redhat.com
+		g.It("Longduration-Author:pmali-Medium-22093-CRIO configuration can be modified via containerruntimeconfig CRD[Disruptive][Slow]", func() {
+
+			oc.SetupProject()
+			ctrcfg.loglevel     = "debug"
+			ctrcfg.overlay      = "2G"
+			ctrcfg.logsizemax   = "-1"
+
+			g.By("Create Container Runtime Config \n")
+			ctrcfg.create(oc)
+			defer cleanupObjectsClusterScope(oc, objectTableRefcscope{"ContainerRuntimeConfig", "parameter-testing"})
+			g.By("Verify that the settings were applied in CRI-O\n")
+			err := ctrcfg.checkCtrcfgParameters(oc)
+			o.Expect(err).NotTo(o.HaveOccurred())
 		})
 	})

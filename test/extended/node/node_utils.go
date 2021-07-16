@@ -4,6 +4,8 @@ import (
 	"math/rand"
 	"strings"
 	"time"
+	"fmt"
+	"os/exec"
 
 	o "github.com/onsi/gomega"
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
@@ -22,6 +24,22 @@ type podModifyDescription struct {
 	role               string
 	level              string
 	template           string
+}
+
+type ctrcfgDescription struct {
+	namespace          string
+	pidlimit	   int
+	loglevel           string
+	overlay            string
+	logsizemax         string
+	command            string
+	configFile         string
+	template           string
+}
+
+type objectTableRefcscope struct {
+	kind              string
+	name              string
 }
 
 func getRandomString() string {
@@ -56,7 +74,7 @@ func createResourceFromTemplate(oc *exutil.CLI, parameters ...string) error {
 	})
 	o.Expect(err).NotTo(o.HaveOccurred())
 
-	e2e.Logf("the pod resource is %s", jsonCfg)
+	e2e.Logf("The resource is %s", jsonCfg)
 	return oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", jsonCfg).Execute()
 }
 
@@ -140,5 +158,57 @@ func ContainerSccStatus(oc *exutil.CLI ) error {
 			return true, nil
 		}
 		return false,nil
+	})
+}
+
+func (ctrcfg *ctrcfgDescription) create(oc *exutil.CLI) {
+	err := createResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", ctrcfg.template, "-p", "LOGLEVEL="+ctrcfg.loglevel, "OVERLAY="+ctrcfg.overlay, "LOGSIZEMAX="+ctrcfg.logsizemax )
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+func cleanupObjectsClusterScope(oc *exutil.CLI, objs ...objectTableRefcscope) {
+	for _, v := range objs {
+		e2e.Logf("\n Start to remove: %v", v)
+		_, err := oc.AsAdmin().WithoutNamespace().Run("delete").Args(v.kind, v.name).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+	}
+}
+
+func (ctrcfg *ctrcfgDescription) checkCtrcfgParameters(oc *exutil.CLI) error {
+	return wait.Poll(10*time.Minute, 11*time.Minute, func() (bool, error) {
+		nodeName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("nodes", "--selector=node-role.kubernetes.io/worker=", "-o=jsonpath={.items[*].metadata.name}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf("\nNode Names are %v", nodeName)
+		node := strings.Fields(nodeName)
+
+		for _, v := range node {
+		nodeStatus,err := oc.AsAdmin().WithoutNamespace().Run("get").Args("nodes", fmt.Sprintf("%s", v), "-o=jsonpath={.status.conditions[3].type}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf("\nNode %s Status is %s\n", v,nodeStatus)
+
+			if nodeStatus == "Ready"{
+			criostatus,err := oc.AsAdmin().WithoutNamespace().Run("debug").Args(`node/`+fmt.Sprintf("%s", v), "--", "chroot", "/host", "crio", "config").OutputToFile("crio.conf")
+			o.Expect(err).NotTo(o.HaveOccurred())
+			e2e.Logf(`\nCRI-O PARAMETER ON THE WORKER NODE :`+fmt.Sprintf("%s", v))
+			e2e.Logf("\ncrio config file path is  %v", criostatus)
+
+				wait.Poll(2*time.Second, 1*time.Minute, func() (bool,error) {
+					result, err1 := exec.Command("bash", "-c", "cat "+criostatus+" | egrep 'pids_limit|log_level'").Output()
+						if err != nil {
+							e2e.Failf("the result of ReadFile:%v", err1)
+							return false, nil
+						}
+						e2e.Logf("\nCtrcfg Parameters is %s", result)
+						if strings.Contains(string(result), "debug") && strings.Contains(string(result), "2048"){
+							e2e.Logf("\nCtrcfg parameter pod limit and log_level configured successfully")
+							return true, nil
+						}
+						return false, nil
+					})
+			} else {
+				e2e.Logf("\n NODES ARE NOT READY\n ")
+			}
+		}
+		return true, nil
 	})
 }
