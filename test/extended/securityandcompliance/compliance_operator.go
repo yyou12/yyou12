@@ -2559,5 +2559,45 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 
 			g.By("ocp-41093 Successfully verify that all CIS rules has instructions ..!!!\n")
 		})
+
+		// author: pdhamdhe@redhat.com
+		g.It("Author:pdhamdhe-Low-42695-Verify the manual remediation for rule ocp4-moderate-compliancesuite-exists works as expected [Slow]", func() {
+
+			var (
+				ssb = scanSettingBindingDescription{
+					name:            "moderate-test",
+					namespace:       "",
+					profilekind1:    "Profile",
+					profilename1:    "ocp4-cis",
+					profilename2:    "ocp4-moderate",
+					scansettingname: "default",
+					template:        scansettingbindingTemplate,
+				}
+				itName = g.CurrentGinkgoTestDescription().TestText
+			)
+
+			defer cleanupObjects(oc,
+				objectTableRef{"scansettingbinding", subD.namespace, ssb.name})
+
+			g.By("Check default profiles name ocp4-moderate .. !!!\n")
+			subD.getProfileName(oc, "ocp4-moderate")
+
+			g.By("Create scansettingbinding !!!\n")
+			ssb.namespace = subD.namespace
+			ssb.create(oc, itName, dr)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "moderate-test", ok, []string{"scansettingbinding", "-n", subD.namespace,
+				"-o=jsonpath={.items[0].metadata.name}"}).check(oc)
+
+			g.By("Check ComplianceSuite status and result.. !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", ssb.name, "-n", subD.namespace,
+				"-o=jsonpath={.status.phase}"}).check(oc)
+			subD.complianceSuiteResult(oc, ssb.name, "NON-COMPLIANT")
+
+			g.By("Verify 'ocp4-moderate-compliancesuite-exists' rule status through compliancecheck result.. !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "PASS", ok, []string{"compliancecheckresult",
+				"ocp4-moderate-compliancesuite-exists", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
+
+			g.By("The ocp-42695 The ComplianceSuite object exist and operator is successfully installed... !!!!\n ")
+		})
 	})
 })
