@@ -126,6 +126,8 @@
 // test/extended/testdata/opm/learn_operator/package/0.0.2/learn.crd.yaml
 // test/extended/testdata/opm/learn_operator/package/learn.package.yaml
 // test/extended/testdata/router/ingress-with-class.yaml
+// test/extended/testdata/router/ingresscontroller-hn-PROXY.yaml
+// test/extended/testdata/router/ingresscontroller-np-PROXY.yaml
 // test/extended/testdata/router/ingresscontroller-np.yaml
 // test/extended/testdata/router/web-server-rc.yaml
 // test/extended/testdata/securityandcompliance/aide.conf.rhel8
@@ -16919,6 +16921,88 @@ func testExtendedTestdataRouterIngressWithClassYaml() (*asset, error) {
 	return a, nil
 }
 
+var _testExtendedTestdataRouterIngresscontrollerHnProxyYaml = []byte(`apiVersion: template.openshift.io/v1
+kind: Template
+objects:
+- apiVersion: operator.openshift.io/v1
+  kind: IngressController
+  metadata:
+    name: ${NAME}
+    namespace: ${NAMESPACE}
+  spec:
+    defaultCertificate:
+      name: ${DEFAULT_CERT}
+    domain: ${DOMAIN}
+    replicas: 1
+    endpointPublishingStrategy:
+      hostNetwork:
+        protocol: PROXY            
+      type: HostNetwork
+parameters:
+- name: NAME
+- name: NAMESPACE
+  value: openshift-ingress-operator
+- name: DEFAULT_CERT
+  value: router-certs-default
+- name: DOMAIN
+`)
+
+func testExtendedTestdataRouterIngresscontrollerHnProxyYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataRouterIngresscontrollerHnProxyYaml, nil
+}
+
+func testExtendedTestdataRouterIngresscontrollerHnProxyYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataRouterIngresscontrollerHnProxyYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/router/ingresscontroller-hn-PROXY.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataRouterIngresscontrollerNpProxyYaml = []byte(`apiVersion: template.openshift.io/v1
+kind: Template
+objects:
+- apiVersion: operator.openshift.io/v1
+  kind: IngressController
+  metadata:
+    name: ${NAME}
+    namespace: ${NAMESPACE}
+  spec:
+    defaultCertificate:
+      name: ${DEFAULT_CERT}
+    domain: ${DOMAIN}
+    replicas: 1
+    endpointPublishingStrategy:
+      nodePort:
+        protocol: PROXY            
+      type: NodePortService
+parameters:
+- name: NAME
+- name: NAMESPACE
+  value: openshift-ingress-operator
+- name: DEFAULT_CERT
+  value: router-certs-default
+- name: DOMAIN
+`)
+
+func testExtendedTestdataRouterIngresscontrollerNpProxyYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataRouterIngresscontrollerNpProxyYaml, nil
+}
+
+func testExtendedTestdataRouterIngresscontrollerNpProxyYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataRouterIngresscontrollerNpProxyYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/router/ingresscontroller-np-PROXY.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
 var _testExtendedTestdataRouterIngresscontrollerNpYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 objects:
@@ -20676,6 +20760,8 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/opm/learn_operator/package/0.0.2/learn.crd.yaml":                                                               testExtendedTestdataOpmLearn_operatorPackage002LearnCrdYaml,
 	"test/extended/testdata/opm/learn_operator/package/learn.package.yaml":                                                                 testExtendedTestdataOpmLearn_operatorPackageLearnPackageYaml,
 	"test/extended/testdata/router/ingress-with-class.yaml":                                                                                testExtendedTestdataRouterIngressWithClassYaml,
+	"test/extended/testdata/router/ingresscontroller-hn-PROXY.yaml":                                                                        testExtendedTestdataRouterIngresscontrollerHnProxyYaml,
+	"test/extended/testdata/router/ingresscontroller-np-PROXY.yaml":                                                                        testExtendedTestdataRouterIngresscontrollerNpProxyYaml,
 	"test/extended/testdata/router/ingresscontroller-np.yaml":                                                                              testExtendedTestdataRouterIngresscontrollerNpYaml,
 	"test/extended/testdata/router/web-server-rc.yaml":                                                                                     testExtendedTestdataRouterWebServerRcYaml,
 	"test/extended/testdata/securityandcompliance/aide.conf.rhel8":                                                                         testExtendedTestdataSecurityandcomplianceAideConfRhel8,
@@ -20951,9 +21037,11 @@ var _bintree = &bintree{nil, map[string]*bintree{
 					}},
 				}},
 				"router": {nil, map[string]*bintree{
-					"ingress-with-class.yaml":   {testExtendedTestdataRouterIngressWithClassYaml, map[string]*bintree{}},
-					"ingresscontroller-np.yaml": {testExtendedTestdataRouterIngresscontrollerNpYaml, map[string]*bintree{}},
-					"web-server-rc.yaml":        {testExtendedTestdataRouterWebServerRcYaml, map[string]*bintree{}},
+					"ingress-with-class.yaml":         {testExtendedTestdataRouterIngressWithClassYaml, map[string]*bintree{}},
+					"ingresscontroller-hn-PROXY.yaml": {testExtendedTestdataRouterIngresscontrollerHnProxyYaml, map[string]*bintree{}},
+					"ingresscontroller-np-PROXY.yaml": {testExtendedTestdataRouterIngresscontrollerNpProxyYaml, map[string]*bintree{}},
+					"ingresscontroller-np.yaml":       {testExtendedTestdataRouterIngresscontrollerNpYaml, map[string]*bintree{}},
+					"web-server-rc.yaml":              {testExtendedTestdataRouterWebServerRcYaml, map[string]*bintree{}},
 				}},
 				"securityandcompliance": {nil, map[string]*bintree{
 					"aide.conf.rhel8":                       {testExtendedTestdataSecurityandcomplianceAideConfRhel8, map[string]*bintree{}},

@@ -126,12 +126,21 @@ func setAnnotation(oc *exutil.CLI, ns, resource, annotation string) {
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
-// for collecting a single pod name
-func getRouterPod(oc *exutil.CLI) string {
-	podName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-l", "ingresscontroller.operator.openshift.io/deployment-ingresscontroller=default", "-o=jsonpath={.items[0].metadata.name}", "-n", "openshift-ingress").Output()
+// for collecting a single pod name for general use.
+//usage example: podname := getRouterPod(oc, "default/labelname")
+func getRouterPod(oc *exutil.CLI, icname string) string {
+	podName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-l", "ingresscontroller.operator.openshift.io/deployment-ingresscontroller="+icname, "-o=jsonpath={.items[0].metadata.name}", "-n", "openshift-ingress").Output()
 	o.Expect(err).NotTo(o.HaveOccurred())
 	e2e.Logf("the result of podname:%v", podName)
 	return podName
+}
+
+// For collecting env details with grep from router pod [usage example: readDeploymentData(oc, podname, "search string")] .
+// NOTE: This requires getRouterPod function to collect the podname variable first!
+func readRouterPodEnv(oc *exutil.CLI, routername, envname string) string {
+	output, err := oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-ingress", routername, "--", "bash", "-c", "/usr/bin/env", "|", "grep", "-w", envname).Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	return output
 }
 
 // to collect pod name and check parameter related to OCP-42230

@@ -37,9 +37,9 @@ var _ = g.Describe("[sig-network-edge] Network_Edge should", func() {
 		baseDomain := getBaseDomain(oc)
 		ingctrl.domain = ingctrl.name + "." + baseDomain
 		ingctrl.create(oc)
+		defer ingctrl.delete(oc)
 		err = waitForCustomIngressControllerAvailable(oc, ingctrl.name)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		defer ingctrl.delete(oc)
 
 		g.By("check the ingressclass is created by custom ingresscontroller")
 		ingressclassname := "openshift-" + ingctrl.name
