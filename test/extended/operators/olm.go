@@ -3784,7 +3784,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 	})
 
 	// It will cover test case: OCP-32863, author: kuiwang@redhat.com
-	g.It("ConnectedOnly-Author:kuiwang-Medium-32863-Support resources required for SAP Gardener Control Plane Operator", func() {
+	g.It("ConnectedOnly-Author:kuiwang-Medium-32863-Support resources required for SAP Gardener Control Plane Operator [Disruptive]", func() {
 		var (
 			itName              = g.CurrentGinkgoTestDescription().TestText
 			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
@@ -3827,32 +3827,35 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		)
 
 		// defer crdVpa.delete(oc) //it is not needed in case it already exist
+		if isPresentResource(oc, asAdmin, withoutNamespace, notPresent, "crd", crdVpa.name) {
 
-		oc.SetupProject() //project and its resource are deleted automatically when out of It, so no need derfer or AfterEach
-		og.namespace = oc.Namespace()
-		catsrc.namespace = oc.Namespace()
-		sub.namespace = oc.Namespace()
-		sub.catalogSourceNamespace = catsrc.namespace
+			oc.SetupProject() //project and its resource are deleted automatically when out of It, so no need derfer or AfterEach
+			og.namespace = oc.Namespace()
+			catsrc.namespace = oc.Namespace()
+			sub.namespace = oc.Namespace()
+			sub.catalogSourceNamespace = catsrc.namespace
 
-		g.By("create vpa crd")
-		crdVpa.create(oc, itName, dr)
+			g.By("create vpa crd")
+			crdVpa.create(oc, itName, dr)
+			defer crdVpa.delete(oc)
 
-		g.By("create catalog source")
-		catsrc.create(oc, itName, dr)
+			g.By("create catalog source")
+			catsrc.create(oc, itName, dr)
 
-		g.By("Create og")
-		og.create(oc, itName, dr)
+			g.By("Create og")
+			og.create(oc, itName, dr)
 
-		g.By("install perator")
-		sub.create(oc, itName, dr)
+			g.By("install perator")
+			sub.create(oc, itName, dr)
 
-		g.By("check csv")
-		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+			g.By("check csv")
+			newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
 
-		g.By("check additional resources")
-		newCheck("present", asAdmin, withoutNamespace, present, "", ok, []string{"vpa", "busybox-vpa", "-n", sub.namespace}).check(oc)
-		newCheck("present", asAdmin, withoutNamespace, present, "", ok, []string{"PriorityClass", "super-priority", "-n", sub.namespace}).check(oc)
-		newCheck("present", asAdmin, withoutNamespace, present, "", ok, []string{"PodDisruptionBudget", "busybox-pdb", "-n", sub.namespace}).check(oc)
+			g.By("check additional resources")
+			newCheck("present", asAdmin, withoutNamespace, present, "", ok, []string{"vpa", "busybox-vpa", "-n", sub.namespace}).check(oc)
+			newCheck("present", asAdmin, withoutNamespace, present, "", ok, []string{"PriorityClass", "super-priority", "-n", sub.namespace}).check(oc)
+			newCheck("present", asAdmin, withoutNamespace, present, "", ok, []string{"PodDisruptionBudget", "busybox-pdb", "-n", sub.namespace}).check(oc)
+		}
 	})
 
 	// It will cover test case: OCP-34472, author: kuiwang@redhat.com

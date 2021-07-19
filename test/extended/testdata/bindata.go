@@ -8551,7 +8551,7 @@ metadata:
   name: vpa-template
 objects:
 - kind: CustomResourceDefinition
-  apiVersion: apiextensions.k8s.io/v1beta1
+  apiVersion: apiextensions.k8s.io/v1
   metadata:
     name: "${NAME}"
     annotations:
@@ -8570,50 +8570,60 @@ objects:
       - name: v1beta1
         served: false
         storage: false
+        schema:
+          openAPIV3Schema:
+            type: object
+            properties:
+              apiVersion:
+                type: string
+              kind:
+                type: string
+              metadata:
+                type: object
+              spec:
+                type: object
+                x-kubernetes-preserve-unknown-fields: true
+              status:
+                type: object
+                x-kubernetes-preserve-unknown-fields: true
       - name: v1beta2
         served: true
         storage: true
+        schema:
+          openAPIV3Schema:
+            type: object
+            properties:
+              apiVersion:
+                type: string
+              kind:
+                type: string
+              metadata:
+                type: object
+              spec:
+                type: object
+                x-kubernetes-preserve-unknown-fields: true
+              status:
+                type: object
+                x-kubernetes-preserve-unknown-fields: true
       - name: v1
         served: true
         storage: false
-    validation:
-      # openAPIV3Schema is the schema for validating custom objects.
-      openAPIV3Schema:
-        type: object
-        properties:
-          spec:
+        schema:
+          openAPIV3Schema:
             type: object
-            required: []
             properties:
-              targetRef:
+              apiVersion:
+                type: string
+              kind:
+                type: string
+              metadata:
                 type: object
-              updatePolicy:
+              spec:
                 type: object
-                properties:
-                  updateMode:
-                    type: string
-              resourcePolicy:
+                x-kubernetes-preserve-unknown-fields: true
+              status:
                 type: object
-                properties:
-                  containerPolicies:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        containerName:
-                          type: string
-                        mode:
-                          type: string
-                          enum: ["Auto", "Off"]
-                        minAllowed:
-                          type: object
-                        maxAllowed:
-                          type: object
-                        controlledResources:
-                          type: array
-                          items:
-                            type: string
-                            enum: ["cpu", "memory"]
+                x-kubernetes-preserve-unknown-fields: true
 parameters:
 - name: NAME
   value: "verticalpodautoscalers.autoscaling.k8s.io"
