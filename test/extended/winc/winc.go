@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -333,7 +334,6 @@ var _ = g.Describe("[sig-windows] Windows_Containers", func() {
 		if !strings.Contains(msg, "Windows Container Web Server") {
 			e2e.Failf("Failed to curl Windows ClusterIP from a linux pod")
 		}
-		e2e.Logf(" **** Success in testing Windows node from a linux host :-) ****")
 
 		g.By("Scale up the Deployment Windows pod continue to be available to curl Linux web server")
 		e2e.Logf("Scalling up the Deployment to 2")
@@ -611,6 +611,23 @@ var _ = g.Describe("[sig-windows] Windows_Containers", func() {
 		waitWindowsNodesReady(oc, 3, 60*time.Second, 1200*time.Second)
 	})
 
+	// author: rrasouli@redhat.com
+	g.It("Author:rrasouli-Medium-37362-[wmco] WMCO using correct golang version", func() {
+		g.By("Fetch the correct golang version")
+		// get the golang version
+		getCMD := "oc version -ojson | jq '.serverVersion.goVersion'"
+		goVersion, _ := exec.Command("bash", "-c", getCMD).Output()
+		s := string(goVersion)
+		tVersion := truncatedVersion(s)
+		g.By("Compare fetched version with WMCO log version")
+		msg, err := oc.WithoutNamespace().Run("logs").Args("deployment.apps/windows-machine-config-operator", "-n", "openshift-windows-machine-config-operator").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		if !strings.Contains(msg, tVersion) {
+			e2e.Failf("Unmatching golang version")
+		}
+
+	})
+
 	// author: sgao@redhat.com
 	g.It("Author:sgao-Critical-25593-Prevent scheduling non Windows workloads on Windows nodes", func() {
 		namespace := "winc-25593"
@@ -693,7 +710,6 @@ func getWindowsMachineSetName(oc *exutil.CLI) string {
 	// fetch the Windows MachineSet from all machinesets list
 	myJSON := "-o=jsonpath={.items[?(@.spec.template.metadata.labels.machine\\.openshift\\.io\\/os-id==\"Windows\")].metadata.name}"
 	windowsMachineSetName, err := oc.WithoutNamespace().Run("get").Args("machineset", "-n", "openshift-machine-api", myJSON).Output()
-	e2e.Logf("***** Name is %v ******", windowsMachineSetName)
 	o.Expect(err).NotTo(o.HaveOccurred())
 	return windowsMachineSetName
 }
@@ -762,7 +778,6 @@ func checkWindowsWorkloadCreated(oc *exutil.CLI, namespace string) bool {
 
 func checkWindowsWorkloadScaled(oc *exutil.CLI, deploymentName string, namespace string, replicas int) bool {
 	msg, _ := oc.WithoutNamespace().Run("get").Args("deployment", deploymentName, "-o=jsonpath={.status.readyReplicas}", "-n", namespace).Output()
-	e2e.Logf("msg is %v", msg)
 	workloads := strconv.Itoa(replicas)
 	if msg != workloads {
 		e2e.Logf("Deployment " + deploymentName + " did not scaled to " + workloads)
@@ -907,4 +922,17 @@ func getWorkloadsHostIP(oc *exutil.CLI, os string, namespace string) []string {
 func scaleDownWMCO(oc *exutil.CLI) {
 	_, err := oc.WithoutNamespace().Run("scale").Args("--replicas=0", "deployment", "windows-machine-config-operator", "-n", "openshift-windows-machine-config-operator").Output()
 	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+// The output from JSON contains quotes, here we remove them
+func removeOuterQuotes(s string) string {
+	return regexp.MustCompile(`^"(.*)"$`).ReplaceAllString(s, `$1`)
+}
+
+// we truncate the go version to major Go version, e.g. 1.15.13 --> 1.15
+func truncatedVersion(s string) string {
+	s = removeOuterQuotes(s)
+	str := strings.Split(s, ".")
+	str = str[:2]
+	return strings.Join(str[:], ".")
 }
