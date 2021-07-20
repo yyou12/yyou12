@@ -5394,7 +5394,15 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		g.By("check ip and csv")
 		newCheck("expect", asAdmin, withoutNamespace, compare, "Complete", ok, []string{"ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
 		sub.findInstalledCSV(oc, itName, dr)
-		newCheck("expect", asUser, withNamespace, compare, "Succeeded", ok, []string{"csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={..status.phase}"}).check(oc)
+		err := wait.Poll(10*time.Second, 300*time.Second, func() (bool, error) {
+			status := getResource(oc, asAdmin, withoutNamespace, "csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={..status.phase}")
+			if strings.Compare(status, "Succeeded") == 0 {
+				e2e.Logf("get installedCSV failed")
+				return true, nil
+			}
+			return false, nil
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
 	})
 
 	// It will cover test case: OCP-40958, author: kuiwang@redhat.com
