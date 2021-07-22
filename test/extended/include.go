@@ -18,6 +18,7 @@ import (
 	_ "k8s.io/kubernetes/test/e2e/servicecatalog"
 	_ "k8s.io/kubernetes/test/e2e/storage"
 
+	_ "github.com/openshift/openshift-tests-private/test/extended/etcd"
 	_ "github.com/openshift/openshift-tests-private/test/extended/operators"
 	_ "github.com/openshift/openshift-tests-private/test/extended/securityandcompliance"
 	_ "github.com/openshift/openshift-tests-private/test/extended/opm"
