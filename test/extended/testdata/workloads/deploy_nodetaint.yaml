@@ -1,0 +1,19 @@
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: deploy-nodetaint-template
+objects:
+- kind: Pod
+  apiVersion: v1
+  metadata:
+    name: "${DNAME}"
+    namespace: "${NAMESPACE}"
+    annotations:
+      descheduler.alpha.kubernetes.io/evict: "true"
+  spec:
+    containers:
+      - image: "quay.io/openshifttest/hello-openshift@sha256:424e57db1f2e8e8ac9087d2f5e8faea6d73811f0b6f96301bc94293680897073"
+        name: hello-pod
+parameters:
+- name: DNAME
+- name: NAMESPACE

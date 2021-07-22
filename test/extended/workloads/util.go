@@ -264,7 +264,7 @@ func (pod *podAffinityPreferredPts) getPodNodeName(oc *exutil.CLI) string {
 func applyResourceFromTemplate(oc *exutil.CLI, parameters ...string) error {
 	var configFile string
 	err := wait.Poll(3*time.Second, 15*time.Second, func() (bool, error) {
-		output, err := oc.Run("process").Args(parameters...).OutputToFile(getRandomString() + "workload-config.json")
+                output, err := oc.AsAdmin().Run("process").Args(parameters...).OutputToFile(getRandomString() + "workload-config.json")
 		if err != nil {
 			e2e.Logf("the err:%v, and try next round", err)
 			return false, nil
@@ -275,7 +275,7 @@ func applyResourceFromTemplate(oc *exutil.CLI, parameters ...string) error {
 	o.Expect(err).NotTo(o.HaveOccurred())
 
 	e2e.Logf("the file of resource is %s", configFile)
-	return oc.WithoutNamespace().Run("apply").Args("-f", configFile).Execute()
+        return oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", configFile).Execute()
 }
 
 func describePod(oc *exutil.CLI, namespace string, podName string) string {
@@ -360,7 +360,7 @@ func (pod *podTolerate) createPodTolerate(oc *exutil.CLI) {
 }
 
 func getPodNodeName(oc *exutil.CLI, namespace string, podName string) string {
-        nodeName, err := oc.WithoutNamespace().Run("get").Args("pod", "-n", namespace, podName, "-o=jsonpath={.spec.nodeName}").Output()
+        nodeName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-n", namespace, podName, "-o=jsonpath={.spec.nodeName}").Output()
         o.Expect(err).NotTo(o.HaveOccurred())
         e2e.Logf("The pod %s lands on node %q", podName, nodeName)
         return nodeName
