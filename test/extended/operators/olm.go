@@ -715,6 +715,90 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		o.Expect(podName).NotTo(o.Equal(podNameAfterPatch))
 
 	})
+
+	// author: bandrade@redhat.com
+	g.It("Author:bandrade-High-24387-Any CRD upgrade is allowed if there is only one owner in a cluster [Disruptive]", func() {
+		var (
+			catName             = "cs-24387"
+			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
+			csImageTemplate     = filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
+			subFile             = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+			ogSingleTemplate    = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+		)
+
+		oc.SetupProject()
+		dr := make(describerResrouce)
+		itName := g.CurrentGinkgoTestDescription().TestText
+		dr.addIr(itName)
+
+		var (
+			cs = catalogSourceDescription{
+				name:        catName,
+				namespace:   "openshift-marketplace",
+				displayName: "OLM QE Operators",
+				publisher:   "bandrade",
+				sourceType:  "grpc",
+				address:     "quay.io/olmqe/etcd-index-24387:4.0",
+				template:    csImageTemplate,
+			}
+
+			og = operatorGroupDescription{
+				name:      "test-og-24387",
+				namespace: oc.Namespace(),
+				template:  ogSingleTemplate,
+			}
+
+			sub = subscriptionDescription{
+				subName:                "etcd",
+				namespace:              oc.Namespace(),
+				catalogSourceName:      "community-operators",
+				catalogSourceNamespace: "openshift-marketplace",
+				channel:                "singlenamespace-alpha",
+				ipApproval:             "Automatic",
+				operatorPackage:        "etcd",
+				singleNamespace:        true,
+				template:               subFile,
+				startingCSV:            "etcdoperator.v0.9.4",
+			}
+
+			subModified = subscriptionDescription{
+				subName:                "etcd",
+				namespace:              oc.Namespace(),
+				catalogSourceName:      catName,
+				catalogSourceNamespace: "openshift-marketplace",
+				ipApproval:             "Automatic",
+				template:               subFile,
+				channel:                "alpha",
+				operatorPackage:        "etcd",
+				startingCSV:            "etcdoperator.v0.9.4",
+				singleNamespace:        true,
+			}
+		)
+
+		g.By("1) Create catalog source")
+		defer cs.delete(itName, dr)
+		cs.create(oc, itName, dr)
+
+		g.By("2) Create the OperatorGroup")
+		og.createwithCheck(oc, itName, dr)
+
+		g.By("3) Start to subscribe to the Etcd operator")
+		sub.create(oc, itName, dr)
+
+		g.By("4) Delete Etcd subscription and csv")
+		sub.delete(itName, dr)
+		sub.deleteCSV(itName, dr)
+
+		g.By("5) Start to subscribe to the Etcd operator with the modifier crd")
+		subModified.create(oc, itName, dr)
+
+		g.By("6) Get property propertyIncludedTest in etcdclusters.etcd.database.coreos.com")
+		crdYamlOutput, err := oc.AsAdmin().Run("get").Args("crd", "etcdclusters.etcd.database.coreos.com", "-o=yaml").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(crdYamlOutput).To(o.ContainSubstring("propertyIncludedTest"))
+
+	})
+
 	// author: jiazha@redhat.com
 	g.It("Author:jiazha-ConnectedOnly-Medium-33902-Catalog Weighting", func() {
 		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
