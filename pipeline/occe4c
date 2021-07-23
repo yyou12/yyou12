@@ -12,6 +12,7 @@ fi
 
 FLEXYURLBASE=${JENKINS_URL}"job/ocp-common/job/Flexy-install/"
 KUBECONFIG_FILE=""
+proxyValue=""
 if [ "${CONTENT_FOR_CONF}" != "" ] ; then
   rm -fr handleconfig.py && eval cp -fr ${WORKDIRBASE}"/private/pipeline/handleconfig.py" .
   value=`python3 handleconfig.py -a get -y "${CONTENT_FOR_CONF}" -p environments:ocp4:admin_creds_spec || true `
@@ -20,10 +21,17 @@ if [ "${CONTENT_FOR_CONF}" != "" ] ; then
   else
     echo "there is no kubeconfig or wrong in CONF, please check it !!! and try to config it from flexy"
   fi
+  proxyValue=`python3 handleconfig.py -a get -y "${CONTENT_FOR_CONF}" -p environments:ocp4:proxy || true `
+  echo "proxyValue is ${proxyValue}"
 fi
 if [ "${KUBECONFIG_FILE}" != "" ]; then
   echo "the kubeconfig is set directly with CONFIG"
   ck "${KUBECONFIG_FILE}"
+  if [ "${proxyValue}" != "" ]; then
+    echo "set http_proxy https_proxy"
+    eval "export ${proxyValue}"
+    echo $http_proxy $https_proxy
+  fi
 else
   echo "the configuration is set from flexy build"
   if [ "${BUILD_NUM_FOR_CONF}" == "" ]; then
