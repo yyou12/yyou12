@@ -1,0 +1,17 @@
+{
+  "name": "cypress-automation",
+  "version": "1.0.0",
+  "description": "Cypress Automation by QE",
+  "scripts": {},
+  "author": "OpenShift UI QE",
+  "license": "ISC",
+  "devDependencies": {
+    "@babel/core": "^7.10.3",
+    "cypress": "^6.2.0",
+    "cypress-select-tests": "^1.7.1",
+    "typescript": "3.8.3",
+    "@cypress/webpack-preprocessor": "^5.5.0",
+    "webpack": "4.44.0",
+    "ts-loader": "^6.2.2"
+  }
+}
