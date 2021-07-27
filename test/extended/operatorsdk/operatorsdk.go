@@ -764,4 +764,16 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
         o.Expect(output).To(o.ContainSubstring("State: fail"))
         o.Expect(output).To(o.ContainSubstring("memcacheds.cache.example.com does not have a status descriptor"))
     })
+    // author: chuo@redhat.com
+    g.It("Author:chuo-High-31219-scorecard bundle is mandatory ", func() {
+        operatorsdkCLI.showInfo = true
+        exec.Command("bash", "-c", "mkdir -p /tmp/ocp-31219/memcached-operator && cd /tmp/ocp-31219/memcached-operator && operator-sdk init --plugins=ansible --domain example.com").Output()
+        defer exec.Command("bash", "-c", "rm -rf /tmp/ocp-31219").Output()
+        exec.Command("bash", "-c", "cd /tmp/ocp-31219/memcached-operator && operator-sdk create api --group cache --version v1alpha1 --kind Memcached --generate-role").Output()
+        exec.Command("bash", "-c", "cd /tmp/ocp-31219/memcached-operator && operator-sdk generate bundle --deploy-dir=config --crds-dir=config/crds --version=0.0.1").Output()
+        output, err := exec.Command("bash", "-c", "operator-sdk scorecard /tmp/ocp-31219/memcached-operator/bundle -c /tmp/ocp-31219/memcached-operator/config/scorecard/bases/config.yaml -w 60s --selector=test=basic-check-spec-test").Output()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        o.Expect(output).To(o.ContainSubstring("tests selected"))
+    })
+
 })
