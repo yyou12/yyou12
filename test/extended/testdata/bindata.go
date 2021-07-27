@@ -163,10 +163,13 @@
 // test/extended/testdata/winc/linux_web_server.yaml
 // test/extended/testdata/winc/windows_web_server.yaml
 // test/extended/testdata/winc/windows_web_server_no_taint.yaml
+// test/extended/testdata/workloads/deploy_demopod.yaml
+// test/extended/testdata/workloads/deploy_duplicatepods.yaml
 // test/extended/testdata/workloads/deploy_interpodantiaffinity.yaml
 // test/extended/testdata/workloads/deploy_nodeaffinity.yaml
 // test/extended/testdata/workloads/deploy_nodeselect.yaml
 // test/extended/testdata/workloads/deploy_nodetaint.yaml
+// test/extended/testdata/workloads/deploy_podTopologySpread.yaml
 // test/extended/testdata/workloads/deploy_single_pts.yaml
 // test/extended/testdata/workloads/init.ldif
 // test/extended/testdata/workloads/kubedescheduler.yaml
@@ -19647,6 +19650,92 @@ func testExtendedTestdataWincWindows_web_server_no_taintYaml() (*asset, error) {
 	return a, nil
 }
 
+var _testExtendedTestdataWorkloadsDeploy_demopodYaml = []byte(`apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: deploy-podtopologyspread-template
+objects:
+- kind: Pod
+  apiVersion: v1
+  metadata:
+    name: "${DNAME}"
+    namespace: "${NAMESPACE}"
+    labels:
+      ocp400551: ocp400551
+    annotations:
+      "descheduler.alpha.kubernetes.io/evict": ""
+  spec:
+    containers:
+    - name: pause
+      image: quay.io/openshifttest/pause@sha256:b31bfb4d0213f254d361e0079deaaebefa4f82ba7aa76ef82e90b4935ad5b105
+
+
+parameters:
+- name: DNAME
+- name: NAMESPACE
+`)
+
+func testExtendedTestdataWorkloadsDeploy_demopodYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataWorkloadsDeploy_demopodYaml, nil
+}
+
+func testExtendedTestdataWorkloadsDeploy_demopodYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataWorkloadsDeploy_demopodYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/workloads/deploy_demopod.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataWorkloadsDeploy_duplicatepodsYaml = []byte(`apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: deploy-duplicatepods-template
+objects:
+- kind: Deployment
+  apiVersion: apps/v1
+  metadata:
+    name: "${DNAME}"
+    namespace: "${NAMESPACE}"
+  spec:
+    replicas: ${{REPLICASNUM}}
+    selector:
+      matchLabels:
+        app: "${DNAME}"
+    template:
+      metadata:
+        labels:
+          app: "${DNAME}"
+      spec:
+        containers:
+        - name: "${DNAME}"
+          image: quay.io/openshifttest/hello-openshift@sha256:aaea76ff622d2f8bcb32e538e7b3cd0ef6d291953f3e7c9f556c1ba5baf47e2e
+          ports:
+            - containerPort: 8080
+parameters:
+- name: DNAME
+- name: NAMESPACE
+- name: REPLICASNUM
+`)
+
+func testExtendedTestdataWorkloadsDeploy_duplicatepodsYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataWorkloadsDeploy_duplicatepodsYaml, nil
+}
+
+func testExtendedTestdataWorkloadsDeploy_duplicatepodsYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataWorkloadsDeploy_duplicatepodsYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/workloads/deploy_duplicatepods.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
 var _testExtendedTestdataWorkloadsDeploy_interpodantiaffinityYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
@@ -19854,6 +19943,53 @@ func testExtendedTestdataWorkloadsDeploy_nodetaintYaml() (*asset, error) {
 	}
 
 	info := bindataFileInfo{name: "test/extended/testdata/workloads/deploy_nodetaint.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataWorkloadsDeploy_podtopologyspreadYaml = []byte(`apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: deploy-podtopologyspread-template
+objects:
+- kind: Pod
+  apiVersion: v1
+  metadata:
+    name: "${DNAME}"
+    namespace: "${NAMESPACE}"
+    labels:
+      ocp400551: ocp400551
+    annotations:
+      "descheduler.alpha.kubernetes.io/evict": ""
+  spec:
+    topologySpreadConstraints:
+    - maxSkew: 1
+      topologyKey: ocp40055-zone
+      whenUnsatisfiable: DoNotSchedule
+      labelSelector:
+        matchLabels:
+          ocp400551: ocp400551
+    containers:
+    - name: pause
+      image: quay.io/openshifttest/pause@sha256:b31bfb4d0213f254d361e0079deaaebefa4f82ba7aa76ef82e90b4935ad5b105
+
+
+parameters:
+- name: DNAME
+- name: NAMESPACE
+`)
+
+func testExtendedTestdataWorkloadsDeploy_podtopologyspreadYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataWorkloadsDeploy_podtopologyspreadYaml, nil
+}
+
+func testExtendedTestdataWorkloadsDeploy_podtopologyspreadYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataWorkloadsDeploy_podtopologyspreadYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/workloads/deploy_podTopologySpread.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -21111,10 +21247,13 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/winc/linux_web_server.yaml":                                                                                    testExtendedTestdataWincLinux_web_serverYaml,
 	"test/extended/testdata/winc/windows_web_server.yaml":                                                                                  testExtendedTestdataWincWindows_web_serverYaml,
 	"test/extended/testdata/winc/windows_web_server_no_taint.yaml":                                                                         testExtendedTestdataWincWindows_web_server_no_taintYaml,
+	"test/extended/testdata/workloads/deploy_demopod.yaml":                                                                                 testExtendedTestdataWorkloadsDeploy_demopodYaml,
+	"test/extended/testdata/workloads/deploy_duplicatepods.yaml":                                                                           testExtendedTestdataWorkloadsDeploy_duplicatepodsYaml,
 	"test/extended/testdata/workloads/deploy_interpodantiaffinity.yaml":                                                                    testExtendedTestdataWorkloadsDeploy_interpodantiaffinityYaml,
 	"test/extended/testdata/workloads/deploy_nodeaffinity.yaml":                                                                            testExtendedTestdataWorkloadsDeploy_nodeaffinityYaml,
 	"test/extended/testdata/workloads/deploy_nodeselect.yaml":                                                                              testExtendedTestdataWorkloadsDeploy_nodeselectYaml,
 	"test/extended/testdata/workloads/deploy_nodetaint.yaml":                                                                               testExtendedTestdataWorkloadsDeploy_nodetaintYaml,
+	"test/extended/testdata/workloads/deploy_podTopologySpread.yaml":                                                                       testExtendedTestdataWorkloadsDeploy_podtopologyspreadYaml,
 	"test/extended/testdata/workloads/deploy_single_pts.yaml":                                                                              testExtendedTestdataWorkloadsDeploy_single_ptsYaml,
 	"test/extended/testdata/workloads/init.ldif":                                                                                           testExtendedTestdataWorkloadsInitLdif,
 	"test/extended/testdata/workloads/kubedescheduler.yaml":                                                                                testExtendedTestdataWorkloadsKubedeschedulerYaml,
@@ -21406,10 +21545,13 @@ var _bintree = &bintree{nil, map[string]*bintree{
 					"windows_web_server_no_taint.yaml":       {testExtendedTestdataWincWindows_web_server_no_taintYaml, map[string]*bintree{}},
 				}},
 				"workloads": {nil, map[string]*bintree{
+					"deploy_demopod.yaml":                   {testExtendedTestdataWorkloadsDeploy_demopodYaml, map[string]*bintree{}},
+					"deploy_duplicatepods.yaml":             {testExtendedTestdataWorkloadsDeploy_duplicatepodsYaml, map[string]*bintree{}},
 					"deploy_interpodantiaffinity.yaml":      {testExtendedTestdataWorkloadsDeploy_interpodantiaffinityYaml, map[string]*bintree{}},
 					"deploy_nodeaffinity.yaml":              {testExtendedTestdataWorkloadsDeploy_nodeaffinityYaml, map[string]*bintree{}},
 					"deploy_nodeselect.yaml":                {testExtendedTestdataWorkloadsDeploy_nodeselectYaml, map[string]*bintree{}},
 					"deploy_nodetaint.yaml":                 {testExtendedTestdataWorkloadsDeploy_nodetaintYaml, map[string]*bintree{}},
+					"deploy_podTopologySpread.yaml":         {testExtendedTestdataWorkloadsDeploy_podtopologyspreadYaml, map[string]*bintree{}},
 					"deploy_single_pts.yaml":                {testExtendedTestdataWorkloadsDeploy_single_ptsYaml, map[string]*bintree{}},
 					"init.ldif":                             {testExtendedTestdataWorkloadsInitLdif, map[string]*bintree{}},
 					"kubedescheduler.yaml":                  {testExtendedTestdataWorkloadsKubedeschedulerYaml, map[string]*bintree{}},

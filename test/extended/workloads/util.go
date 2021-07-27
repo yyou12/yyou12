@@ -378,7 +378,7 @@ func createLdapService(oc *exutil.CLI, namespace string, podName string, initGro
 		if strings.Compare(podStatus, "Running") != 0 {
                         e2e.Logf("the podstatus is :%v, and try next round", podStatus)
                         return false, nil
-		} 
+		}
                 return true, nil
 	})
 	if err != nil {
@@ -394,8 +394,8 @@ func createLdapService(oc *exutil.CLI, namespace string, podName string, initGro
 	if err != nil {
 		oc.Run("delete").Args("pod/ldapserver", "-n", namespace).Execute()
 		e2e.Failf("failed to config the ldap server ")
-	}  
-	
+	}
+
 }
 
 func getSyncGroup(oc *exutil.CLI, syncConfig string) string {

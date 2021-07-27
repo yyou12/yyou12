@@ -3,6 +3,7 @@ package workloads
 import (
 	"path/filepath"
         "regexp"
+        "fmt"
 
 	g "github.com/onsi/ginkgo"
 	o "github.com/onsi/gomega"
@@ -148,7 +149,9 @@ var _ = g.Describe("[sig-scheduling] Workloads The Descheduler Operator automate
                         operatorPolicy: "In",
                         podAffinityValue: "value374632",
                         template:       deploypT,
+
               }
+
 
               g.By("Create the descheduler namespace")
               err = oc.AsAdmin().WithoutNamespace().Run("create").Args("ns", kubeNamespace).Execute()
@@ -201,13 +204,14 @@ var _ = g.Describe("[sig-scheduling] Workloads The Descheduler Operator automate
               g.By("Check all the pods should running on node1")
               waitErr := wait.Poll(5*time.Second, 120*time.Second, func() (bool, error) {
                         msg, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-n", testd.namespace).Output()
+
                         o.Expect(err).NotTo(o.HaveOccurred())
                         if strings.Contains(msg, "Running"){
                                 return true, nil
                         }
                         return false, nil
-                })
-                o.Expect(waitErr).NotTo(o.HaveOccurred())
+              })
+              o.Expect(waitErr).NotTo(o.HaveOccurred())
 
               testPodName, err := oc.AsAdmin().Run("get").Args("pods", "-l", testd.labelKey+"="+testd.labelValue, "-n", testd.namespace, "-o=jsonpath={.items..metadata.name}").Output()
               o.Expect(err).NotTo(o.HaveOccurred())
@@ -261,6 +265,167 @@ var _ = g.Describe("[sig-scheduling] Workloads The Descheduler Operator automate
 
             g.By("Check the descheduler deploy logs, should see evict logs")
             checkLogsFromRs(oc, kubeNamespace, "pod", podName, regexp.QuoteMeta(`"Evicted pod"`)+".*"+regexp.QuoteMeta(`reason="InterPodAntiAffinity"`))
+      })
+
+      // author: knarra@redhat.com
+      g.It("Author:knarra-High-40055-Descheduler Validate TopologyAndDuplicates descheduler profile [Disruptive]", func() {
+              deploydpT  := filepath.Join(buildPruningBaseDir, "deploy_duplicatepods.yaml")
+              deployptsT := filepath.Join(buildPruningBaseDir, "deploy_podTopologySpread.yaml")
+              deploydT   := filepath.Join(buildPruningBaseDir, "deploy_demopod.yaml")
+
+              nodeList, err := e2enode.GetReadySchedulableNodes(oc.KubeFramework().ClientSet)
+
+              // Create test project
+              g.By("Create test project")
+              oc.SetupProject()
+
+              testdp := deployduplicatepods{
+			dName:          "d40055",
+			namespace:      oc.Namespace(),
+			replicaNum:     6,
+			template:       deploydpT,
+	      }
+
+             testpts := deploypodtopologyspread{
+                        dName:          "d400551",
+                        namespace:      oc.Namespace(),
+                        template:       deployptsT,
+              }
+
+              testpts1 := deploypodtopologyspread{
+                        dName:          "d400552",
+                        namespace:      oc.Namespace(),
+                        template:       deploydT,
+              }
+
+              testpts2 := deploypodtopologyspread{
+                        dName:          "d4005521",
+                        namespace:      oc.Namespace(),
+                        template:       deploydT,
+              }
+
+              testpts3 := deploypodtopologyspread{
+                        dName:          "d4005522",
+                        namespace:      oc.Namespace(),
+                        template:       deploydT,
+              }
+
+              g.By("Create the descheduler namespace")
+              err = oc.AsAdmin().WithoutNamespace().Run("create").Args("ns", kubeNamespace).Execute()
+              o.Expect(err).NotTo(o.HaveOccurred())
+              defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("ns", kubeNamespace).Execute()
+
+              g.By("Create the operatorgroup")
+              og.createOperatorGroup(oc)
+              o.Expect(err).NotTo(o.HaveOccurred())
+              defer og.deleteOperatorGroup(oc)
+
+              g.By("Create the subscription")
+              sub.createSubscription(oc)
+              o.Expect(err).NotTo(o.HaveOccurred())
+              defer sub.deleteSubscription(oc)
+
+              g.By("Wait for the descheduler operator pod running")
+              if ok := waitForAvailableRsRunning(oc, "deploy", "descheduler-operator", kubeNamespace, "1"); ok {
+                  e2e.Logf("Kubedescheduler operator runnnig now\n")
+              }
+
+              g.By("Create descheduler cluster")
+              deschu.createKubeDescheduler(oc)
+              o.Expect(err).NotTo(o.HaveOccurred())
+              defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("KubeDescheduler", "--all", "-n", kubeNamespace).Execute()
+
+              g.By("Check the kubedescheduler run well")
+              checkAvailable(oc, "deploy", "cluster", kubeNamespace, "1")
+
+              g.By("Get descheduler cluster pod name")
+              podName, err := oc.AsAdmin().Run("get").Args("pods", "-l", "app=descheduler", "-n", kubeNamespace, "-o=jsonpath={.items..metadata.name}").Output()
+              o.Expect(err).NotTo(o.HaveOccurred())
+
+
+              // Test for RemoveDuplicates
+
+              g.By("Cordon node1")
+              err = oc.AsAdmin().Run("adm").Args("cordon", nodeList.Items[0].Name).Execute()
+              o.Expect(err).NotTo(o.HaveOccurred())
+              defer oc.AsAdmin().Run("adm").Args("uncordon", nodeList.Items[0].Name).Execute()
+
+              g.By("Create the test deploy")
+	      testdp.createDuplicatePods(oc)
+	      o.Expect(err).NotTo(o.HaveOccurred())
+
+              g.By("Check all the pods should running on node")
+              if ok := waitForAvailableRsRunning(oc, "deploy", testdp.dName, testdp.namespace, "6"); ok {
+                  e2e.Logf("All pods are runnnig now\n")
+              }
+
+              g.By("Uncordon node1")
+              err = oc.AsAdmin().Run("adm").Args("uncordon", nodeList.Items[0].Name).Execute()
+              o.Expect(err).NotTo(o.HaveOccurred())
+
+              g.By("Check the descheduler deploy logs, should see evict logs")
+	      checkLogsFromRs(oc, kubeNamespace, "pod", podName, regexp.QuoteMeta(`"Evicted pod"`)+".*"+regexp.QuoteMeta(`reason="RemoveDuplicatePods"`))
+
+             // Delete deployment from the namespace
+             err = oc.AsAdmin().WithoutNamespace().Run("delete").Args("deployment", testdp.dName, "-n", testdp.namespace).Execute()
+             o.Expect(err).NotTo(o.HaveOccurred())
+
+             // Test for PodTopologySpreadConstriant
+
+             g.By("Cordon all nodes in the cluster")
+             nodeName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("nodes", "--selector=node-role.kubernetes.io/worker=", "-o=jsonpath={.items[*].metadata.name}").Output()
+             o.Expect(err).NotTo(o.HaveOccurred())
+             e2e.Logf("\nNode Names are %v", nodeName)
+             node := strings.Fields(nodeName)
+
+             defer func() {
+                for _, v := range node {
+                    oc.AsAdmin().WithoutNamespace().Run("adm").Args("uncordon", fmt.Sprintf("%s", v)).Execute()
+                    }
+             }()
+
+             for _, v := range node {
+                err = oc.AsAdmin().WithoutNamespace().Run("adm").Args("cordon", fmt.Sprintf("%s", v)).Execute()
+                o.Expect(err).NotTo(o.HaveOccurred())
+             }
+
+             g.By("Label Node1 & Node2")
+             e2e.AddOrUpdateLabelOnNode(oc.KubeFramework().ClientSet, nodeList.Items[0].Name, "ocp40055-zone", "ocp40055zoneA")
+             defer e2e.RemoveLabelOffNode(oc.KubeFramework().ClientSet, nodeList.Items[0].Name, "ocp40055-zone")
+             e2e.AddOrUpdateLabelOnNode(oc.KubeFramework().ClientSet, nodeList.Items[1].Name, "ocp40055-zone", "ocp40055zoneB")
+             defer e2e.RemoveLabelOffNode(oc.KubeFramework().ClientSet, nodeList.Items[1].Name, "ocp40055-zone")
+
+             g.By("Uncordon Node1")
+             err = oc.AsAdmin().Run("adm").Args("uncordon", nodeList.Items[0].Name).Execute()
+             o.Expect(err).NotTo(o.HaveOccurred())
+
+             g.By("Create three pods on node1")
+             testpts.createPodTopologySpread(oc)
+             o.Expect(err).NotTo(o.HaveOccurred())
+
+             g.By("Creating first demo pod")
+             testpts1.createPodTopologySpread(oc)
+             o.Expect(err).NotTo(o.HaveOccurred())
+
+             g.By("Creating second demo pod")
+             testpts2.createPodTopologySpread(oc)
+             o.Expect(err).NotTo(o.HaveOccurred())
+
+             g.By("cordon Node1, uncordon Node2")
+             err = oc.AsAdmin().Run("adm").Args("cordon", nodeList.Items[0].Name).Execute()
+             o.Expect(err).NotTo(o.HaveOccurred())
+             err = oc.AsAdmin().Run("adm").Args("uncordon", nodeList.Items[1].Name).Execute()
+             o.Expect(err).NotTo(o.HaveOccurred())
+
+             g.By("create one pod on node2")
+             testpts3.createPodTopologySpread(oc)
+
+             g.By("uncordon Node1")
+             err = oc.AsAdmin().Run("adm").Args("uncordon", nodeList.Items[0].Name).Execute()
+             o.Expect(err).NotTo(o.HaveOccurred())
+
+             g.By("Check the descheduler deploy logs, should see evict logs")
+             checkLogsFromRs(oc, kubeNamespace, "pod", podName, regexp.QuoteMeta(`"Evicted pod"`)+".*"+regexp.QuoteMeta(`reason="PodTopologySpread"`))
 
          })
 

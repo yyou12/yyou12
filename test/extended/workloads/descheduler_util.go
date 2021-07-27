@@ -69,6 +69,18 @@ type deployinterpodantiaffinity struct {
         template         string
 }
 
+type deployduplicatepods struct {
+        dName            string
+        namespace        string
+        replicaNum       int
+        template         string
+}
+
+type deploypodtopologyspread struct {
+        dName            string
+        namespace        string
+        template         string
+}
 
 func (sub *subscription) createSubscription(oc *exutil.CLI) {
       err := wait.Poll(5*time.Second, 20*time.Second, func() (bool, error) {
@@ -279,6 +291,31 @@ func (deployp *deployinterpodantiaffinity) createDeployInterPodAntiAffinity(oc *
                 err1 := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", deployp.template, "-p", "DNAME="+deployp.dName, "NAMESPACE="+deployp.namespace,
                         "REPLICASNUM="+strconv.Itoa(deployp.replicaNum), "PODAFFINITYKEY="+deployp.podAffinityKey,
                         "OPERATORPOLICY="+deployp.operatorPolicy, "PODAFFINITYVALUE="+deployp.podAffinityValue)
+                if err1 != nil {
+                        e2e.Logf("the err:%v, and try next round", err1)
+                        return false, nil
+                }
+                return true, nil
+        })
+        o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+func (deploydp *deployduplicatepods) createDuplicatePods(oc *exutil.CLI) {
+    err := wait.Poll(5*time.Second, 20*time.Second, func() (bool, error) {
+                err1 := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", deploydp.template, "-p", "DNAME="+deploydp.dName, "NAMESPACE="+deploydp.namespace,
+                        "REPLICASNUM="+strconv.Itoa(deploydp.replicaNum))
+                if err1 != nil {
+                        e2e.Logf("the err:%v, and try next round", err1)
+                        return false, nil
+                }
+                return true, nil
+        })
+        o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+func (deploypts *deploypodtopologyspread) createPodTopologySpread(oc *exutil.CLI) {
+    err := wait.Poll(5*time.Second, 20*time.Second, func() (bool, error) {
+                err1 := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", deploypts.template, "-p", "DNAME="+deploypts.dName, "NAMESPACE="+deploypts.namespace)
                 if err1 != nil {
                         e2e.Logf("the err:%v, and try next round", err1)
                         return false, nil
