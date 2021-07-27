@@ -3,7 +3,7 @@ package image_registry
 import (
 	"encoding/base64"
 	"fmt"
-        "strings"
+	"strings"
 
 	g "github.com/onsi/ginkgo"
 	o "github.com/onsi/gomega"
@@ -13,11 +13,11 @@ import (
 
 var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 	defer g.GinkgoRecover()
-
 	var (
 		oc        = exutil.NewCLI("default-image-registry", exutil.KubeConfigPath())
 		bcName    = "rails-postgresql-example"
 		bcNameOne = fmt.Sprintf("%s-1", bcName)
+		logInfo   = `Unsupported value: "abc": supported values: "", "Normal", "Debug", "Trace", "TraceAll"`
 	)
 	// author: wewang@redhat.com
 	g.It("Author:wewang-High-39027-Check AWS secret and access key with an OpenShift installed in a regular way", func() {
@@ -55,5 +55,15 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 			exutil.DumpBuildLogs(bcName, oc)
 		}
 		o.Expect(err).NotTo(o.HaveOccurred())
+	})
+
+	// author: wewang@redhat.com
+	g.It("Author:wewang-High-34992-Add logLevel to registry config object with invalid value", func() {
+		g.By("Change spec.loglevel with invalid values")
+		out, _ := oc.WithoutNamespace().AsAdmin().Run("patch").Args("configs.imageregistry/cluster", "-p", `{"spec":{"logLevel":"abc"}}`, "--type=merge").Output()
+		o.Expect(out).To(o.ContainSubstring(logInfo))
+		g.By("Change spec.operatorLogLevel with invalid values")
+		out, _ = oc.WithoutNamespace().AsAdmin().Run("patch").Args("configs.imageregistry/cluster", "-p", `{"spec":{"operatorLogLevel":"abc"}}`, "--type=merge").Output()
+		o.Expect(out).To(o.ContainSubstring(logInfo))
 	})
 })
