@@ -2335,10 +2335,11 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	})
 
 	g.It("ConnectedOnly-Author:scolange-Medium-21534-Check OperatorGroups on console", func() {
-		ogNamespace, err1 := oc.AsAdmin().WithoutNamespace().Run("get").Args("og", "-n", "openshift-operators", "-o", "jsonpath={.status.namespace}").Output()
+		ogNamespace, err1 := oc.AsAdmin().WithoutNamespace().Run("get").Args("og", "global-operators","-n", "openshift-operators", "-o", "jsonpath={.status.namespace}").Output()
 		e2e.Logf(ogNamespace)
 		o.Expect(err1).NotTo(o.HaveOccurred())
-		o.Expect(ogNamespace).To(o.Equal(""))
+		o.Expect(ogNamespace).To(o.Equal("[\"\"]"))
+		
 	})
 
 	// author: scolange@redhat.com
