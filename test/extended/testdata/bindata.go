@@ -125,6 +125,8 @@
 // test/extended/testdata/opm/learn_operator/package/0.0.2/learn-operator.v0.0.2.clusterserviceversion.yaml
 // test/extended/testdata/opm/learn_operator/package/0.0.2/learn.crd.yaml
 // test/extended/testdata/opm/learn_operator/package/learn.package.yaml
+// test/extended/testdata/ota/osus/operatorgroup.yaml
+// test/extended/testdata/ota/osus/subscription.yaml
 // test/extended/testdata/router/ingress-with-class.yaml
 // test/extended/testdata/router/ingresscontroller-hn-PROXY.yaml
 // test/extended/testdata/router/ingresscontroller-np-PROXY.yaml
@@ -16905,6 +16907,85 @@ func testExtendedTestdataOpmLearn_operatorPackageLearnPackageYaml() (*asset, err
 	return a, nil
 }
 
+var _testExtendedTestdataOtaOsusOperatorgroupYaml = []byte(`apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: osus-og-temp
+objects:
+- kind: OperatorGroup
+  apiVersion: operators.coreos.com/v1
+  metadata:
+    name: "${NAME}"
+    namespace: "${NAMESPACE}"
+  spec:
+    targetNamespaces:
+    - "${NAMESPACE}"
+
+parameters:
+- name: NAME
+- name: NAMESPACE
+  
+`)
+
+func testExtendedTestdataOtaOsusOperatorgroupYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataOtaOsusOperatorgroupYaml, nil
+}
+
+func testExtendedTestdataOtaOsusOperatorgroupYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataOtaOsusOperatorgroupYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/ota/osus/operatorgroup.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataOtaOsusSubscriptionYaml = []byte(`apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: osus-sub-temp
+objects:
+- apiVersion: operators.coreos.com/v1alpha1
+  kind: Subscription
+  metadata:
+    name: "${NAME}"
+    namespace: "${NAMESPACE}"
+  spec:
+    channel: "${CHANNEL}"
+    installPlanApproval: "${APPROVAL}"
+    name: "${OPERATORNAME}"
+    source: "${SOURCENAME}"
+    sourceNamespace: "${SOURCENAMESPACE}"
+    startingCSV: "${STARTINGCSV}"
+parameters:
+- name: NAME
+- name: NAMESPACE
+- name: CHANNEL
+- name: APPROVAL
+- name: OPERATORNAME
+- name: SOURCENAME
+- name: SOURCENAMESPACE
+- name: STARTINGCSV
+
+`)
+
+func testExtendedTestdataOtaOsusSubscriptionYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataOtaOsusSubscriptionYaml, nil
+}
+
+func testExtendedTestdataOtaOsusSubscriptionYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataOtaOsusSubscriptionYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/ota/osus/subscription.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
 var _testExtendedTestdataRouterIngressWithClassYaml = []byte(`apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -20992,6 +21073,8 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/opm/learn_operator/package/0.0.2/learn-operator.v0.0.2.clusterserviceversion.yaml":                             testExtendedTestdataOpmLearn_operatorPackage002LearnOperatorV002ClusterserviceversionYaml,
 	"test/extended/testdata/opm/learn_operator/package/0.0.2/learn.crd.yaml":                                                               testExtendedTestdataOpmLearn_operatorPackage002LearnCrdYaml,
 	"test/extended/testdata/opm/learn_operator/package/learn.package.yaml":                                                                 testExtendedTestdataOpmLearn_operatorPackageLearnPackageYaml,
+	"test/extended/testdata/ota/osus/operatorgroup.yaml":                                                                                   testExtendedTestdataOtaOsusOperatorgroupYaml,
+	"test/extended/testdata/ota/osus/subscription.yaml":                                                                                    testExtendedTestdataOtaOsusSubscriptionYaml,
 	"test/extended/testdata/router/ingress-with-class.yaml":                                                                                testExtendedTestdataRouterIngressWithClassYaml,
 	"test/extended/testdata/router/ingresscontroller-hn-PROXY.yaml":                                                                        testExtendedTestdataRouterIngresscontrollerHnProxyYaml,
 	"test/extended/testdata/router/ingresscontroller-np-PROXY.yaml":                                                                        testExtendedTestdataRouterIngresscontrollerNpProxyYaml,
@@ -21272,6 +21355,12 @@ var _bintree = &bintree{nil, map[string]*bintree{
 							}},
 							"learn.package.yaml": {testExtendedTestdataOpmLearn_operatorPackageLearnPackageYaml, map[string]*bintree{}},
 						}},
+					}},
+				}},
+				"ota": {nil, map[string]*bintree{
+					"osus": {nil, map[string]*bintree{
+						"operatorgroup.yaml": {testExtendedTestdataOtaOsusOperatorgroupYaml, map[string]*bintree{}},
+						"subscription.yaml":  {testExtendedTestdataOtaOsusSubscriptionYaml, map[string]*bintree{}},
 					}},
 				}},
 				"router": {nil, map[string]*bintree{
