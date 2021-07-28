@@ -1,12 +1,13 @@
 # Extended Platform Tests
 This repository holds the non-kubernetes, end-to-end tests that need to pass on a running
 cluster before PRs merge and/or before we ship a release.
-These tests are based on ginkgo and the [kubernetes](github.com/kubernetes/kubernetes) e2e test framework.
+These tests are based on [ginkgo](https://github.com/onsi/ginkgo) and the [kubernetes](https://github.com/kubernetes/kubernetes) e2e test framework.
 
 Prerequisites
 -------------
-* Git installed. See [Installing Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)
+* Git installed. See [Installing Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git).
 * Golang installed. See [Installing Golang](https://golang.org/doc/install), the newer the better.
+	* Ensure you install Golang from a binary release [found here](https://golang.org/dl/), not with a package manager such as `dnf`.
 * Have the environment variable `KUBECONFIG` set pointing to your cluster.
 
 ### Include test cases of the Public Repo
@@ -136,7 +137,7 @@ Here are the parameters:
 > - FLEXY_BUILD: the [Launch Environment Flexy](https://mastern-jenkins-csb-openshift-qe.apps.ocp4.prod.psi.redhat.com/job/Launch%20Environment%20Flexy/) build ID to build the cluster you use  
 > - TIERN_REPO_OWNER: your GitHub account  
 > - TIERN_REPO_BRANCH: your branch for the debug case code  
-> - JENKINS_SLAVE: gocxx, xx is your cluster relase version, for example, goc47 for 4.7 cluster  
+> - JENKINS_SLAVE: gocxx, xx is your cluster release version, for example, goc47 for 4.7 cluster  
 > - For other parameters, please take default value.  
 
 Here are the procedures:
