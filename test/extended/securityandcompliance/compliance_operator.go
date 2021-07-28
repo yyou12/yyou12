@@ -2660,5 +2660,155 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 
 			g.By("The ocp-42719 The TokenMaxAge is configured for oauth cluster object successfully... !!!!\n ")
 		})
+
+		// author: pdhamdhe@redhat.com
+		g.It("Author:pdhamdhe-Low-42960-Check that token max age configurable for oauthclient objects [Disruptive][Slow]", func() {
+
+			var (
+				ssb = scanSettingBindingDescription{
+					name:            "moderate-test",
+					namespace:       "",
+					profilekind1:    "Profile",
+					profilename1:    "ocp4-moderate",
+					scansettingname: "default",
+					template:        scansettingbindingSingleTemplate,
+				}
+				itName = g.CurrentGinkgoTestDescription().TestText
+			)
+
+			defer func() {
+				g.By("Remove TokenMaxAge parameter by patching oauthclient objects.. !!!\n")
+				oauthclients, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("oauthclient", "-n", oc.Namespace(),
+					"-o=jsonpath={.items[*].metadata.name}").Output()
+				oauthclient := strings.Fields(oauthclients)
+				for _, v := range oauthclient {
+					patchResource(oc, asAdmin, withoutNamespace, "oauthclient", v, "--type=json", "-p",
+						"[{\"op\": \"remove\",\"path\": \"/accessTokenMaxAgeSeconds\"}]")
+					newCheck("present", asAdmin, withoutNamespace, notPresent, "", ok, []string{"oauthclient", v,
+						"-o=jsonpath={.accessTokenMaxAgeSeconds}"}).check(oc)
+				}
+				cleanupObjects(oc, objectTableRef{"scansettingbinding", subD.namespace, ssb.name})
+			}()
+
+			g.By("Check default profiles name ocp4-moderate .. !!!\n")
+			subD.getProfileName(oc, "ocp4-moderate")
+
+			g.By("Create scansettingbinding !!!\n")
+			ssb.namespace = subD.namespace
+			ssb.create(oc, itName, dr)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "moderate-test", ok, []string{"scansettingbinding", "-n", subD.namespace,
+				"-o=jsonpath={.items[0].metadata.name}"}).check(oc)
+			g.By("Check ComplianceSuite status and result.. !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", ssb.name, "-n", subD.namespace,
+				"-o=jsonpath={.status.phase}"}).check(oc)
+			subD.complianceSuiteResult(oc, ssb.name, "NON-COMPLIANT")
+
+			g.By("Verify 'ocp4-moderate-oauth-or-oauthclient-token-maxage' rule status through compliancecheck result.. !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "FAIL", ok, []string{"compliancecheckresult",
+				"ocp4-moderate-oauth-or-oauthclient-token-maxage", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
+
+			g.By("Set TokenMaxAge parameter by patching.. !!!\n")
+			patchResource(oc, asAdmin, withoutNamespace, "oauthclient", "console", "--type", "merge", "-p", "{\"accessTokenMaxAgeSeconds\":28800}")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "28800", ok, []string{"oauthclient", "console",
+				"-o=jsonpath={.accessTokenMaxAgeSeconds}"}).check(oc)
+
+			g.By("Rerun scan using oc-compliance plugin.. !!")
+			_, err := OcComplianceCLI().Run("rerun-now").Args("scansettingbinding", ssb.name, "-n", subD.namespace).Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			g.By("Check ComplianceSuite status.. !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", ssb.name, "-n", subD.namespace,
+				"-o=jsonpath={.status.phase}"}).check(oc)
+			g.By("Verify 'ocp4-moderate-oauth-or-oauthclient-token-maxage' rule status again through compliancecheck result.. !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "FAIL", ok, []string{"compliancecheckresult",
+				"ocp4-moderate-oauth-or-oauthclient-token-maxage", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
+
+			g.By("Set TokenMaxAge parameter to remaining oauthclient objects by patching.. !!!\n")
+			oauthclients, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("oauthclient", "-n", oc.Namespace(), "-o=jsonpath={.items[*].metadata.name}").Output()
+			oauthclient := strings.Fields(oauthclients)
+			for _, v := range oauthclient {
+				patchResource(oc, asAdmin, withoutNamespace, "oauthclient", v, "--type", "merge", "-p", "{\"accessTokenMaxAgeSeconds\":28800}")
+				newCheck("expect", asAdmin, withoutNamespace, contain, "28800", ok, []string{"oauthclient", v,
+					"-o=jsonpath={.accessTokenMaxAgeSeconds}"}).check(oc)
+			}
+
+			g.By("Rerun scan using oc-compliance plugin.. !!")
+			_, err1 := OcComplianceCLI().Run("rerun-now").Args("scansettingbinding", ssb.name, "-n", subD.namespace).Output()
+			o.Expect(err1).NotTo(o.HaveOccurred())
+			g.By("Check ComplianceSuite status.. !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", ssb.name, "-n", subD.namespace,
+				"-o=jsonpath={.status.phase}"}).check(oc)
+
+			g.By("Verify 'ocp4-moderate-oauth-or-oauthclient-token-maxage' rule status through compliancecheck result.. !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "PASS", ok, []string{"compliancecheckresult",
+				"ocp4-moderate-oauth-or-oauthclient-token-maxage", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
+
+			g.By("The ocp-42960 The TokenMaxAge is configured for oauthclient objects successfully... !!!!\n ")
+		})
+
+		// author: pdhamdhe@redhat.com
+		g.It("Author:pdhamdhe-Low-42810-Check manual remediation works for rule ocp4-moderate-oauth-or-oauthclient-inactivity-timeout [Disruptive][Slow]", func() {
+
+			var (
+				ssb = scanSettingBindingDescription{
+					name:            "moderate-test",
+					namespace:       "",
+					profilekind1:    "Profile",
+					profilename1:    "ocp4-moderate",
+					scansettingname: "default",
+					template:        scansettingbindingSingleTemplate,
+				}
+				itName = g.CurrentGinkgoTestDescription().TestText
+			)
+
+			defer func() {
+				g.By("Remove 'TokenInactivityTimeout' parameter by patching oauth object.. !!!\n")
+				patch := fmt.Sprintf("[{\"op\": \"remove\", \"path\": \"/spec/tokenConfig/accessTokenInactivityTimeout\"}]")
+				patchResource(oc, asAdmin, withoutNamespace, "oauth", "cluster", "--type", "json", "-p", patch)
+				newCheck("present", asAdmin, withoutNamespace, notPresent, "", ok, []string{"oauth", "cluster",
+					"-o=jsonpath={.spec.tokenConfig.accessTokenInactivityTimeout}"}).check(oc)
+				checkOauthPodsStatus(oc)
+				cleanupObjects(oc, objectTableRef{"scansettingbinding", subD.namespace, ssb.name})
+			}()
+
+			g.By("Check default profiles name ocp4-moderate .. !!!\n")
+			subD.getProfileName(oc, "ocp4-moderate")
+
+			g.By("Create scansettingbinding !!!\n")
+			ssb.namespace = subD.namespace
+			ssb.create(oc, itName, dr)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "moderate-test", ok, []string{"scansettingbinding", "-n", subD.namespace,
+				"-o=jsonpath={.items[0].metadata.name}"}).check(oc)
+			g.By("Check ComplianceSuite status and result.. !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", ssb.name, "-n", subD.namespace,
+				"-o=jsonpath={.status.phase}"}).check(oc)
+			subD.complianceSuiteResult(oc, ssb.name, "NON-COMPLIANT")
+
+			g.By("Verify 'ocp4-moderate-oauth-or-oauthclient-inactivity-timeout' rule status through compliancecheck result.. !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "FAIL", ok, []string{"compliancecheckresult",
+				"ocp4-moderate-oauth-or-oauthclient-inactivity-timeout", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
+
+			g.By("Set TokenInactivityTimeout parameter by patching.. !!!\n")
+			patchResource(oc, asAdmin, withoutNamespace, "oauth", "cluster", "--type", "merge", "-p",
+				"{\"spec\":{\"tokenConfig\":{\"accessTokenInactivityTimeout\":\"10m0s\"}}}")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "10m0s", ok, []string{"oauth", "cluster",
+				"-o=jsonpath={.spec.tokenConfig.accessTokenInactivityTimeout}"}).check(oc)
+
+			g.By("Check pod status from 'openshift-authentication' namespace during reboot.. !!!\n")
+			checkOauthPodsStatus(oc)
+
+			g.By("Rerun scan using oc-compliance plugin.. !!")
+			_, err := OcComplianceCLI().Run("rerun-now").Args("scansettingbinding", ssb.name, "-n", subD.namespace).Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			g.By("Check ComplianceSuite status.. !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", ssb.name, "-n", subD.namespace,
+				"-o=jsonpath={.status.phase}"}).check(oc)
+			g.By("Verify 'ocp4-moderate-oauth-or-oauthclient-inactivity-timeout' rule status again through compliancecheck result.. !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "PASS", ok, []string{"compliancecheckresult",
+				"ocp4-moderate-oauth-or-oauthclient-inactivity-timeout", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
+
+			g.By("ocp-42810 The manual remediation works for rule ocp4-moderate-oauth-or-oauthclient-inactivity-timeout... !!!!\n ")
+		})
 	})
 })

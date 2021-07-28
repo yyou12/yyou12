@@ -620,3 +620,17 @@ func checkCisRulesInstruction(oc *exutil.CLI) {
 		}
 	}
 }
+
+func checkOauthPodsStatus(oc *exutil.CLI) {
+	newCheck("expect", asAdmin, withoutNamespace, contain, "Pending", ok, []string{"pods", "-n", "openshift-authentication",
+		"-o=jsonpath={.items[*].status.phase}"}).check(oc)
+	newCheck("expect", asAdmin, withoutNamespace, contain, "3", ok, []string{"deployment", "oauth-openshift", "-n", "openshift-authentication",
+		"-o=jsonpath={.status.readyReplicas}"}).check(oc)
+	podnames, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-n", "openshift-authentication", "-o=jsonpath={.items[*].metadata.name}").Output()
+	podname := strings.Fields(podnames)
+	for _, v := range podname {
+		newCheck("expect", asAdmin, withoutNamespace, contain, "Running", ok, []string{"pods", v, "-n", "openshift-authentication",
+			"-o=jsonpath={.status.phase}"}).check(oc)
+	}
+
+}
