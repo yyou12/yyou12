@@ -47,13 +47,16 @@ fi
 #get operatorSDK
 if [ -d "${WORKSPACE}/osdk" ]; then
     BRANCH="master"
-    if [ "${NIGHTLYFLAG}" != "49" ]; then
+    BUILD_CMD="make build"
+    if [ "${OPERATOR_SDK_MASTER}" == "no" ]; then
         BRANCH="release-${NIGHTLYFLAG:0:1}.${NIGHTLYFLAG:1}"
+        BUILD_CMD="make -f ci/prow.Makefile patch build"
     fi
     echo "get operator SDK from branch "${BRANCH}
     cd ${WORKSPACE}/osdk
     git checkout ${BRANCH}
-    make build
+    echo "buid command is [${BUILD_CMD}]"
+    eval "${BUILD_CMD}"
     ls -lrt build/
     sudo mv build/* $WORKDIR
     sudo rm -fr ../osdk
