@@ -17,34 +17,35 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 	defer g.GinkgoRecover()
 
 	var (
-		oc                         = exutil.NewCLI("compliance-"+getRandomString(), exutil.KubeConfigPath())
-		dr                         = make(describerResrouce)
-		buildPruningBaseDir        string
-		ogCoTemplate               string
-		catsrcCoTemplate           string
-		subCoTemplate              string
-		csuiteTemplate             string
-		csuitetpcmTemplate         string
-		csuitetaintTemplate        string
-		csuitenodeTemplate         string
-		csuiteSCTemplate           string
-		cscanTemplate              string
-		cscantaintTemplate         string
-		cscantaintsTemplate        string
-		cscanSCTemplate            string
-		tprofileTemplate           string
-		tprofileWithoutVarTemplate string
-		scansettingTemplate        string
-		scansettingbindingTemplate string
-		profilebundleTemplate      string
-		pvextractpodYAML           string
-		podModifyTemplate          string
-		storageClassTemplate       string
-		catSrc                     catalogSourceDescription
-		ogD                        operatorGroupDescription
-		subD                       subscriptionDescription
-		podModifyD                 podModify
-		storageClass               storageClassDescription
+		oc                               = exutil.NewCLI("compliance-"+getRandomString(), exutil.KubeConfigPath())
+		dr                               = make(describerResrouce)
+		buildPruningBaseDir              string
+		ogCoTemplate                     string
+		catsrcCoTemplate                 string
+		subCoTemplate                    string
+		csuiteTemplate                   string
+		csuitetpcmTemplate               string
+		csuitetaintTemplate              string
+		csuitenodeTemplate               string
+		csuiteSCTemplate                 string
+		cscanTemplate                    string
+		cscantaintTemplate               string
+		cscantaintsTemplate              string
+		cscanSCTemplate                  string
+		tprofileTemplate                 string
+		tprofileWithoutVarTemplate       string
+		scansettingTemplate              string
+		scansettingbindingTemplate       string
+		scansettingbindingSingleTemplate string
+		profilebundleTemplate            string
+		pvextractpodYAML                 string
+		podModifyTemplate                string
+		storageClassTemplate             string
+		catSrc                           catalogSourceDescription
+		ogD                              operatorGroupDescription
+		subD                             subscriptionDescription
+		podModifyD                       podModify
+		storageClass                     storageClassDescription
 	)
 
 	g.BeforeEach(func() {
@@ -65,6 +66,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		tprofileWithoutVarTemplate = filepath.Join(buildPruningBaseDir, "tailoredprofile-withoutvariable.yaml")
 		scansettingTemplate = filepath.Join(buildPruningBaseDir, "scansetting.yaml")
 		scansettingbindingTemplate = filepath.Join(buildPruningBaseDir, "scansettingbinding.yaml")
+		scansettingbindingSingleTemplate = filepath.Join(buildPruningBaseDir, "oc-compliance-scansettingbinding.yaml")
 		profilebundleTemplate = filepath.Join(buildPruningBaseDir, "profilebundle.yaml")
 		pvextractpodYAML = filepath.Join(buildPruningBaseDir, "pv-extract-pod.yaml")
 		podModifyTemplate = filepath.Join(buildPruningBaseDir, "pod_modify.yaml")
@@ -2598,6 +2600,65 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 				"ocp4-moderate-compliancesuite-exists", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
 
 			g.By("The ocp-42695 The ComplianceSuite object exist and operator is successfully installed... !!!!\n ")
+		})
+
+		// author: pdhamdhe@redhat.com
+		g.It("Author:pdhamdhe-Low-42719-Check that token max age configurable for oauth cluster object [Disruptive][Slow]", func() {
+
+			var (
+				ssb = scanSettingBindingDescription{
+					name:            "moderate-test",
+					namespace:       "",
+					profilekind1:    "Profile",
+					profilename1:    "ocp4-moderate",
+					scansettingname: "default",
+					template:        scansettingbindingSingleTemplate,
+				}
+				itName = g.CurrentGinkgoTestDescription().TestText
+			)
+
+			defer func() {
+				g.By("Remove TokenMaxAge parameter by patching.. !!!\n")
+				patch1 := fmt.Sprintf("[{\"op\": \"remove\", \"path\": \"/spec/tokenConfig/accessTokenMaxAgeSeconds\"}]")
+				patchResource(oc, asAdmin, withoutNamespace, "oauth", "cluster", "--type", "json", "-p", patch1)
+				newCheck("present", asAdmin, withoutNamespace, notPresent, "", ok, []string{"oauth", "cluster",
+					"-o=jsonpath={.spec.tokenConfig.accessTokenMaxAgeSeconds}"}).check(oc)
+				cleanupObjects(oc, objectTableRef{"scansettingbinding", subD.namespace, ssb.name})
+			}()
+
+			g.By("Check default profiles name ocp4-moderate .. !!!\n")
+			subD.getProfileName(oc, "ocp4-moderate")
+
+			g.By("Create scansettingbinding !!!\n")
+			ssb.namespace = subD.namespace
+			ssb.create(oc, itName, dr)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "moderate-test", ok, []string{"scansettingbinding", "-n", subD.namespace,
+				"-o=jsonpath={.items[0].metadata.name}"}).check(oc)
+
+			g.By("Check ComplianceSuite status and result.. !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", ssb.name, "-n", subD.namespace,
+				"-o=jsonpath={.status.phase}"}).check(oc)
+			subD.complianceSuiteResult(oc, ssb.name, "NON-COMPLIANT")
+
+			g.By("Verify 'ocp4-moderate-oauth-or-oauthclient-token-maxage' rule status through compliancecheck result.. !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "FAIL", ok, []string{"compliancecheckresult",
+				"ocp4-moderate-oauth-or-oauthclient-token-maxage", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
+
+			g.By("Set TokenMaxAge parameter by patching.. !!!\n")
+			patch := fmt.Sprintf("{\"spec\":{\"tokenConfig\":{\"accessTokenMaxAgeSeconds\":28800}}}")
+			patchResource(oc, asAdmin, withoutNamespace, "oauth", "cluster", "--type", "merge", "-p", patch)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "28800", ok, []string{"oauth", "cluster",
+				"-o=jsonpath={.spec.tokenConfig.accessTokenMaxAgeSeconds}"}).check(oc)
+
+			g.By("Rerun scan using oc-compliance plugin.. !!")
+			_, err := OcComplianceCLI().Run("rerun-now").Args("scansettingbinding", ssb.name, "-n", subD.namespace).Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			g.By("Verify 'ocp4-moderate-oauth-or-oauthclient-token-maxage' rule status through compliancecheck result after rescan.. !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "PASS", ok, []string{"compliancecheckresult",
+				"ocp4-moderate-oauth-or-oauthclient-token-maxage", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
+
+			g.By("The ocp-42719 The TokenMaxAge is configured for oauth cluster object successfully... !!!!\n ")
 		})
 	})
 })
