@@ -2,8 +2,13 @@ package cloudcredential
 
 import (
 	"encoding/base64"
+	"encoding/json"
+	"fmt"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"strings"
+	"time"
 
+	o "github.com/onsi/gomega"
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 )
@@ -44,12 +49,12 @@ func GetCloudCredentialMode(oc *exutil.CLI) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	modeInCloudCredential, err := oc.WithoutNamespace().Run("get").Args("cloudcredential", "cluster", "-o=jsonpath={.spec.credentialsMode}").Output()
+	modeInCloudCredential, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("cloudcredential", "cluster", "-o=jsonpath={.spec.credentialsMode}").Output()
 	if err != nil {
 		return "", err
 	}
 	if modeInCloudCredential != "Manual" {
-		modeInSecretAnnotation, err := oc.WithoutNamespace().Run("get").Args("secret", rootSecretName, "-n=kube-system", "-o=jsonpath={.metadata.annotations.cloudcredential\\.openshift\\.io/mode}").Output()
+		modeInSecretAnnotation, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("secret", rootSecretName, "-n=kube-system", "-o=jsonpath={.metadata.annotations.cloudcredential\\.openshift\\.io/mode}").Output()
 		if err != nil {
 			if strings.Contains(modeInSecretAnnotation, "NotFound") {
 				if iaasPlatform != "aws" && iaasPlatform != "azure" && iaasPlatform != "gcp" {
@@ -107,7 +112,7 @@ func GetRootSecretName(oc *exutil.CLI) (string, error) {
 }
 
 func IsSTSMode(oc *exutil.CLI) bool {
-	output, _ := oc.WithoutNamespace().Run("get").Args("secret", "installer-cloud-credentials", "-n=openshift-image-registry", "-o=jsonpath={.data.credentials}").Output()
+	output, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("secret", "installer-cloud-credentials", "-n=openshift-image-registry", "-o=jsonpath={.data.credentials}").Output()
 	credentials, _ := base64.StdEncoding.DecodeString(output)
 	if strings.Contains(string(credentials), "web_identity_token_file") {
 		return true
@@ -116,11 +121,33 @@ func IsSTSMode(oc *exutil.CLI) bool {
 }
 
 func GetIaasPlatform(oc *exutil.CLI) (string, error) {
-	output, err := oc.WithoutNamespace().Run("get").Args("infrastructure", "cluster", "-o=jsonpath={.status.platformStatus.type}").Output()
+	output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("infrastructure", "cluster", "-o=jsonpath={.status.platformStatus.type}").Output()
 	if err != nil {
 		return "", err
 	}
 	iaasPlatform := strings.ToLower(output)
 	return iaasPlatform, nil
+}
 
+func CheckModeInMetric(oc *exutil.CLI, mode string) error {
+	var (
+		data         PrometheusQueryResult
+		modeInMetric string
+	)
+	token, err := oc.AsAdmin().WithoutNamespace().Run("sa").Args("get-token", "prometheus-k8s", "-n", "openshift-monitoring").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	o.Expect(token).NotTo(o.BeEmpty())
+	return wait.Poll(10*time.Second, 3*time.Minute, func() (bool, error) {
+		msg, _, err := oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-monitoring", "prometheus-k8s-0", "-c", "prometheus", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", token), "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query=cco_credentials_mode").Outputs()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(msg).NotTo(o.BeEmpty())
+		json.Unmarshal([]byte(msg), &data)
+		modeInMetric = data.Data.Result[0].Metric.Mode
+		e2e.Logf("cco mode in metric is %v", modeInMetric)
+		if modeInMetric != mode {
+			e2e.Logf("cco mode should be %v, but is %v in metric", mode, modeInMetric)
+			return false, nil
+		}
+		return true, nil
+	})
 }
