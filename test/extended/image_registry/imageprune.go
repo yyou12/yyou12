@@ -15,7 +15,7 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 	defer g.GinkgoRecover()
 
 	var (
-		oc      = exutil.NewCLI("default-image-registry", exutil.KubeConfigPath())
+		oc      = exutil.NewCLI("default-image-prune", exutil.KubeConfigPath())
 		logInfo = "Only API objects will be removed.  No modifications to the image registry will be made"
 	)
 	// author: wewang@redhat.com
