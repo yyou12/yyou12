@@ -12,7 +12,7 @@ sudo rm -rf /tmp/fixture-testdata-*
 rm -rf /tmp/*
 podman rm -a -f
 podman rmi -a -f
-sudo rm -f /usr/bin/oc /usr/local/bin/oc /usr/local/bin/opm /usr/local/bin/initializer /usr/local/bin/configmap-server /usr/local/bin/registry-server
+sudo rm -f /usr/bin/oc /usr/local/bin/oc /usr/local/bin/opm /usr/local/bin/initializer /usr/local/bin/configmap-server /usr/local/bin/registry-server /usr/bin/*operator*
 
 cd /etc/pki/ca-trust/source/anchors
 sudo curl -O --insecure https://password.corp.redhat.com/RH-IT-Root-CA.crt
@@ -33,7 +33,7 @@ sudo rm -f /etc/yum.repos.d/redhat_offcial.repo /etc/yum.repos.d/localdev-rhel-8
 sudo cp ${WORKBUILDDIR}/pipeline/repo-file/aos-devel-$NIGHTLYFLAG.repo /etc/yum.repos.d/puddle.repo
 sudo ls -lrt /etc/yum.repos.d/
 sudo yum remove 'origin*.x86_64' 'atomic-openshift*.x86_64' 'openshift-clients*.x86_64' -y
-sudo yum -y install openshift-clients jq
+sudo yum -y install openshift-clients jq patch
 sudo yum clean all -y
 sudo pip3 install requests
 echo "oc version:"
@@ -43,6 +43,26 @@ if [ $retVal -ne 0 ]; then
     echo "install oc failed"
     exit 1
 fi
+
+#get operatorSDK
+if [ -d "${WORKSPACE}/osdk" ]; then
+    BRANCH="master"
+    if [ "${NIGHTLYFLAG}" != "49" ]; then
+        BRANCH="release-${NIGHTLYFLAG:0:1}.${NIGHTLYFLAG:1}"
+    fi
+    echo "get operator SDK from branch "${BRANCH}
+    cd ${WORKSPACE}/osdk
+    git checkout ${BRANCH}
+    make build
+    ls -lrt build/
+    sudo mv build/* $WORKDIR
+    sudo rm -fr ../osdk
+    operator-sdk version
+    cd $WORKDIR
+else
+    echo "${WORKSPACE}/osdk is not exist, skip get operatorSDK"
+fi
+
 
 #get opm client
 
@@ -59,10 +79,10 @@ if cat .dockerconfigjson | grep 'registry.ci.openshift.org' > /dev/null; then
     podman pull ${ocpimaage} --authfile  .dockerconfigjson
     rm -f .dockerconfigjson
     instanceID=`podman create ${ocpimaage}`
-    podman cp ${instanceID}:/bin/opm  .
-    podman cp ${instanceID}:/bin/initializer .
-    podman cp ${instanceID}:/bin/configmap-server .
-    podman cp ${instanceID}:/bin/registry-server .
+    podman cp ${instanceID}:/bin/opm  $WORKDIR
+    podman cp ${instanceID}:/bin/initializer $WORKDIR
+    podman cp ${instanceID}:/bin/configmap-server $WORKDIR
+    podman cp ${instanceID}:/bin/registry-server $WORKDIR
     podman rm  -a
     podman rmi  -a
 else

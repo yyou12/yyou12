@@ -36,17 +36,23 @@ function config_env {
     echo "config env for cluster"
     config_env_for_cluster
   fi
+  go version
+  go env
 }
 
 function config_env_for_vm {
   echo "home path is "${HOME}
+  GOINSTALLPATH="/usr/lib/golang"
+  if [ -d "/usr/local/go/bin" ]; then
+    GOINSTALLPATH="/usr/local/go"
+  fi
   mkdir -p ${HOME}/kubeconf && mkdir -p ${HOME}/azureauth && \
   echo "export KUBECONFIG=${HOME}/kubeconf/kubeconfig" > ${WORKSPACE}/.bash_profile && \
   echo "export AZURE_AUTH_LOCATION=${HOME}/azureauth/azure_auth.json" >> ${WORKSPACE}/.bash_profile && \
-  echo 'export GOROOT=/usr/lib/golang' >> ${WORKSPACE}/.bash_profile && \
+  echo 'export GOROOT=${GOINSTALLPATH}' >> ${WORKSPACE}/.bash_profile && \
   echo 'export GOPATH=${WORKSPACE}/goproject' >> ${WORKSPACE}/.bash_profile && \
   echo 'export GOCACHE=${WORKSPACE}/gocache' >> ${WORKSPACE}/.bash_profile && \
-  echo 'export PATH=$PATH:/usr/lib/golang/go/bin:${WORKSPACE}/tool_tmp' >> ${WORKSPACE}/.bash_profile && \
+  echo 'export PATH=$PATH:${GOINSTALLPATH}/bin:${WORKSPACE}/tool_tmp' >> ${WORKSPACE}/.bash_profile && \
   source ${WORKSPACE}/.bash_profile
   echo 'unset http_proxy https_proxy no_proxy'
   unset http_proxy https_proxy
