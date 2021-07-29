@@ -86,6 +86,9 @@
 // test/extended/testdata/operators/strimzi-cr.yaml
 // test/extended/testdata/operators/subscription.yaml
 // test/extended/testdata/operatorsdk/cache1_v1_blacklist.yaml
+// test/extended/testdata/operatorsdk/cache2_v1_modulescollect.yaml
+// test/extended/testdata/operatorsdk/cache3_v1_k8sstatus.yaml
+// test/extended/testdata/operatorsdk/cache5_v1_collectiontest.yaml
 // test/extended/testdata/operatorsdk/cache_v1_collectiontest.yaml
 // test/extended/testdata/operatorsdk/cache_v1_memcached.yaml
 // test/extended/testdata/operatorsdk/catalogsource.yaml
@@ -9901,6 +9904,96 @@ func testExtendedTestdataOperatorsdkCache1_v1_blacklistYaml() (*asset, error) {
 	}
 
 	info := bindataFileInfo{name: "test/extended/testdata/operatorsdk/cache1_v1_blacklist.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataOperatorsdkCache2_v1_modulescollectYaml = []byte(`apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: modulescollect-template
+objects:
+- apiVersion: cache2.modules.com/v1
+  kind: Modulescollect
+  metadata:
+    name: "${NAME}"
+  spec:
+    size: 1
+parameters:
+- name: NAME
+`)
+
+func testExtendedTestdataOperatorsdkCache2_v1_modulescollectYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataOperatorsdkCache2_v1_modulescollectYaml, nil
+}
+
+func testExtendedTestdataOperatorsdkCache2_v1_modulescollectYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataOperatorsdkCache2_v1_modulescollectYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/operatorsdk/cache2_v1_modulescollect.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataOperatorsdkCache3_v1_k8sstatusYaml = []byte(`apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: k8sstatus-template
+objects:
+- apiVersion: cache3.k8sstatus.com/v1
+  kind: K8sstatus
+  metadata:
+    name: "${NAME}"
+  spec:
+    size: 1
+parameters:
+- name: NAME
+`)
+
+func testExtendedTestdataOperatorsdkCache3_v1_k8sstatusYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataOperatorsdkCache3_v1_k8sstatusYaml, nil
+}
+
+func testExtendedTestdataOperatorsdkCache3_v1_k8sstatusYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataOperatorsdkCache3_v1_k8sstatusYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/operatorsdk/cache3_v1_k8sstatus.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataOperatorsdkCache5_v1_collectiontestYaml = []byte(`apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: collectiontest-template
+objects:
+- apiVersion: cache5.cotentcollect.com/v1
+  kind: CollectionTest
+  metadata:
+    name: "${NAME}"
+  spec:
+    foo: bar
+parameters:
+- name: NAME
+`)
+
+func testExtendedTestdataOperatorsdkCache5_v1_collectiontestYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataOperatorsdkCache5_v1_collectiontestYaml, nil
+}
+
+func testExtendedTestdataOperatorsdkCache5_v1_collectiontestYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataOperatorsdkCache5_v1_collectiontestYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/operatorsdk/cache5_v1_collectiontest.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -21715,6 +21808,9 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/operators/strimzi-cr.yaml":                                                                                     testExtendedTestdataOperatorsStrimziCrYaml,
 	"test/extended/testdata/operators/subscription.yaml":                                                                                   testExtendedTestdataOperatorsSubscriptionYaml,
 	"test/extended/testdata/operatorsdk/cache1_v1_blacklist.yaml":                                                                          testExtendedTestdataOperatorsdkCache1_v1_blacklistYaml,
+	"test/extended/testdata/operatorsdk/cache2_v1_modulescollect.yaml":                                                                     testExtendedTestdataOperatorsdkCache2_v1_modulescollectYaml,
+	"test/extended/testdata/operatorsdk/cache3_v1_k8sstatus.yaml":                                                                          testExtendedTestdataOperatorsdkCache3_v1_k8sstatusYaml,
+	"test/extended/testdata/operatorsdk/cache5_v1_collectiontest.yaml":                                                                     testExtendedTestdataOperatorsdkCache5_v1_collectiontestYaml,
 	"test/extended/testdata/operatorsdk/cache_v1_collectiontest.yaml":                                                                      testExtendedTestdataOperatorsdkCache_v1_collectiontestYaml,
 	"test/extended/testdata/operatorsdk/cache_v1_memcached.yaml":                                                                           testExtendedTestdataOperatorsdkCache_v1_memcachedYaml,
 	"test/extended/testdata/operatorsdk/catalogsource.yaml":                                                                                testExtendedTestdataOperatorsdkCatalogsourceYaml,
@@ -21968,13 +22064,16 @@ var _bintree = &bintree{nil, map[string]*bintree{
 					"subscription.yaml":                           {testExtendedTestdataOperatorsSubscriptionYaml, map[string]*bintree{}},
 				}},
 				"operatorsdk": {nil, map[string]*bintree{
-					"cache1_v1_blacklist.yaml":     {testExtendedTestdataOperatorsdkCache1_v1_blacklistYaml, map[string]*bintree{}},
-					"cache_v1_collectiontest.yaml": {testExtendedTestdataOperatorsdkCache_v1_collectiontestYaml, map[string]*bintree{}},
-					"cache_v1_memcached.yaml":      {testExtendedTestdataOperatorsdkCache_v1_memcachedYaml, map[string]*bintree{}},
-					"catalogsource.yaml":           {testExtendedTestdataOperatorsdkCatalogsourceYaml, map[string]*bintree{}},
-					"demo_v1_nginx.yaml":           {testExtendedTestdataOperatorsdkDemo_v1_nginxYaml, map[string]*bintree{}},
-					"operatorgroup.yaml":           {testExtendedTestdataOperatorsdkOperatorgroupYaml, map[string]*bintree{}},
-					"sub.yaml":                     {testExtendedTestdataOperatorsdkSubYaml, map[string]*bintree{}},
+					"cache1_v1_blacklist.yaml":      {testExtendedTestdataOperatorsdkCache1_v1_blacklistYaml, map[string]*bintree{}},
+					"cache2_v1_modulescollect.yaml": {testExtendedTestdataOperatorsdkCache2_v1_modulescollectYaml, map[string]*bintree{}},
+					"cache3_v1_k8sstatus.yaml":      {testExtendedTestdataOperatorsdkCache3_v1_k8sstatusYaml, map[string]*bintree{}},
+					"cache5_v1_collectiontest.yaml": {testExtendedTestdataOperatorsdkCache5_v1_collectiontestYaml, map[string]*bintree{}},
+					"cache_v1_collectiontest.yaml":  {testExtendedTestdataOperatorsdkCache_v1_collectiontestYaml, map[string]*bintree{}},
+					"cache_v1_memcached.yaml":       {testExtendedTestdataOperatorsdkCache_v1_memcachedYaml, map[string]*bintree{}},
+					"catalogsource.yaml":            {testExtendedTestdataOperatorsdkCatalogsourceYaml, map[string]*bintree{}},
+					"demo_v1_nginx.yaml":            {testExtendedTestdataOperatorsdkDemo_v1_nginxYaml, map[string]*bintree{}},
+					"operatorgroup.yaml":            {testExtendedTestdataOperatorsdkOperatorgroupYaml, map[string]*bintree{}},
+					"sub.yaml":                      {testExtendedTestdataOperatorsdkSubYaml, map[string]*bintree{}},
 				}},
 				"opm": {nil, map[string]*bintree{
 					"aqua": {nil, map[string]*bintree{
