@@ -2,6 +2,9 @@ package router
 
 import (
 	"math/rand"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -18,6 +21,14 @@ type ingctrlNodePortDescription struct {
 	domain      string
 	replicas    int
 	template    string
+}
+
+type ipfailoverDescription struct {
+	name      string
+	namespace string
+	image     string
+	vip       string
+	template  string
 }
 
 func getRandomString() string {
@@ -51,7 +62,7 @@ func (ingctrl *ingctrlNodePortDescription) delete(oc *exutil.CLI) error {
 func createResourceFromTemplate(oc *exutil.CLI, parameters ...string) error {
 	var jsonCfg string
 	err := wait.Poll(3*time.Second, 15*time.Second, func() (bool, error) {
-		output, err := oc.AsAdmin().Run("process").Args(parameters...).OutputToFile(getRandomString() + "ingctrl-config.json")
+		output, err := oc.AsAdmin().Run("process").Args(parameters...).OutputToFile(getRandomString() + "-temp-resource.json")
 		if err != nil {
 			e2e.Logf("the err:%v, and try next round", err)
 			return false, nil
@@ -61,7 +72,7 @@ func createResourceFromTemplate(oc *exutil.CLI, parameters ...string) error {
 	})
 	o.Expect(err).NotTo(o.HaveOccurred())
 
-	e2e.Logf("the ingresscontroller resource is %s", jsonCfg)
+	e2e.Logf("the file of resource is %s", jsonCfg)
 	return oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", jsonCfg).Execute()
 }
 
@@ -86,7 +97,7 @@ func waitForPodWithLabelReady(oc *exutil.CLI, ns, label string) error {
 	return wait.Poll(5*time.Second, 3*time.Minute, func() (bool, error) {
 		status, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-n", ns, "-l", label, "-ojsonpath={.items[*].status.conditions[?(@.type==\"Ready\")].status}").Output()
 		e2e.Logf("the Ready status of pod is %v", status)
-		if err != nil {
+		if err != nil || status == "" {
 			e2e.Logf("failed to get pod status: %v, retrying...", err)
 			return false, nil
 		}
@@ -160,5 +171,48 @@ func readHaproxyConfig(oc *exutil.CLI) error {
 			return true, nil
 		}
 		return false, nil
+	})
+}
+
+func getImagePullSpecFromPayload(oc *exutil.CLI, image string) string {
+	var pullspec string
+	baseDir := exutil.FixturePath("testdata", "router")
+	indexTmpPath := filepath.Join(baseDir, getRandomString())
+	dockerconfigjsonpath := filepath.Join(indexTmpPath, ".dockerconfigjson")
+	defer exec.Command("rm", "-rf", indexTmpPath).Output()
+	err := os.MkdirAll(indexTmpPath, 0755)
+	o.Expect(err).NotTo(o.HaveOccurred())
+	_, err = oc.AsAdmin().Run("extract").Args("secret/pull-secret", "-n", "openshift-config", "--confirm", "--to="+indexTmpPath).Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	pullspec, err = oc.AsAdmin().WithoutNamespace().Run("adm").Args("release", "info", "--image-for="+image, "-a", dockerconfigjsonpath).Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	e2e.Logf("the pull spec of image %v is: %v", image, pullspec)
+	return pullspec
+}
+
+func (ipf *ipfailoverDescription) create(oc *exutil.CLI, ns string) {
+	// create ServiceAccount and add it to related SCC
+	_, err := oc.WithoutNamespace().AsAdmin().Run("create").Args("sa", "ipfailover", "-n", ns).Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	_, err = oc.AsAdmin().Run("adm").Args("policy", "add-scc-to-user", "privileged", "-z", "ipfailover").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	// create the ipfailover deployment
+	err = createResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", ipf.template, "-p", "NAME="+ipf.name, "NAMESPACE="+ipf.namespace, "IMAGE="+ipf.image)
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+func waitForIpfailoverEnterMaster(oc *exutil.CLI, ns, label string) error {
+	return wait.Poll(5*time.Second, 3*time.Minute, func() (bool, error) {
+		log, err := oc.AsAdmin().WithoutNamespace().Run("logs").Args("-n", ns, "-l", label).Output()
+		e2e.Logf("the logs of labeled pods are: %v", log)
+		if err != nil || log == "" {
+			e2e.Logf("failed to get logs: %v, retrying...", err)
+			return false, nil
+		}
+		if !strings.Contains(log, "Entering MASTER STATE") {
+			e2e.Logf("no ipfailover pod is in MASTER state, retrying...")
+			return false, nil
+		}
+		return true, nil
 	})
 }

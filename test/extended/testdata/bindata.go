@@ -136,6 +136,7 @@
 // test/extended/testdata/router/ingresscontroller-hn-PROXY.yaml
 // test/extended/testdata/router/ingresscontroller-np-PROXY.yaml
 // test/extended/testdata/router/ingresscontroller-np.yaml
+// test/extended/testdata/router/ipfailover.yaml
 // test/extended/testdata/router/web-server-rc.yaml
 // test/extended/testdata/securityandcompliance/aide.conf.rhel8
 // test/extended/testdata/securityandcompliance/aide.conf.rhel8.1
@@ -17579,6 +17580,115 @@ func testExtendedTestdataRouterIngresscontrollerNpYaml() (*asset, error) {
 	return a, nil
 }
 
+var _testExtendedTestdataRouterIpfailoverYaml = []byte(`apiVersion: template.openshift.io/v1
+kind: Template
+objects:
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: ${NAME}
+    namespace: ${NAMESPACE}
+    labels:
+      ipfailover: hello-openshift
+  spec:
+    strategy:
+      type: Recreate
+    replicas: 2
+    selector:
+      matchLabels:
+        ipfailover: hello-openshift
+    template:
+      metadata:
+        labels:
+          ipfailover: hello-openshift
+      spec:
+        serviceAccountName: ipfailover
+        privileged: true
+        hostNetwork: true
+        nodeSelector:
+          node-role.kubernetes.io/worker: ""
+        containers:
+        - name: openshift-ipfailover
+          image: ${IMAGE}
+          ports:
+          - containerPort: 63000
+            hostPort: 63000
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            privileged: true
+          volumeMounts:
+          - name: lib-modules
+            mountPath: /lib/modules
+            readOnly: true
+          - name: host-slash
+            mountPath: /host
+            readOnly: true
+            mountPropagation: HostToContainer
+          - name: etc-sysconfig
+            mountPath: /etc/sysconfig
+            readOnly: true
+          env:
+          - name: OPENSHIFT_HA_CONFIG_NAME
+            value: "ipfailover"
+          - name: OPENSHIFT_HA_VIRTUAL_IPS
+            value: ${VIRTUALIPS}
+          - name: OPENSHIFT_HA_VIP_GROUPS
+            value: "10"
+          - name: OPENSHIFT_HA_NETWORK_INTERFACE
+            value: "eth0"
+          - name: OPENSHIFT_HA_MONITOR_PORT
+            value: ${MONITORPORT}
+          - name: OPENSHIFT_HA_VRRP_ID_OFFSET
+            value: "0"
+          - name: OPENSHIFT_HA_REPLICA_COUNT
+            value: "2"
+          - name: OPENSHIFT_HA_IPTABLES_CHAIN
+            value: "INPUT"
+          - name: OPENSHIFT_HA_PREEMPTION
+            value: "nopreempt"
+          - name: OPENSHIFT_HA_CHECK_INTERVAL
+            value: "5"
+          livenessProbe:
+            initialDelaySeconds: 10
+            exec:
+              command:
+              - pgrep
+              - keepalived
+        volumes:
+        - name: lib-modules
+          hostPath:
+            path: /lib/modules
+        - name: host-slash
+          hostPath:
+            path: /
+        - name: etc-sysconfig
+          hostPath:
+            path: /etc/sysconfig
+parameters:
+- name: NAME
+- name: NAMESPACE
+- name: IMAGE
+- name: VIRTUALIPS
+  value: "192.168.123.123"
+- name: MONITORPORT
+  value: "22"
+`)
+
+func testExtendedTestdataRouterIpfailoverYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataRouterIpfailoverYaml, nil
+}
+
+func testExtendedTestdataRouterIpfailoverYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataRouterIpfailoverYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/router/ipfailover.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
 var _testExtendedTestdataRouterWebServerRcYaml = []byte(`apiVersion: v1
 kind: List
 items:
@@ -21655,6 +21765,7 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/router/ingresscontroller-hn-PROXY.yaml":                                                                        testExtendedTestdataRouterIngresscontrollerHnProxyYaml,
 	"test/extended/testdata/router/ingresscontroller-np-PROXY.yaml":                                                                        testExtendedTestdataRouterIngresscontrollerNpProxyYaml,
 	"test/extended/testdata/router/ingresscontroller-np.yaml":                                                                              testExtendedTestdataRouterIngresscontrollerNpYaml,
+	"test/extended/testdata/router/ipfailover.yaml":                                                                                        testExtendedTestdataRouterIpfailoverYaml,
 	"test/extended/testdata/router/web-server-rc.yaml":                                                                                     testExtendedTestdataRouterWebServerRcYaml,
 	"test/extended/testdata/securityandcompliance/aide.conf.rhel8":                                                                         testExtendedTestdataSecurityandcomplianceAideConfRhel8,
 	"test/extended/testdata/securityandcompliance/aide.conf.rhel8.1":                                                                       testExtendedTestdataSecurityandcomplianceAideConfRhel81,
@@ -21954,6 +22065,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 					"ingresscontroller-hn-PROXY.yaml": {testExtendedTestdataRouterIngresscontrollerHnProxyYaml, map[string]*bintree{}},
 					"ingresscontroller-np-PROXY.yaml": {testExtendedTestdataRouterIngresscontrollerNpProxyYaml, map[string]*bintree{}},
 					"ingresscontroller-np.yaml":       {testExtendedTestdataRouterIngresscontrollerNpYaml, map[string]*bintree{}},
+					"ipfailover.yaml":                 {testExtendedTestdataRouterIpfailoverYaml, map[string]*bintree{}},
 					"web-server-rc.yaml":              {testExtendedTestdataRouterWebServerRcYaml, map[string]*bintree{}},
 				}},
 				"securityandcompliance": {nil, map[string]*bintree{
