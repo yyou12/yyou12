@@ -976,7 +976,7 @@ if __name__ == "__main__":
     parser.add_argument("-v","--version", default="")
     parser.add_argument("-ao","--attroption", default="")
     parser.add_argument("-pn","--profilename", default="09_Disconnected UPI on Azure with RHCOS & Private Cluster")
-    parser.add_argument("-pp","--profilepath", default="../misc/jenkins/ci/")
+    parser.add_argument("-pp","--profilepath", default="../cip/")
     #merge, getwithlanuchname, delete, getfcd
     parser.add_argument("-l","--launchname", default="")
     parser.add_argument("-ss","--scenarios", default="notnull")

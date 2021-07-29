@@ -16,8 +16,9 @@ rpmmtoken=`cat ${WORKSPACE}"/private/secrets/rp/openshift-qe-reportportal.json" 
 rppmtoken=`cat ${WORKSPACE}"/private/secrets/rp/openshift-qe-reportportal.json" | jq  -r ".ginkgo_rp_pmtoken"`
 subteam="OLM"
 eval cp -fr 00000000-00.zip "00000000-00${LAUNCHVERSION}.zip"
-python3 reportportal.py -a putprofile -f "00000000-00${LAUNCHVERSION}.zip" -s "${subteam}" -v "${VERSION}"  -pp "../misc/jenkins/ci/" -t "${rpmmtoken}" -ta "${rppmtoken}" 2>&1
-# ret=`python3 reportportal.py -a putprofile -f "00000000-00${LAUNCHVERSION}.zip" -s "${subteam}" -v "${VERSION}"  -pp "../misc/jenkins/ci/" -t "${rpmmtoken}" -ta "${rppmtoken}" 2>&1 || true`
+# only handle ci profiles
+python3 reportportal.py -a putprofile -f "00000000-00${LAUNCHVERSION}.zip" -s "${subteam}" -v "${VERSION}"  -pp "../cip/" -t "${rpmmtoken}" -ta "${rppmtoken}" 2>&1
+# ret=`python3 reportportal.py -a putprofile -f "00000000-00${LAUNCHVERSION}.zip" -s "${subteam}" -v "${VERSION}"  -pp "../cip/" -t "${rpmmtoken}" -ta "${rppmtoken}" 2>&1 || true`
 # echo -E ${ret}
 eval rm -fr  "00000000-00${LAUNCHVERSION}.zip"
 
