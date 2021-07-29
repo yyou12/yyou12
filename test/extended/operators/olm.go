@@ -2258,8 +2258,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 
 	// author: scolange@redhat.com
 	g.It("ConnectedOnly-Author:scolange-Medium-24075-The couchbase packagemanifest labels provider value should not be MongoDB Inc ", func() {
-		NameCouchBase, err1 := oc.AsAdmin().WithoutNamespace().Run("get").Args("packagemanifest", "couchbase-enterprise-certified", "-n", "openshift-marketplace", "-o", "jsonpath={.status.provider.name}").Output()
-		e2e.Logf(NameCouchBase)
+		NameCouchBase, err1 := oc.AsAdmin().WithoutNamespace().Run("get").Args("packagemanifest", "couchbase-enterprise-certified", "-o", "jsonpath={.status.provider.name}").Output()
 		o.Expect(err1).NotTo(o.HaveOccurred())
 		o.Expect(NameCouchBase).To(o.Equal("Couchbase"))
 	})
