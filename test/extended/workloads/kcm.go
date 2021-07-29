@@ -81,4 +81,65 @@ var _ = g.Describe("[sig-apps] Workloads", func() {
 		})
 		o.Expect(err).NotTo(o.HaveOccurred())
 	})
+
+	// author: yinzhou@redhat.com
+        g.It("Author:yinzhou-High-43039-openshift-object-counts quota dynamically updating as the resource is deleted", func() {
+                g.By("Test for case OCP-43039 openshift-object-counts quota dynamically updating as the resource is deleted")
+                g.By("create new namespace")
+                oc.SetupProject()
+
+		g.By("Create quota in the project")
+		err := oc.AsAdmin().Run("create").Args("quota", "quota43039", "--hard=openshift.io/imagestreams=10",  "-n", oc.Namespace()).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Check the quota")
+		output, err := oc.WithoutNamespace().Run("describe").Args("quota", "quota43039", "-n", oc.Namespace()).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		if matched, _ := regexp.MatchString("openshift.io/imagestreams  0     10", output); matched {
+                        e2e.Logf("the quota is :\n%s", output)
+                }
+
+		g.By("create apps")
+		err = oc.WithoutNamespace().Run("new-app").Args("quay.io/openshifttest/hello-openshift@sha256:424e57db1f2e8e8ac9087d2f5e8faea6d73811f0b6f96301bc94293680897073", "-n", oc.Namespace()).Execute()
+                o.Expect(err).NotTo(o.HaveOccurred())
+		g.By("check the imagestream in the project")
+		output, err = oc.WithoutNamespace().Run("get").Args("imagestream", "-n", oc.Namespace()).Output()
+                o.Expect(err).NotTo(o.HaveOccurred())
+		if matched, _ := regexp.MatchString("hello-openshift", output); matched {
+                        e2e.Logf("the image stream is :\n%s", output)
+                }
+
+		g.By("check the quota again")
+		output, err = oc.WithoutNamespace().Run("describe").Args("quota", "quota43039", "-n", oc.Namespace()).Output()
+                o.Expect(err).NotTo(o.HaveOccurred())
+                if matched, _ := regexp.MatchString("openshift.io/imagestreams  1     10", output); matched {
+                        e2e.Logf("the quota is :\n%s", output)
+                }
+
+		g.By("delete all the resource")
+		err = oc.WithoutNamespace().Run("delete").Args("all", "--all", "-n", oc.Namespace()).Execute()
+                o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("make sure all the imagestream are deleted")
+		err = wait.Poll(5*time.Second, 30*time.Second, func() (bool, error) {
+                        output, err = oc.WithoutNamespace().Run("get").Args("is", "-n", oc.Namespace()).Output()
+                        if err != nil {
+                                e2e.Logf("Fail to get is, error: %s. Trying again", err)
+                                return false, nil
+                        }
+                        if matched, _ := regexp.MatchString("No resources found", output); matched {
+                                e2e.Logf("ImageStream has been deleted:\n%s", output)
+                                return true, nil
+                        }
+                        return false, nil
+                })
+                o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Check the quota")
+                output, err = oc.WithoutNamespace().Run("describe").Args("quota", "quota43039", "-n", oc.Namespace()).Output()
+                o.Expect(err).NotTo(o.HaveOccurred())
+                if matched, _ := regexp.MatchString("openshift.io/imagestreams  0     10", output); matched {
+                        e2e.Logf("the quota is :\n%s", output)
+                }
+	})
 })
