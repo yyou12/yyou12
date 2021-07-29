@@ -37,4 +37,5 @@ import (
 	_ "github.com/openshift/openshift-tests-private/test/extended/networking"
 	_ "github.com/openshift/openshift-tests-private/test/extended/ota/osus"
 	_ "github.com/openshift/openshift-tests/test/extended/operators"
+	_ "github.com/openshift/openshift-tests-private/test/extended/clusterinfrastructure"
 )

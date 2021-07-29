@@ -2,6 +2,11 @@
 // sources:
 // test/extended/testdata/apiserver_and_auth/allow-same-namespace.yaml
 // test/extended/testdata/apiserver_and_auth/deny-network-policy.yaml
+// test/extended/testdata/clusterinfrastructure/aws-machineset.yaml
+// test/extended/testdata/clusterinfrastructure/azure-machineset.yaml
+// test/extended/testdata/clusterinfrastructure/gcp-machineset.yaml
+// test/extended/testdata/clusterinfrastructure/osp-machineset.yaml
+// test/extended/testdata/clusterinfrastructure/vsphere-machineset.yaml
 // test/extended/testdata/ldap/groupsync.sh
 // test/extended/testdata/ldap/ldapserver-config-cm.yaml
 // test/extended/testdata/ldap/ldapserver-deployment.yaml
@@ -275,6 +280,436 @@ func testExtendedTestdataApiserver_and_authDenyNetworkPolicyYaml() (*asset, erro
 	}
 
 	info := bindataFileInfo{name: "test/extended/testdata/apiserver_and_auth/deny-network-policy.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataClusterinfrastructureAwsMachinesetYaml = []byte(`apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: aws-machineset-template
+objects:
+  - apiVersion: machine.openshift.io/v1beta1
+    kind: MachineSet
+    metadata:
+      labels:
+        machine.openshift.io/cluster-api-cluster: ${CLUSTERID}
+      name: ${NAME}
+      namespace: openshift-machine-api
+    spec:
+      replicas: ${{REPLICAS}}
+      selector:
+        matchLabels:
+          machine.openshift.io/cluster-api-cluster: ${CLUSTERID}
+          machine.openshift.io/cluster-api-machineset: ${NAME}
+      template:
+        metadata:
+          labels:
+            machine.openshift.io/cluster-api-cluster: ${CLUSTERID}
+            machine.openshift.io/cluster-api-machine-role: worker
+            machine.openshift.io/cluster-api-machine-type: worker
+            machine.openshift.io/cluster-api-machineset: ${NAME}
+        spec:
+          metadata: { }
+          taints:
+            - effect: "NoSchedule"
+              key: "mapi"
+              value: "mapi_test"
+          providerSpec:
+            value:
+              ami:
+                id: ${AMI}
+              apiVersion: awsproviderconfig.openshift.io/v1beta1
+              blockDevices:
+              - ebs:
+                  encrypted: true
+                  iops: 0
+                  kmsKey:
+                    arn: ""
+                  volumeSize: 120
+                  volumeType: gp2
+              credentialsSecret:
+                name: aws-cloud-credentials
+              deviceIndex: 0
+              iamInstanceProfile:
+                id: ${CLUSTERID}-worker-profile
+              instanceType: m5.large
+              kind: AWSMachineProviderConfig
+              metadata:
+                creationTimestamp: null
+              placement:
+                availabilityZone: ${ZONE}
+                region: ${REGION}
+              securityGroups:
+              - filters:
+                - name: tag:Name
+                  values:
+                  - ${CLUSTERID}-worker-sg
+              subnet:
+                filters:
+                - name: tag:Name
+                  values:
+                  - ${CLUSTERID}-private-${ZONE}
+              tags:
+              - name: kubernetes.io/cluster/${CLUSTERID}
+                value: owned
+              userDataSecret:
+                name: worker-user-data
+parameters:
+- name: NAME
+- name: CLUSTERID
+- name: REPLICAS
+- name: REGION
+- name: ZONE
+- name: AMI
+
+`)
+
+func testExtendedTestdataClusterinfrastructureAwsMachinesetYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataClusterinfrastructureAwsMachinesetYaml, nil
+}
+
+func testExtendedTestdataClusterinfrastructureAwsMachinesetYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataClusterinfrastructureAwsMachinesetYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/clusterinfrastructure/aws-machineset.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataClusterinfrastructureAzureMachinesetYaml = []byte(`apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: azure-machineset-template
+objects:
+  - apiVersion: machine.openshift.io/v1beta1
+    kind: MachineSet
+    metadata:
+      labels:
+        machine.openshift.io/cluster-api-cluster: ${CLUSTERID}
+        machine.openshift.io/cluster-api-machine-role: worker
+        machine.openshift.io/cluster-api-machine-type: worker
+      name: ${NAME}
+      namespace: openshift-machine-api
+    spec:
+      replicas: ${{REPLICAS}}
+      selector:
+        matchLabels:
+          machine.openshift.io/cluster-api-cluster: ${CLUSTERID}
+          machine.openshift.io/cluster-api-machineset: ${NAME}
+      template:
+        metadata:
+          labels:
+            machine.openshift.io/cluster-api-cluster: ${CLUSTERID}
+            machine.openshift.io/cluster-api-machine-role: worker
+            machine.openshift.io/cluster-api-machine-type: worker
+            machine.openshift.io/cluster-api-machineset: ${NAME}
+        spec:
+          metadata: {}
+          taints:
+            - effect: "NoSchedule"
+              key: "mapi"
+              value: "mapi_test"
+          providerSpec:
+            value:
+              apiVersion: azureproviderconfig.openshift.io/v1beta1
+              credentialsSecret:
+                name: azure-cloud-credentials
+                namespace: openshift-machine-api
+              image:
+                offer: ""
+                publisher: ""
+                resourceID: /resourceGroups/${CLUSTERID}-rg/providers/Microsoft.Compute/images/${CLUSTERID}
+                sku: ""
+                version: ""
+              kind: AzureMachineProviderSpec
+              location: ${REGION}
+              managedIdentity: ${CLUSTERID}-identity
+              metadata:
+                creationTimestamp: null
+              networkResourceGroup: ${CLUSTERID}-rg
+              osDisk:
+                diskSizeGB: 128
+                managedDisk:
+                  storageAccountType: Premium_LRS
+                osType: Linux
+              publicIP: false
+              publicLoadBalancer: ${CLUSTERID}
+              resourceGroup: ${CLUSTERID}-rg
+              subnet: ${CLUSTERID}-worker-subnet
+              userDataSecret:
+                name: worker-user-data
+              vmSize: Standard_D4s_v3
+              vnet: ${CLUSTERID}-vnet
+              zone: ""
+parameters:
+- name: NAME
+- name: CLUSTERID
+- name: REPLICAS
+- name: REGION
+`)
+
+func testExtendedTestdataClusterinfrastructureAzureMachinesetYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataClusterinfrastructureAzureMachinesetYaml, nil
+}
+
+func testExtendedTestdataClusterinfrastructureAzureMachinesetYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataClusterinfrastructureAzureMachinesetYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/clusterinfrastructure/azure-machineset.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataClusterinfrastructureGcpMachinesetYaml = []byte(`apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: gcp-machineset-template
+objects:
+  - apiVersion: machine.openshift.io/v1beta1
+    kind: MachineSet
+    metadata:
+      labels:
+        machine.openshift.io/cluster-api-cluster: ${CLUSTERID}
+      name: ${NAME}
+      namespace: openshift-machine-api
+    spec:
+      replicas: ${{REPLICAS}}
+      selector:
+        matchLabels:
+          machine.openshift.io/cluster-api-cluster: ${CLUSTERID}
+          machine.openshift.io/cluster-api-machineset: ${NAME}
+      template:
+        metadata:
+          labels:
+            machine.openshift.io/cluster-api-cluster: ${CLUSTERID}
+            machine.openshift.io/cluster-api-machine-role: worker
+            machine.openshift.io/cluster-api-machine-type: worker
+            machine.openshift.io/cluster-api-machineset: ${NAME}
+        spec:
+          metadata: {}
+          taints:
+            - effect: "NoSchedule"
+              key: "mapi"
+              value: "mapi_test"
+          providerSpec:
+            value:
+              apiVersion: gcpprovider.openshift.io/v1beta1
+              canIPForward: false
+              credentialsSecret:
+                name: gcp-cloud-credentials
+              deletionProtection: false
+              disks:
+                - autoDelete: true
+                  boot: true
+                  image: ${IMAGE}
+                  labels: null
+                  sizeGb: 128
+                  type: pd-ssd
+              kind: GCPMachineProviderSpec
+              machineType: n1-standard-4
+              metadata:
+                creationTimestamp: null
+              networkInterfaces:
+                - network: ${CLUSTERID}-network
+                  subnetwork: ${CLUSTERID}-worker-subnet
+              projectID: openshift-qe
+              region: ${REGION}
+              serviceAccounts:
+                - email: ${CLUSTERID}-w@openshift-qe.iam.gserviceaccount.com
+                  scopes:
+                    - https://www.googleapis.com/auth/cloud-platform
+              tags:
+                - ${CLUSTERID}-worker
+              userDataSecret:
+                name: worker-user-data
+              zone: ${ZONE}
+parameters:
+  - name: NAME
+  - name: CLUSTERID
+  - name: REPLICAS
+  - name: REGION
+  - name: ZONE
+  - name: IMAGE
+`)
+
+func testExtendedTestdataClusterinfrastructureGcpMachinesetYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataClusterinfrastructureGcpMachinesetYaml, nil
+}
+
+func testExtendedTestdataClusterinfrastructureGcpMachinesetYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataClusterinfrastructureGcpMachinesetYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/clusterinfrastructure/gcp-machineset.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataClusterinfrastructureOspMachinesetYaml = []byte(`apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: osp-machineset-template
+objects:
+  - apiVersion: machine.openshift.io/v1beta1
+    kind: MachineSet
+    metadata:
+      labels:
+        machine.openshift.io/cluster-api-cluster: ${CLUSTERID}
+        machine.openshift.io/cluster-api-machine-role: worker
+        machine.openshift.io/cluster-api-machine-type: worker
+      name: ${NAME}
+      namespace: openshift-machine-api
+    spec:
+      replicas: ${{REPLICAS}}
+      selector:
+        matchLabels:
+          machine.openshift.io/cluster-api-cluster: ${CLUSTERID}
+          machine.openshift.io/cluster-api-machineset: ${NAME}
+      template:
+        metadata:
+          labels:
+            machine.openshift.io/cluster-api-cluster: ${CLUSTERID}
+            machine.openshift.io/cluster-api-machine-role: worker
+            machine.openshift.io/cluster-api-machine-type: worker
+            machine.openshift.io/cluster-api-machineset: ${NAME}
+        spec:
+          metadata: {}
+          taints:
+            - effect: "NoSchedule"
+              key: "mapi"
+              value: "mapi_test"
+          providerSpec:
+            value:
+              apiVersion: openstackproviderconfig.openshift.io/v1alpha1
+              cloudName: openstack
+              cloudsSecret:
+                name: openstack-cloud-credentials
+                namespace: openshift-machine-api
+              flavor: m4.xlarge
+              image: ${CLUSTERID}-rhcos
+              kind: OpenstackProviderSpec
+              metadata:
+                creationTimestamp: null
+              networks:
+                - filter: {}
+                  subnets:
+                    - filter:
+                        name: ${CLUSTERID}-nodes
+                        tags: openshiftClusterID=${CLUSTERID}
+              securityGroups:
+                - filter: {}
+                  name: ${CLUSTERID}-worker
+              serverMetadata:
+                Name: ${CLUSTERID}-worker
+                openshiftClusterID: ${CLUSTERID}
+              tags:
+                - openshiftClusterID=${CLUSTERID}
+              trunk: true
+              userDataSecret:
+                name: worker-user-data
+parameters:
+  - name: NAME
+  - name: CLUSTERID
+  - name: REPLICAS
+`)
+
+func testExtendedTestdataClusterinfrastructureOspMachinesetYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataClusterinfrastructureOspMachinesetYaml, nil
+}
+
+func testExtendedTestdataClusterinfrastructureOspMachinesetYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataClusterinfrastructureOspMachinesetYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/clusterinfrastructure/osp-machineset.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataClusterinfrastructureVsphereMachinesetYaml = []byte(`apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: vsphere-machineset-template
+objects:
+  - apiVersion: machine.openshift.io/v1beta1
+    kind: MachineSet
+    metadata:
+      labels:
+        machine.openshift.io/cluster-api-cluster: ${CLUSTERID}
+      name: ${NAME}
+      namespace: openshift-machine-api
+    spec:
+      replicas: ${{REPLICAS}}
+      selector:
+        matchLabels:
+          machine.openshift.io/cluster-api-cluster: ${CLUSTERID}
+          machine.openshift.io/cluster-api-machineset: ${NAME}
+      template:
+        metadata:
+          labels:
+            machine.openshift.io/cluster-api-cluster: ${CLUSTERID}
+            machine.openshift.io/cluster-api-machine-role: worker
+            machine.openshift.io/cluster-api-machine-type: worker
+            machine.openshift.io/cluster-api-machineset: ${NAME}
+        spec:
+          metadata: { }
+          taints:
+            - effect: "NoSchedule"
+              key: "mapi"
+              value: "mapi_test"
+          providerSpec:
+            value:
+              apiVersion: vsphereprovider.openshift.io/v1beta1
+              credentialsSecret:
+                name: vsphere-cloud-credentials
+              diskGiB: 120
+              kind: VSphereMachineProviderSpec
+              memoryMiB: 16384
+              metadata:
+                creationTimestamp: null
+              network:
+                devices:
+                  - networkName: qe-segment
+              numCPUs: 8
+              numCoresPerSocket: 1
+              snapshot: ""
+              template: ${CLUSTERID}-rhcos
+              userDataSecret:
+                name: worker-user-data
+              workspace:
+                datacenter: SDDC-Datacenter
+                datastore: WorkloadDatastore
+                folder: /SDDC-Datacenter/vm/${CLUSTERID}
+                resourcePool: /SDDC-Datacenter/host/Cluster-1/Resources
+                server: vcenter.sddc-44-236-21-251.vmwarevmc.com
+parameters:
+  - name: NAME
+  - name: CLUSTERID
+  - name: REPLICAS
+`)
+
+func testExtendedTestdataClusterinfrastructureVsphereMachinesetYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataClusterinfrastructureVsphereMachinesetYaml, nil
+}
+
+func testExtendedTestdataClusterinfrastructureVsphereMachinesetYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataClusterinfrastructureVsphereMachinesetYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/clusterinfrastructure/vsphere-machineset.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -21086,6 +21521,11 @@ func AssetNames() []string {
 var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/apiserver_and_auth/allow-same-namespace.yaml":                                                                  testExtendedTestdataApiserver_and_authAllowSameNamespaceYaml,
 	"test/extended/testdata/apiserver_and_auth/deny-network-policy.yaml":                                                                   testExtendedTestdataApiserver_and_authDenyNetworkPolicyYaml,
+	"test/extended/testdata/clusterinfrastructure/aws-machineset.yaml":                                                                     testExtendedTestdataClusterinfrastructureAwsMachinesetYaml,
+	"test/extended/testdata/clusterinfrastructure/azure-machineset.yaml":                                                                   testExtendedTestdataClusterinfrastructureAzureMachinesetYaml,
+	"test/extended/testdata/clusterinfrastructure/gcp-machineset.yaml":                                                                     testExtendedTestdataClusterinfrastructureGcpMachinesetYaml,
+	"test/extended/testdata/clusterinfrastructure/osp-machineset.yaml":                                                                     testExtendedTestdataClusterinfrastructureOspMachinesetYaml,
+	"test/extended/testdata/clusterinfrastructure/vsphere-machineset.yaml":                                                                 testExtendedTestdataClusterinfrastructureVsphereMachinesetYaml,
 	"test/extended/testdata/ldap/groupsync.sh":                                                                                             testExtendedTestdataLdapGroupsyncSh,
 	"test/extended/testdata/ldap/ldapserver-config-cm.yaml":                                                                                testExtendedTestdataLdapLdapserverConfigCmYaml,
 	"test/extended/testdata/ldap/ldapserver-deployment.yaml":                                                                               testExtendedTestdataLdapLdapserverDeploymentYaml,
@@ -21318,6 +21758,13 @@ var _bintree = &bintree{nil, map[string]*bintree{
 				"apiserver_and_auth": {nil, map[string]*bintree{
 					"allow-same-namespace.yaml": {testExtendedTestdataApiserver_and_authAllowSameNamespaceYaml, map[string]*bintree{}},
 					"deny-network-policy.yaml":  {testExtendedTestdataApiserver_and_authDenyNetworkPolicyYaml, map[string]*bintree{}},
+				}},
+				"clusterinfrastructure": {nil, map[string]*bintree{
+					"aws-machineset.yaml":     {testExtendedTestdataClusterinfrastructureAwsMachinesetYaml, map[string]*bintree{}},
+					"azure-machineset.yaml":   {testExtendedTestdataClusterinfrastructureAzureMachinesetYaml, map[string]*bintree{}},
+					"gcp-machineset.yaml":     {testExtendedTestdataClusterinfrastructureGcpMachinesetYaml, map[string]*bintree{}},
+					"osp-machineset.yaml":     {testExtendedTestdataClusterinfrastructureOspMachinesetYaml, map[string]*bintree{}},
+					"vsphere-machineset.yaml": {testExtendedTestdataClusterinfrastructureVsphereMachinesetYaml, map[string]*bintree{}},
 				}},
 				"ldap": {nil, map[string]*bintree{
 					"groupsync.sh":               {testExtendedTestdataLdapGroupsyncSh, map[string]*bintree{}},

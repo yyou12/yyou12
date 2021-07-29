@@ -1,0 +1,79 @@
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: aws-machineset-template
+objects:
+  - apiVersion: machine.openshift.io/v1beta1
+    kind: MachineSet
+    metadata:
+      labels:
+        machine.openshift.io/cluster-api-cluster: ${CLUSTERID}
+      name: ${NAME}
+      namespace: openshift-machine-api
+    spec:
+      replicas: ${{REPLICAS}}
+      selector:
+        matchLabels:
+          machine.openshift.io/cluster-api-cluster: ${CLUSTERID}
+          machine.openshift.io/cluster-api-machineset: ${NAME}
+      template:
+        metadata:
+          labels:
+            machine.openshift.io/cluster-api-cluster: ${CLUSTERID}
+            machine.openshift.io/cluster-api-machine-role: worker
+            machine.openshift.io/cluster-api-machine-type: worker
+            machine.openshift.io/cluster-api-machineset: ${NAME}
+        spec:
+          metadata: { }
+          taints:
+            - effect: "NoSchedule"
+              key: "mapi"
+              value: "mapi_test"
+          providerSpec:
+            value:
+              ami:
+                id: ${AMI}
+              apiVersion: awsproviderconfig.openshift.io/v1beta1
+              blockDevices:
+              - ebs:
+                  encrypted: true
+                  iops: 0
+                  kmsKey:
+                    arn: ""
+                  volumeSize: 120
+                  volumeType: gp2
+              credentialsSecret:
+                name: aws-cloud-credentials
+              deviceIndex: 0
+              iamInstanceProfile:
+                id: ${CLUSTERID}-worker-profile
+              instanceType: m5.large
+              kind: AWSMachineProviderConfig
+              metadata:
+                creationTimestamp: null
+              placement:
+                availabilityZone: ${ZONE}
+                region: ${REGION}
+              securityGroups:
+              - filters:
+                - name: tag:Name
+                  values:
+                  - ${CLUSTERID}-worker-sg
+              subnet:
+                filters:
+                - name: tag:Name
+                  values:
+                  - ${CLUSTERID}-private-${ZONE}
+              tags:
+              - name: kubernetes.io/cluster/${CLUSTERID}
+                value: owned
+              userDataSecret:
+                name: worker-user-data
+parameters:
+- name: NAME
+- name: CLUSTERID
+- name: REPLICAS
+- name: REGION
+- name: ZONE
+- name: AMI
+
