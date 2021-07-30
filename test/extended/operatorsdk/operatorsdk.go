@@ -1,7 +1,6 @@
 package operatorsdk
 
 import (
-    "fmt"
     "os/exec"
     "strings"
     "time"
@@ -21,28 +20,6 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
     var operatorsdkCLI = NewOperatorSDKCLI()
     var oc = exutil.NewCLIWithoutNamespace("default")
 
-    // author: jfan@redhat.com
-    g.It("ConnectedOnly-Author:jfan-Medium-35458-SDK run bundle create registry image pod", func() {
-
-        bundleImages := []struct {
-            image  string
-            expect string
-        }{
-            {"quay.io/olmqe/etcd-bundle:0.9.2-share", "Successfully created registry pod"},
-        }
-        operatorsdkCLI.showInfo = true
-        oc.SetupProject()
-        for _, b := range bundleImages {
-            g.By(fmt.Sprintf("create registry image pod %s", b.image))
-            output, err := operatorsdkCLI.Run("run").Args("bundle", b.image, "-n", oc.Namespace(), "--timeout=5m").Output()
-            if strings.Contains(output, b.expect) {
-                e2e.Logf(fmt.Sprintf("That's expected! %s", b.image))
-            } else {
-                e2e.Failf(fmt.Sprintf("Failed to validating the %s, error: %v", b.image, err))
-            }
-        }
-    })
-    
     // author: jfan@redhat.com
     g.It("Author:jfan-High-37465-SDK olm improve olm related sub commands", func() {
 
@@ -110,23 +87,26 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
     })
 
     // author: jfan@redhat.com
-    g.It("ConnectedOnly-Author:jfan-Medium-38054-SDK run bundle create pods and csv", func() {
+    g.It("ConnectedOnly-Author:jfan-Medium-38054-SDK run bundle create pods and csv and registry image pod", func() {
         operatorsdkCLI.showInfo = true
         oc.SetupProject()
-        output, err := operatorsdkCLI.Run("run").Args("bundle", "quay.io/olmqe/etcd-bundle:0.9.2-share", "-n", oc.Namespace(), "--timeout", "5m").Output()
+        output, err := operatorsdkCLI.Run("run").Args("bundle", "quay.io/olmqe/podcsvcheck-bundle:v0.0.1", "-n", oc.Namespace(), "--timeout", "5m").Output()
         o.Expect(err).NotTo(o.HaveOccurred())
         o.Expect(output).To(o.ContainSubstring("OLM has successfully installed"))
         output, _ = oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-n", oc.Namespace()).Output()
-        o.Expect(output).To(o.ContainSubstring("quay-io-olmqe-etcd-bundle-0-9-2-share"))
-        output, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", "etcdoperator.v0.9.2", "-n", oc.Namespace()).Output()
+        o.Expect(output).To(o.ContainSubstring("quay-io-olmqe-podcsvcheck-bundle-v0-0-1"))
+        output, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", "podcsvcheck.v0.0.1", "-n", oc.Namespace()).Output()
         o.Expect(err).NotTo(o.HaveOccurred())
         o.Expect(output).To(o.ContainSubstring("Succeeded"))
-        output, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("catalogsource", "etcd-catalog", "-n", oc.Namespace()).Output()
+        output, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("catalogsource", "podcsvcheck-catalog", "-n", oc.Namespace()).Output()
         o.Expect(err).NotTo(o.HaveOccurred())
         o.Expect(output).To(o.ContainSubstring("grpc"))
         output, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("installplan", "-n", oc.Namespace()).Output()
         o.Expect(err).NotTo(o.HaveOccurred())
-        o.Expect(output).To(o.ContainSubstring("etcdoperator.v0.9.2"))
+        o.Expect(output).To(o.ContainSubstring("podcsvcheck.v0.0.1"))
+        output, err = operatorsdkCLI.Run("cleanup").Args("podcsvcheck", "-n", oc.Namespace()).Output()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        o.Expect(output).To(o.ContainSubstring("uninstalled"))
     })
 
     // author: jfan@redhat.com
