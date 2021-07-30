@@ -9,7 +9,7 @@ objects:
       labels:
         machine.openshift.io/cluster-api-cluster: ${CLUSTERID}
       name: ${NAME}
-      namespace: openshift-machine-api
+      namespace: ${NAMESPACE}
     spec:
       replicas: ${{REPLICAS}}
       selector:
@@ -71,6 +71,7 @@ objects:
                 name: worker-user-data
 parameters:
 - name: NAME
+- name: NAMESPACE
 - name: CLUSTERID
 - name: REPLICAS
 - name: REGION

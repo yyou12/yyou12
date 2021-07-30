@@ -11,7 +11,7 @@ objects:
         machine.openshift.io/cluster-api-machine-role: worker
         machine.openshift.io/cluster-api-machine-type: worker
       name: ${NAME}
-      namespace: openshift-machine-api
+      namespace: ${NAMESPACE}
     spec:
       replicas: ${{REPLICAS}}
       selector:
@@ -62,5 +62,6 @@ objects:
                 name: worker-user-data
 parameters:
   - name: NAME
+  - name: NAMESPACE
   - name: CLUSTERID
   - name: REPLICAS

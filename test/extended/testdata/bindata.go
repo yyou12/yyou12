@@ -299,7 +299,7 @@ objects:
       labels:
         machine.openshift.io/cluster-api-cluster: ${CLUSTERID}
       name: ${NAME}
-      namespace: openshift-machine-api
+      namespace: ${NAMESPACE}
     spec:
       replicas: ${{REPLICAS}}
       selector:
@@ -361,6 +361,7 @@ objects:
                 name: worker-user-data
 parameters:
 - name: NAME
+- name: NAMESPACE
 - name: CLUSTERID
 - name: REPLICAS
 - name: REGION
@@ -397,7 +398,7 @@ objects:
         machine.openshift.io/cluster-api-machine-role: worker
         machine.openshift.io/cluster-api-machine-type: worker
       name: ${NAME}
-      namespace: openshift-machine-api
+      namespace: ${NAMESPACE}
     spec:
       replicas: ${{REPLICAS}}
       selector:
@@ -451,6 +452,7 @@ objects:
               zone: ""
 parameters:
 - name: NAME
+- name: NAMESPACE
 - name: CLUSTERID
 - name: REPLICAS
 - name: REGION
@@ -482,7 +484,7 @@ objects:
       labels:
         machine.openshift.io/cluster-api-cluster: ${CLUSTERID}
       name: ${NAME}
-      namespace: openshift-machine-api
+      namespace: ${NAMESPACE}
     spec:
       replicas: ${{REPLICAS}}
       selector:
@@ -536,6 +538,7 @@ objects:
               zone: ${ZONE}
 parameters:
   - name: NAME
+  - name: NAMESPACE
   - name: CLUSTERID
   - name: REPLICAS
   - name: REGION
@@ -571,7 +574,7 @@ objects:
         machine.openshift.io/cluster-api-machine-role: worker
         machine.openshift.io/cluster-api-machine-type: worker
       name: ${NAME}
-      namespace: openshift-machine-api
+      namespace: ${NAMESPACE}
     spec:
       replicas: ${{REPLICAS}}
       selector:
@@ -622,6 +625,7 @@ objects:
                 name: worker-user-data
 parameters:
   - name: NAME
+  - name: NAMESPACE
   - name: CLUSTERID
   - name: REPLICAS
 `)
@@ -652,7 +656,7 @@ objects:
       labels:
         machine.openshift.io/cluster-api-cluster: ${CLUSTERID}
       name: ${NAME}
-      namespace: openshift-machine-api
+      namespace: ${NAMESPACE}
     spec:
       replicas: ${{REPLICAS}}
       selector:
@@ -699,6 +703,7 @@ objects:
                 server: vcenter.sddc-44-236-21-251.vmwarevmc.com
 parameters:
   - name: NAME
+  - name: NAMESPACE
   - name: CLUSTERID
   - name: REPLICAS
 `)
