@@ -2519,7 +2519,48 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 
 	})
 
-	// author: jiazha@redhat.com
+	// author: scolange@redhat.com
+	g.It("ConnectedOnly-Author:scolange-High-23172-the copied CSV will exist in new created project", func() {
+		
+		dr := make(describerResrouce)
+		itName := g.CurrentGinkgoTestDescription().TestText
+		dr.addIr(itName)
+
+		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
+		subTemplate         := filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+			
+		sub := subscriptionDescription{
+				subName:                 "sub-etcd-23172",
+				namespace:               "openshift-operators",
+				catalogSourceName:       "community-operators",
+				catalogSourceNamespace:  "openshift-marketplace",
+				channel:                 "clusterwide-alpha",
+				ipApproval:              "Automatic",
+				operatorPackage:         "etcd",
+				singleNamespace:         false,
+				template:                subTemplate,
+		}
+
+		g.By("1, Check if the global operator global-operators support all namesapces")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "[]", ok, []string{"og", "global-operators", "-n", "openshift-operators", "-o=jsonpath={.status.namespaces}"})
+	
+		g.By("2, Create operator targeted at all namespace")
+		defer sub.delete(itName, dr)
+		defer sub.deleteCSV(itName, dr)
+		sub.create(oc, itName, dr)
+	
+		g.By("3, Create new namespace")
+		oc.SetupProject()
+	    
+		e2e.Logf("The test case pass")
+
+		g.By("4, Check the csv within new namespace is copied.")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", sub.installedCSV, "-n", oc.Namespace(), "-o=jsonpath={.status.phase}"}).check(oc)
+		e2e.Logf("The t**************")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Copied", ok, []string{"csv", sub.installedCSV, "-n", oc.Namespace(), "-o=jsonpath={.status.reason}"})
+	})
+
+	// author: jiazha@redhat.c
 	g.It("Author:jiazha-Medium-21126-OLM Subscription status says CSV is installed when it is not", func() {
 		g.By("1) Install the OperatorGroup in a random project")
 		dr := make(describerResrouce)
