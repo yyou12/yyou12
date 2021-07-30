@@ -429,4 +429,137 @@ var _ = g.Describe("[sig-scheduling] Workloads The Descheduler Operator automate
 
          })
 
+      // author: knarra@redhat.com
+      g.It("Author:knarra-Low-36584-Descheduler should not violate PodDisruptionBudget [Disruptive]", func() {
+              deploydpT  := filepath.Join(buildPruningBaseDir, "deploy_duplicatepodsrs.yaml")
+
+              nodeList, err := e2enode.GetReadySchedulableNodes(oc.KubeFramework().ClientSet)
+
+              // Create test project
+              g.By("Create test project")
+              oc.SetupProject()
+
+              testdp := deployduplicatepods{
+			dName:          "d36584",
+			namespace:      oc.Namespace(),
+			replicaNum:     12,
+			template:       deploydpT,
+	      }
+
+              g.By("Create the descheduler namespace")
+              err = oc.AsAdmin().WithoutNamespace().Run("create").Args("ns", kubeNamespace).Execute()
+              o.Expect(err).NotTo(o.HaveOccurred())
+              defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("ns", kubeNamespace).Execute()
+
+              g.By("Create the operatorgroup")
+              og.createOperatorGroup(oc)
+              o.Expect(err).NotTo(o.HaveOccurred())
+              defer og.deleteOperatorGroup(oc)
+
+              g.By("Create the subscription")
+              sub.createSubscription(oc)
+              o.Expect(err).NotTo(o.HaveOccurred())
+              defer sub.deleteSubscription(oc)
+
+              g.By("Wait for the descheduler operator pod running")
+              if ok := waitForAvailableRsRunning(oc, "deploy", "descheduler-operator", kubeNamespace, "1"); ok {
+                  e2e.Logf("Kubedescheduler operator runnnig now\n")
+              }
+
+              g.By("Create descheduler cluster")
+              deschu.createKubeDescheduler(oc)
+              o.Expect(err).NotTo(o.HaveOccurred())
+              defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("KubeDescheduler", "--all", "-n", kubeNamespace).Execute()
+
+              g.By("Check the kubedescheduler run well")
+              checkAvailable(oc, "deploy", "cluster", kubeNamespace, "1")
+
+              g.By("Get descheduler cluster pod name")
+              podName, err := oc.AsAdmin().Run("get").Args("pods", "-l", "app=descheduler", "-n", kubeNamespace, "-o=jsonpath={.items..metadata.name}").Output()
+              o.Expect(err).NotTo(o.HaveOccurred())
+
+
+              // Test for descheduler not violating PDB
+
+              g.By("Cordon node1")
+              err = oc.AsAdmin().Run("adm").Args("cordon", nodeList.Items[0].Name).Execute()
+              o.Expect(err).NotTo(o.HaveOccurred())
+              defer oc.AsAdmin().Run("adm").Args("uncordon", nodeList.Items[0].Name).Execute()
+
+              g.By("Create the test deploy")
+	      testdp.createDuplicatePods(oc)
+	      o.Expect(err).NotTo(o.HaveOccurred())
+
+              g.By("Check all the pods should running on node")
+              if ok := waitForAvailableRsRunning(oc, "rs", testdp.dName, testdp.namespace, "12"); ok {
+                  e2e.Logf("All pods are runnnig now\n")
+              }
+
+              // Create PDB
+              g.By("Create PDB")
+              err = oc.AsAdmin().Run("create").Args("poddisruptionbudget", testdp.dName, "--selector=app=d36584", "--min-available=11").Execute()
+              o.Expect(err).NotTo(o.HaveOccurred())
+              defer oc.AsAdmin().Run("delete").Args("pdb", testdp.dName).Execute()
+
+              g.By("Uncordon node1")
+              err = oc.AsAdmin().Run("adm").Args("uncordon", nodeList.Items[0].Name).Execute()
+              o.Expect(err).NotTo(o.HaveOccurred())
+
+              g.By("Check the descheduler deploy logs, should see evict logs")
+	      checkLogsFromRs(oc, kubeNamespace, "pod", podName, regexp.QuoteMeta(`"Error evicting pod"`)+".*"+regexp.QuoteMeta(`Cannot evict pod as it would violate the pod's disruption budget.`))
+
+              g.By("Delete PDB")
+              err = oc.AsAdmin().Run("delete").Args("pdb", testdp.dName).Execute()
+              o.Expect(err).NotTo(o.HaveOccurred())
+
+
+              // Delete rs from the namespace
+              err = oc.AsAdmin().WithoutNamespace().Run("delete").Args("rs", testdp.dName, "-n", testdp.namespace).Execute()
+              o.Expect(err).NotTo(o.HaveOccurred())
+
+             g.By("Make sure all the pods assoicated with replicaset are deleted")
+	     err = wait.Poll(5*time.Second, 30*time.Second, func() (bool, error) {
+                       output, err := oc.WithoutNamespace().Run("get").Args("pods", "-n", testdp.namespace).Output()
+                       if err != nil {
+                                e2e.Logf("Fail to get is, error: %s. Trying again", err)
+                                return false, nil
+                       }
+                       if matched, _ := regexp.MatchString("No resources found", output); matched {
+                                e2e.Logf("All pods associated with replicaset have been deleted:\n%s", output)
+                                return true, nil
+                       }
+                       return false, nil
+             })
+             o.Expect(err).NotTo(o.HaveOccurred())
+
+             // Test for PDB with --max-unavailable=1
+             g.By("cordon node1")
+             err = oc.AsAdmin().Run("adm").Args("cordon", nodeList.Items[0].Name).Execute()
+             o.Expect(err).NotTo(o.HaveOccurred())
+             defer oc.AsAdmin().Run("adm").Args("uncordon", nodeList.Items[0].Name).Execute()
+
+             g.By("Create the test deploy")
+             testdp.createDuplicatePods(oc)
+             o.Expect(err).NotTo(o.HaveOccurred())
+
+             g.By("Check all the pods should running on node")
+             if ok := waitForAvailableRsRunning(oc, "rs", testdp.dName, testdp.namespace, "12"); ok {
+                  e2e.Logf("All pods are runnnig now\n")
+             }
+
+             // Create PDB for --max-unavailable=1
+             g.By("Create PDB for --max-unavailable=1")
+             err = oc.AsAdmin().Run("create").Args("poddisruptionbudget", testdp.dName, "--selector=app=d36584", "--max-unavailable=1").Execute()
+             o.Expect(err).NotTo(o.HaveOccurred())
+             defer oc.AsAdmin().Run("delete").Args("pdb", testdp.dName).Execute()
+
+             g.By("Uncordon node1")
+             err = oc.AsAdmin().Run("adm").Args("uncordon", nodeList.Items[0].Name).Execute()
+             o.Expect(err).NotTo(o.HaveOccurred())
+
+             g.By("Check the descheduler deploy logs, should see evict logs")
+             checkLogsFromRs(oc, kubeNamespace, "pod", podName, regexp.QuoteMeta(`"Error evicting pod"`)+".*"+regexp.QuoteMeta(`Cannot evict pod as it would violate the pod's disruption budget.`))
+
+         })
+
 })

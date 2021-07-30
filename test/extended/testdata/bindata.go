@@ -174,6 +174,7 @@
 // test/extended/testdata/winc/windows_web_server_no_taint.yaml
 // test/extended/testdata/workloads/deploy_demopod.yaml
 // test/extended/testdata/workloads/deploy_duplicatepods.yaml
+// test/extended/testdata/workloads/deploy_duplicatepodsrs.yaml
 // test/extended/testdata/workloads/deploy_interpodantiaffinity.yaml
 // test/extended/testdata/workloads/deploy_nodeaffinity.yaml
 // test/extended/testdata/workloads/deploy_nodeselect.yaml
@@ -20379,6 +20380,62 @@ func testExtendedTestdataWorkloadsDeploy_duplicatepodsYaml() (*asset, error) {
 	return a, nil
 }
 
+var _testExtendedTestdataWorkloadsDeploy_duplicatepodsrsYaml = []byte(`apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: deploy-duplicatepodsrs-template
+objects:
+- kind: ReplicaSet
+  apiVersion: apps/v1
+  metadata:
+    name: "${DNAME}"
+    namespace: "${NAMESPACE}"
+  spec:
+    replicas: ${{REPLICASNUM}}
+    selector:
+      matchLabels:
+        tier: "${DNAME}"
+      matchExpressions:
+        - {key: tier, operator: In, values: ["${DNAME}"]}
+    template:
+      metadata:
+        labels:
+          app: "${DNAME}"
+          tier: "${DNAME}"
+      spec:
+        containers:
+        - name: "${DNAME}"
+          image: quay.io/openshifttest/hello-openshift@sha256:aaea76ff622d2f8bcb32e538e7b3cd0ef6d291953f3e7c9f556c1ba5baf47e2e
+          resources:
+          requests:
+            cpu: 100m
+            memory: 100Mi
+        env:
+        - name: GET_HOSTS_FROM
+          value: dns
+        ports:
+        - containerPort: 8080
+parameters:
+- name: DNAME
+- name: NAMESPACE
+- name: REPLICASNUM
+`)
+
+func testExtendedTestdataWorkloadsDeploy_duplicatepodsrsYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataWorkloadsDeploy_duplicatepodsrsYaml, nil
+}
+
+func testExtendedTestdataWorkloadsDeploy_duplicatepodsrsYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataWorkloadsDeploy_duplicatepodsrsYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/workloads/deploy_duplicatepodsrs.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
 var _testExtendedTestdataWorkloadsDeploy_interpodantiaffinityYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
@@ -21901,6 +21958,7 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/winc/windows_web_server_no_taint.yaml":                                                                         testExtendedTestdataWincWindows_web_server_no_taintYaml,
 	"test/extended/testdata/workloads/deploy_demopod.yaml":                                                                                 testExtendedTestdataWorkloadsDeploy_demopodYaml,
 	"test/extended/testdata/workloads/deploy_duplicatepods.yaml":                                                                           testExtendedTestdataWorkloadsDeploy_duplicatepodsYaml,
+	"test/extended/testdata/workloads/deploy_duplicatepodsrs.yaml":                                                                         testExtendedTestdataWorkloadsDeploy_duplicatepodsrsYaml,
 	"test/extended/testdata/workloads/deploy_interpodantiaffinity.yaml":                                                                    testExtendedTestdataWorkloadsDeploy_interpodantiaffinityYaml,
 	"test/extended/testdata/workloads/deploy_nodeaffinity.yaml":                                                                            testExtendedTestdataWorkloadsDeploy_nodeaffinityYaml,
 	"test/extended/testdata/workloads/deploy_nodeselect.yaml":                                                                              testExtendedTestdataWorkloadsDeploy_nodeselectYaml,
@@ -22210,6 +22268,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 				"workloads": {nil, map[string]*bintree{
 					"deploy_demopod.yaml":                   {testExtendedTestdataWorkloadsDeploy_demopodYaml, map[string]*bintree{}},
 					"deploy_duplicatepods.yaml":             {testExtendedTestdataWorkloadsDeploy_duplicatepodsYaml, map[string]*bintree{}},
+					"deploy_duplicatepodsrs.yaml":           {testExtendedTestdataWorkloadsDeploy_duplicatepodsrsYaml, map[string]*bintree{}},
 					"deploy_interpodantiaffinity.yaml":      {testExtendedTestdataWorkloadsDeploy_interpodantiaffinityYaml, map[string]*bintree{}},
 					"deploy_nodeaffinity.yaml":              {testExtendedTestdataWorkloadsDeploy_nodeaffinityYaml, map[string]*bintree{}},
 					"deploy_nodeselect.yaml":                {testExtendedTestdataWorkloadsDeploy_nodeselectYaml, map[string]*bintree{}},
