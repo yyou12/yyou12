@@ -10108,7 +10108,7 @@ kind: Template
 metadata:
   name: nginx-template
 objects:
-- apiVersion: demo.example.com/v1
+- apiVersion: helmdemo.example.com/v1
   kind: Nginx
   metadata:
     name: "${NAME}"
