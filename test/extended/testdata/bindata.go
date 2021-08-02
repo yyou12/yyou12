@@ -17573,7 +17573,7 @@ objects:
     replicas: 1
     endpointPublishingStrategy:
       hostNetwork:
-        protocol: PROXY            
+        protocol: PROXY
       type: HostNetwork
 parameters:
 - name: NAME
@@ -17614,7 +17614,7 @@ objects:
     replicas: 1
     endpointPublishingStrategy:
       nodePort:
-        protocol: PROXY            
+        protocol: PROXY
       type: NodePortService
 parameters:
 - name: NAME

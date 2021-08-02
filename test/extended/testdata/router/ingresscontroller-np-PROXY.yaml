@@ -13,7 +13,7 @@ objects:
     replicas: 1
     endpointPublishingStrategy:
       nodePort:
-        protocol: PROXY            
+        protocol: PROXY
       type: NodePortService
 parameters:
 - name: NAME
