@@ -3,6 +3,8 @@ package workloads
 import (
 	"encoding/json"
 	"regexp"
+	"os/exec"
+	"strings"
 
 	g "github.com/onsi/ginkgo"
 	o "github.com/onsi/gomega"
@@ -27,6 +29,28 @@ var _ = g.Describe("[sig-cli] Workloads", func() {
 		}
 		if match, _ := regexp.MatchString("clean", versionInfo.ClientInfo.GitTreeState); !match {
 			e2e.Failf("varification GitTreeState with error: %v", err)
+		}
+
+	})
+
+	// author: yinzhou@redhat.com
+        g.It("Author:yinzhou-High-43030-oc get events always show the timestamp as LAST SEEN", func() {
+		g.By("Get all the namespace")
+		output, err := oc.AsAdmin().Run("get").Args("projects", "-o=custom-columns=NAME:.metadata.name", "--no-headers").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		projectList := strings.Fields(output)
+
+		g.By("check the events per project")
+		for _, projectN := range projectList {
+			output, _ = oc.AsAdmin().WithoutNamespace().Run("get").Args("events", "-n", projectN).Output()
+			if match, _ := regexp.MatchString("No resources found", string(output)); match {
+				e2e.Logf("No events in project: %v", projectN)
+			}else {
+				result, _ := exec.Command("bash", "-c", "cat "+output+" | awk '{print $1}'").Output()
+				if match, _ := regexp.MatchString("unknown", string(result)); match {
+					e2e.Failf("Does not show timestamp as expected: %v", result)
+				}
+			}
 		}
 
 	})
