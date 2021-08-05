@@ -595,6 +595,65 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
         o.Expect(err).NotTo(o.HaveOccurred())
         o.Expect(msg).To(o.ContainSubstring("Successfully upgraded to"))
     })
+
+    // author: jfan@redhat.com
+    g.It("ConnectedOnly-Author:jfan-High-42928-SDK support the previous base ansible image [Slow]", func() {
+        buildPruningBaseDir := exutil.FixturePath("testdata", "operatorsdk")
+        var previouscache = filepath.Join(buildPruningBaseDir, "cache_v1_previous.yaml")
+        var previouscollection = filepath.Join(buildPruningBaseDir, "previous_v1_collectiontest.yaml")
+        operatorsdkCLI.showInfo = true
+        oc.SetupProject()
+        namespace := oc.Namespace()
+        _, err := operatorsdkCLI.Run("run").Args("bundle", "quay.io/olmqe/previousansiblebase-bundle:v4.9", "-n", namespace, "--timeout", "5m").Output()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        createPreviouscache, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", previouscache, "-p", "NAME=previous-sample").OutputToFile("config-42928.json")
+        o.Expect(err).NotTo(o.HaveOccurred())
+        err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", createPreviouscache, "-n", namespace).Execute()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        // k8s status
+        waitErr := wait.Poll(15*time.Second, 360*time.Second, func() (bool, error) {
+            msg, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("previous.cache.previous.com", "previous-sample", "-n", namespace, "-o", "yaml").Output()
+            if strings.Contains(msg, "hello world") {
+                e2e.Logf("previouscache test hello world")
+                return true, nil
+            }
+            return false, nil
+        })
+        o.Expect(waitErr).NotTo(o.HaveOccurred())
+        
+        // migrate test
+        msg, err := oc.AsAdmin().Run("describe").Args("secret", "test-secret", "-n", namespace).Output()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        o.Expect(msg).To(o.ContainSubstring("test:  6 bytes"))
+
+        // blacklist
+        msg, err = oc.AsAdmin().WithoutNamespace().Run("logs").Args("deploy/previousansiblebase-controller-manager", "-c", "manager", "-n", namespace).Output()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        o.Expect(msg).To(o.ContainSubstring("Skipping"))
+
+        // max concurrent reconciles
+        msg, err = oc.AsAdmin().WithoutNamespace().Run("logs").Args("deploy/previousansiblebase-controller-manager", "-c", "manager", "-n", namespace).Output()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        o.Expect(msg).To(o.ContainSubstring("\"worker count\":4"))
+        
+        // content collection
+        createPreviousCollection, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", previouscollection, "-p", "NAME=collectiontest-sample").OutputToFile("config1-42928.json")
+        o.Expect(err).NotTo(o.HaveOccurred())
+        err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", createPreviousCollection, "-n", namespace).Execute()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        waitErr = wait.Poll(15*time.Second, 360*time.Second, func() (bool, error) {
+            msg, _ := oc.AsAdmin().WithoutNamespace().Run("logs").Args("deploy/previousansiblebase-controller-manager", "-c", "manager", "-n", namespace).Output()
+            if strings.Contains(msg, "dummy : Create ConfigMap") {
+                e2e.Logf("found dummy : Create ConfigMap")
+                return true, nil
+            }
+            return false, nil
+        })
+        o.Expect(waitErr).NotTo(o.HaveOccurred())
+
+        output, _ := operatorsdkCLI.Run("cleanup").Args("previousansiblebase", "-n", namespace).Output()
+        o.Expect(output).To(o.ContainSubstring("uninstalled"))
+    })
    
     // author: chuo@redhat.com
     g.It("Author:chuo-Medium-27718-scorecard remove version flag", func() {
