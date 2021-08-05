@@ -2560,7 +2560,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			subD.complianceSuiteResult(oc, ssb.name, "NON-COMPLIANT INCONSISTENT")
 
 			g.By("Check the total number of CIS Manual rules.. !!!\n")
-			checkResourceNumber(oc, 27, "compliancecheckresult", "-l", "compliance.openshift.io/check-status=MANUAL", "--no-headers", "-n", subD.namespace)
+			checkResourceNumber(oc, 25, "compliancecheckresult", "-l", "compliance.openshift.io/check-status=MANUAL", "--no-headers", "-n", subD.namespace)
 			checkCisRulesInstruction(oc)
 
 			g.By("ocp-41093 Successfully verify that all CIS rules has instructions ..!!!\n")
