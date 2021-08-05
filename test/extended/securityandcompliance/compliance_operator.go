@@ -2170,34 +2170,38 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			httpProxy := getResource(oc, asAdmin, withoutNamespace, "proxy", "cluster", "-n", oc.Namespace(), "-o=jsonpath={.spec.httpProxy}")
 			httpsProxy := getResource(oc, asAdmin, withoutNamespace, "proxy", "cluster", "-n", oc.Namespace(), "-o=jsonpath={.spec.httpsProxy}")
 
-			g.By("check the proxy info for the compliance-operator deployment!!!\n")
-			newCheck("expect", asAdmin, withoutNamespace, contain, "\"name\":\"HTTP_PROXY\",\"value\":\""+httpProxy+"\"", ok, []string{"deployment", "compliance-operator",
-				"-n", oc.Namespace(), "-o=jsonpath={.spec.template.spec.containers[0].env}"}).check(oc)
-			newCheck("expect", asAdmin, withoutNamespace, contain, "\"name\":\"HTTPS_PROXY\",\"value\":\""+httpsProxy+"\"", ok, []string{"deployment", "compliance-operator",
-				"-n", oc.Namespace(), "-o=jsonpath={.spec.template.spec.containers[0].env}"}).check(oc)
+			if len(httpProxy) == 0 && len(httpsProxy) == 0 {
+				g.Skip("Skip for non-proxy cluster! This case intentionally runs nothing!")
+			} else {
+				g.By("check the proxy info for the compliance-operator deployment!!!\n")
+				newCheck("expect", asAdmin, withoutNamespace, contain, "\"name\":\"HTTP_PROXY\",\"value\":\""+httpProxy+"\"", ok, []string{"deployment", "compliance-operator",
+					"-n", oc.Namespace(), "-o=jsonpath={.spec.template.spec.containers[0].env}"}).check(oc)
+				newCheck("expect", asAdmin, withoutNamespace, contain, "\"name\":\"HTTPS_PROXY\",\"value\":\""+httpsProxy+"\"", ok, []string{"deployment", "compliance-operator",
+					"-n", oc.Namespace(), "-o=jsonpath={.spec.template.spec.containers[0].env}"}).check(oc)
 
-			g.By("create a compliancesuite!!!\n")
-			var csuiteMD = complianceSuiteDescription{
-				name:         "master-compliancesuite",
-				namespace:    "",
-				scanname:     "master-scan",
-				profile:      "xccdf_org.ssgproject.content_profile_cis-node",
-				content:      "ssg-ocp4-ds.xml",
-				contentImage: "quay.io/complianceascode/ocp4:latest",
-				nodeSelector: "master",
-				template:     csuiteTemplate,
+				g.By("create a compliancesuite!!!\n")
+				var csuiteMD = complianceSuiteDescription{
+					name:         "master-compliancesuite",
+					namespace:    "",
+					scanname:     "master-scan",
+					profile:      "xccdf_org.ssgproject.content_profile_cis-node",
+					content:      "ssg-ocp4-ds.xml",
+					contentImage: "quay.io/complianceascode/ocp4:latest",
+					nodeSelector: "master",
+					template:     csuiteTemplate,
+				}
+				defer cleanupObjects(oc,
+					objectTableRef{"compliancesuite", subD.namespace, "master-compliancesuite"})
+				csuiteMD.namespace = subD.namespace
+				g.By("Create master-compliancesuite !!!\n")
+				csuiteMD.create(oc, itName, dr)
+				newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", csuiteMD.name, "-n",
+					subD.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+
+				g.By("check the https proxy in the configmap!!!\n")
+				newCheck("expect", asAdmin, withoutNamespace, contain, httpsProxy, ok, []string{"cm", csuiteMD.scanname + "-openscap-env-map", "-n",
+					subD.namespace, "-o=jsonpath={.data.HTTPS_PROXY}"}).check(oc)
 			}
-			defer cleanupObjects(oc,
-				objectTableRef{"compliancesuite", subD.namespace, "master-compliancesuite"})
-			csuiteMD.namespace = subD.namespace
-			g.By("Create master-compliancesuite !!!\n")
-			csuiteMD.create(oc, itName, dr)
-			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", csuiteMD.name, "-n",
-				subD.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
-
-			g.By("check the https proxy in the configmap!!!\n")
-			newCheck("expect", asAdmin, withoutNamespace, contain, httpsProxy, ok, []string{"cm", csuiteMD.scanname + "-openscap-env-map", "-n",
-				subD.namespace, "-o=jsonpath={.data.HTTPS_PROXY}"}).check(oc)
 		})
 
 		// author: xiyuan@redhat.com
