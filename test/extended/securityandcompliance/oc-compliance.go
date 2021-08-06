@@ -246,15 +246,84 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The OC Compliance plugin m
 			subD.getProfileName(oc, "rhcos4-moderate")
 
 			g.By("Check profile standards and controls.. !!!\n")
-			checkProfileControls(oc, "ocp4-cis", [...]string{"CIS-OCP     | 1.2.1", "NIST-800-53 | AC-2"})
-			checkProfileControls(oc, "ocp4-cis-node", [...]string{"NIST-800-53 | CM-6", "CIS-OCP     | 1.1.1"})
-			checkProfileControls(oc, "ocp4-e8", [...]string{"CIS-OCP     | 1.2.34", "NIST-800-53 | AC-2(1)"})
-			checkProfileControls(oc, "ocp4-moderate", [...]string{"CIS-OCP     | 1.2.1", "NIST-800-53 | AC-12"})
-			checkProfileControls(oc, "rhcos4-e8", [...]string{"NIST-800-53", "AC-17(2)"})
-			checkProfileControls(oc, "rhcos4-moderate", [...]string{"NIST-800-53", "AC-12"})
+			assertCheckProfileControls(oc, "ocp4-cis", [...]string{"CIS-OCP     | 1.2.1", "NIST-800-53 | AC-2"})
+			assertCheckProfileControls(oc, "ocp4-cis-node", [...]string{"NIST-800-53 | CM-6", "CIS-OCP     | 1.1.1"})
+			assertCheckProfileControls(oc, "ocp4-e8", [...]string{"CIS-OCP     | 1.2.34", "NIST-800-53 | AC-2(1)"})
+			assertCheckProfileControls(oc, "ocp4-moderate", [...]string{"CIS-OCP     | 1.2.1", "NIST-800-53 | AC-12"})
+			assertCheckProfileControls(oc, "rhcos4-e8", [...]string{"NIST-800-53", "AC-17(2)"})
+			assertCheckProfileControls(oc, "rhcos4-moderate", [...]string{"NIST-800-53", "AC-12"})
 
-			g.By("The ocp-40681 Successfully verify compliance standards and controls for all profiles ... !!!!\n ")
+			g.By("The ocp-41185 Successfully verify compliance standards and controls for all profiles ... !!!!\n ")
+		})
 
+		// author: pdhamdhe@redhat.com
+		g.It("Author:pdhamdhe-High-41190-The view result command of oc compliance plugin exposes more information about a compliance result [Slow]", func() {
+
+			var (
+				ss = scanSettingDescription{
+					autoapplyremediations: false,
+					name:                  "master-scansetting",
+					namespace:             "",
+					roles1:                "master",
+					rotation:              10,
+					schedule:              "0 1 * * *",
+					size:                  "2Gi",
+					template:              scansettingTemplate,
+				}
+				ssb = scanSettingBindingDescription{
+					name:            "co-requirement",
+					namespace:       "",
+					profilekind1:    "Profile",
+					profilename1:    "ocp4-cis",
+					scansettingname: "default",
+					template:        scansettingbindingTemplate,
+				}
+				itName = g.CurrentGinkgoTestDescription().TestText
+			)
+
+			defer cleanupObjects(oc,
+				objectTableRef{"scansettingbinding", subD.namespace, ssb.name},
+				objectTableRef{"scansetting", subD.namespace, ss.name})
+
+			g.By("Check default profiles name ocp4-cis.. !!!\n")
+			subD.getProfileName(oc, "ocp4-cis")
+
+			ssb.namespace = subD.namespace
+			ss.namespace = subD.namespace
+			ssb.scansettingname = ss.name
+
+			g.By("Create scansetting !!!\n")
+			ss.create(oc, itName, dr)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "master-scansetting", ok, []string{"scansetting", "-n", ss.namespace, ss.name,
+				"-o=jsonpath={.metadata.name}"}).check(oc)
+
+			g.By("Create scansettingbinding !!!\n")
+			ssb.create(oc, itName, dr)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "co-requirement", ok, []string{"scansettingbinding", "-n", subD.namespace,
+				"-o=jsonpath={.items[0].metadata.name}"}).check(oc)
+
+			g.By("Check ComplianceSuite status and result.. !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", ssb.name, "-n", subD.namespace,
+				"-o=jsonpath={.status.phase}"}).check(oc)
+			subD.complianceSuiteResult(oc, ssb.name, "NON-COMPLIANT")
+
+			g.By("Verify rules status and result through oc-compliance view-result command.. !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "PASS", ok, []string{"compliancecheckresult",
+				"ocp4-cis-api-server-admission-control-plugin-alwaysadmit", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
+			assertRuleResult(oc, "ocp4-cis-api-server-admission-control-plugin-alwaysadmit", subD.namespace,
+				[...]string{"Status               | PASS", "Result Object Name   | ocp4-cis-api-server-admission-control-plugin-alwaysadmit"})
+
+			newCheck("expect", asAdmin, withoutNamespace, contain, "FAIL", ok, []string{"compliancecheckresult",
+				"ocp4-cis-audit-log-forwarding-enabled", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
+			assertRuleResult(oc, "ocp4-cis-audit-log-forwarding-enabled", subD.namespace,
+				[...]string{"Status               | FAIL", "Result Object Name   | ocp4-cis-audit-log-forwarding-enabled"})
+
+			newCheck("expect", asAdmin, withoutNamespace, contain, "FAIL", ok, []string{"compliancecheckresult",
+				"ocp4-cis-api-server-encryption-provider-cipher", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
+			assertRuleResult(oc, "ocp4-cis-api-server-encryption-provider-cipher", subD.namespace,
+				[...]string{"Status               | FAIL", "Result Object Name   | ocp4-cis-api-server-encryption-provider-cipher"})
+
+			g.By("The ocp-41190 Successfully verify oc-compliance view-result reports result in details... !!!!\n ")
 		})
 	})
 })
