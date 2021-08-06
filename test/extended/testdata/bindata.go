@@ -94,6 +94,7 @@
 // test/extended/testdata/operatorsdk/cache_v1_previous.yaml
 // test/extended/testdata/operatorsdk/catalogsource.yaml
 // test/extended/testdata/operatorsdk/demo_v1_nginx.yaml
+// test/extended/testdata/operatorsdk/helmbase_v1_nginx.yaml
 // test/extended/testdata/operatorsdk/operatorgroup.yaml
 // test/extended/testdata/operatorsdk/previous_v1_collectiontest.yaml
 // test/extended/testdata/operatorsdk/sub.yaml
@@ -10193,6 +10194,68 @@ func testExtendedTestdataOperatorsdkDemo_v1_nginxYaml() (*asset, error) {
 	}
 
 	info := bindataFileInfo{name: "test/extended/testdata/operatorsdk/demo_v1_nginx.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataOperatorsdkHelmbase_v1_nginxYaml = []byte(`apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: helmbase-template
+objects:
+- apiVersion: helmbase.previous.com/v1
+  kind: Nginx
+  metadata:
+    name: "${NAME}"
+  spec:
+    affinity: {}
+    autoscaling:
+      enabled: false
+      maxReplicas: 100
+      targetCPUUtilizationPercentage: 80
+    fullnameOverride: ""
+    image:
+      pullPolicy: IfNotPresent
+      repository: nginx
+      tag: ""
+    imagePullSecrets: []
+    ingress:
+      annotations: {}
+      enabled: false
+      hosts:
+      - host: chart-example.local
+        paths: []
+      tls: []
+    nameOverride: ""
+    nodeSelector: {}
+    podAnnotations: {}
+    podSecurityContext: {}
+    replicaCount: 2
+    resources: {}
+    securityContext: {}
+    service:
+      port: 8080
+      type: ClusterIP
+    serviceAccount:
+      annotations: {}
+      create: true
+      name: ""
+    tolerations: []
+parameters:
+- name: NAME
+`)
+
+func testExtendedTestdataOperatorsdkHelmbase_v1_nginxYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataOperatorsdkHelmbase_v1_nginxYaml, nil
+}
+
+func testExtendedTestdataOperatorsdkHelmbase_v1_nginxYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataOperatorsdkHelmbase_v1_nginxYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/operatorsdk/helmbase_v1_nginx.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -21940,6 +22003,7 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/operatorsdk/cache_v1_previous.yaml":                                                                            testExtendedTestdataOperatorsdkCache_v1_previousYaml,
 	"test/extended/testdata/operatorsdk/catalogsource.yaml":                                                                                testExtendedTestdataOperatorsdkCatalogsourceYaml,
 	"test/extended/testdata/operatorsdk/demo_v1_nginx.yaml":                                                                                testExtendedTestdataOperatorsdkDemo_v1_nginxYaml,
+	"test/extended/testdata/operatorsdk/helmbase_v1_nginx.yaml":                                                                            testExtendedTestdataOperatorsdkHelmbase_v1_nginxYaml,
 	"test/extended/testdata/operatorsdk/operatorgroup.yaml":                                                                                testExtendedTestdataOperatorsdkOperatorgroupYaml,
 	"test/extended/testdata/operatorsdk/previous_v1_collectiontest.yaml":                                                                   testExtendedTestdataOperatorsdkPrevious_v1_collectiontestYaml,
 	"test/extended/testdata/operatorsdk/sub.yaml":                                                                                          testExtendedTestdataOperatorsdkSubYaml,
@@ -22200,6 +22264,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 					"cache_v1_previous.yaml":          {testExtendedTestdataOperatorsdkCache_v1_previousYaml, map[string]*bintree{}},
 					"catalogsource.yaml":              {testExtendedTestdataOperatorsdkCatalogsourceYaml, map[string]*bintree{}},
 					"demo_v1_nginx.yaml":              {testExtendedTestdataOperatorsdkDemo_v1_nginxYaml, map[string]*bintree{}},
+					"helmbase_v1_nginx.yaml":          {testExtendedTestdataOperatorsdkHelmbase_v1_nginxYaml, map[string]*bintree{}},
 					"operatorgroup.yaml":              {testExtendedTestdataOperatorsdkOperatorgroupYaml, map[string]*bintree{}},
 					"previous_v1_collectiontest.yaml": {testExtendedTestdataOperatorsdkPrevious_v1_collectiontestYaml, map[string]*bintree{}},
 					"sub.yaml":                        {testExtendedTestdataOperatorsdkSubYaml, map[string]*bintree{}},

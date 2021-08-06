@@ -654,6 +654,35 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
         output, _ := operatorsdkCLI.Run("cleanup").Args("previousansiblebase", "-n", namespace).Output()
         o.Expect(output).To(o.ContainSubstring("uninstalled"))
     })
+
+        // author: jfan@redhat.com
+    g.It("ConnectedOnly-Author:jfan-High-42929-SDK support the previous base helm image", func() {
+        buildPruningBaseDir := exutil.FixturePath("testdata", "operatorsdk")
+        var nginx = filepath.Join(buildPruningBaseDir, "helmbase_v1_nginx.yaml")
+        operatorsdkCLI.showInfo = true
+        oc.SetupProject()
+        namespace := oc.Namespace()
+        defer operatorsdkCLI.Run("cleanup").Args("previoushelmbase", "-n", namespace).Output()
+        _, err := operatorsdkCLI.Run("run").Args("bundle", "quay.io/olmqe/previoushelmbase-bundle:v4.9", "-n", namespace, "--timeout", "5m").Output()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        createPreviousNginx, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", nginx, "-p", "NAME=previousnginx-sample").OutputToFile("config-42929.json")
+        o.Expect(err).NotTo(o.HaveOccurred())
+        err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", createPreviousNginx, "-n", namespace).Execute()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        waitErr := wait.Poll(15*time.Second, 360*time.Second, func() (bool, error) {
+            msg, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-n", namespace, "--no-headers").Output()
+            if strings.Contains(msg, "nginx-sample") {
+                e2e.Logf("found pod nginx-sample")
+                return true, nil
+            }
+            return false, nil
+        })
+        o.Expect(waitErr).NotTo(o.HaveOccurred())
+        err = oc.AsAdmin().WithoutNamespace().Run("delete").Args("nginx.helmbase.previous.com", "previousnginx-sample", "-n", namespace).Execute()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        output, _ := operatorsdkCLI.Run("cleanup").Args("previoushelmbase", "-n", namespace).Output()
+        o.Expect(output).To(o.ContainSubstring("uninstalled"))
+    })
    
     // author: chuo@redhat.com
     g.It("Author:chuo-Medium-27718-scorecard remove version flag", func() {
