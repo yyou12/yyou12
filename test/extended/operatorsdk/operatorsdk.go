@@ -655,7 +655,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
         o.Expect(output).To(o.ContainSubstring("uninstalled"))
     })
 
-        // author: jfan@redhat.com
+    // author: jfan@redhat.com
     g.It("ConnectedOnly-Author:jfan-High-42929-SDK support the previous base helm image", func() {
         buildPruningBaseDir := exutil.FixturePath("testdata", "operatorsdk")
         var nginx = filepath.Join(buildPruningBaseDir, "helmbase_v1_nginx.yaml")
@@ -682,6 +682,38 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
         o.Expect(err).NotTo(o.HaveOccurred())
         output, _ := operatorsdkCLI.Run("cleanup").Args("previoushelmbase", "-n", namespace).Output()
         o.Expect(output).To(o.ContainSubstring("uninstalled"))
+    })
+
+    // author: jfan@redhat.com
+    g.It("ConnectedOnly-Author:jfan-High-42614-SDK validate the deprecated APIs and maxOpenShiftVersion", func() {
+        operatorsdkCLI.showInfo = true
+        exec.Command("bash", "-c", "mkdir -p /tmp/ocp-42614/traefikee-operator").Output()
+        defer exec.Command("bash", "-c", "rm -rf /tmp/ocp-42614").Output()
+        exec.Command("bash", "-c", "cp -rf test/extended/util/operatorsdk/ocp-42614-data/bundle/ /tmp/ocp-42614/traefikee-operator/").Output()
+        
+        g.By("with deprecated api, with maxOpenShiftVersion")
+        msg, err := operatorsdkCLI.Run("bundle").Args("validate", "/tmp/ocp-42614/traefikee-operator/bundle", "--select-optional", "name=community", "-o", "json-alpha1").Output()
+        o.Expect(msg).To(o.ContainSubstring("This bundle is using APIs which were deprecated and removed in"))
+        o.Expect(msg).NotTo(o.ContainSubstring("error"))
+        o.Expect(err).NotTo(o.HaveOccurred())
+
+        g.By("with deprecated api, with higher version maxOpenShiftVersion")
+        exec.Command("bash", "-c", "sed -i 's/4.8/4.9/g' /tmp/ocp-42614/traefikee-operator/bundle/manifests/traefikee-operator.v2.1.1.clusterserviceversion.yaml").Output()
+        msg, _ = operatorsdkCLI.Run("bundle").Args("validate", "/tmp/ocp-42614/traefikee-operator/bundle", "--select-optional", "name=community", "-o", "json-alpha1").Output()
+        o.Expect(msg).To(o.ContainSubstring("This bundle is using APIs which were deprecated and removed"))
+        o.Expect(msg).To(o.ContainSubstring("error"))
+
+        g.By("with deprecated api, with wrong maxOpenShiftVersion")
+        exec.Command("bash", "-c", "sed -i 's/4.9/invalid/g' /tmp/ocp-42614/traefikee-operator/bundle/manifests/traefikee-operator.v2.1.1.clusterserviceversion.yaml").Output()
+        msg, _ = operatorsdkCLI.Run("bundle").Args("validate", "/tmp/ocp-42614/traefikee-operator/bundle", "--select-optional", "name=community", "-o", "json-alpha1").Output()
+        o.Expect(msg).To(o.ContainSubstring("csv.Annotations.olm.properties has an invalid value.Unable to parse"))
+        o.Expect(msg).To(o.ContainSubstring("error"))
+
+        g.By("with deprecated api, without maxOpenShiftVersion")
+        exec.Command("bash", "-c", "sed -i '/invalid/d' /tmp/ocp-42614/traefikee-operator/bundle/manifests/traefikee-operator.v2.1.1.clusterserviceversion.yaml").Output()
+        msg, _ = operatorsdkCLI.Run("bundle").Args("validate", "/tmp/ocp-42614/traefikee-operator/bundle", "--select-optional", "name=community", "-o", "json-alpha1").Output()
+        o.Expect(msg).To(o.ContainSubstring("csv.Annotations not specified olm.maxOpenShiftVersion for an OCP version"))
+        o.Expect(msg).To(o.ContainSubstring("error"))
     })
    
     // author: chuo@redhat.com
