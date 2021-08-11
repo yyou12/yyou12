@@ -216,3 +216,12 @@ func waitForIpfailoverEnterMaster(oc *exutil.CLI, ns, label string) error {
 		return true, nil
 	})
 }
+
+// For collecting information from router pod [usage example: readRouterPodData(oc, podname, executeCmd, "search string")] .
+// NOTE: This requires getRouterPod function to collect the podname variable first!
+func readRouterPodData(oc *exutil.CLI, routername, executeCmd string, searchString string) string {
+	output, err := oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-ingress", routername, "--", "bash", "-c", executeCmd, "|", "grep", "-w", searchString).Output()
+	e2e.Logf("The output from the search: %v", output)
+	o.Expect(err).NotTo(o.HaveOccurred())
+	return output
+}

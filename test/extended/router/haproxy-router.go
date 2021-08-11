@@ -67,4 +67,20 @@ var _ = g.Describe("[sig-network-edge] Network_Edge should", func() {
 		dssearch := readRouterPodEnv(oc, routername, "ROUTER_USE_PROXY_PROTOCOL")
 		o.Expect(dssearch).To(o.ContainSubstring(`ROUTER_USE_PROXY_PROTOCOL=true`))
 	})
+
+	//author: jechen@redhat.com
+	g.It("Author:jechen-Medium-42878-Errorfile stanzas and dummy default html files have been added to the router", func() {
+		g.By("Get pod (router) in openshift-ingress namespace")
+		podname := getRouterPod(oc, "default")
+
+		g.By("Check if there are default 404 and 503 error pages on the router")
+		searchOutput := readRouterPodData(oc, podname, "ls -l", "error-page")
+		o.Expect(searchOutput).To(o.ContainSubstring(`error-page-404.http`))
+		o.Expect(searchOutput).To(o.ContainSubstring(`error-page-503.http`))
+
+		g.By("Check if errorfile stanzas have been added into haproxy-config.template")
+		searchOutput = readRouterPodData(oc, podname, "cat haproxy-config.template", "errorfile")
+		o.Expect(searchOutput).To(o.ContainSubstring(`ROUTER_ERRORFILE_404`))
+		o.Expect(searchOutput).To(o.ContainSubstring(`ROUTER_ERRORFILE_503`))
+	})
 })
