@@ -151,3 +151,13 @@ func assertRuleResult(oc *exutil.CLI, rule string, namespace string, keyword [2]
 		e2e.Failf("The keyword not exist!")
 	}
 }
+
+func assertDryRunBind(oc *exutil.CLI, profile string, namespace string, keyword string) {
+	cisPrfl, err := OcComplianceCLI().Run("bind").Args("--dry-run", "-N", "my-binding", profile, "-n", namespace).Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	if !strings.Contains(cisPrfl, keyword) {
+		e2e.Failf("The keyword '%v' not exist!", keyword)
+	} else {
+		e2e.Logf("keyword matches '%v' with bind dry run command output", keyword)
+	}
+}

@@ -22,6 +22,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The OC Compliance plugin m
 		subCoTemplate              string
 		scansettingTemplate        string
 		scansettingbindingTemplate string
+		tprofileWithoutVarTemplate string
 		catSrc                     catalogSourceDescription
 		ogD                        operatorGroupDescription
 		subD                       subscriptionDescription
@@ -34,6 +35,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The OC Compliance plugin m
 		subCoTemplate = filepath.Join(buildPruningBaseDir, "subscription.yaml")
 		scansettingTemplate = filepath.Join(buildPruningBaseDir, "oc-compliance-scansetting.yaml")
 		scansettingbindingTemplate = filepath.Join(buildPruningBaseDir, "oc-compliance-scansettingbinding.yaml")
+		tprofileWithoutVarTemplate = filepath.Join(buildPruningBaseDir, "tailoredprofile-withoutvariable.yaml")
 
 		catSrc = catalogSourceDescription{
 			name:        "compliance-operator",
@@ -324,6 +326,91 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The OC Compliance plugin m
 				[...]string{"Status               | FAIL", "Result Object Name   | ocp4-cis-api-server-encryption-provider-cipher"})
 
 			g.By("The ocp-41190 Successfully verify oc-compliance view-result reports result in details... !!!!\n ")
+		})
+
+		// author: pdhamdhe@redhat.com
+		g.It("Author:pdhamdhe-High-41182-The bind command of oc compliance plugin will take the given parameters and create a ScanSettingBinding object [Slow]", func() {
+			var (
+				ss = scanSettingDescription{
+					autoapplyremediations: false,
+					name:                  "master-scansetting",
+					namespace:             "",
+					roles1:                "master",
+					rotation:              10,
+					schedule:              "0 1 * * *",
+					size:                  "2Gi",
+					template:              scansettingTemplate,
+				}
+				tp = tailoredProfileWithoutVarDescription{
+					name:         "ocp4-cis-custom",
+					namespace:    "",
+					extends:      "ocp4-cis",
+					enrulename1:  "ocp4-scc-limit-root-containers",
+					enrulename2:  "ocp4-scheduler-no-bind-address",
+					disrulename1: "ocp4-api-server-encryption-provider-cipher",
+					disrulename2: "ocp4-scc-drop-container-capabilities",
+					template:     tprofileWithoutVarTemplate,
+				}
+				itName = g.CurrentGinkgoTestDescription().TestText
+			)
+
+			defer cleanupObjects(oc,
+				objectTableRef{"scansettingbinding", subD.namespace, "my-binding"},
+				objectTableRef{"tailoredprofile", subD.namespace, tp.name},
+				objectTableRef{"scansetting", subD.namespace, ss.name})
+
+			g.By("Check default profiles name ocp4-cis.. !!!\n")
+			subD.getProfileName(oc, "ocp4-cis")
+
+			_, err := OcComplianceCLI().Run("bind").Args("-N", "my-binding", "profile/ocp4-moderate", "-n", subD.namespace).Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			g.By("Verify scansettingbinding, ScanSetting, profile objects created..!!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "my-binding", ok, []string{"scansettingbinding", "-n", subD.namespace,
+				"-o=jsonpath={.items[0].metadata.name}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "ocp4-moderate", ok, []string{"scansettingbinding", "my-binding", "-n", subD.namespace,
+				"-o=jsonpath={.profiles}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "default", ok, []string{"scansettingbinding", "my-binding", "-n", subD.namespace,
+				"-o=jsonpath={.settingsRef}"}).check(oc)
+
+			g.By("Check ComplianceSuite status and result.. !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", "my-binding", "-n", subD.namespace,
+				"-o=jsonpath={.status.phase}"}).check(oc)
+			subD.complianceSuiteResult(oc, "my-binding", "NON-COMPLIANT")
+			subD.getScanExitCodeFromConfigmap(oc, "2")
+
+			cleanupObjects(oc, objectTableRef{"scansettingbinding", subD.namespace, "my-binding"})
+
+			g.By("Create scansetting and tailoredProfile objects.. !!!\n")
+			ss.namespace = subD.namespace
+			ss.create(oc, itName, dr)
+			tp.namespace = subD.namespace
+			tp.create(oc, itName, dr)
+			_, err1 := OcComplianceCLI().Run("bind").Args("-N", "my-binding", "-S", "master-scansetting",
+				"profile/ocp4-cis-node", "tailoredprofile/ocp4-cis-custom", "-n", subD.namespace).Output()
+			o.Expect(err1).NotTo(o.HaveOccurred())
+
+			g.By("Verify scansettingbinding, ScanSetting, profile objects created..!!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "my-binding", ok, []string{"scansettingbinding", "-n", subD.namespace,
+				"-o=jsonpath={.items[0].metadata.name}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "ocp4-cis-node", ok, []string{"scansettingbinding", "my-binding", "-n", subD.namespace,
+				"-o=jsonpath={.profiles}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "ocp4-cis-custom", ok, []string{"scansettingbinding", "my-binding", "-n", subD.namespace,
+				"-o=jsonpath={.profiles}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "master-scansetting", ok, []string{"scansettingbinding", "my-binding", "-n", subD.namespace,
+				"-o=jsonpath={.settingsRef}"}).check(oc)
+
+			g.By("Check ComplianceSuite status and result.. !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", "-n", subD.namespace,
+				"-o=jsonpath={.items[0].status.phase}"}).check(oc)
+			subD.complianceSuiteResult(oc, "my-binding", "NON-COMPLIANT")
+			subD.getScanExitCodeFromConfigmap(oc, "2")
+
+			assertDryRunBind(oc, "profile/ocp4-cis", subD.namespace, "name: ocp4-cis")
+			assertDryRunBind(oc, "profile/ocp4-cis-node", subD.namespace, "name: ocp4-cis-node")
+			assertDryRunBind(oc, "tailoredprofile/ocp4-cis-custom", subD.namespace, "name: ocp4-cis-custom")
+
+			g.By("The ocp-41182 verify oc-compliance bind command works as per desing... !!!!\n ")
 		})
 	})
 })

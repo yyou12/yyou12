@@ -41,6 +41,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		pvextractpodYAML                 string
 		podModifyTemplate                string
 		storageClassTemplate             string
+		fioTemplate                      string
 		catSrc                           catalogSourceDescription
 		ogD                              operatorGroupDescription
 		subD                             subscriptionDescription
@@ -71,6 +72,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		pvextractpodYAML = filepath.Join(buildPruningBaseDir, "pv-extract-pod.yaml")
 		podModifyTemplate = filepath.Join(buildPruningBaseDir, "pod_modify.yaml")
 		storageClassTemplate = filepath.Join(buildPruningBaseDir, "storage_class.yaml")
+		fioTemplate = filepath.Join(buildPruningBaseDir, "fileintegrity.yaml")
 
 		catSrc = catalogSourceDescription{
 			name:        "compliance-operator",
@@ -2773,6 +2775,112 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 				"ocp4-moderate-oauth-or-oauthclient-inactivity-timeout", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
 
 			g.By("ocp-42960-43098 The TokenMaxAge & TokenInactivityTimeout parameters are configured for oauthclient objects successfully... !!!!\n ")
+		})
+
+		// author: pdhamdhe@redhat.com
+		g.It("Author:pdhamdhe-Low-42685-check the manual remediation for rule ocp4-moderate-file-integrity-exists working as expected [Slow]", func() {
+			var (
+				ssb = scanSettingBindingDescription{
+					name:            "moderate-test",
+					namespace:       "",
+					profilekind1:    "Profile",
+					profilename1:    "ocp4-moderate",
+					scansettingname: "default",
+					template:        scansettingbindingSingleTemplate,
+				}
+				og = operatorGroupDescription{
+					name:      "openshift-file-integrity-qbcd",
+					namespace: "",
+					template:  ogCoTemplate,
+				}
+				sub = subscriptionDescription{
+					subName:                "file-integrity-operator",
+					namespace:              "",
+					channel:                "release-0.1",
+					ipApproval:             "Automatic",
+					operatorPackage:        "file-integrity-operator",
+					catalogSourceName:      "redhat-operators",
+					catalogSourceNamespace: "openshift-marketplace",
+					startingCSV:            "",
+					currentCSV:             "",
+					installedCSV:           "",
+					template:               subCoTemplate,
+					singleNamespace:        true,
+				}
+				fi1 = fileintegrity{
+					name:              "example-fileintegrity",
+					namespace:         "",
+					configname:        "",
+					configkey:         "",
+					graceperiod:       15,
+					debug:             false,
+					nodeselectorkey:   "node.openshift.io/os_id",
+					nodeselectorvalue: "rhcos",
+					template:          fioTemplate,
+				}
+
+				itName = g.CurrentGinkgoTestDescription().TestText
+			)
+
+			defer cleanupObjects(oc, objectTableRef{"scansettingbinding", subD.namespace, ssb.name})
+
+			g.By("Check default profiles name ocp4-moderate .. !!!\n")
+			subD.getProfileName(oc, "ocp4-moderate")
+
+			g.By("Create scansettingbinding !!!\n")
+			ssb.namespace = subD.namespace
+			ssb.create(oc, itName, dr)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "moderate-test", ok, []string{"scansettingbinding", "-n", subD.namespace,
+				"-o=jsonpath={.items[0].metadata.name}"}).check(oc)
+
+			g.By("Check ComplianceSuite status and result.. !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", ssb.name, "-n", subD.namespace,
+				"-o=jsonpath={.status.phase}"}).check(oc)
+			subD.complianceSuiteResult(oc, ssb.name, "NON-COMPLIANT")
+
+			fioObj, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("fileintegrities", "--all-namespaces",
+				"-o=jsonpath={.items[0].status.phase}").Output()
+
+			if strings.Contains(fioObj, "Active") {
+				g.By("The fileintegrities object is exist, let's verify the rule status through compliancecheck result.. !!!\n")
+				newCheck("expect", asAdmin, withoutNamespace, contain, "PASS", ok, []string{"compliancecheckresult",
+					"ocp4-moderate-file-integrity-exists", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
+				g.By("The ocp-42685 verified the File-integrity object exist and operator is installed successfully... !!!!\n ")
+			} else {
+				g.By("Verify 'ocp4-moderate-file-integrity-exists' rule status through compliancecheck result.. !!!\n")
+				newCheck("expect", asAdmin, withoutNamespace, contain, "FAIL", ok, []string{"compliancecheckresult",
+					"ocp4-moderate-file-integrity-exists", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
+
+				oc.SetupProject()
+				og.namespace = oc.Namespace()
+				sub.namespace = og.namespace
+				g.By("Create operatorGroup.. !!!\n")
+				og.create(oc, itName, dr)
+				og.checkOperatorgroup(oc, og.name)
+				g.By("Create subscription.. !!!\n")
+				sub.create(oc, itName, dr)
+				g.By("check csv.. !!!\n")
+				newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", sub.installedCSV,
+					"-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+				sub.checkPodFioStatus(oc, "running")
+
+				g.By("Create File Integrity object.. !!!\n")
+				fi1.namespace = sub.namespace
+				fi1.createFIOWithoutConfig(oc, itName, dr)
+
+				g.By("Rerun scan and check ComplianceSuite status & result.. !!!\n")
+				_, err := OcComplianceCLI().Run("rerun-now").Args("compliancesuite", ssb.name, "-n", subD.namespace).Output()
+				o.Expect(err).NotTo(o.HaveOccurred())
+				newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", ssb.name, "-n", subD.namespace,
+					"-o=jsonpath={.status.phase}"}).check(oc)
+				subD.complianceSuiteResult(oc, ssb.name, "NON-COMPLIANT")
+
+				g.By("Verify 'ocp4-moderate-file-integrity-exists' rule status again through compliancecheck result.. !!!\n")
+				newCheck("expect", asAdmin, withoutNamespace, contain, "PASS", ok, []string{"compliancecheckresult",
+					"ocp4-moderate-file-integrity-exists", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
+
+				g.By("The ocp-42685 verified the File-integrity object exist and operator is installed successfully... !!!!\n ")
+			}
 		})
 	})
 })
