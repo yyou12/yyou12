@@ -1,6 +1,7 @@
 package workloads
 
 import (
+	"path/filepath"
 	"time"
 	"regexp"
 	"strings"
@@ -142,4 +143,105 @@ var _ = g.Describe("[sig-apps] Workloads", func() {
                         e2e.Logf("the quota is :\n%s", output)
                 }
 	})
+   
+	// author: yinzhou@redhat.com
+        g.It("Author:yinzhou-Medium-43092-Namespaced dependents try to use cross-namespace owner references will be deleted", func() {
+		buildPruningBaseDir := exutil.FixturePath("testdata", "workloads")
+		deploydpT  := filepath.Join(buildPruningBaseDir, "deploy_duplicatepodsrs.yaml")
+
+		g.By("Create the first namespace")
+		err := oc.WithoutNamespace().Run("new-project").Args("p43092-1").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		defer oc.WithoutNamespace().Run("delete").Args("project", "p43092-1").Execute()
+
+		g.By("Create app in the frist project")
+		err = oc.WithoutNamespace().Run("new-app").Args("quay.io/openshifttest/hello-openshift@sha256:aaea76ff622d2f8bcb32e538e7b3cd0ef6d291953f3e7c9f556c1ba5baf47e2e", "-n", "p43092-1").Execute()
+                o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Get the rs references")
+		refer, err := oc.WithoutNamespace().Run("get").Args("rs", "-o=jsonpath={.items[0].metadata.ownerReferences}",  "-n", "p43092-1").Output()
+                o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Create the second namespace")
+		err = oc.WithoutNamespace().Run("new-project").Args("p43092-2").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		defer oc.WithoutNamespace().Run("delete").Args("project", "p43092-2").Execute()
+
+		testrs := deployduplicatepods{
+                        dName:          "hello-openshift",
+                        namespace:      "p43092-2",
+                        replicaNum:     1,
+                        template:       deploydpT,
+                }
+		g.By("Create the test rs")
+                testrs.createDuplicatePods(oc)
+                o.Expect(err).NotTo(o.HaveOccurred())
+
+		err = oc.AsAdmin().WithoutNamespace().Run("patch").Args("rs/hello-openshift", "-n", "p43092-2", "--type=json", "-p", "[{\"op\": \"add\" , \"path\" : \"/metadata/ownerReferences\", \"value\":"+refer+"}]").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		g.By("wait until the rs deleted")
+		err = wait.Poll(5*time.Second, 20*time.Second, func() (bool, error) {
+                        output, err := oc.WithoutNamespace().Run("get").Args("rs", "-n", "p43092-2").Output()
+                        if err != nil {
+                                e2e.Logf("Fail to get rs, error: %s. Trying again", err)
+                                return false, nil
+                        }
+                        if matched, _ := regexp.MatchString("No resources found", output); matched {
+                                e2e.Logf("RS has been deleted:\n%s", output)
+                                return true, nil
+                        }
+                        return false, nil
+                })
+                o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("check the event")
+		eve, err := oc.WithoutNamespace().Run("get").Args("events", "-n", "p43092-2").Output()
+		if matched, _ := regexp.MatchString("OwnerRefInvalidNamespace", eve); matched {
+                        e2e.Logf("found the events :\n%s", eve)
+                }
+	})
+	// author: yinzhou@redhat.com
+        g.It("Author:yinzhou-Medium-43099-Cluster-scoped dependents with namespaced kind owner references will trigger warning Event", func() {
+		g.By("Create the first namespace")
+		err := oc.WithoutNamespace().Run("new-project").Args("p43099").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		defer oc.WithoutNamespace().Run("delete").Args("project", "p43099").Execute()
+
+		g.By("Create app in the frist project")
+		err = oc.WithoutNamespace().Run("new-app").Args("quay.io/openshifttest/hello-openshift@sha256:aaea76ff622d2f8bcb32e538e7b3cd0ef6d291953f3e7c9f556c1ba5baf47e2e", "-n", "p43099").Execute()
+                o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Get the rs references")
+		refer, err := oc.WithoutNamespace().Run("get").Args("rs", "-o=jsonpath={.items[0].metadata.ownerReferences}",  "-n", "p43099").Output()
+                o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Create the clusterrole")
+		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("clusterrole", "foo43099", "--verb=get,list,watch", "--resource=pods,pods/status").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("clusterrole/foo43099").Execute()
+		err = oc.AsAdmin().WithoutNamespace().Run("patch").Args("clusterrole/foo43099", "--type=json", "-p", "[{\"op\": \"add\" , \"path\" : \"/metadata/ownerReferences\", \"value\":"+refer+"}]").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("wait until check the events")
+                err = wait.Poll(5*time.Second, 20*time.Second, func() (bool, error) {
+                        output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("events", "-n", "default").Output()
+                        if err != nil {
+                                e2e.Logf("Fail to get events, error: %s. Trying again", err)
+                                return false, nil
+                        }
+                        if matched, _ := regexp.MatchString("Warning   OwnerRefInvalidNamespace   clusterrole/foo43099", output); matched {
+                                e2e.Logf("Found the event:\n%s", output)
+                                return true, nil
+                        }
+                        return false, nil
+                })
+                o.Expect(err).NotTo(o.HaveOccurred())
+		g.By("check the clusterrole should not be deleted")
+		output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("clusterrole", "foo43099").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		if matched, _ := regexp.MatchString("foo43099", output); matched {
+                        e2e.Logf("Still could find the clusterrole:\n%s", output)
+                }
+	})
+
 })
