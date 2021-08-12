@@ -109,6 +109,26 @@ func waitForPodWithLabelReady(oc *exutil.CLI, ns, label string) error {
 	})
 }
 
+// wait for the named resource is disappeared, e.g. used while router deployment rolled out
+func waitForResourceToDisappear(oc *exutil.CLI, ns, rsname string) error {
+	return wait.Poll(5*time.Second, 3*time.Minute, func() (bool, error) {
+		status, err := oc.AsAdmin().WithoutNamespace().Run("get").Args(rsname, "-n", ns).Output()
+		e2e.Logf("check resource %v and got: %v", rsname, status)
+		if err != nil {
+			if strings.Contains(status, "NotFound") {
+				e2e.Logf("the resource is disappeared!")
+				return true, nil
+			} else {
+				e2e.Logf("failed to get the resource: %v, retrying...", err)
+				return false, nil
+			}
+		} else {
+			e2e.Logf("the resource is still there, retrying...")
+			return false, nil
+		}
+	})
+}
+
 // For normal user to create resources in the specified namespace from the file (not template)
 func createResourceFromFile(oc *exutil.CLI, ns, file string) {
 	err := oc.WithoutNamespace().Run("create").Args("-f", file, "-n", ns).Execute()
@@ -224,4 +244,14 @@ func readRouterPodData(oc *exutil.CLI, routername, executeCmd string, searchStri
 	e2e.Logf("The output from the search: %v", output)
 	o.Expect(err).NotTo(o.HaveOccurred())
 	return output
+}
+
+func createConfigMapFromFile(oc *exutil.CLI, ns, name, cmFile string) {
+	_, err := oc.AsAdmin().WithoutNamespace().Run("create").Args("configmap", name, "--from-file="+cmFile, "-n", ns).Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+func deleteConfigMap(oc *exutil.CLI, ns, name string) {
+	_, err := oc.AsAdmin().WithoutNamespace().Run("delete").Args("configmap", name, "-n", ns).Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
 }
