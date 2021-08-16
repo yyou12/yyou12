@@ -15,8 +15,12 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 	defer g.GinkgoRecover()
 
 	var (
-		oc      = exutil.NewCLI("default-image-prune", exutil.KubeConfigPath())
-		logInfo = "Only API objects will be removed.  No modifications to the image registry will be made"
+		oc                 = exutil.NewCLI("default-image-prune", exutil.KubeConfigPath())
+		logInfo            = "Only API objects will be removed.  No modifications to the image registry will be made"
+		monitoringns       = "openshift-monitoring"
+		promPod            = "prometheus-k8s-0"
+		queryImagePruner   = "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query=image_registry_operator_image_pruner_install_status"
+		queryImageRegistry = "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query=image_registry_operator_storage_reconfigured_total"
 	)
 	// author: wewang@redhat.com
 	g.It("Author:wewang-Medium-35906-Only API objects will be removed in image pruner pod when image registry is set to Removed [Disruptive]", func() {
@@ -59,5 +63,44 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 		foundImagePruneLog := false
 		foundImagePruneLog = DePodLogs(podsOfImagePrune, oc, logInfo)
 		o.Expect(foundImagePruneLog).To(o.BeTrue())
+	})
+	// author: wewang@redhat.com
+	g.It("Author:wewang-High-27613-registry operator can publish metrics reporting the status of image-pruner [Disruptive]", func() {
+		g.By("granting the cluster-admin role to user")
+		oc.SetupProject()
+		_, err := oc.AsAdmin().Run("adm").Args("policy", "add-cluster-role-to-user", "cluster-admin", oc.Username()).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		defer oc.AsAdmin().Run("adm").Args("policy", "remove-cluster-role-from-user", "cluster-admin", oc.Username()).Execute()
+		_, err = oc.AsAdmin().Run("adm").Args("policy", "add-cluster-role-to-user", "cluster-monitoring-view", oc.Username()).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		defer oc.AsAdmin().Run("adm").Args("policy", "remove-cluster-role-from-user", "cluster-monitoring-view", oc.Username()).Execute()
+		g.By("Get prometheus token")
+		token, err := oc.AsAdmin().WithoutNamespace().Run("sa").Args("-n", "openshift-monitoring", "get-token", "prometheus-k8s").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		g.By("Prometheus query results report image pruner installed")
+		foundValue := metricReportStatus(queryImagePruner, monitoringns, promPod, token, 2)
+		o.Expect(foundValue).To(o.BeTrue())
+		g.By("Prometheus query results report image registry operator not reconfiged")
+		foundValue = metricReportStatus(queryImageRegistry, monitoringns, promPod, token, 0)
+		o.Expect(foundValue).To(o.BeTrue())
+
+		g.By("Set imagepruner suspend")
+		err = oc.AsAdmin().Run("patch").Args("imagepruner/cluster", "-p", `{"spec":{"suspend":true}}`, "--type=merge").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		defer oc.AsAdmin().Run("patch").Args("imagepruner/cluster", "-p", `{"spec":{"suspend":false}}`, "--type=merge").Execute()
+		g.By("Prometheus query results report image registry operator not reconfiged")
+		foundValue = metricReportStatus(queryImageRegistry, monitoringns, promPod, token, 0)
+		o.Expect(foundValue).To(o.BeTrue())
+		g.By("Prometheus query results report image pruner not installed")
+		err = wait.PollImmediate(30*time.Second, 1*time.Minute, func() (bool, error) {
+			foundValue = metricReportStatus(queryImagePruner, monitoringns, promPod, token, 1)
+			if foundValue != true {
+				e2e.Logf("wait for next round")
+				return false, nil
+			}
+			return true, nil
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(foundValue).To(o.BeTrue())
 	})
 })
