@@ -7,6 +7,7 @@
 // test/extended/testdata/clusterinfrastructure/gcp-machineset.yaml
 // test/extended/testdata/clusterinfrastructure/osp-machineset.yaml
 // test/extended/testdata/clusterinfrastructure/vsphere-machineset.yaml
+// test/extended/testdata/image_registry/inputimage.yaml
 // test/extended/testdata/ldap/groupsync.sh
 // test/extended/testdata/ldap/ldapserver-config-cm.yaml
 // test/extended/testdata/ldap/ldapserver-deployment.yaml
@@ -724,6 +725,84 @@ func testExtendedTestdataClusterinfrastructureVsphereMachinesetYaml() (*asset, e
 	}
 
 	info := bindataFileInfo{name: "test/extended/testdata/clusterinfrastructure/vsphere-machineset.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataImage_registryInputimageYaml = []byte(`kind: Template
+apiVersion: template.openshift.io/v1
+metadata:
+  name: build-template
+objects:
+- apiVersion: build.openshift.io/v1
+  kind: BuildConfig
+  metadata:
+    labels:
+      build: "${OUTNAME}"
+    name: "${OUTNAME}"
+    namespace: "${NAMESPACE}"
+  spec:
+    output:
+      to:
+        kind: ImageStreamTag
+        name: "${OUTNAME}:latest"
+    source:
+      dockerfile: |-
+        FROM ruby
+        RUN mkdir -p /opt/app-root/test-links
+    strategy:
+      dockerStrategy:
+        from:
+          kind: ImageStreamTag
+          name: ruby:2.7
+          namespace: openshift
+- apiVersion: build.openshift.io/v1
+  kind: BuildConfig
+  metadata:
+    labels:
+      build: "${NAME}"
+    name: "${NAME}"
+    namespace: "${NAMESPACE}"
+  spec:
+    source:
+      git:
+        uri: https://github.com/openshift/ruby-hello-world.git
+      images:
+      - from:
+          kind: ImageStreamTag
+          name: "${OUTNAME}:latest"
+        paths:
+        - destinationDir: injected/opt/app-root/test-links
+          sourcePath: /opt/app-root/test-links/.
+    strategy:
+      sourceStrategy:
+        from:
+          kind: ImageStreamTag
+          name: ruby:2.7
+          namespace: openshift
+- apiVersion: image.openshift.io/v1
+  kind: ImageStream
+  metadata:
+    name: "${OUTNAME}"
+    namespace: "${NAMESPACE}"
+  spec: {}
+parameters:
+  - name: OUTNAME
+  - name: NAME
+  - name: NAMESPACE
+`)
+
+func testExtendedTestdataImage_registryInputimageYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataImage_registryInputimageYaml, nil
+}
+
+func testExtendedTestdataImage_registryInputimageYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataImage_registryInputimageYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/image_registry/inputimage.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -21958,6 +22037,7 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/clusterinfrastructure/gcp-machineset.yaml":                                                                     testExtendedTestdataClusterinfrastructureGcpMachinesetYaml,
 	"test/extended/testdata/clusterinfrastructure/osp-machineset.yaml":                                                                     testExtendedTestdataClusterinfrastructureOspMachinesetYaml,
 	"test/extended/testdata/clusterinfrastructure/vsphere-machineset.yaml":                                                                 testExtendedTestdataClusterinfrastructureVsphereMachinesetYaml,
+	"test/extended/testdata/image_registry/inputimage.yaml":                                                                                testExtendedTestdataImage_registryInputimageYaml,
 	"test/extended/testdata/ldap/groupsync.sh":                                                                                             testExtendedTestdataLdapGroupsyncSh,
 	"test/extended/testdata/ldap/ldapserver-config-cm.yaml":                                                                                testExtendedTestdataLdapLdapserverConfigCmYaml,
 	"test/extended/testdata/ldap/ldapserver-deployment.yaml":                                                                               testExtendedTestdataLdapLdapserverDeploymentYaml,
@@ -22206,6 +22286,9 @@ var _bintree = &bintree{nil, map[string]*bintree{
 					"gcp-machineset.yaml":     {testExtendedTestdataClusterinfrastructureGcpMachinesetYaml, map[string]*bintree{}},
 					"osp-machineset.yaml":     {testExtendedTestdataClusterinfrastructureOspMachinesetYaml, map[string]*bintree{}},
 					"vsphere-machineset.yaml": {testExtendedTestdataClusterinfrastructureVsphereMachinesetYaml, map[string]*bintree{}},
+				}},
+				"image_registry": {nil, map[string]*bintree{
+					"inputimage.yaml": {testExtendedTestdataImage_registryInputimageYaml, map[string]*bintree{}},
 				}},
 				"ldap": {nil, map[string]*bintree{
 					"groupsync.sh":               {testExtendedTestdataLdapGroupsyncSh, map[string]*bintree{}},

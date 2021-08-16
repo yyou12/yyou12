@@ -82,3 +82,40 @@ func metricReportStatus(queryUrl, ns, execPodName, bearerToken string, value mod
 	}
 	return false
 }
+
+type bcSource struct {
+	outname   string
+	name      string
+	namespace string
+	template  string
+}
+
+func (bcsrc *bcSource) create(oc *exutil.CLI) {
+	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", bcsrc.template, "-p", "OUTNAME="+bcsrc.outname, "NAME="+bcsrc.name, "NAMESPACE="+bcsrc.namespace)
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+func applyResourceFromTemplate(oc *exutil.CLI, parameters ...string) error {
+	var configFile string
+	err := wait.Poll(3*time.Second, 15*time.Second, func() (bool, error) {
+		output, err := oc.AsAdmin().Run("process").Args(parameters...).OutputToFile(getRandomString() + "config.json")
+		if err != nil {
+			e2e.Logf("the err:%v, and try next round", err)
+			return false, nil
+		}
+		configFile = output
+		return true, nil
+	})
+	o.Expect(err).NotTo(o.HaveOccurred())
+	e2e.Logf("the file of resource is %s", configFile)
+	return oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", configFile).Execute()
+}
+
+func getRandomString() string {
+	chars := "abcdefghijklmnopqrstuvwxyz0123456789"
+	seed := rand.New(rand.NewSource(time.Now().UnixNano()))
+	buffer := make([]byte, 8)
+	for index := range buffer {
+		buffer[index] = chars[seed.Intn(len(chars))]
+	}
+	return string(buffer)
+}
