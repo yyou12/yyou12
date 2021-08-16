@@ -161,3 +161,53 @@ func assertDryRunBind(oc *exutil.CLI, profile string, namespace string, keyword 
 		e2e.Logf("keyword matches '%v' with bind dry run command output", keyword)
 	}
 }
+
+func assertfetchRawResult(oc *exutil.CLI, ssb string, namespace string) {
+	tmpOcComlianceDir := "/tmp/oc-compliance-resultsdir-" + getRandomString()
+	exec.Command("bash", "-c", "mkdir -p "+tmpOcComlianceDir).Output()
+	e2e.Logf("The " + tmpOcComlianceDir + " created successfully...!!\n")
+	defer exec.Command("bash", "-c", "rm -rf "+tmpOcComlianceDir).Output()
+	_, err := OcComplianceCLI().Run("fetch-raw").Args("scansettingbinding", ssb, "-o", tmpOcComlianceDir, "-n", namespace).Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	e2e.Logf("Fetched raw result and store in " + tmpOcComlianceDir + "...!!\n")
+	result, err1 := exec.Command("bash", "-c", "ls "+tmpOcComlianceDir).Output()
+	o.Expect(err1).NotTo(o.HaveOccurred())
+	results := fmt.Sprintf("%s", result)
+	e2e.Logf("Listed the "+tmpOcComlianceDir+" contents: %v", results)
+	if strings.Contains(results, "ocp4-cis") {
+		e2e.Logf("List the files from " + tmpOcComlianceDir + "/ocp4-cis directory...!!\n")
+		lists, _ := exec.Command("bash", "-c", "ls "+tmpOcComlianceDir+"/ocp4-cis/").Output()
+		list := fmt.Sprintf("%s", lists)
+		o.Expect(list).To(o.ContainSubstring("ocp4-cis-api-checks-pod.xml.bzip2"))
+		e2e.Logf("The raw result file %v fetched successfully.. \n", list)
+	} else {
+		e2e.Failf("The scan directory %v does not exist.. \n", results)
+	}
+}
+
+func assertfetchFixes(oc *exutil.CLI, object string, profile string, namespace string) {
+	tmpOcComlianceDir := "/tmp/oc-compliance-resultsdir-" + getRandomString()
+	exec.Command("bash", "-c", "mkdir -p "+tmpOcComlianceDir).Output()
+	e2e.Logf("The " + tmpOcComlianceDir + " created successfully...!!\n")
+	defer exec.Command("bash", "-c", "rm -rf "+tmpOcComlianceDir).Output()
+	_, err := OcComplianceCLI().Run("fetch-fixes").Args(object, profile, "-o", tmpOcComlianceDir, "-n", namespace).Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	e2e.Logf("Fetched fixes and store in " + tmpOcComlianceDir + "...!!\n")
+	result, err1 := exec.Command("bash", "-c", "ls "+tmpOcComlianceDir).Output()
+	o.Expect(err1).NotTo(o.HaveOccurred())
+	results := fmt.Sprintf("%s", result)
+	e2e.Logf("The fixes fetched successfully:  %v", results)
+	if strings.Contains(results, "ocp4-api-server-encryption-provider-cipher.yaml") {
+		e2e.Logf("List the file contents from " + tmpOcComlianceDir + "...!!\n")
+		lists, _ := exec.Command("bash", "-c", "cat "+tmpOcComlianceDir+"/ocp4-api-server-encryption-provider-cipher.yaml | egrep 'name: cluster'").Output()
+		list := fmt.Sprintf("%s", lists)
+		e2e.Logf("%v", list)
+		if strings.Contains(list, "name: cluster") {
+			e2e.Logf("The fetched file content does match with keyword: %v \n", list)
+		} else {
+			e2e.Failf("The fetched file content does not match with keyword: %v \n", list)
+		}
+	} else {
+		e2e.Failf("The fetched fixes %v does not exist.. \n", results)
+	}
+}
