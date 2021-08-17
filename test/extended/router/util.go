@@ -1,6 +1,7 @@
 package router
 
 import (
+	"fmt"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -169,8 +170,10 @@ func getRouterPod(oc *exutil.CLI, icname string) string {
 // For collecting env details with grep from router pod [usage example: readDeploymentData(oc, podname, "search string")] .
 // NOTE: This requires getRouterPod function to collect the podname variable first!
 func readRouterPodEnv(oc *exutil.CLI, routername, envname string) string {
-	output, err := oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-ingress", routername, "--", "bash", "-c", "/usr/bin/env", "|", "grep", "-w", envname).Output()
+	cmd := fmt.Sprintf("/usr/bin/env | grep %s", envname)
+	output, err := oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-ingress", routername, "--", "bash", "-c", cmd).Output()
 	o.Expect(err).NotTo(o.HaveOccurred())
+	e2e.Logf("the matched Env are: %v", output)
 	return output
 }
 
