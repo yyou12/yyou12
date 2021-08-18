@@ -634,3 +634,21 @@ func checkOauthPodsStatus(oc *exutil.CLI) {
 	}
 
 }
+
+func checkComplianceSuiteResult(oc *exutil.CLI, namespace string, csuiteNmae string, expected string) {
+	csuiteResult, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", namespace, "compliancesuite", csuiteNmae, "-o=jsonpath={.status.result}").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	e2e.Logf("the result of csuiteResult:%v", csuiteResult)
+	expectedStrings := strings.Fields(expected)
+	lenExpectedStrings := len(strings.Fields(expected))
+	switch {
+	case lenExpectedStrings == 1, strings.Compare(expected, csuiteResult) == 0:
+		e2e.Logf("Case 1: the expected string %v equals csuiteResult %v", expected, expectedStrings)
+		return
+	case lenExpectedStrings == 2, strings.Compare(expectedStrings[0], csuiteResult) == 0 || strings.Compare(expectedStrings[1], csuiteResult) == 0:
+		e2e.Logf("Case 2: csuiteResult %v equals expected string %v or %v", csuiteResult, expectedStrings[0], expectedStrings[1])
+		return
+	default:
+		e2e.Failf("Default: The expected string %v doesn't contain csuiteResult %v", expected, csuiteResult)
+	}
+}
