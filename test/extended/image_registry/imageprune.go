@@ -17,6 +17,7 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 	var (
 		oc                 = exutil.NewCLI("default-image-prune", exutil.KubeConfigPath())
 		logInfo            = "Only API objects will be removed.  No modifications to the image registry will be made"
+		warnInfo           = "batch/v1beta1 CronJob is deprecated in v1.21+, unavailable in v1.25+; use batch/v1 CronJob"
 		monitoringns       = "openshift-monitoring"
 		promPod            = "prometheus-k8s-0"
 		queryImagePruner   = "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query=image_registry_operator_image_pruner_install_status"
@@ -63,7 +64,11 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 		foundImagePruneLog := false
 		foundImagePruneLog = DePodLogs(podsOfImagePrune, oc, logInfo)
 		o.Expect(foundImagePruneLog).To(o.BeTrue())
+		foundWarnPruneLog := true
+		foundWarnPruneLog = DePodLogs(podsOfImagePrune, oc, warnInfo)
+		o.Expect(!foundWarnPruneLog).To(o.BeTrue())
 	})
+
 	// author: wewang@redhat.com
 	g.It("Author:wewang-High-27613-registry operator can publish metrics reporting the status of image-pruner [Disruptive]", func() {
 		g.By("granting the cluster-admin role to user")
