@@ -2334,11 +2334,11 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	})
 
 	g.It("ConnectedOnly-Author:scolange-Medium-21534-Check OperatorGroups on console", func() {
-		ogNamespace, err1 := oc.AsAdmin().WithoutNamespace().Run("get").Args("og", "global-operators","-n", "openshift-operators", "-o", "jsonpath={.status.namespace}").Output()
+		ogNamespace, err1 := oc.AsAdmin().WithoutNamespace().Run("get").Args("og", "global-operators", "-n", "openshift-operators", "-o", "jsonpath={.status.namespace}").Output()
 		e2e.Logf(ogNamespace)
 		o.Expect(err1).NotTo(o.HaveOccurred())
 		o.Expect(ogNamespace).To(o.Equal("[\"\"]"))
-		
+
 	})
 
 	// author: scolange@redhat.com
@@ -2381,22 +2381,22 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 
 		// the InstallPlan should Manual on ip
 		newCheck("expect", asAdmin, withoutNamespace, compare, "Manual", ok, []string{"ip", sub.getIP(oc), "-n", sub.namespace, "-o=jsonpath={.spec.approval}"}).check(oc)
-        
+
 		// the InstallPlan patched
-		patchIP, err2 := oc.AsAdmin().WithoutNamespace().Run("patch").Args("ip", sub.getIP(oc),"-n", namespace, "--type=merge", "-p", "{\"spec\":{\"approved\": true}}").Output()
+		patchIP, err2 := oc.AsAdmin().WithoutNamespace().Run("patch").Args("ip", sub.getIP(oc), "-n", namespace, "--type=merge", "-p", "{\"spec\":{\"approved\": true}}").Output()
 		o.Expect(err2).NotTo(o.HaveOccurred())
 		o.Expect(patchIP).To(o.ContainSubstring("patched"))
 
 		// the InstallPlan should be approved on sub
 		newCheck("expect", asAdmin, withoutNamespace, compare, "AtLatestKnown", ok, []string{"sub", "-n", namespace, "-o=jsonpath={.items[*].status.state}"}).check(oc)
-		
-		// the delete InstallPlan 
+
+		// the delete InstallPlan
 		deteleIP, err1 := oc.AsAdmin().WithoutNamespace().Run("delete").Args("ip", sub.getIP(oc), "-n", namespace).Output()
 		e2e.Logf(deteleIP)
 		o.Expect(err1).NotTo(o.HaveOccurred())
 		o.Expect(deteleIP).To(o.ContainSubstring("deleted"))
 
-        // the InstallPlan should InstallPlanMissing on sub
+		// the InstallPlan should InstallPlanMissing on sub
 		newCheck("expect", asAdmin, withoutNamespace, compare, "InstallPlanMissing", ok, []string{"sub", "-n", namespace, "-o=jsonpath={.items[*].status.conditions[1].type}"}).check(oc)
 
 	})
@@ -2521,37 +2521,37 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 
 	// author: scolange@redhat.com
 	g.It("ConnectedOnly-Author:scolange-High-23172-the copied CSV will exist in new created project", func() {
-		
+
 		dr := make(describerResrouce)
 		itName := g.CurrentGinkgoTestDescription().TestText
 		dr.addIr(itName)
 
 		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
-		subTemplate         := filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
-			
+		subTemplate := filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+
 		sub := subscriptionDescription{
-				subName:                 "sub-etcd-23172",
-				namespace:               "openshift-operators",
-				catalogSourceName:       "community-operators",
-				catalogSourceNamespace:  "openshift-marketplace",
-				channel:                 "clusterwide-alpha",
-				ipApproval:              "Automatic",
-				operatorPackage:         "etcd",
-				singleNamespace:         false,
-				template:                subTemplate,
+			subName:                "sub-etcd-23172",
+			namespace:              "openshift-operators",
+			catalogSourceName:      "community-operators",
+			catalogSourceNamespace: "openshift-marketplace",
+			channel:                "clusterwide-alpha",
+			ipApproval:             "Automatic",
+			operatorPackage:        "etcd",
+			singleNamespace:        false,
+			template:               subTemplate,
 		}
 
 		g.By("1, Check if the global operator global-operators support all namesapces")
 		newCheck("expect", asAdmin, withoutNamespace, compare, "[]", ok, []string{"og", "global-operators", "-n", "openshift-operators", "-o=jsonpath={.status.namespaces}"})
-	
+
 		g.By("2, Create operator targeted at all namespace")
 		defer sub.delete(itName, dr)
 		defer sub.deleteCSV(itName, dr)
 		sub.create(oc, itName, dr)
-	
+
 		g.By("3, Create new namespace")
 		oc.SetupProject()
-	    
+
 		e2e.Logf("The test case pass")
 
 		g.By("4, Check the csv within new namespace is copied.")
@@ -2579,7 +2579,6 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 			return false, nil
 		})
 	})
-
 
 	// author: jiazha@redhat.c
 	g.It("Author:jiazha-Medium-21126-OLM Subscription status says CSV is installed when it is not", func() {
@@ -6909,7 +6908,7 @@ var _ = g.Describe("[sig-operators] OLM on VM for an end user handle within a na
 	})
 
 	// author: xzha@redhat.com
-	g.It("Author:xzha-VMonly-Medium-25920-Expose bundle data from bundle image container", func() {
+	g.It("Author:xzha-ConnectedOnly-VMonly-Medium-25920-Expose bundle data from bundle image container", func() {
 		var (
 			opmBaseDir          = exutil.FixturePath("testdata", "opm")
 			TestDataPath        = filepath.Join(opmBaseDir, "etcd_operator")
