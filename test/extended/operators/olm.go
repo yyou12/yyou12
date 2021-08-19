@@ -5519,6 +5519,69 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		o.Expect(err).NotTo(o.HaveOccurred())
 	})
 
+	// author: xzha@redhat.com, test case OCP-43110
+	g.It("ConnectedOnly-Author:xzha-High-43110-OLM provide a helpful error message when install removed api", func() {
+		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
+		ogSingleTemplate := filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+		subTemplate := filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+		catsrcImageTemplate := filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
+		oc.SetupProject()
+		namespaceName := oc.Namespace()
+		var (
+			catsrc = catalogSourceDescription{
+				name:        "catsrc-ditto-43110",
+				namespace:   namespaceName,
+				displayName: "Test Catsrc ditto Operators",
+				publisher:   "Red Hat",
+				sourceType:  "grpc",
+				address:     "quay.io/olmqe/ditto-index:v1beta1",
+				template:    catsrcImageTemplate,
+			}
+			og = operatorGroupDescription{
+				name:      "og-43110",
+				namespace: namespaceName,
+				template:  ogSingleTemplate,
+			}
+			sub = subscriptionDescription{
+				subName:                "sub-43110",
+				namespace:              namespaceName,
+				catalogSourceName:      "catsrc-ditto-43110",
+				catalogSourceNamespace: namespaceName,
+				channel:                "alpha",
+				ipApproval:             "Automatic",
+				operatorPackage:        "ditto-operator",
+				singleNamespace:        true,
+				template:               subTemplate,
+				startingCSV:            "",
+			}
+		)
+		itName := g.CurrentGinkgoTestDescription().TestText
+		g.By("1) create the catalog source and OperatorGroup")
+		defer catsrc.delete(itName, dr)
+		catsrc.create(oc, itName, dr)
+		og.createwithCheck(oc, itName, dr)
+
+		g.By("2) install sub")
+		defer sub.delete(itName, dr)
+		sub.createWithoutCheck(oc, itName, dr)
+
+		g.By("3) check ip/sub conditions")
+		installPlan := sub.getIP(oc)
+		o.Expect(installPlan).NotTo(o.BeEmpty())
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Failed", ok, []string{"ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+		ipConditions := getResource(oc, asAdmin, withoutNamespace, "ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.conditions}")
+		o.Expect(ipConditions).To(o.ContainSubstring("api-server resource not found installing CustomResourceDefinition"))
+		o.Expect(ipConditions).To(o.ContainSubstring("apiextensions.k8s.io/v1beta1"))
+		o.Expect(ipConditions).To(o.ContainSubstring("Kind=CustomResourceDefinition not found on the cluster"))
+		o.Expect(ipConditions).To(o.ContainSubstring("InstallComponentFailed"))
+		subConditions := getResource(oc, asAdmin, withoutNamespace, "sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.conditions}")
+		o.Expect(subConditions).To(o.ContainSubstring("api-server resource not found installing CustomResourceDefinition"))
+		o.Expect(subConditions).To(o.ContainSubstring("apiextensions.k8s.io/v1beta1"))
+		o.Expect(subConditions).To(o.ContainSubstring("Kind=CustomResourceDefinition not found on the cluster"))
+		o.Expect(subConditions).To(o.ContainSubstring("InstallComponentFailed"))
+		g.By("4) SUCCESS")
+	})
+
 	// It will cover test case: OCP-40958, author: kuiwang@redhat.com
 	g.It("ConnectedOnly-Author:kuiwang-Medium-40958-Indicate invalid OperatorGroup on InstallPlan status", func() {
 		var (
