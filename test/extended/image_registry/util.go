@@ -16,6 +16,11 @@ import (
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 )
 
+const (
+	asAdmin          = true
+	withoutNamespace = true
+)
+
 type PrometheusResponse struct {
 	Status string                 `json:"status"`
 	Error  string                 `json:"error"`
@@ -121,4 +126,38 @@ func getRandomString() string {
 		buffer[index] = chars[seed.Intn(len(chars))]
 	}
 	return string(buffer)
+}
+
+//the method is to get something from resource. it is "oc get xxx" actaully
+func getResource(oc *exutil.CLI, asAdmin bool, withoutNamespace bool, parameters ...string) string {
+	var result string
+	var err error
+	err = wait.Poll(3*time.Second, 150*time.Second, func() (bool, error) {
+		result, err = doAction(oc, "get", asAdmin, withoutNamespace, parameters...)
+		if err != nil {
+			e2e.Logf("output is %v, error is %v, and try next", result, err)
+			return false, nil
+		}
+		return true, nil
+	})
+	o.Expect(err).NotTo(o.HaveOccurred())
+	e2e.Logf("$oc get %v, the returned resource:%v", parameters, result)
+	return result
+}
+
+//the method is to do something with oc.
+func doAction(oc *exutil.CLI, action string, asAdmin bool, withoutNamespace bool, parameters ...string) (string, error) {
+	if asAdmin && withoutNamespace {
+		return oc.AsAdmin().WithoutNamespace().Run(action).Args(parameters...).Output()
+	}
+	if asAdmin && !withoutNamespace {
+		return oc.AsAdmin().Run(action).Args(parameters...).Output()
+	}
+	if !asAdmin && withoutNamespace {
+		return oc.WithoutNamespace().Run(action).Args(parameters...).Output()
+	}
+	if !asAdmin && !withoutNamespace {
+		return oc.Run(action).Args(parameters...).Output()
+	}
+	return "", nil
 }

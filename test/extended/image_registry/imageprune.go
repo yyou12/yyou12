@@ -22,6 +22,7 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 		promPod            = "prometheus-k8s-0"
 		queryImagePruner   = "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query=image_registry_operator_image_pruner_install_status"
 		queryImageRegistry = "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query=image_registry_operator_storage_reconfigured_total"
+		priorityClassName  = "system-cluster-critical"
 	)
 	// author: wewang@redhat.com
 	g.It("Author:wewang-Medium-35906-Only API objects will be removed in image pruner pod when image registry is set to Removed [Disruptive]", func() {
@@ -107,5 +108,12 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 		})
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(foundValue).To(o.BeTrue())
+	})
+
+	// author: xiuwang@redhat.com
+	g.It("Author:xiuwang-Low-43717-Add necessary priority class to pruner", func() {
+		g.By("Check priority class of pruner")
+		out := getResource(oc, asAdmin, withoutNamespace, "cronjob.batch", "-n", "openshift-image-registry", "-o=jsonpath={.items[0].spec.jobTemplate.spec.template.spec.priorityClassName}")
+		o.Expect(out).To(o.ContainSubstring(priorityClassName))
 	})
 })
