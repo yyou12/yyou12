@@ -141,6 +141,8 @@
 // test/extended/testdata/ota/osus/operatorgroup.yaml
 // test/extended/testdata/ota/osus/subscription.yaml
 // test/extended/testdata/router/ca-bundle.pem
+// test/extended/testdata/router/error-page-404.http
+// test/extended/testdata/router/error-page-503.http
 // test/extended/testdata/router/ingress-with-class.yaml
 // test/extended/testdata/router/ingresscontroller-hn-PROXY.yaml
 // test/extended/testdata/router/ingresscontroller-np-PROXY.yaml
@@ -17810,6 +17812,62 @@ func testExtendedTestdataRouterCaBundlePem() (*asset, error) {
 	return a, nil
 }
 
+var _testExtendedTestdataRouterErrorPage404Http = []byte(`HTTP/1.0 404 Not Found
+Connection: close
+Content-Type: text/html
+
+<html>
+<head><title>Custom:Not Found</title></head>
+<body>
+<p>Custom error page:The requested document was not found.</p>
+</body>
+</html>
+
+`)
+
+func testExtendedTestdataRouterErrorPage404HttpBytes() ([]byte, error) {
+	return _testExtendedTestdataRouterErrorPage404Http, nil
+}
+
+func testExtendedTestdataRouterErrorPage404Http() (*asset, error) {
+	bytes, err := testExtendedTestdataRouterErrorPage404HttpBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/router/error-page-404.http", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataRouterErrorPage503Http = []byte(`HTTP/1.0 503 Service Unavailable
+Connection: close
+Content-Type: text/html
+
+<html>
+<head><title>Custom:Application Unavailable</title></head>
+<body>
+<p>Custom error page:The requested application is not available.</p>
+</body>
+</html>
+
+`)
+
+func testExtendedTestdataRouterErrorPage503HttpBytes() ([]byte, error) {
+	return _testExtendedTestdataRouterErrorPage503Http, nil
+}
+
+func testExtendedTestdataRouterErrorPage503Http() (*asset, error) {
+	bytes, err := testExtendedTestdataRouterErrorPage503HttpBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/router/error-page-503.http", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
 var _testExtendedTestdataRouterIngressWithClassYaml = []byte(`apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -22211,6 +22269,8 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/ota/osus/operatorgroup.yaml":                                                                                   testExtendedTestdataOtaOsusOperatorgroupYaml,
 	"test/extended/testdata/ota/osus/subscription.yaml":                                                                                    testExtendedTestdataOtaOsusSubscriptionYaml,
 	"test/extended/testdata/router/ca-bundle.pem":                                                                                          testExtendedTestdataRouterCaBundlePem,
+	"test/extended/testdata/router/error-page-404.http":                                                                                    testExtendedTestdataRouterErrorPage404Http,
+	"test/extended/testdata/router/error-page-503.http":                                                                                    testExtendedTestdataRouterErrorPage503Http,
 	"test/extended/testdata/router/ingress-with-class.yaml":                                                                                testExtendedTestdataRouterIngressWithClassYaml,
 	"test/extended/testdata/router/ingresscontroller-hn-PROXY.yaml":                                                                        testExtendedTestdataRouterIngresscontrollerHnProxyYaml,
 	"test/extended/testdata/router/ingresscontroller-np-PROXY.yaml":                                                                        testExtendedTestdataRouterIngresscontrollerNpProxyYaml,
@@ -22523,6 +22583,8 @@ var _bintree = &bintree{nil, map[string]*bintree{
 				}},
 				"router": {nil, map[string]*bintree{
 					"ca-bundle.pem":                   {testExtendedTestdataRouterCaBundlePem, map[string]*bintree{}},
+					"error-page-404.http":             {testExtendedTestdataRouterErrorPage404Http, map[string]*bintree{}},
+					"error-page-503.http":             {testExtendedTestdataRouterErrorPage503Http, map[string]*bintree{}},
 					"ingress-with-class.yaml":         {testExtendedTestdataRouterIngressWithClassYaml, map[string]*bintree{}},
 					"ingresscontroller-hn-PROXY.yaml": {testExtendedTestdataRouterIngresscontrollerHnProxyYaml, map[string]*bintree{}},
 					"ingresscontroller-np-PROXY.yaml": {testExtendedTestdataRouterIngresscontrollerNpProxyYaml, map[string]*bintree{}},

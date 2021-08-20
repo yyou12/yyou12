@@ -258,3 +258,19 @@ func deleteConfigMap(oc *exutil.CLI, ns, name string) {
 	_, err := oc.AsAdmin().WithoutNamespace().Run("delete").Args("configmap", name, "-n", ns).Output()
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
+
+// check if a configmap is created in specific namespace [usage: checkConfigMap(oc, namesapce, configmapName)]
+func checkConfigMap(oc *exutil.CLI, ns, configmapName string) error {
+	return wait.Poll(5*time.Second, 3*time.Minute, func() (bool, error) {
+		searchOutput, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("cm", "-n", ns).Output()
+		if err != nil {
+			e2e.Logf("failed to get configmap: %v", err)
+			return false, nil
+		}
+		if o.Expect(searchOutput).To(o.ContainSubstring(configmapName)) {
+			e2e.Logf("configmap %v found", configmapName)
+			return true, nil
+		}
+		return false, nil
+	})
+}
