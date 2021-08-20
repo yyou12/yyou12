@@ -161,3 +161,22 @@ func doAction(oc *exutil.CLI, action string, asAdmin bool, withoutNamespace bool
 	}
 	return "", nil
 }
+
+func comparePodHostIp(oc *exutil.CLI) (int, int) {
+	var hostsIp = []string{}
+	var numi, numj int
+	podList, _ := oc.AdminKubeClient().CoreV1().Pods("openshift-image-registry").List(metav1.ListOptions{LabelSelector: "docker-registry=default"})
+	for _, pod := range podList.Items {
+		hostsIp = append(hostsIp, pod.Status.HostIP)
+	}
+	for i := 0; i < len(hostsIp)-1; i++ {
+		for j := i + 1; j < len(hostsIp); j++ {
+			if hostsIp[i] == hostsIp[j] {
+				numi++
+			} else {
+				numj++
+			}
+		}
+	}
+	return numi, numj
+}
