@@ -467,6 +467,173 @@ var _ = g.Describe("[sig-operators] OLM opm with podman", func() {
 
 	})
 
+	g.It("Author:xzha-ConnectedOnly-Medium-43409-opm can list catalog contents", func() {
+		dbimagetag := "quay.io/olmqe/community-operator-index:v4.8"
+		dcimagetag := "quay.io/olmqe/community-operator-index:v4.8-dc"
+
+		g.By("1, testing with index.db image ")
+		g.By("1.1 list packages")
+		output, err := opmCLI.Run("alpha").Args("list", "packages", dbimagetag).Output()
+		if err != nil {
+			e2e.Logf(output)
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}
+		o.Expect(string(output)).To(o.ContainSubstring("3scale-community-operator"))
+		o.Expect(string(output)).To(o.ContainSubstring("3scale API Management"))
+		o.Expect(string(output)).To(o.ContainSubstring("threescale-2.10"))
+
+		g.By("1.2 list channels")
+		output, err = opmCLI.Run("alpha").Args("list", "channels", dbimagetag).Output()
+		if err != nil {
+			e2e.Logf(output)
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}
+		o.Expect(string(output)).To(o.ContainSubstring("3scale-community-operator"))
+		o.Expect(string(output)).To(o.ContainSubstring("threescale-2.10"))
+		o.Expect(string(output)).To(o.ContainSubstring("3scale-community-operator.v0.7.0"))
+
+		g.By("1.3 list channels in a package")
+		output, err = opmCLI.Run("alpha").Args("list", "channels", dbimagetag, "3scale-community-operator").Output()
+		if err != nil {
+			e2e.Logf(output)
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}
+		o.Expect(string(output)).To(o.ContainSubstring("threescale-2.10"))
+		o.Expect(string(output)).To(o.ContainSubstring("threescale-2.9"))
+
+		g.By("1.4 list bundles")
+		output, err = opmCLI.Run("alpha").Args("list", "bundles", dbimagetag).Output()
+		if err != nil {
+			e2e.Logf(output)
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}
+		o.Expect(string(output)).To(o.ContainSubstring("3scale-community-operator.v0.6.0"))
+		o.Expect(string(output)).To(o.ContainSubstring("3scale-community-operator.v0.7.0"))
+
+		g.By("1.5 list bundles in a package")
+		output, err = opmCLI.Run("alpha").Args("list", "bundles", dbimagetag, "wso2am-operator").Output()
+		if err != nil {
+			e2e.Logf(output)
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}
+		o.Expect(string(output)).To(o.ContainSubstring("wso2am-operator.v1.0.0"))
+		o.Expect(string(output)).To(o.ContainSubstring("wso2am-operator.v1.0.1"))
+		o.Expect(string(output)).To(o.ContainSubstring("wso2am-operator.v1.1.0"))
+
+		g.By("2, testing with dc format index image")
+		g.By("2.1 list packages")
+		output, err = opmCLI.Run("alpha").Args("list", "packages", dcimagetag).Output()
+		if err != nil {
+			e2e.Logf(output)
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}
+		o.Expect(string(output)).To(o.ContainSubstring("3scale-community-operator"))
+		o.Expect(string(output)).To(o.ContainSubstring("3scale API Management"))
+		o.Expect(string(output)).To(o.ContainSubstring("threescale-2.10"))
+
+		g.By("2.2 list channels")
+		output, err = opmCLI.Run("alpha").Args("list", "channels", dcimagetag).Output()
+		if err != nil {
+			e2e.Logf(output)
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}
+		o.Expect(string(output)).To(o.ContainSubstring("3scale-community-operator"))
+		o.Expect(string(output)).To(o.ContainSubstring("threescale-2.10"))
+		o.Expect(string(output)).To(o.ContainSubstring("3scale-community-operator.v0.7.0"))
+
+		g.By("2.3 list channels in a package")
+		output, err = opmCLI.Run("alpha").Args("list", "channels", dcimagetag, "3scale-community-operator").Output()
+		if err != nil {
+			e2e.Logf(output)
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}
+		o.Expect(string(output)).To(o.ContainSubstring("threescale-2.10"))
+		o.Expect(string(output)).To(o.ContainSubstring("threescale-2.9"))
+
+		g.By("2.4 list bundles")
+		output, err = opmCLI.Run("alpha").Args("list", "bundles", dcimagetag).Output()
+		if err != nil {
+			e2e.Logf(output)
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}
+		o.Expect(string(output)).To(o.ContainSubstring("3scale-community-operator.v0.6.0"))
+		o.Expect(string(output)).To(o.ContainSubstring("3scale-community-operator.v0.7.0"))
+
+		g.By("2.5 list bundles in a package")
+		output, err = opmCLI.Run("alpha").Args("list", "bundles", dcimagetag, "wso2am-operator").Output()
+		if err != nil {
+			e2e.Logf(output)
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}
+		o.Expect(string(output)).To(o.ContainSubstring("wso2am-operator.v1.0.0"))
+		o.Expect(string(output)).To(o.ContainSubstring("wso2am-operator.v1.0.1"))
+		o.Expect(string(output)).To(o.ContainSubstring("wso2am-operator.v1.1.0"))
+
+		g.By("3, testing with index.db file")
+		opmBaseDir := exutil.FixturePath("testdata", "opm")
+		TmpDataPath := filepath.Join(opmBaseDir, "tmp")
+		indexdbFilePath := filepath.Join(TmpDataPath, "index.db")
+		err = os.MkdirAll(TmpDataPath, 0755)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("get index.db")
+		_, err = oc.AsAdmin().WithoutNamespace().Run("image").Args("extract", dbimagetag, "--path", "/database/index.db:"+TmpDataPath).Output()
+		e2e.Logf("get index.db SUCCESS, path is %s", indexdbFilePath)
+		if _, err := os.Stat(indexdbFilePath); os.IsNotExist(err) {
+			e2e.Logf("get index.db Failed")
+		}
+
+		g.By("3.1 list packages")
+		output, err = opmCLI.Run("alpha").Args("list", "packages", indexdbFilePath).Output()
+		if err != nil {
+			e2e.Logf(output)
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}
+		o.Expect(string(output)).To(o.ContainSubstring("3scale-community-operator"))
+		o.Expect(string(output)).To(o.ContainSubstring("3scale API Management"))
+		o.Expect(string(output)).To(o.ContainSubstring("threescale-2.10"))
+
+		g.By("3.2 list channels")
+		output, err = opmCLI.Run("alpha").Args("list", "channels", indexdbFilePath).Output()
+		if err != nil {
+			e2e.Logf(output)
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}
+		o.Expect(string(output)).To(o.ContainSubstring("3scale-community-operator"))
+		o.Expect(string(output)).To(o.ContainSubstring("threescale-2.10"))
+		o.Expect(string(output)).To(o.ContainSubstring("3scale-community-operator.v0.7.0"))
+
+		g.By("3.3 list channels in a package")
+		output, err = opmCLI.Run("alpha").Args("list", "channels", indexdbFilePath, "3scale-community-operator").Output()
+		if err != nil {
+			e2e.Logf(output)
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}
+		o.Expect(string(output)).To(o.ContainSubstring("threescale-2.10"))
+		o.Expect(string(output)).To(o.ContainSubstring("threescale-2.9"))
+
+		g.By("3.4 list bundles")
+		output, err = opmCLI.Run("alpha").Args("list", "bundles", indexdbFilePath).Output()
+		if err != nil {
+			e2e.Logf(output)
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}
+		o.Expect(string(output)).To(o.ContainSubstring("3scale-community-operator.v0.6.0"))
+		o.Expect(string(output)).To(o.ContainSubstring("3scale-community-operator.v0.7.0"))
+
+		g.By("3.5 list bundles in a package")
+		output, err = opmCLI.Run("alpha").Args("list", "bundles", indexdbFilePath, "wso2am-operator").Output()
+		if err != nil {
+			e2e.Logf(output)
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}
+		o.Expect(string(output)).To(o.ContainSubstring("wso2am-operator.v1.0.0"))
+		o.Expect(string(output)).To(o.ContainSubstring("wso2am-operator.v1.0.1"))
+		o.Expect(string(output)).To(o.ContainSubstring("wso2am-operator.v1.1.0"))
+
+		g.By("step: SUCCESS")
+	})
+
 	// author: tbuskey@redhat.com
 	g.It("Author:tbuskey-VMonly-High-30786-Bundle addition commutativity", func() {
 		opmBaseDir := exutil.FixturePath("testdata", "opm")
