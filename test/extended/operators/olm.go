@@ -799,6 +799,49 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 
 	})
 
+	// author: bandrade@redhat.com
+	g.It("Author:bandrade-Medium-42970-OperatorGroup status indicates cardinality conflicts - SingleNamespace", func() {
+		var (
+			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
+			ogSingleTemplate    = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+		)
+
+		oc.SetupProject()
+		dr := make(describerResrouce)
+		itName := g.CurrentGinkgoTestDescription().TestText
+		ns := oc.Namespace()
+		dr.addIr(itName)
+
+		var (
+			og = operatorGroupDescription{
+				name:      "og-42970",
+				namespace: ns,
+				template:  ogSingleTemplate,
+			}
+			og1 = operatorGroupDescription{
+				name:      "og-42970-1",
+				namespace: ns,
+				template:  ogSingleTemplate,
+			}
+		)
+
+		g.By("1) Create first OperatorGroup")
+		og.create(oc, itName, dr)
+
+		g.By("2) Create second OperatorGroup")
+		og1.create(oc, itName, dr)
+
+		g.By("3) Check OperatorGroup Status")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "MultipleOperatorGroupsFound", ok, []string{"og", og.name, "-n", ns, "-o=jsonpath={.status.conditions..reason}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "MultipleOperatorGroupsFound", ok, []string{"og", og1.name, "-n", ns, "-o=jsonpath={.status.conditions..reason}"}).check(oc)
+
+		g.By("4) Delete second OperatorGroup")
+		og1.delete(itName, dr)
+
+		g.By("5) Check OperatorGroup status")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "", ok, []string{"og", og.name, "-n", ns, "-o=jsonpath={.status.conditions..reason}"}).check(oc)
+
+	})
 	// author: jiazha@redhat.com
 	g.It("Author:jiazha-ConnectedOnly-Medium-33902-Catalog Weighting", func() {
 		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
