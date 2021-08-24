@@ -652,3 +652,20 @@ func checkComplianceSuiteResult(oc *exutil.CLI, namespace string, csuiteNmae str
 		e2e.Failf("Default: The expected string %v doesn't contain csuiteResult %v", expected, csuiteResult)
 	}
 }
+
+func getResourceNameWithKeywordForNamespace(oc *exutil.CLI, rs string, keyword string, namespace string) string {
+	var resourceName string
+	rsList, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args(rs, "-n", namespace, "-o=jsonpath={.items[*].metadata.name}").Output()
+	rsl := strings.Fields(rsList)
+	for _, v := range rsl {
+		resourceName = fmt.Sprintf("%s", v)
+		e2e.Logf("the result of resourceName:%v", resourceName)
+		if strings.Contains(resourceName, keyword) {
+			break
+		}
+	}
+	if resourceName == "" {
+		e2e.Failf("Failed to get resource name!")
+	}
+	return resourceName
+}

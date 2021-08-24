@@ -45,8 +45,9 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance Pre-check and post-check f
 
 		g.BeforeEach(func() {
 			g.By("Check csv and pods for ns1 !!!")
-			newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", "-n", ns1,
-				"-o=jsonpath={.items[*].status.phase}"}).check(oc)
+			rsCsvName := getResourceNameWithKeywordForNamespace(oc, "csv", "compliance-operator", ns1)
+			newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", rsCsvName, "-n", ns1,
+				"-o=jsonpath={.status.phase}"}).check(oc)
 			newCheck("expect", asAdmin, withoutNamespace, contain, "ocp4", ok, []string{"pod", "--selector=profile-bundle=ocp4", "-n",
 				ns1, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
 			newCheck("expect", asAdmin, withoutNamespace, contain, "rhcos4", ok, []string{"pod", "--selector=profile-bundle=rhcos4", "-n",
@@ -60,8 +61,9 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance Pre-check and post-check f
 				ns1, "-o=jsonpath={.items[0].status.phase}"}).check(oc)
 
 			g.By("Check csv and pods for ns2 !!!")
-			newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", "-n", ns2,
-				"-o=jsonpath={.items[*].status.phase}"}).check(oc)
+			rsCsvName2 := getResourceNameWithKeywordForNamespace(oc, "csv", "compliance-operator", ns2)
+			newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", rsCsvName2, "-n", ns2,
+				"-o=jsonpath={.status.phase}"}).check(oc)
 			newCheck("expect", asAdmin, withoutNamespace, contain, "ocp4", ok, []string{"pod", "--selector=profile-bundle=ocp4", "-n",
 				ns2, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
 			newCheck("expect", asAdmin, withoutNamespace, contain, "rhcos4", ok, []string{"pod", "--selector=profile-bundle=rhcos4", "-n",
