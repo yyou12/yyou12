@@ -23,6 +23,7 @@ import (
 	_ "github.com/openshift/openshift-tests-private/test/extended/clusterinfrastructure"
 	_ "github.com/openshift/openshift-tests-private/test/extended/etcd"
 	_ "github.com/openshift/openshift-tests-private/test/extended/image_registry"
+	_ "github.com/openshift/openshift-tests-private/test/extended/logging"
 	_ "github.com/openshift/openshift-tests-private/test/extended/mco"
 	_ "github.com/openshift/openshift-tests-private/test/extended/networking"
 	_ "github.com/openshift/openshift-tests-private/test/extended/node"

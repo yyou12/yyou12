@@ -13,6 +13,15 @@
 // test/extended/testdata/ldap/ldapserver-deployment.yaml
 // test/extended/testdata/ldap/ldapserver-scripts-cm.yaml
 // test/extended/testdata/ldap/ldapserver-service.yaml
+// test/extended/testdata/logging/clusterlogforwarder/42363.yaml
+// test/extended/testdata/logging/clusterlogforwarder/42475.yaml
+// test/extended/testdata/logging/clusterlogging/cl-storage-template.yaml
+// test/extended/testdata/logging/clusterlogging/cl-template.yaml
+// test/extended/testdata/logging/generatelog/container_json_log_template.json
+// test/extended/testdata/logging/generatelog/container_non_json_log_template.json
+// test/extended/testdata/logging/subscription/allnamespace-og.yaml
+// test/extended/testdata/logging/subscription/singlenamespace-og.yaml
+// test/extended/testdata/logging/subscription/sub-template.yaml
 // test/extended/testdata/networking/egressfirewall1.yaml
 // test/extended/testdata/networking/egressfirewall2.yaml
 // test/extended/testdata/networking/egressip-config1.yaml
@@ -1634,6 +1643,578 @@ func testExtendedTestdataLdapLdapserverServiceYaml() (*asset, error) {
 	}
 
 	info := bindataFileInfo{name: "test/extended/testdata/ldap/ldapserver-service.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataLoggingClusterlogforwarder42363Yaml = []byte(`kind: Template
+apiVersion: template.openshift.io/v1
+metadata:
+  name: clusterlogforwarder-template
+objects:
+- apiVersion: logging.openshift.io/v1
+  kind: ClusterLogForwarder
+  metadata:
+    name: ${NAME}
+    namespace: ${NAMESPACE}
+  spec:
+    inputs:
+    - application:
+        namespaces:
+        - ${DATA_PROJECT}
+      name: input-qa
+    outputDefaults:
+      elasticsearch:
+        structuredTypeKey: ${STRUCTURED_TYPE_KEY}
+        structuredTypeName: ${STRUCTURED_TYPE_NAME}
+    pipelines:
+    - inputRefs:
+      - input-qa
+      labels:
+        team: qa-openshift-label
+      name: pipeline-a
+      outputRefs:
+      - default
+      parse: json
+    - inputRefs:
+      - infrastructure
+      - application
+      - audit
+      outputRefs:
+      - default
+parameters:
+- name: NAME
+  value: "instance"
+- name: NAMESPACE
+  value: "openshift-logging"
+- name: DATA_PROJECT
+- name: STRUCTURED_TYPE_KEY
+  value: kubernetes.namespace_name
+- name: STRUCTURED_TYPE_NAME
+  value: fall-in-index
+
+`)
+
+func testExtendedTestdataLoggingClusterlogforwarder42363YamlBytes() ([]byte, error) {
+	return _testExtendedTestdataLoggingClusterlogforwarder42363Yaml, nil
+}
+
+func testExtendedTestdataLoggingClusterlogforwarder42363Yaml() (*asset, error) {
+	bytes, err := testExtendedTestdataLoggingClusterlogforwarder42363YamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/logging/clusterlogforwarder/42363.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataLoggingClusterlogforwarder42475Yaml = []byte(`kind: Template
+apiVersion: template.openshift.io/v1
+metadata:
+  name: clusterlogforwarder-template
+objects:
+- apiVersion: logging.openshift.io/v1
+  kind: ClusterLogForwarder
+  metadata:
+    name: ${NAME}
+    namespace: ${NAMESPACE}
+  spec:
+    inputs:
+    - application:
+        namespaces:
+        - ${DATA_PROJECT}
+      name: input-qa
+    outputDefaults:
+      elasticsearch:
+        structuredTypeKey: ${STRUCTURED_TYPE_KEY}
+        structuredTypeName: ${STRUCTURED_TYPE_NAME}
+    pipelines:
+    - inputRefs:
+      - input-qa
+      labels:
+        team: qa-openshift-label
+      name: pipeline-a
+      outputRefs:
+      - default
+      parse: json
+parameters:
+- name: NAME
+  value: "instance"
+- name: NAMESPACE
+  value: "openshift-logging"
+- name: DATA_PROJECT
+- name: STRUCTURED_TYPE_KEY
+  value: kubernetes.container_name
+- name: STRUCTURED_TYPE_NAME
+  value: fall-in-index
+
+`)
+
+func testExtendedTestdataLoggingClusterlogforwarder42475YamlBytes() ([]byte, error) {
+	return _testExtendedTestdataLoggingClusterlogforwarder42475Yaml, nil
+}
+
+func testExtendedTestdataLoggingClusterlogforwarder42475Yaml() (*asset, error) {
+	bytes, err := testExtendedTestdataLoggingClusterlogforwarder42475YamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/logging/clusterlogforwarder/42475.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataLoggingClusterloggingClStorageTemplateYaml = []byte(`kind: Template
+apiVersion: template.openshift.io/v1
+metadata:
+  name: clusterlogging-template
+objects:
+- kind: "ClusterLogging"
+  apiVersion: "logging.openshift.io/v1"
+  metadata:
+    name: ${NAME}
+    namespace: ${NAMESPACE}
+  spec:
+    managementState: "Managed"
+    logStore:
+      type: "elasticsearch"
+      retentionPolicy:
+        application:
+          maxAge: ${APP_LOG_MAX_AGE}
+        infra:
+          maxAge: ${INFRA_LOG_MAX_AGE}
+        audit:
+          maxAge: ${AUDIT_LOG_MAX_AGE}
+      elasticsearch:
+        nodeCount: ${{ES_NODE_COUNT}}
+        resources:
+          requests:
+            memory: 1Gi
+        storage:
+          storageClassName: ${STORAGE_CLASS}
+          size: ${PVC_SIZE}
+        redundancyPolicy: ${REDUNDANCY_POLICY}
+    visualization:
+      type: "kibana"
+      kibana:
+        replicas: 1
+    collection:
+      logs:
+        type: "fluentd"
+        fluentd: {}
+
+parameters:
+  - name: NAME
+    value: "instance"
+  - name: NAMESPACE
+    value: "openshift-logging"
+  - name: ES_NODE_COUNT
+    value: "3"
+  - name: STORAGE_CLASS
+    value: "gp2"
+  - name: PVC_SIZE
+    value: "10Gi"
+  - name: REDUNDANCY_POLICY
+    value: "SingleRedundancy"
+  - name: APP_LOG_MAX_AGE
+    value: "3h"
+  - name: INFRA_LOG_MAX_AGE
+    value: "3h"
+  - name: AUDIT_LOG_MAX_AGE
+    value: "3h"
+`)
+
+func testExtendedTestdataLoggingClusterloggingClStorageTemplateYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataLoggingClusterloggingClStorageTemplateYaml, nil
+}
+
+func testExtendedTestdataLoggingClusterloggingClStorageTemplateYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataLoggingClusterloggingClStorageTemplateYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/logging/clusterlogging/cl-storage-template.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataLoggingClusterloggingClTemplateYaml = []byte(`kind: Template
+apiVersion: template.openshift.io/v1
+metadata:
+  name: clusterlogging-template
+objects:
+- kind: "ClusterLogging"
+  apiVersion: "logging.openshift.io/v1"
+  metadata:
+    name: ${NAME}
+    namespace: ${NAMESPACE}
+  spec:
+    managementState: "Managed"
+    logStore:
+      type: "elasticsearch"
+      retentionPolicy:
+        application:
+          maxAge: ${APP_LOG_MAX_AGE}
+        infra:
+          maxAge: ${INFRA_LOG_MAX_AGE}
+        audit:
+          maxAge: ${AUDIT_LOG_MAX_AGE}
+      elasticsearch:
+        nodeCount: ${{ES_NODE_COUNT}}
+        redundancyPolicy: ${REDUNDANCY_POLICY}
+        resources:
+          requests:
+            memory: "1Gi"
+        storage: {}
+    visualization:
+      type: "kibana"
+      kibana:
+        replicas: 1
+    collection:
+      logs:
+        type: "fluentd"
+        fluentd: {}
+parameters:
+  - name: NAME
+    value: "instance"
+  - name: NAMESPACE
+    value: "openshift-logging"
+  - name: ES_NODE_COUNT
+    value: "1"
+  - name: REDUNDANCY_POLICY
+    value: "ZeroRedundancy"
+  - name: APP_LOG_MAX_AGE
+    value: "3h"
+  - name: INFRA_LOG_MAX_AGE
+    value: "3h"
+  - name: AUDIT_LOG_MAX_AGE
+    value: "3h"
+`)
+
+func testExtendedTestdataLoggingClusterloggingClTemplateYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataLoggingClusterloggingClTemplateYaml, nil
+}
+
+func testExtendedTestdataLoggingClusterloggingClTemplateYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataLoggingClusterloggingClTemplateYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/logging/clusterlogging/cl-template.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataLoggingGeneratelogContainer_json_log_templateJson = []byte(`{
+    "apiVersion": "template.openshift.io/v1",
+    "kind": "Template",
+    "metadata": {
+        "name": "centos-logtest-template"
+    },
+    "objects": [
+        {
+            "apiVersion": "v1",
+            "data": {
+                "ocp_logtest.cfg": "--raw --file /var/lib/svt/json.example  --text-type input --rate 60.0",
+                "json.example": "{\"message\": \"MERGE_JSON_LOG=true\", \"level\": \"debug\",\"Layer1\": \"layer1 0\", \"layer2\": {\"name\":\"Layer2 1\", \"tips\":\"Decide by PRESERVE_JSON_LOG\"}, \"StringNumber\":\"10\", \"Number\": 10,\"foo.bar\":\"Dot Item\",\"{foobar}\":\"Brace Item\",\"[foobar]\":\"Bracket Item\", \"foo:bar\":\"Colon Item\",\"foo bar\":\"Space Item\" }"
+            },
+            "kind": "ConfigMap",
+            "metadata": {
+                "name": "logtest-config"
+            }
+        },
+        {
+            "apiVersion": "v1",
+            "kind": "ReplicationController",
+            "metadata": {
+                "name": "logging-centos-logtest",
+                "labels": {
+                    "run": "centos-logtest",
+                    "test": "centos-logtest"
+                }
+            },
+            "spec": {
+                "replicas": "${{REPLICAS}}",
+                "template": {
+                    "metadata": {
+                        "generateName": "centos-logtest-",
+                        "labels": {
+                            "run": "centos-logtest",
+                            "test": "centos-logtest"
+                        }
+                    },
+                    "spec": {
+                        "containers": [
+                            {
+                                "env": [],
+                                "image": "quay.io/openshifttest/ocp-logtest@sha256:f23bea6f669d125f2f317e3097a0a4da48e8792746db32838725b45efa6c64a4",
+                                "imagePullPolicy": "Always",
+                                "name": "logging-centos-logtest",
+                                "resources": {},
+                                "volumeMounts": [
+                                    {
+                                        "name": "config",
+                                        "mountPath": "/var/lib/svt"
+                                    }
+                                ],
+                                "terminationMessagePath": "/dev/termination-log"
+                            }
+                        ],
+                        "volumes": [
+                            {
+                                "name": "config",
+                                "configMap": {
+                                    "name": "logtest-config"
+                                }
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+    ],
+    "parameters": [
+        {
+            "name": "IDENTIFIER",
+            "displayName": "identifier",
+            "value": "1"
+        },
+        {
+            "name": "REPLICAS",
+            "displayName": "Replicas",
+            "value": "1"
+        }
+    ]
+}
+
+`)
+
+func testExtendedTestdataLoggingGeneratelogContainer_json_log_templateJsonBytes() ([]byte, error) {
+	return _testExtendedTestdataLoggingGeneratelogContainer_json_log_templateJson, nil
+}
+
+func testExtendedTestdataLoggingGeneratelogContainer_json_log_templateJson() (*asset, error) {
+	bytes, err := testExtendedTestdataLoggingGeneratelogContainer_json_log_templateJsonBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/logging/generatelog/container_json_log_template.json", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataLoggingGeneratelogContainer_non_json_log_templateJson = []byte(`{
+    "apiVersion": "template.openshift.io/v1",
+    "kind": "Template",
+    "metadata": {
+        "name": "centos-logtest-template"
+    },
+    "objects": [
+        {
+            "apiVersion": "v1",
+            "data": {
+                "ocp_logtest.cfg": "--raw --file /var/lib/svt/json.example  --text-type input --rate 60.0",
+                "json.example": "ㄅㄉˇˋㄓˊ˙ㄚㄞㄢㄦㄆ 中国 883.317µs ā á ǎ à ō ó ▅ ▆ ▇ █ 々"
+            },
+            "kind": "ConfigMap",
+            "metadata": {
+                "name": "logtest-config"
+            }
+        },
+        {
+            "apiVersion": "v1",
+            "kind": "ReplicationController",
+            "metadata": {
+                "name": "logging-centos-logtest",
+                "labels": {
+                    "run": "centos-logtest",
+                    "test": "centos-logtest"
+                }
+            },
+            "spec": {
+                "replicas": "${{REPLICAS}}",
+                "template": {
+                    "metadata": {
+                        "generateName": "centos-logtest-",
+                        "labels": {
+                            "run": "centos-logtest",
+                            "test": "centos-logtest"
+                        }
+                    },
+                    "spec": {
+                        "containers": [
+                            {
+                                "env": [],
+                                "image": "quay.io/openshifttest/ocp-logtest@sha256:f23bea6f669d125f2f317e3097a0a4da48e8792746db32838725b45efa6c64a4",
+                                "imagePullPolicy": "Always",
+                                "name": "logging-centos-logtest",
+                                "resources": {},
+                                "volumeMounts": [
+                                    {
+                                        "name": "config",
+                                        "mountPath": "/var/lib/svt"
+                                    }
+                                ],
+                                "terminationMessagePath": "/dev/termination-log"
+                            }
+                        ],
+                        "volumes": [
+                            {
+                                "name": "config",
+                                "configMap": {
+                                    "name": "logtest-config"
+                                }
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+    ],
+    "parameters": [
+        {
+            "name": "IDENTIFIER",
+            "displayName": "identifier",
+            "value": "1"
+        },
+        {
+            "name": "REPLICAS",
+            "displayName": "Replicas",
+            "value": "1"
+        }
+    ]
+}
+
+`)
+
+func testExtendedTestdataLoggingGeneratelogContainer_non_json_log_templateJsonBytes() ([]byte, error) {
+	return _testExtendedTestdataLoggingGeneratelogContainer_non_json_log_templateJson, nil
+}
+
+func testExtendedTestdataLoggingGeneratelogContainer_non_json_log_templateJson() (*asset, error) {
+	bytes, err := testExtendedTestdataLoggingGeneratelogContainer_non_json_log_templateJsonBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/logging/generatelog/container_non_json_log_template.json", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataLoggingSubscriptionAllnamespaceOgYaml = []byte(`kind: Template
+apiVersion: template.openshift.io/v1
+metadata:
+  name: elasticsearch-operator-og-template
+objects:
+- apiVersion: operators.coreos.com/v1
+  kind: OperatorGroup
+  metadata:
+    name: ${OG_NAME}
+    namespace: ${NAMESPACE}
+  spec: {}
+parameters:
+  - name: OG_NAME
+    value: "openshift-operators-redhat"
+  - name: NAMESPACE
+    value: "openshift-operators-redhat"
+`)
+
+func testExtendedTestdataLoggingSubscriptionAllnamespaceOgYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataLoggingSubscriptionAllnamespaceOgYaml, nil
+}
+
+func testExtendedTestdataLoggingSubscriptionAllnamespaceOgYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataLoggingSubscriptionAllnamespaceOgYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/logging/subscription/allnamespace-og.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataLoggingSubscriptionSinglenamespaceOgYaml = []byte(`kind: Template
+apiVersion: template.openshift.io/v1
+metadata:
+  name: clusterlogging-og-template
+objects:
+- apiVersion: operators.coreos.com/v1
+  kind: OperatorGroup
+  metadata:
+    name: ${OG_NAME}
+    namespace: ${NAMESPACE}
+  spec:
+    targetNamespaces:
+    - ${NAMESPACE}
+parameters:
+  - name: OG_NAME
+    value: "openshift-logging"
+  - name: NAMESPACE
+    value: "openshift-logging"
+`)
+
+func testExtendedTestdataLoggingSubscriptionSinglenamespaceOgYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataLoggingSubscriptionSinglenamespaceOgYaml, nil
+}
+
+func testExtendedTestdataLoggingSubscriptionSinglenamespaceOgYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataLoggingSubscriptionSinglenamespaceOgYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/logging/subscription/singlenamespace-og.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataLoggingSubscriptionSubTemplateYaml = []byte(`kind: Template
+apiVersion: template.openshift.io/v1
+metadata:
+  name: subscription-template
+objects:
+- apiVersion: operators.coreos.com/v1alpha1
+  kind: Subscription
+  metadata:
+    name: ${PACKAGE_NAME}
+    namespace: ${NAMESPACE}
+  spec:
+    channel: ${CHANNEL}
+    installPlanApproval: ${INSTALL_PLAN_APPROVAL}
+    name: ${PACKAGE_NAME}
+    source: ${SOURCE}
+    sourceNamespace: ${SOURCE_NAMESPACE}
+parameters:
+  - name: PACKAGE_NAME
+  - name: NAMESPACE
+  - name: CHANNEL
+  - name: SOURCE
+    value: "qe-app-registry"
+  - name: SOURCE_NAMESPACE
+    value: "openshift-marketplace"
+  - name: INSTALL_PLAN_APPROVAL
+    value: Automatic
+`)
+
+func testExtendedTestdataLoggingSubscriptionSubTemplateYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataLoggingSubscriptionSubTemplateYaml, nil
+}
+
+func testExtendedTestdataLoggingSubscriptionSubTemplateYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataLoggingSubscriptionSubTemplateYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/logging/subscription/sub-template.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -22141,6 +22722,15 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/ldap/ldapserver-deployment.yaml":                                                                               testExtendedTestdataLdapLdapserverDeploymentYaml,
 	"test/extended/testdata/ldap/ldapserver-scripts-cm.yaml":                                                                               testExtendedTestdataLdapLdapserverScriptsCmYaml,
 	"test/extended/testdata/ldap/ldapserver-service.yaml":                                                                                  testExtendedTestdataLdapLdapserverServiceYaml,
+	"test/extended/testdata/logging/clusterlogforwarder/42363.yaml":                                                                        testExtendedTestdataLoggingClusterlogforwarder42363Yaml,
+	"test/extended/testdata/logging/clusterlogforwarder/42475.yaml":                                                                        testExtendedTestdataLoggingClusterlogforwarder42475Yaml,
+	"test/extended/testdata/logging/clusterlogging/cl-storage-template.yaml":                                                               testExtendedTestdataLoggingClusterloggingClStorageTemplateYaml,
+	"test/extended/testdata/logging/clusterlogging/cl-template.yaml":                                                                       testExtendedTestdataLoggingClusterloggingClTemplateYaml,
+	"test/extended/testdata/logging/generatelog/container_json_log_template.json":                                                          testExtendedTestdataLoggingGeneratelogContainer_json_log_templateJson,
+	"test/extended/testdata/logging/generatelog/container_non_json_log_template.json":                                                      testExtendedTestdataLoggingGeneratelogContainer_non_json_log_templateJson,
+	"test/extended/testdata/logging/subscription/allnamespace-og.yaml":                                                                     testExtendedTestdataLoggingSubscriptionAllnamespaceOgYaml,
+	"test/extended/testdata/logging/subscription/singlenamespace-og.yaml":                                                                  testExtendedTestdataLoggingSubscriptionSinglenamespaceOgYaml,
+	"test/extended/testdata/logging/subscription/sub-template.yaml":                                                                        testExtendedTestdataLoggingSubscriptionSubTemplateYaml,
 	"test/extended/testdata/networking/egressfirewall1.yaml":                                                                               testExtendedTestdataNetworkingEgressfirewall1Yaml,
 	"test/extended/testdata/networking/egressfirewall2.yaml":                                                                               testExtendedTestdataNetworkingEgressfirewall2Yaml,
 	"test/extended/testdata/networking/egressip-config1.yaml":                                                                              testExtendedTestdataNetworkingEgressipConfig1Yaml,
@@ -22397,6 +22987,25 @@ var _bintree = &bintree{nil, map[string]*bintree{
 					"ldapserver-deployment.yaml": {testExtendedTestdataLdapLdapserverDeploymentYaml, map[string]*bintree{}},
 					"ldapserver-scripts-cm.yaml": {testExtendedTestdataLdapLdapserverScriptsCmYaml, map[string]*bintree{}},
 					"ldapserver-service.yaml":    {testExtendedTestdataLdapLdapserverServiceYaml, map[string]*bintree{}},
+				}},
+				"logging": {nil, map[string]*bintree{
+					"clusterlogforwarder": {nil, map[string]*bintree{
+						"42363.yaml": {testExtendedTestdataLoggingClusterlogforwarder42363Yaml, map[string]*bintree{}},
+						"42475.yaml": {testExtendedTestdataLoggingClusterlogforwarder42475Yaml, map[string]*bintree{}},
+					}},
+					"clusterlogging": {nil, map[string]*bintree{
+						"cl-storage-template.yaml": {testExtendedTestdataLoggingClusterloggingClStorageTemplateYaml, map[string]*bintree{}},
+						"cl-template.yaml":         {testExtendedTestdataLoggingClusterloggingClTemplateYaml, map[string]*bintree{}},
+					}},
+					"generatelog": {nil, map[string]*bintree{
+						"container_json_log_template.json":     {testExtendedTestdataLoggingGeneratelogContainer_json_log_templateJson, map[string]*bintree{}},
+						"container_non_json_log_template.json": {testExtendedTestdataLoggingGeneratelogContainer_non_json_log_templateJson, map[string]*bintree{}},
+					}},
+					"subscription": {nil, map[string]*bintree{
+						"allnamespace-og.yaml":    {testExtendedTestdataLoggingSubscriptionAllnamespaceOgYaml, map[string]*bintree{}},
+						"singlenamespace-og.yaml": {testExtendedTestdataLoggingSubscriptionSinglenamespaceOgYaml, map[string]*bintree{}},
+						"sub-template.yaml":       {testExtendedTestdataLoggingSubscriptionSubTemplateYaml, map[string]*bintree{}},
+					}},
 				}},
 				"networking": {nil, map[string]*bintree{
 					"egressfirewall1.yaml":  {testExtendedTestdataNetworkingEgressfirewall1Yaml, map[string]*bintree{}},
