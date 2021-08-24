@@ -870,4 +870,40 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
         o.Expect(output).To(o.ContainSubstring("tests selected"))
     })
 
+    // author: chuo@redhat.com
+    g.It("Author:chuo-High-34426-Ensure that Helm Based Operators creation is working ", func() {
+        operatorsdkCLI.showInfo = true
+        exec.Command("bash", "-c", "mkdir -p /tmp/ocp-34426/nginx-operator && cd /tmp/ocp-34426/nginx-operator && operator-sdk init --plugins=helm").Output()
+        defer exec.Command("bash", "-c", "cd /tmp/ocp-34426/nginx-operator && make undeploy").Output()
+        defer exec.Command("bash", "-c", "rm -rf /tmp/ocp-34426").Output()
+        exec.Command("bash", "-c", "cd /tmp/ocp-34426/nginx-operator && operator-sdk create api --group demo --version v1 --kind Nginx").Output()
+
+        // to replace namespace memcached-operator-system with nginx-operator-system-34426
+        exec.Command("bash", "-c", "sed -i 's/name: system/name: system-ocp34426/g' `grep -rl \"name: system\" /tmp/ocp-34426/nginx-operator`").Output()
+        exec.Command("bash", "-c", "sed -i 's/namespace: system/namespace: system-ocp34426/g'  `grep -rl \"namespace: system\" /tmp/ocp-34426/nginx-operator`").Output()
+        exec.Command("bash", "-c", "sed -i 's/namespace: nginx-operator-system/namespace: nginx-operator-system-ocp34426/g'  `grep -rl \"namespace: nginx-operator-system\" /tmp/ocp-34426/nginx-operator`").Output()
+
+        exec.Command("bash", "-c", "cd /tmp/ocp-34426/nginx-operator && make install").Output()
+        exec.Command("bash", "-c", "cd /tmp/ocp-34426/nginx-operator && make deploy IMG=quay.io/olmqe/nginx-operator-base:v4.8").Output()
+
+        _, err := oc.AsAdmin().WithoutNamespace().Run("adm").Args( "policy", "add-scc-to-user", "anyuid", "system:serviceaccount:nginx-operator-system-ocp34426:nginx-sample").Output()
+        o.Expect(err).NotTo(o.HaveOccurred())
+
+        _, err = oc.AsAdmin().WithoutNamespace().Run("apply").Args( "-f", "/tmp/ocp-34426/nginx-operator/config/samples/demo_v1_nginx.yaml","-n","nginx-operator-system-ocp34426").Output()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        
+        waitErr := wait.Poll(15*time.Second, 360*time.Second, func() (bool, error) {
+            msg, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-n", "nginx-operator-system-ocp34426").Output()
+            if strings.Contains(msg, "nginx-sample") {
+                return true, nil
+            }
+            return false, nil
+        })
+        o.Expect(waitErr).NotTo(o.HaveOccurred())
+        
+        podstatus, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-n", "nginx-operator-system-ocp34426","-o=jsonpath={.items[1].status.phase}").Output()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        o.Expect(podstatus).To(o.ContainSubstring("Running"))
+    })
+
 })
