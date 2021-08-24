@@ -27,6 +27,7 @@ import (
 	_ "github.com/openshift/openshift-tests-private/test/extended/mco"
 	_ "github.com/openshift/openshift-tests-private/test/extended/networking"
 	_ "github.com/openshift/openshift-tests-private/test/extended/node"
+	_ "github.com/openshift/openshift-tests-private/test/extended/container_engine_tools"
 	_ "github.com/openshift/openshift-tests-private/test/extended/operators"
 	_ "github.com/openshift/openshift-tests-private/test/extended/operatorsdk"
 	_ "github.com/openshift/openshift-tests-private/test/extended/opm"

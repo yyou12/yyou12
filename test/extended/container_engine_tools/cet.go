@@ -1,4 +1,4 @@
-package node
+package container_engine_tools
 
 import (
 	"path/filepath"
@@ -10,12 +10,12 @@ import (
 	//e2e "k8s.io/kubernetes/test/e2e/framework"
 )
 
-var _ = g.Describe("[sig-node] Node Container Engine Tools crio,scc", func() {
+var _ = g.Describe("[sig-node] Container_Engine_Tools crio,scc", func() {
 	defer g.GinkgoRecover()
 
 	var (
 		oc				= exutil.NewCLI("node-"+getRandomString(), exutil.KubeConfigPath())
-		buildPruningBaseDir		= exutil.FixturePath("testdata", "node")
+		buildPruningBaseDir		= exutil.FixturePath("testdata", "container_engine_tools")
 		customTemp			= filepath.Join(buildPruningBaseDir, "pod-modify.yaml")
 		customctrcfgTemp		= filepath.Join(buildPruningBaseDir, "containerRuntimeConfig.yaml")
 

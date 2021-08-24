@@ -7,6 +7,8 @@
 // test/extended/testdata/clusterinfrastructure/gcp-machineset.yaml
 // test/extended/testdata/clusterinfrastructure/osp-machineset.yaml
 // test/extended/testdata/clusterinfrastructure/vsphere-machineset.yaml
+// test/extended/testdata/container_engine_tools/containerRuntimeConfig.yaml
+// test/extended/testdata/container_engine_tools/pod-modify.yaml
 // test/extended/testdata/image_registry/inputimage.yaml
 // test/extended/testdata/ldap/groupsync.sh
 // test/extended/testdata/ldap/ldapserver-config-cm.yaml
@@ -26,7 +28,6 @@
 // test/extended/testdata/networking/egressfirewall2.yaml
 // test/extended/testdata/networking/egressip-config1.yaml
 // test/extended/testdata/networking/ping-for-pod.yaml
-// test/extended/testdata/node/containerRuntimeConfig.yaml
 // test/extended/testdata/node/pod-modify.yaml
 // test/extended/testdata/oauthserver/cabundle-cm.yaml
 // test/extended/testdata/oauthserver/oauth-network.yaml
@@ -737,6 +738,111 @@ func testExtendedTestdataClusterinfrastructureVsphereMachinesetYaml() (*asset, e
 	}
 
 	info := bindataFileInfo{name: "test/extended/testdata/clusterinfrastructure/vsphere-machineset.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataContainer_engine_toolsContainerruntimeconfigYaml = []byte(`apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: ContainerRuntimeConfig-template
+objects:
+- apiVersion: machineconfiguration.openshift.io/v1
+  kind: ContainerRuntimeConfig
+  metadata:
+   name: parameter-testing
+  spec:
+   machineConfigPoolSelector:
+     matchLabels:
+       pools.operator.machineconfiguration.openshift.io/worker: '' 
+   containerRuntimeConfig: 
+     pidsLimit: 2048
+     logLevel: "${LOGLEVEL}"
+     overlaySize: "${OVERLAY}"
+     logSizeMax: "${LOGSIZEMAX}"
+parameters:      
+#- name: NAMESPACE
+- name: LOGLEVEL
+- name: OVERLAY
+- name: LOGSIZEMAX   
+`)
+
+func testExtendedTestdataContainer_engine_toolsContainerruntimeconfigYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataContainer_engine_toolsContainerruntimeconfigYaml, nil
+}
+
+func testExtendedTestdataContainer_engine_toolsContainerruntimeconfigYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataContainer_engine_toolsContainerruntimeconfigYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/container_engine_tools/containerRuntimeConfig.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataContainer_engine_toolsPodModifyYaml = []byte(`apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: pod-modify-template
+objects:
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    name: "${NAME}"
+    namespace: "${NAMESPACE}"
+  spec:
+    containers:
+    - name: hello-pod
+      image: quay.io/openshifttest/hello-pod
+      ports:
+      - containerPort: 80
+      volumeMounts:
+      - name: workdir
+        mountPath: "${MOUNTPATH}"
+    initContainers:
+    - name: init
+      image: centos:centos7
+      command: ["${COMMAND}"]
+      args: 
+      - "-c"
+      - "${ARGS}"
+      volumeMounts:
+      - name: workdir
+        mountPath: /work-dir
+    restartPolicy: "${POLICY}"
+    securityContext:
+      seLinuxOptions:
+        user: "${USER}"
+        role: "${ROLE}"
+        level: "${LEVEL}"
+    volumes:
+    - name: workdir
+      emptyDir: {}
+parameters:      
+- name: NAME
+- name: NAMESPACE
+- name: MOUNTPATH
+- name: COMMAND
+- name: ARGS  
+- name: POLICY
+- name: USER
+- name: ROLE
+- name: LEVEL
+`)
+
+func testExtendedTestdataContainer_engine_toolsPodModifyYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataContainer_engine_toolsPodModifyYaml, nil
+}
+
+func testExtendedTestdataContainer_engine_toolsPodModifyYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataContainer_engine_toolsPodModifyYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/container_engine_tools/pod-modify.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -2365,46 +2471,6 @@ func testExtendedTestdataNetworkingPingForPodYaml() (*asset, error) {
 	}
 
 	info := bindataFileInfo{name: "test/extended/testdata/networking/ping-for-pod.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
-	a := &asset{bytes: bytes, info: info}
-	return a, nil
-}
-
-var _testExtendedTestdataNodeContainerruntimeconfigYaml = []byte(`apiVersion: template.openshift.io/v1
-kind: Template
-metadata:
-  name: ContainerRuntimeConfig-template
-objects:
-- apiVersion: machineconfiguration.openshift.io/v1
-  kind: ContainerRuntimeConfig
-  metadata:
-   name: parameter-testing
-  spec:
-   machineConfigPoolSelector:
-     matchLabels:
-       pools.operator.machineconfiguration.openshift.io/worker: '' 
-   containerRuntimeConfig: 
-     pidsLimit: 2048
-     logLevel: "${LOGLEVEL}"
-     overlaySize: "${OVERLAY}"
-     logSizeMax: "${LOGSIZEMAX}"
-parameters:      
-#- name: NAMESPACE
-- name: LOGLEVEL
-- name: OVERLAY
-- name: LOGSIZEMAX   
-`)
-
-func testExtendedTestdataNodeContainerruntimeconfigYamlBytes() ([]byte, error) {
-	return _testExtendedTestdataNodeContainerruntimeconfigYaml, nil
-}
-
-func testExtendedTestdataNodeContainerruntimeconfigYaml() (*asset, error) {
-	bytes, err := testExtendedTestdataNodeContainerruntimeconfigYamlBytes()
-	if err != nil {
-		return nil, err
-	}
-
-	info := bindataFileInfo{name: "test/extended/testdata/node/containerRuntimeConfig.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -22716,6 +22782,8 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/clusterinfrastructure/gcp-machineset.yaml":                                                                     testExtendedTestdataClusterinfrastructureGcpMachinesetYaml,
 	"test/extended/testdata/clusterinfrastructure/osp-machineset.yaml":                                                                     testExtendedTestdataClusterinfrastructureOspMachinesetYaml,
 	"test/extended/testdata/clusterinfrastructure/vsphere-machineset.yaml":                                                                 testExtendedTestdataClusterinfrastructureVsphereMachinesetYaml,
+	"test/extended/testdata/container_engine_tools/containerRuntimeConfig.yaml":                                                            testExtendedTestdataContainer_engine_toolsContainerruntimeconfigYaml,
+	"test/extended/testdata/container_engine_tools/pod-modify.yaml":                                                                        testExtendedTestdataContainer_engine_toolsPodModifyYaml,
 	"test/extended/testdata/image_registry/inputimage.yaml":                                                                                testExtendedTestdataImage_registryInputimageYaml,
 	"test/extended/testdata/ldap/groupsync.sh":                                                                                             testExtendedTestdataLdapGroupsyncSh,
 	"test/extended/testdata/ldap/ldapserver-config-cm.yaml":                                                                                testExtendedTestdataLdapLdapserverConfigCmYaml,
@@ -22735,7 +22803,6 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/networking/egressfirewall2.yaml":                                                                               testExtendedTestdataNetworkingEgressfirewall2Yaml,
 	"test/extended/testdata/networking/egressip-config1.yaml":                                                                              testExtendedTestdataNetworkingEgressipConfig1Yaml,
 	"test/extended/testdata/networking/ping-for-pod.yaml":                                                                                  testExtendedTestdataNetworkingPingForPodYaml,
-	"test/extended/testdata/node/containerRuntimeConfig.yaml":                                                                              testExtendedTestdataNodeContainerruntimeconfigYaml,
 	"test/extended/testdata/node/pod-modify.yaml":                                                                                          testExtendedTestdataNodePodModifyYaml,
 	"test/extended/testdata/oauthserver/cabundle-cm.yaml":                                                                                  testExtendedTestdataOauthserverCabundleCmYaml,
 	"test/extended/testdata/oauthserver/oauth-network.yaml":                                                                                testExtendedTestdataOauthserverOauthNetworkYaml,
@@ -22978,6 +23045,10 @@ var _bintree = &bintree{nil, map[string]*bintree{
 					"osp-machineset.yaml":     {testExtendedTestdataClusterinfrastructureOspMachinesetYaml, map[string]*bintree{}},
 					"vsphere-machineset.yaml": {testExtendedTestdataClusterinfrastructureVsphereMachinesetYaml, map[string]*bintree{}},
 				}},
+				"container_engine_tools": {nil, map[string]*bintree{
+					"containerRuntimeConfig.yaml": {testExtendedTestdataContainer_engine_toolsContainerruntimeconfigYaml, map[string]*bintree{}},
+					"pod-modify.yaml":             {testExtendedTestdataContainer_engine_toolsPodModifyYaml, map[string]*bintree{}},
+				}},
 				"image_registry": {nil, map[string]*bintree{
 					"inputimage.yaml": {testExtendedTestdataImage_registryInputimageYaml, map[string]*bintree{}},
 				}},
@@ -23014,8 +23085,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 					"ping-for-pod.yaml":     {testExtendedTestdataNetworkingPingForPodYaml, map[string]*bintree{}},
 				}},
 				"node": {nil, map[string]*bintree{
-					"containerRuntimeConfig.yaml": {testExtendedTestdataNodeContainerruntimeconfigYaml, map[string]*bintree{}},
-					"pod-modify.yaml":             {testExtendedTestdataNodePodModifyYaml, map[string]*bintree{}},
+					"pod-modify.yaml": {testExtendedTestdataNodePodModifyYaml, map[string]*bintree{}},
 				}},
 				"oauthserver": {nil, map[string]*bintree{
 					"cabundle-cm.yaml":   {testExtendedTestdataOauthserverCabundleCmYaml, map[string]*bintree{}},
