@@ -2196,47 +2196,109 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		}
 	})
 
-	// author: scolange@redhat.com
-	g.It("Author:scolange-Medium-23673-Installplan can be created while Install and uninstall operators via Marketplace for 5 times [Slow]", func() {
+	// Author: tbuskey@redhat.com, scolange@redhat.com
+	g.It("Author:tbuskey-Medium-23673-Installplan can be created while Install and uninstall operators via Marketplace for 5 times [Slow]", func() {
+		var (
+			itName              = g.CurrentGinkgoTestDescription().TestText
+			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
+			ogTemplate          = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+			subFile             = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+			finalCSV            = ""
+			err                 error
+			exists              bool
+			i                   int
+			msgCsv              string
+			msgSub              string
+			waitErr             error
+		)
+
 		oc.SetupProject()
-		g.By("1) Install the OperatorGroup in a random project")
-		dr := make(describerResrouce)
-		itName := g.CurrentGinkgoTestDescription().TestText
-		dr.addIr(itName)
 
-		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
-		ogSingleTemplate := filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
-		og := operatorGroupDescription{
-			name:      "og-23673",
-			namespace: oc.Namespace(),
-			template:  ogSingleTemplate,
-		}
-		og.createwithCheck(oc, itName, dr)
-
-		var count = 0
-		for i := 0; i < 5; i++ {
-			count++
-
-			g.By("2) Install the etcdoperator v0.9.4 with Automatic approval")
-			subTemplate := filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
-			sub := subscriptionDescription{
-				subName:                "sub-23673",
+		var (
+			og = operatorGroupDescription{
+				name:      "23673",
+				namespace: oc.Namespace(),
+				template:  ogTemplate,
+			}
+			sub = subscriptionDescription{
+				subName:                "prometheus-23673",
 				namespace:              oc.Namespace(),
 				catalogSourceName:      "community-operators",
 				catalogSourceNamespace: "openshift-marketplace",
-				channel:                "singlenamespace-alpha",
 				ipApproval:             "Automatic",
-				operatorPackage:        "etcd",
-				startingCSV:            "etcdoperator.v0.9.4",
+				channel:                "beta",
+				operatorPackage:        "prometheus",
+				startingCSV:            finalCSV,
 				singleNamespace:        true,
-				template:               subTemplate,
+				template:               subFile,
 			}
+		)
 
-			sub.create(oc, itName, dr)
-			newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", "etcdoperator.v0.9.4", "-n", oc.Namespace(), "-o=jsonpath={.status.phase}"}).check(oc)
-			sub.delete(itName, dr)
-			sub.deleteCSV(itName, dr)
+		dr := make(describerResrouce)
+		dr.addIr(itName)
+
+		g.By("1, check if this operator ready for installing")
+		e2e.Logf("Check if %v exists in the %v catalog", sub.operatorPackage, sub.catalogSourceName)
+		exists, err = clusterPackageExists(oc, sub)
+		if !exists {
+			e2e.Failf("FAIL:PackageMissing %v does not exist in catalog %v", sub.operatorPackage, sub.catalogSourceName)
 		}
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("2, Create og")
+		og.create(oc, itName, dr)
+
+		g.By("3, Subscribe to operator prometheus")
+		sub.create(oc, itName, dr)
+		defer sub.delete(itName, dr)
+		defer sub.deleteCSV(itName, dr)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "AtLatestKnown", ok, []string{"sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.state}"}).check(oc)
+
+		// grab the installedCSV and use as startingCSV
+		finalCSV, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("sub", "-n", oc.Namespace(), sub.subName, "-o", "jsonpath={.status.installedCSV}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(finalCSV).NotTo(o.BeEmpty())
+		sub.startingCSV = finalCSV
+
+		g.By("4 Unsubscribe to operator prometheus")
+		sub.delete(itName, dr)
+		sub.deleteCSV(itName, dr)
+		msgSub, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("sub", "-n", oc.Namespace()).Output()
+		msgCsv, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", "-n", oc.Namespace()).Output()
+		if !strings.Contains(msgSub, "No resources found") && (!strings.Contains(msgCsv, "No resources found") || strings.Contains(msgCsv, finalCSV)) {
+			e2e.Failf("Cycle #1 subscribe/unsubscribe failed %v:\n%v \n%v \n", err, msgSub, msgCsv)
+		}
+
+		g.By("5, subscribe/unsubscribe to operator prometheus 4 more times")
+		for i = 2; i < 6; i++ {
+			e2e.Logf("Cycle #%v starts", i)
+
+			// g.By("subscribe")
+			sub.create(oc, itName, dr)
+			newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", finalCSV, "-n", oc.Namespace(), "-o=jsonpath={.status.phase}"}).check(oc)
+
+			// g.By("unsubscribe")
+			msgCsv, err = oc.AsAdmin().WithoutNamespace().Run("delete").Args("csv", "-n", oc.Namespace(), sub.installedCSV).Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			// sub.deleteCSV(itName, dr) // this doesn't seem to work for multiple cycles
+			sub.delete(itName, dr)
+			// Need to ensure its deleted before proceeding
+			waitErr = wait.Poll(3*time.Second, 180*time.Second, func() (bool, error) {
+				msgSub, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("sub", "-n", oc.Namespace()).Output()
+				o.Expect(err).NotTo(o.HaveOccurred())
+				msgCsv, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", "-n", oc.Namespace()).Output()
+				o.Expect(err).NotTo(o.HaveOccurred())
+				if strings.Contains(msgSub, "No resources found") && (strings.Contains(msgCsv, "No resources found") || !strings.Contains(msgCsv, finalCSV)) {
+					return true, nil
+				}
+				return false, nil
+			})
+			o.Expect(waitErr).NotTo(o.HaveOccurred())
+		}
+
+		g.By("6 FINISH")
+		i--
+		e2e.Logf("Finished %v subscribe & unsubscribe cycles\n\n", i)
 	})
 
 	// author: scolange@redhat.com
