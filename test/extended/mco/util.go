@@ -70,15 +70,31 @@ func (mcp *machineConfigPool) waitForComplete(oc *exutil.CLI) {
 }
 
 func getFirstWorkerNode(oc *exutil.CLI) (string, error) {
-	stdout, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("node", "-l", "node-role.kubernetes.io/worker", "-o", "jsonpath='{.items[0].metadata.name}'").Output()
+	return getClusterNodeBy(oc, "worker", "0")
+}
+
+func getFirstMasterNode(oc *exutil.CLI) (string, error) {
+	return getClusterNodeBy(oc, "master", "0")
+}
+
+func getClusterNodeBy(oc *exutil.CLI, role string, index string) (string, error) {
+	stdout, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("node", "-l", "node-role.kubernetes.io/"+role, "-o", "jsonpath='{.items["+index+"].metadata.name}'").Output()
 	return strings.Trim(stdout, "'"), err
 }
 
-func debugNode(oc *exutil.CLI, nodeName string, cmd string) (string, error) {
-	cargs := []string{"node/" + nodeName, "--", "chroot", "/host"}
-	parsed := strings.Split(cmd, " ")
-	cargs = append(cargs, parsed...)
-	return oc.AsAdmin().WithoutNamespace().Run("debug").Args(cargs...).Output()
+func debugNodeWithChroot(oc *exutil.CLI, nodeName string, cmd ...string) (string, error) {
+	return debugNode(oc, nodeName, true, cmd...)
+}
+
+func debugNode(oc *exutil.CLI, nodeName string, needChroot bool, cmd ...string) (string, error) {
+	var cargs []string
+	if needChroot {
+		cargs = []string{"node/" + nodeName, "--", "chroot", "/host"}
+	} else {
+		cargs = []string{"node/" + nodeName, "--"}
+	}
+	cargs = append(cargs, cmd...)
+	return oc.AsAdmin().Run("debug").Args(cargs...).Output()
 }
 
 func applyResourceFromTemplate(oc *exutil.CLI, parameters ...string) error {

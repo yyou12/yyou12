@@ -1,6 +1,7 @@
 package mco
 
 import (
+	"strconv"
 	"strings"
 
 	g "github.com/onsi/ginkgo"
@@ -52,13 +53,14 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		mcName := "change-workers-chrony-configuration"
 		mcTemplate := generateTemplateAbsolutePath("change-workers-chrony-configuration.yaml")
 		mc := machineConfig{name: mcName, template: mcTemplate, pool: "worker"}
+		defer mc.delete(oc)
 		mc.create(oc)
 
 		g.By("get one worker node to verify the config changes")
 		nodeName, err := getFirstWorkerNode(oc)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		stdout, err := debugNode(oc, strings.Trim(nodeName, "'"), "cat /etc/chrony.conf")
+		stdout, err := debugNodeWithChroot(oc, nodeName, "cat", "/etc/chrony.conf")
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		e2e.Logf(stdout)
@@ -68,6 +70,35 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		o.Expect(stdout).Should(o.ContainSubstring("rtcsync"))
 		o.Expect(stdout).Should(o.ContainSubstring("logdir /var/log/chrony"))
 
-		mc.delete(oc)
+	})
+
+	g.It("Author:rioliu-Longduration-CPaasrunOnly-High-42520-retrieve mc with large size from mcs [Disruptive]", func() {
+		g.By("create new mc to add 100+ dummy files to /var/log")
+
+		mcName := "bz1866117-add-dummy-files"
+		mcTemplate := generateTemplateAbsolutePath("bz1866117-add-dummy-files.yaml")
+		mc := machineConfig{name: mcName, template: mcTemplate, pool: "worker"}
+		defer mc.delete(oc)
+		mc.create(oc)
+
+		g.By("get one master node to do mc query")
+		masterNode, err := getFirstMasterNode(oc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		stdout, err := debugNode(oc, masterNode, false, "curl", "-w", "'Total: %{time_total}'", "-k", "-s", "-o", "/dev/null", "https://localhost:22623/config/worker")
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		var timecost float64
+		for _, line := range strings.Split(strings.TrimRight(stdout, "\n"), "\n") {
+			if strings.Contains(line, "Total") {
+				substr := line[8 : len(line)-1]
+				timecost, _ = strconv.ParseFloat(substr, 64)
+				break
+			}
+		}
+		e2e.Logf("api time cost is: %f", timecost)
+
+		o.Expect(float64(timecost)).Should(o.BeNumerically("<", 10.0))
+
 	})
 })
