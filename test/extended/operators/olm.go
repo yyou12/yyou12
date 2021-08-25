@@ -842,6 +842,44 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		newCheck("expect", asAdmin, withoutNamespace, compare, "", ok, []string{"og", og.name, "-n", ns, "-o=jsonpath={.status.conditions..reason}"}).check(oc)
 
 	})
+
+	// author: bandrade@redhat.com
+	g.It("Author:bandrade-Medium-42972-OperatorGroup status should indicate if the SA named in spec not found", func() {
+		var (
+			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
+			ogSAtemplate        = filepath.Join(buildPruningBaseDir, "operatorgroup-serviceaccount.yaml")
+			sa                  = "scoped-42972"
+		)
+
+		oc.SetupProject()
+		dr := make(describerResrouce)
+		itName := g.CurrentGinkgoTestDescription().TestText
+		ns := oc.Namespace()
+		dr.addIr(itName)
+
+		var (
+			og = operatorGroupDescription{
+				name:               "og-42972",
+				namespace:          ns,
+				template:           ogSAtemplate,
+				serviceAccountName: sa,
+			}
+		)
+
+		g.By("1) Create first OperatorGroup")
+		og.create(oc, itName, dr)
+
+		g.By("2) Check OperatorGroup Status")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "ServiceAccountNotFound", ok, []string{"og", og.name, "-n", ns, "-o=jsonpath={.status.conditions..reason}"}).check(oc)
+
+		g.By("3) Check Service Account")
+		_, err := oc.WithoutNamespace().AsAdmin().Run("create").Args("sa", sa, "-n", ns).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("4) Check OperatorGroup status")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "", ok, []string{"og", og.name, "-n", ns, "-o=jsonpath={.status.conditions..reason}"}).check(oc)
+
+	})
 	// author: jiazha@redhat.com
 	g.It("Author:jiazha-ConnectedOnly-Medium-33902-Catalog Weighting", func() {
 		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
