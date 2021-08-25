@@ -1194,7 +1194,7 @@ func doAction(oc *exutil.CLI, action string, asAdmin bool, withoutNamespace bool
 func clusterPackageExists(oc *exutil.CLI, sub subscriptionDescription) (bool, error) {
 	found := false
 	var v []string
-	msg, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("packagemanifest", "-n", "openshift-marketplace", "-o=jsonpath={range .items[*]}{@.metadata.name}{\",\"}{@.metadata.labels.catalog}{\"\\n\"}{end}").Output()
+	msg, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("packagemanifest", "-A", "-o=jsonpath={range .items[*]}{@.metadata.name}{\",\"}{@.metadata.labels.catalog}{\"\\n\"}{end}").Output()
 	if err == nil {
 		for _, s := range strings.Fields(msg) {
 			v = strings.Split(s, ",")

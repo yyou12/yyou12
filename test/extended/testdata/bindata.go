@@ -120,6 +120,16 @@
 // test/extended/testdata/opm/aqua/1.0.1/aquascanners.operator.aquasec.com.crd.yaml
 // test/extended/testdata/opm/aqua/1.0.1/aquaservers.operator.aquasec.com.crd.yaml
 // test/extended/testdata/opm/aqua/aqua-operator.package.yaml
+// test/extended/testdata/opm/cockroachdb/supportproperties/5.0.3/manifests/charts.operatorhub.io_cockroachdbs.yaml
+// test/extended/testdata/opm/cockroachdb/supportproperties/5.0.3/manifests/cockroachdb-controller-manager-metrics-service_v1_service.yaml
+// test/extended/testdata/opm/cockroachdb/supportproperties/5.0.3/manifests/cockroachdb-metrics-reader_rbac.authorization.k8s.io_v1_clusterrole.yaml
+// test/extended/testdata/opm/cockroachdb/supportproperties/5.0.3/manifests/cockroachdb.clusterserviceversion.yaml
+// test/extended/testdata/opm/cockroachdb/supportproperties/5.0.3/metadata/properties.yaml
+// test/extended/testdata/opm/cockroachdb/supportproperties/5.0.4/manifests/charts.operatorhub.io_cockroachdbs.yaml
+// test/extended/testdata/opm/cockroachdb/supportproperties/5.0.4/manifests/cockroachdb-controller-manager-metrics-service_v1_service.yaml
+// test/extended/testdata/opm/cockroachdb/supportproperties/5.0.4/manifests/cockroachdb-metrics-reader_rbac.authorization.k8s.io_v1_clusterrole.yaml
+// test/extended/testdata/opm/cockroachdb/supportproperties/5.0.4/manifests/cockroachdb.clusterserviceversion.yaml
+// test/extended/testdata/opm/cockroachdb/supportproperties/5.0.4/metadata/properties.yaml
 // test/extended/testdata/opm/cockroachdb/supportsemver/5.0.3/charts.operatorhub.io_cockroachdbs.yaml
 // test/extended/testdata/opm/cockroachdb/supportsemver/5.0.3/cockroachdb-controller-manager-metrics-service_v1_service.yaml
 // test/extended/testdata/opm/cockroachdb/supportsemver/5.0.3/cockroachdb-metrics-reader_rbac.authorization.k8s.io_v1_clusterrole.yaml
@@ -12626,6 +12636,1791 @@ func testExtendedTestdataOpmAquaAquaOperatorPackageYaml() (*asset, error) {
 	return a, nil
 }
 
+var _testExtendedTestdataOpmCockroachdbSupportproperties503ManifestsChartsOperatorhubIo_cockroachdbsYaml = []byte(`apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  creationTimestamp: null
+  name: cockroachdbs.charts.operatorhub.io
+spec:
+  group: charts.operatorhub.io
+  names:
+    kind: Cockroachdb
+    listKind: CockroachdbList
+    plural: cockroachdbs
+    singular: cockroachdb
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: Cockroachdb is the Schema for the cockroachdbs API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: Spec defines the desired state of Cockroachdb
+            type: object
+            x-kubernetes-preserve-unknown-fields: true
+          status:
+            description: Status defines the observed state of Cockroachdb
+            type: object
+            x-kubernetes-preserve-unknown-fields: true
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: null
+  storedVersions: null
+`)
+
+func testExtendedTestdataOpmCockroachdbSupportproperties503ManifestsChartsOperatorhubIo_cockroachdbsYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataOpmCockroachdbSupportproperties503ManifestsChartsOperatorhubIo_cockroachdbsYaml, nil
+}
+
+func testExtendedTestdataOpmCockroachdbSupportproperties503ManifestsChartsOperatorhubIo_cockroachdbsYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataOpmCockroachdbSupportproperties503ManifestsChartsOperatorhubIo_cockroachdbsYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/opm/cockroachdb/supportproperties/5.0.3/manifests/charts.operatorhub.io_cockroachdbs.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataOpmCockroachdbSupportproperties503ManifestsCockroachdbControllerManagerMetricsService_v1_serviceYaml = []byte(`apiVersion: v1
+kind: Service
+metadata:
+  creationTimestamp: null
+  labels:
+    control-plane: controller-manager
+  name: cockroachdb-controller-manager-metrics-service
+spec:
+  ports:
+  - name: https
+    port: 8443
+    targetPort: https
+  selector:
+    control-plane: controller-manager
+status:
+  loadBalancer: {}
+`)
+
+func testExtendedTestdataOpmCockroachdbSupportproperties503ManifestsCockroachdbControllerManagerMetricsService_v1_serviceYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataOpmCockroachdbSupportproperties503ManifestsCockroachdbControllerManagerMetricsService_v1_serviceYaml, nil
+}
+
+func testExtendedTestdataOpmCockroachdbSupportproperties503ManifestsCockroachdbControllerManagerMetricsService_v1_serviceYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataOpmCockroachdbSupportproperties503ManifestsCockroachdbControllerManagerMetricsService_v1_serviceYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/opm/cockroachdb/supportproperties/5.0.3/manifests/cockroachdb-controller-manager-metrics-service_v1_service.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataOpmCockroachdbSupportproperties503ManifestsCockroachdbMetricsReader_rbacAuthorizationK8sIo_v1_clusterroleYaml = []byte(`apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  name: cockroachdb-metrics-reader
+rules:
+- nonResourceURLs:
+  - /metrics
+  verbs:
+  - get
+`)
+
+func testExtendedTestdataOpmCockroachdbSupportproperties503ManifestsCockroachdbMetricsReader_rbacAuthorizationK8sIo_v1_clusterroleYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataOpmCockroachdbSupportproperties503ManifestsCockroachdbMetricsReader_rbacAuthorizationK8sIo_v1_clusterroleYaml, nil
+}
+
+func testExtendedTestdataOpmCockroachdbSupportproperties503ManifestsCockroachdbMetricsReader_rbacAuthorizationK8sIo_v1_clusterroleYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataOpmCockroachdbSupportproperties503ManifestsCockroachdbMetricsReader_rbacAuthorizationK8sIo_v1_clusterroleYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/opm/cockroachdb/supportproperties/5.0.3/manifests/cockroachdb-metrics-reader_rbac.authorization.k8s.io_v1_clusterrole.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataOpmCockroachdbSupportproperties503ManifestsCockroachdbClusterserviceversionYaml = []byte(`apiVersion: operators.coreos.com/v1alpha1
+kind: ClusterServiceVersion
+metadata:
+  annotations:
+    alm-examples: |-
+      [
+        {
+          "apiVersion": "charts.operatorhub.io/v1alpha1",
+          "kind": "Cockroachdb",
+          "metadata": {
+            "name": "cockroachdb-sample"
+          },
+          "spec": {
+            "clusterDomain": "cluster.local",
+            "conf": {
+              "attrs": [],
+              "cache": "25%",
+              "cluster-name": "",
+              "disable-cluster-name-verification": false,
+              "http-port": 8080,
+              "join": [],
+              "locality": "",
+              "logtostderr": "INFO",
+              "max-sql-memory": "25%",
+              "port": 26257,
+              "single-node": false,
+              "sql-audit-dir": ""
+            },
+            "image": {
+              "credentials": {},
+              "pullPolicy": "IfNotPresent",
+              "repository": "cockroachdb/cockroach",
+              "tag": "v20.2.3"
+            },
+            "ingress": {
+              "annotations": {},
+              "enabled": false,
+              "hosts": [],
+              "labels": {},
+              "paths": [
+                "/"
+              ],
+              "tls": []
+            },
+            "init": {
+              "affinity": {},
+              "annotations": {},
+              "labels": {
+                "app.kubernetes.io/component": "init"
+              },
+              "nodeSelector": {},
+              "resources": {},
+              "tolerations": []
+            },
+            "labels": {},
+            "networkPolicy": {
+              "enabled": false,
+              "ingress": {
+                "grpc": [],
+                "http": []
+              }
+            },
+            "service": {
+              "discovery": {
+                "annotations": {},
+                "labels": {
+                  "app.kubernetes.io/component": "cockroachdb"
+                }
+              },
+              "ports": {
+                "grpc": {
+                  "external": {
+                    "name": "grpc",
+                    "port": 26257
+                  },
+                  "internal": {
+                    "name": "grpc-internal",
+                    "port": 26257
+                  }
+                },
+                "http": {
+                  "name": "http",
+                  "port": 8080
+                }
+              },
+              "public": {
+                "annotations": {},
+                "labels": {
+                  "app.kubernetes.io/component": "cockroachdb"
+                },
+                "type": "ClusterIP"
+              }
+            },
+            "serviceMonitor": {
+              "annotations": {},
+              "enabled": false,
+              "interval": "10s",
+              "labels": {}
+            },
+            "statefulset": {
+              "annotations": {},
+              "args": [],
+              "budget": {
+                "maxUnavailable": 1
+              },
+              "env": [],
+              "labels": {
+                "app.kubernetes.io/component": "cockroachdb"
+              },
+              "nodeAffinity": {},
+              "nodeSelector": {},
+              "podAffinity": {},
+              "podAntiAffinity": {
+                "topologyKey": "kubernetes.io/hostname",
+                "type": "soft",
+                "weight": 100
+              },
+              "podManagementPolicy": "Parallel",
+              "priorityClassName": "",
+              "replicas": 3,
+              "resources": {},
+              "secretMounts": [],
+              "tolerations": [],
+              "topologySpreadConstraints": {
+                "maxSkew": 1,
+                "topologyKey": "topology.kubernetes.io/zone",
+                "whenUnsatisfiable": "ScheduleAnyway"
+              },
+              "updateStrategy": {
+                "type": "RollingUpdate"
+              }
+            },
+            "storage": {
+              "hostPath": "",
+              "persistentVolume": {
+                "annotations": {},
+                "enabled": true,
+                "labels": {},
+                "size": "100Gi",
+                "storageClass": ""
+              }
+            },
+            "tls": {
+              "certs": {
+                "clientRootSecret": "cockroachdb-root",
+                "nodeSecret": "cockroachdb-node",
+                "provided": false,
+                "tlsSecret": false
+              },
+              "enabled": false,
+              "init": {
+                "image": {
+                  "credentials": {},
+                  "pullPolicy": "IfNotPresent",
+                  "repository": "cockroachdb/cockroach-k8s-request-cert",
+                  "tag": "0.4"
+                }
+              },
+              "serviceAccount": {
+                "create": true,
+                "name": ""
+              }
+            }
+          }
+        }
+      ]
+    capabilities: Basic Install
+    categories: Database
+    certified: "false"
+    containerImage: quay.io/helmoperators/cockroachdb:v5.0.3
+    createdAt: 2021-01-23T10-00-00Z
+    description: CockroachDB Operator based on the CockroachDB helm chart
+    operators.operatorframework.io/builder: operator-sdk-v1.3.0
+    operators.operatorframework.io/project_layout: helm.sdk.operatorframework.io/v1
+    repository: https://github.com/dmesser/cockroachdb-operator
+    support: dmesser
+  name: cockroachdb.v5.0.3
+  namespace: placeholder
+spec:
+  apiservicedefinitions: {}
+  customresourcedefinitions:
+    owned:
+    - description: Represents a CockroachDB cluster
+      displayName: CockroachDB
+      kind: Cockroachdb
+      name: cockroachdbs.charts.operatorhub.io
+      resources:
+      - kind: Deployment
+        name: ""
+        version: apps/v1
+      - kind: Service
+        name: ""
+        version: v1
+      - kind: ReplicaSet
+        name: ""
+        version: apps/v1
+      - kind: Pod
+        name: ""
+        version: v1
+      - kind: Secret
+        name: ""
+        version: v1
+      - kind: ConfigMap
+        name: ""
+        version: v1
+      - kind: PersistentVolumeClaim
+        name: ""
+        version: v1
+      - kind: StatefulSet
+        name: ""
+        version: apps/v1
+      - kind: Job
+        name: ""
+        version: batch/v1
+      version: v1alpha1
+  description: |
+    CockroachDB is a scalable, survivable, strongly-consistent SQL database.
+    ## About this Operator
+    This Operator is based on a Helm chart for CockroachDB. It supports reconfiguration for some parameters, but notably does not handle scale down of the replica count in a seamless manner. Scale up works great.
+
+    ## Core capabilities
+    * **StatefulSet** - Sets up a dynamically scalable CockroachDB cluster using a Kubernetes StatefulSet
+    * **Expand Replicas** - Supports expanding the set of replicas by simply editing your object
+    * **Dashboard** - Installs the CockroachDB user interface to administer your cluster. Easily expose it via an Ingress rule.
+    Review all of the [confiuguration options](https://github.com/helm/charts/tree/master/stable/cockroachdb#configuration) to best run your database instance. The example configuration is derived from the chart's [` + "`" + `values.yaml` + "`" + `](https://github.com/helm/charts/blob/master/stable/cockroachdb/values.yaml).
+    ## Using the cluster
+    The resulting cluster endpoint can be consumed from a ` + "`" + `Service` + "`" + ` that follows the pattern: ` + "`" + `<StatefulSet-name>-public` + "`" + `. For example to connect using the command line client, use something like the following to obtain the name of the service:
+    ` + "`" + `` + "`" + `` + "`" + `
+    kubectl get service -l chart=cockroachdb-3.0.7
+    NAME                                           TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)              AGE
+    example-9f8ngwzrxbxrulxqmdqfhn51h-cdb          ClusterIP   None             <none>        26257/TCP,8080/TCP   24m
+    example-9f8ngwzrxbxrulxqmdqfhn51h-cdb-public   ClusterIP   10.106.249.134   <none>        26257/TCP,8080/TCP   24m
+    ` + "`" + `` + "`" + `` + "`" + `
+    Then you can use the CockroachDB command line client to connect to the database cluster:
+    ` + "`" + `` + "`" + `` + "`" + `
+    kubectl run -it --rm cockroach-client --image=cockroachdb/cockroach --restart=Never --command -- ./cockroach sql --insecure --host example-9f8ngwzrxbxrulxqmdqfhn51h-cdb-public
+    ` + "`" + `` + "`" + `` + "`" + `
+    ## Before you start
+    This Operator requires a cluster with PV support in order to run correctly.
+    ## Supported configuration parameters
+      | Parameter                                                 | Description                                                     | Default                                          |
+      | ---------                                                 | -----------                                                     | -------                                          |
+      | ` + "`" + `clusterDomain` + "`" + `                                           | Cluster's default DNS domain                                    | ` + "`" + `cluster.local` + "`" + `                                  |
+      | ` + "`" + `conf.attrs` + "`" + `                                              | CockroachDB node attributes                                     | ` + "`" + `[]` + "`" + `                                             |
+      | ` + "`" + `conf.cache` + "`" + `                                              | Size of CockroachDB's in-memory cache                           | ` + "`" + `25%` + "`" + `                                            |
+      | ` + "`" + `conf.cluster-name` + "`" + `                                       | Name of CockroachDB cluster                                     | ` + "`" + `""` + "`" + `                                             |
+      | ` + "`" + `conf.disable-cluster-name-verification` + "`" + `                  | Disable CockroachDB cluster name verification                   | ` + "`" + `no` + "`" + `                                             |
+      | ` + "`" + `conf.join` + "`" + `                                               | List of already-existing CockroachDB instances                  | ` + "`" + `[]` + "`" + `                                             |
+      | ` + "`" + `conf.max-disk-temp-storage` + "`" + `                              | Max storage capacity for temp data                              | ` + "`" + `0` + "`" + `                                              |
+      | ` + "`" + `conf.max-offset` + "`" + `                                         | Max allowed clock offset for CockroachDB cluster                | ` + "`" + `500ms` + "`" + `                                          |
+      | ` + "`" + `conf.max-sql-memory` + "`" + `                                     | Max memory to use processing SQL querie                         | ` + "`" + `25%` + "`" + `                                            |
+      | ` + "`" + `conf.locality` + "`" + `                                           | Locality attribute for this deployment                          | ` + "`" + `""` + "`" + `                                             |
+      | ` + "`" + `conf.single-node` + "`" + `                                        | Disable CockroachDB clustering (standalone mode)                | ` + "`" + `no` + "`" + `                                             |
+      | ` + "`" + `conf.sql-audit-dir` + "`" + `                                      | Directory for SQL audit log                                     | ` + "`" + `""` + "`" + `                                             |
+      | ` + "`" + `conf.port` + "`" + `                                               | CockroachDB primary serving port in Pods                        | ` + "`" + `26257` + "`" + `                                          |
+      | ` + "`" + `conf.http-port` + "`" + `                                          | CockroachDB HTTP port in Pods                                   | ` + "`" + `8080` + "`" + `                                           |
+      | ` + "`" + `image.repository` + "`" + `                                        | Container image name                                            | ` + "`" + `cockroachdb/cockroach` + "`" + `                          |
+      | ` + "`" + `image.tag` + "`" + `                                               | Container image tag                                             | ` + "`" + `v20.2.3` + "`" + `                                        |
+      | ` + "`" + `image.pullPolicy` + "`" + `                                        | Container pull policy                                           | ` + "`" + `IfNotPresent` + "`" + `                                   |
+      | ` + "`" + `image.credentials` + "`" + `                                       | ` + "`" + `registry` + "`" + `, ` + "`" + `user` + "`" + ` and ` + "`" + `pass` + "`" + ` credentials to pull private image | ` + "`" + `{}` + "`" + `                                             |
+      | ` + "`" + `statefulset.replicas` + "`" + `                                    | StatefulSet replicas number                                     | ` + "`" + `3` + "`" + `                                              |
+      | ` + "`" + `statefulset.updateStrategy` + "`" + `                              | Update strategy for StatefulSet Pods                            | ` + "`" + `{"type": "RollingUpdate"}` + "`" + `                      |
+      | ` + "`" + `statefulset.podManagementPolicy` + "`" + `                         | ` + "`" + `OrderedReady` + "`" + `/` + "`" + `Parallel` + "`" + ` Pods creation/deletion order          | ` + "`" + `Parallel` + "`" + `                                       |
+      | ` + "`" + `statefulset.budget.maxUnavailable` + "`" + `                       | k8s PodDisruptionBudget parameter                               | ` + "`" + `1` + "`" + `                                              |
+      | ` + "`" + `statefulset.args` + "`" + `                                        | Extra command-line arguments                                    | ` + "`" + `[]` + "`" + `                                             |
+      | ` + "`" + `statefulset.env` + "`" + `                                         | Extra env vars                                                  | ` + "`" + `[]` + "`" + `                                             |
+      | ` + "`" + `statefulset.secretMounts` + "`" + `                                | Additional Secrets to mount at cluster members                  | ` + "`" + `[]` + "`" + `                                             |
+      | ` + "`" + `statefulset.labels` + "`" + `                                      | Additional labels of StatefulSet and its Pods                   | ` + "`" + `{"app.kubernetes.io/component": "cockroachdb"}` + "`" + ` |
+      | ` + "`" + `statefulset.annotations` + "`" + `                                 | Additional annotations of StatefulSet Pods                      | ` + "`" + `{}` + "`" + `                                             |
+      | ` + "`" + `statefulset.nodeAffinity` + "`" + `                                | [Node affinity rules][2] of StatefulSet Pods                    | ` + "`" + `{}` + "`" + `                                             |
+      | ` + "`" + `statefulset.podAffinity` + "`" + `                                 | [Inter-Pod affinity rules][1] of StatefulSet Pods               | ` + "`" + `{}` + "`" + `                                             |
+      | ` + "`" + `statefulset.podAntiAffinity` + "`" + `                             | [Anti-affinity rules][1] of StatefulSet Pods                    | auto                                             |
+      | ` + "`" + `statefulset.podAntiAffinity.topologyKey` + "`" + `                 | The topologyKey for auto [anti-affinity rules][1]               | ` + "`" + `kubernetes.io/hostname` + "`" + `                         |
+      | ` + "`" + `statefulset.podAntiAffinity.type` + "`" + `                        | Type of auto [anti-affinity rules][1]                           | ` + "`" + `soft` + "`" + `                                           |
+      | ` + "`" + `statefulset.podAntiAffinity.weight` + "`" + `                      | Weight for ` + "`" + `soft` + "`" + ` auto [anti-affinity rules][1]                 | ` + "`" + `100` + "`" + `                                            |
+      | ` + "`" + `statefulset.nodeSelector` + "`" + `                                | Node labels for StatefulSet Pods assignment                     | ` + "`" + `{}` + "`" + `                                             |
+      | ` + "`" + `statefulset.priorityClassName` + "`" + `                           | [PriorityClassName][4] for StatefulSet Pods                     | ` + "`" + `""` + "`" + `                                             |
+      | ` + "`" + `statefulset.tolerations` + "`" + `                                 | Node taints to tolerate by StatefulSet Pods                     | ` + "`" + `[]` + "`" + `                                             |
+      | ` + "`" + `statefulset.topologySpreadConstraints` + "`" + `                   | [Topology Spread Constraints rules][5] of StatefulSet Pods      | auto                                             |
+      | ` + "`" + `statefulset.topologySpreadConstraints.maxSkew` + "`" + `           | Degree to which Pods may be unevenly distributed                | ` + "`" + `1` + "`" + `                                              |
+      | ` + "`" + `statefulset.topologySpreadConstraints.topologyKey` + "`" + `       | The key of node labels                                          | ` + "`" + `topology.kubernetes.io/zone` + "`" + `                    |
+      | ` + "`" + `statefulset.topologySpreadConstraints.whenUnsatisfiable` + "`" + ` | ` + "`" + `ScheduleAnyway` + "`" + `/` + "`" + `DoNotSchedule` + "`" + ` for unsatisfiable constraints  | ` + "`" + `ScheduleAnyway` + "`" + `                                 |
+      | ` + "`" + `statefulset.resources` + "`" + `                                   | Resource requests and limits for StatefulSet Pods               | ` + "`" + `{}` + "`" + `                                             |
+      | ` + "`" + `service.ports.grpc.external.port` + "`" + `                        | CockroachDB primary serving port in Services                    | ` + "`" + `26257` + "`" + `                                          |
+      | ` + "`" + `service.ports.grpc.external.name` + "`" + `                        | CockroachDB primary serving port name in Services               | ` + "`" + `grpc` + "`" + `                                           |
+      | ` + "`" + `service.ports.grpc.internal.port` + "`" + `                        | CockroachDB inter-communication port in Services                | ` + "`" + `26257` + "`" + `                                          |
+      | ` + "`" + `service.ports.grpc.internal.name` + "`" + `                        | CockroachDB inter-communication port name in Services           | ` + "`" + `grpc-internal` + "`" + `                                  |
+      | ` + "`" + `service.ports.http.port` + "`" + `                                 | CockroachDB HTTP port in Services                               | ` + "`" + `8080` + "`" + `                                           |
+      | ` + "`" + `service.ports.http.name` + "`" + `                                 | CockroachDB HTTP port name in Services                          | ` + "`" + `http` + "`" + `                                           |
+      | ` + "`" + `service.public.type` + "`" + `                                     | Public Service type                                             | ` + "`" + `ClusterIP` + "`" + `                                      |
+      | ` + "`" + `service.public.labels` + "`" + `                                   | Additional labels of public Service                             | ` + "`" + `{"app.kubernetes.io/component": "cockroachdb"}` + "`" + ` |
+      | ` + "`" + `service.public.annotations` + "`" + `                              | Additional annotations of public Service                        | ` + "`" + `{}` + "`" + `                                             |
+      | ` + "`" + `service.discovery.labels` + "`" + `                                | Additional labels of discovery Service                          | ` + "`" + `{"app.kubernetes.io/component": "cockroachdb"}` + "`" + ` |
+      | ` + "`" + `service.discovery.annotations` + "`" + `                           | Additional annotations of discovery Service                     | ` + "`" + `{}` + "`" + `                                             |
+      | ` + "`" + `ingress.enabled` + "`" + `                                         | Enable ingress resource for CockroachDB                         | ` + "`" + `false` + "`" + `                                          |
+      | ` + "`" + `ingress.labels` + "`" + `                                          | Additional labels of Ingress                                    | ` + "`" + `{}` + "`" + `                                             |
+      | ` + "`" + `ingress.annotations` + "`" + `                                     | Additional annotations of Ingress                               | ` + "`" + `{}` + "`" + `                                             |
+      | ` + "`" + `ingress.paths` + "`" + `                                           | Paths for the default host                                      | ` + "`" + `[/]` + "`" + `                                            |
+      | ` + "`" + `ingress.hosts` + "`" + `                                           | CockroachDB Ingress hostnames                                   | ` + "`" + `[]` + "`" + `                                             |
+      | ` + "`" + `ingress.tls[0].hosts` + "`" + `                                    | CockroachDB Ingress tls hostnames                               | ` + "`" + `nil` + "`" + `                                            |
+      | ` + "`" + `ingress.tls[0].secretName` + "`" + `                               | CockroachDB Ingress tls secret name                             | ` + "`" + `nil` + "`" + `                                            |
+      | ` + "`" + `serviceMonitor.enabled` + "`" + `                                  | Create [ServiceMonitor](https://github.com/prometheus-operator/prometheus-operator/blob/master/Documentation/design.md#servicemonitor) Resource for scraping metrics using [PrometheusOperator](https://github.com/prometheus-operator/prometheus-operator/blob/master/Documentation/user-guides/getting-started.md#prometheus-operator)                     | ` + "`" + `false` + "`" + `                                             |
+      | ` + "`" + `serviceMonitor.labels` + "`" + `                                   | Additional labels of ServiceMonitor                             | ` + "`" + `{}` + "`" + `                                             |
+      | ` + "`" + `serviceMonitor.annotations` + "`" + `                              | Additional annotations of ServiceMonitor                        | ` + "`" + `{}` + "`" + `                                             |
+      | ` + "`" + `serviceMonitor.interval` + "`" + `                                 | ServiceMonitor scrape metrics interval                          | ` + "`" + `10s` + "`" + `                                            |
+      | ` + "`" + `serviceMonitor.scrapeTimeout` + "`" + `                            | ServiceMonitor scrape timeout                                   | ` + "`" + `nil` + "`" + `                                            |
+      | ` + "`" + `storage.hostPath` + "`" + `                                        | Absolute path on host to store data                             | ` + "`" + `""` + "`" + `                                             |
+      | ` + "`" + `storage.persistentVolume.enabled` + "`" + `                        | Whether to use PersistentVolume to store data                   | ` + "`" + `yes` + "`" + `                                            |
+      | ` + "`" + `storage.persistentVolume.size` + "`" + `                           | PersistentVolume size                                           | ` + "`" + `100Gi` + "`" + `                                          |
+      | ` + "`" + `storage.persistentVolume.storageClass` + "`" + `                   | PersistentVolume class                                          | ` + "`" + `""` + "`" + `                                             |
+      | ` + "`" + `storage.persistentVolume.labels` + "`" + `                         | Additional labels of PersistentVolumeClaim                      | ` + "`" + `{}` + "`" + `                                             |
+      | ` + "`" + `storage.persistentVolume.annotations` + "`" + `                    | Additional annotations of PersistentVolumeClaim                 | ` + "`" + `{}` + "`" + `                                             |
+      | ` + "`" + `init.labels` + "`" + `                                             | Additional labels of init Job and its Pod                       | ` + "`" + `{"app.kubernetes.io/component": "init"}` + "`" + `        |
+      | ` + "`" + `init.annotations` + "`" + `                                        | Additional labels of the Pod of init Job                        | ` + "`" + `{}` + "`" + `                                             |
+      | ` + "`" + `init.affinity` + "`" + `                                           | [Affinity rules][2] of init Job Pod                             | ` + "`" + `{}` + "`" + `                                             |
+      | ` + "`" + `init.nodeSelector` + "`" + `                                       | Node labels for init Job Pod assignment                         | ` + "`" + `{}` + "`" + `                                             |
+      | ` + "`" + `init.tolerations` + "`" + `                                        | Node taints to tolerate by init Job Pod                         | ` + "`" + `[]` + "`" + `                                             |
+      | ` + "`" + `init.resources` + "`" + `                                          | Resource requests and limits for the Pod of init Job            | ` + "`" + `{}` + "`" + `                                             |
+      | ` + "`" + `tls.enabled` + "`" + `                                             | Whether to run securely using TLS certificates                  | ` + "`" + `no` + "`" + `                                             |
+      | ` + "`" + `tls.serviceAccount.create` + "`" + `                               | Whether to create a new RBAC service account                    | ` + "`" + `yes` + "`" + `                                            |
+      | ` + "`" + `tls.serviceAccount.name` + "`" + `                                 | Name of RBAC service account to use                             | ` + "`" + `""` + "`" + `                                             |
+      | ` + "`" + `tls.certs.provided` + "`" + `                                      | Bring your own certs scenario, i.e certificates are provided    | ` + "`" + `no` + "`" + `                                             |
+      | ` + "`" + `tls.certs.clientRootSecret` + "`" + `                              | If certs are provided, secret name for client root cert         | ` + "`" + `cockroachdb-root` + "`" + `                               |
+      | ` + "`" + `tls.certs.nodeSecret` + "`" + `                                    | If certs are provided, secret name for node cert                | ` + "`" + `cockroachdb-node` + "`" + `                               |
+      | ` + "`" + `tls.certs.tlsSecret` + "`" + `                                     | Own certs are stored in TLS secret                              | ` + "`" + `no` + "`" + `                                             |
+      | ` + "`" + `tls.init.image.repository` + "`" + `                               | Image to use for requesting TLS certificates                    | ` + "`" + `cockroachdb/cockroach-k8s-request-cert` + "`" + `         |
+      | ` + "`" + `tls.init.image.tag` + "`" + `                                      | Image tag to use for requesting TLS certificates                | ` + "`" + `0.4` + "`" + `                                            |
+      | ` + "`" + `tls.init.image.pullPolicy` + "`" + `                               | Requesting TLS certificates container pull policy               | ` + "`" + `IfNotPresent` + "`" + `                                   |
+      | ` + "`" + `tls.init.image.credentials` + "`" + `                              | ` + "`" + `registry` + "`" + `, ` + "`" + `user` + "`" + ` and ` + "`" + `pass` + "`" + ` credentials to pull private image | ` + "`" + `{}` + "`" + `                                             |
+      | ` + "`" + `networkPolicy.enabled` + "`" + `                                   | Enable NetworkPolicy for CockroachDB's Pods                     | ` + "`" + `no` + "`" + `                                             |
+      | ` + "`" + `networkPolicy.ingress.grpc` + "`" + `                              | Whitelist resources to access gRPC port of CockroachDB's Pods   | ` + "`" + `[]` + "`" + `                                             |
+      | ` + "`" + `networkPolicy.ingress.http` + "`" + `                              | Whitelist resources to access gRPC port of CockroachDB's Pods   | ` + "`" + `[]` + "`" + `                                             |
+    ## Upgrading the cluster
+    Assuming the name of the ` + "`" + `CockroachDB` + "`" + ` instance is ` + "`" + `example` + "`" + `, follow the steps below to update to a newer version (example used os v19.2.5->v19.2.7) of CockroachDB:
+    Launch a temporary interactive pod and start the built-in SQL client:
+    ` + "`" + `` + "`" + `` + "`" + `shell
+    kubectl run cockroachdb --rm -it \
+    --image=cockroachdb/cockroach \
+    --restart=Never \
+    -- sql --insecure --host=example-cockroachdb-public
+    ` + "`" + `` + "`" + `` + "`" + `
+    > If you are running in secure mode, you will have to provide a client certificate to the cluster in order to authenticate, so the above command will not work. See [here](https://github.com/cockroachdb/cockroach/blob/master/cloud/kubernetes/client-secure.yaml) for an example of how to set up an interactive SQL shell against a secure cluster or [here](https://github.com/cockroachdb/cockroach/blob/master/cloud/kubernetes/example-app-secure.yaml) for an example application connecting to a secure cluster.
+    Set ` + "`" + `cluster.preserve_downgrade_option` + "`" + `, where ` + "`" + `$current_version` + "`" + ` is the CockroachDB version currently running (e.g., ` + "`" + `19.2` + "`" + `):
+    ` + "`" + `` + "`" + `` + "`" + `sql
+    > SET CLUSTER SETTING cluster.preserve_downgrade_option = '$current_version';
+    ` + "`" + `` + "`" + `` + "`" + `
+    Exit the shell and delete the temporary pod:
+    ` + "`" + `` + "`" + `` + "`" + `sql
+    > \q
+    ` + "`" + `` + "`" + `` + "`" + `
+    Kick off the upgrade process by changing the new Docker image, where ` + "`" + `$new_version` + "`" + ` is the CockroachDB version to which you are upgrading:
+    ` + "`" + `` + "`" + `` + "`" + `shell
+    kubectl delete job example-cockroachdb-init
+    ` + "`" + `` + "`" + `` + "`" + `
+    ` + "`" + `` + "`" + `` + "`" + `shell
+    kubectl patch cockroachdbs example -p '{"spec": {"image":{"tag":"v19.2.7"}}}' --type merge
+    ` + "`" + `` + "`" + `` + "`" + `
+    Kubernetes will carry out a safe [rolling upgrade](https://kubernetes.io/docs/tutorials/stateful-application/basic-stateful-set/#updating-statefulsets) of your CockroachDB nodes one-by-one. Monitor the cluster's pods until all have been successfully restarted:
+    ` + "`" + `` + "`" + `` + "`" + `shell
+    kubectl get pods
+    ` + "`" + `` + "`" + `` + "`" + `
+    ` + "`" + `` + "`" + `` + "`" + `
+    NAME                                READY     STATUS              RESTARTS   AGE
+    example-cockroachdb-0            1/1       Running             0          2m
+    example-cockroachdb-1            1/1       Running             0          3m
+    example-cockroachdb-2            1/1       Running             0          3m
+    example-cockroachdb-3            0/1       ContainerCreating   0          25s
+    example-cockroachdb-init-nwjkh   0/1       ContainerCreating   0          6s
+    ` + "`" + `` + "`" + `` + "`" + `
+    ` + "`" + `` + "`" + `` + "`" + `shell
+    kubectl get pods \
+    -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.containers[0].image}{"\n"}'
+    ` + "`" + `` + "`" + `` + "`" + `
+    ` + "`" + `` + "`" + `` + "`" + `
+    example-cockroachdb-0    cockroachdb/cockroach:v19.2.7
+    example-cockroachdb-1    cockroachdb/cockroach:v19.2.7
+    example-cockroachdb-2    cockroachdb/cockroach:v19.2.7
+    ` + "`" + `` + "`" + `` + "`" + `
+    Resume normal operations. Once you are comfortable that the stability and performance of the cluster is what you'd expect post-upgrade, finalize the upgrade:
+    ` + "`" + `` + "`" + `` + "`" + `shell
+    kubectl run cockroachdb --rm -it \
+    --image=cockroachdb/cockroach \
+    --restart=Never \
+    -- sql --insecure --host=example-cockroachdb-public
+    ` + "`" + `` + "`" + `` + "`" + `
+    ` + "`" + `` + "`" + `` + "`" + `sql
+    > RESET CLUSTER SETTING cluster.preserve_downgrade_option;
+    > \q
+    ` + "`" + `` + "`" + `` + "`" + `
+  displayName: CockroachDB
+  icon:
+  - base64data: PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMS44MiAzMiIgd2lkdGg9IjI0ODYiIGhlaWdodD0iMjUwMCI+PHRpdGxlPkNMPC90aXRsZT48cGF0aCBkPSJNMTkuNDIgOS4xN2ExNS4zOSAxNS4zOSAwIDAgMS0zLjUxLjQgMTUuNDYgMTUuNDYgMCAwIDEtMy41MS0uNCAxNS42MyAxNS42MyAwIDAgMSAzLjUxLTMuOTEgMTUuNzEgMTUuNzEgMCAwIDEgMy41MSAzLjkxek0zMCAuNTdBMTcuMjIgMTcuMjIgMCAwIDAgMjUuNTkgMGExNy40IDE3LjQgMCAwIDAtOS42OCAyLjkzQTE3LjM4IDE3LjM4IDAgMCAwIDYuMjMgMGExNy4yMiAxNy4yMiAwIDAgMC00LjQ0LjU3QTE2LjIyIDE2LjIyIDAgMCAwIDAgMS4xM2EuMDcuMDcgMCAwIDAgMCAuMDkgMTcuMzIgMTcuMzIgMCAwIDAgLjgzIDEuNTcuMDcuMDcgMCAwIDAgLjA4IDAgMTYuMzkgMTYuMzkgMCAwIDEgMS44MS0uNTQgMTUuNjUgMTUuNjUgMCAwIDEgMTEuNTkgMS44OCAxNy41MiAxNy41MiAwIDAgMC0zLjc4IDQuNDhjLS4yLjMyLS4zNy42NS0uNTUgMXMtLjIyLjQ1LS4zMy42OS0uMzEuNzItLjQ0IDEuMDhhMTcuNDYgMTcuNDYgMCAwIDAgNC4yOSAxOC43Yy4yNi4yNS41My40OS44MS43M3MuNDQuMzcuNjcuNTQuNTkuNDQuODkuNjRhLjA3LjA3IDAgMCAwIC4wOCAwYy4zLS4yMS42LS40Mi44OS0uNjRzLjQ1LS4zNS42Ny0uNTQuNTUtLjQ4LjgxLS43M2ExNy40NSAxNy40NSAwIDAgMCA1LjM4LTEyLjYxIDE3LjM5IDE3LjM5IDAgMCAwLTEuMDktNi4wOWMtLjE0LS4zNy0uMjktLjczLS40NS0xLjA5cy0uMjItLjQ3LS4zMy0uNjktLjM1LS42Ni0uNTUtMWExNy42MSAxNy42MSAwIDAgMC0zLjc4LTQuNDggMTUuNjUgMTUuNjUgMCAwIDEgMTEuNi0xLjg0IDE2LjEzIDE2LjEzIDAgMCAxIDEuODEuNTQuMDcuMDcgMCAwIDAgLjA4IDBxLjQ0LS43Ni44Mi0xLjU2YS4wNy4wNyAwIDAgMCAwLS4wOUExNi44OSAxNi44OSAwIDAgMCAzMCAuNTd6IiBmaWxsPSIjMTUxZjM0Ii8+PHBhdGggZD0iTTIxLjgyIDE3LjQ3YTE1LjUxIDE1LjUxIDAgMCAxLTQuMjUgMTAuNjkgMTUuNjYgMTUuNjYgMCAwIDEtLjcyLTQuNjggMTUuNSAxNS41IDAgMCAxIDQuMjUtMTAuNjkgMTUuNjIgMTUuNjIgMCAwIDEgLjcyIDQuNjgiIGZpbGw9IiMzNDg1NDAiLz48cGF0aCBkPSJNMTUgMjMuNDhhMTUuNTUgMTUuNTUgMCAwIDEtLjcyIDQuNjggMTUuNTQgMTUuNTQgMCAwIDEtMy41My0xNS4zN0ExNS41IDE1LjUgMCAwIDEgMTUgMjMuNDgiIGZpbGw9IiM3ZGJjNDIiLz48L3N2Zz4=
+    mediatype: image/svg+xml
+  install:
+    spec:
+      clusterPermissions:
+      - rules:
+        - apiGroups:
+          - rbac.authorization.k8s.io
+          resources:
+          - roles
+          - clusterroles
+          - rolebindings
+          - clusterrolebindings
+          verbs:
+          - '*'
+        - apiGroups:
+          - authentication.k8s.io
+          resources:
+          - tokenreviews
+          verbs:
+          - create
+        - apiGroups:
+          - authorization.k8s.io
+          resources:
+          - subjectaccessreviews
+          verbs:
+          - create
+        serviceAccountName: default
+      deployments:
+      - name: cockroachdb-controller-manager
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              control-plane: controller-manager
+          strategy: {}
+          template:
+            metadata:
+              labels:
+                control-plane: controller-manager
+            spec:
+              containers:
+              - args:
+                - --secure-listen-address=0.0.0.0:8443
+                - --upstream=http://127.0.0.1:8080/
+                - --logtostderr=true
+                - --v=10
+                image: gcr.io/kubebuilder/kube-rbac-proxy:v0.5.0
+                name: kube-rbac-proxy
+                ports:
+                - containerPort: 8443
+                  name: https
+                resources: {}
+              - args:
+                - --metrics-addr=127.0.0.1:8080
+                - --enable-leader-election
+                - --leader-election-id=cockroachdb
+                env:
+                - name: WATCH_NAMESPACE
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.annotations['olm.targetNamespaces']
+                - name: POD_NAME
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.name
+                - name: OPERATOR_NAME
+                  value: cockroachdb
+                image: quay.io/helmoperators/cockroachdb:v5.0.3
+                name: manager
+                resources:
+                  limits:
+                    cpu: 100m
+                    memory: 90Mi
+                  requests:
+                    cpu: 100m
+                    memory: 60Mi
+              terminationGracePeriodSeconds: 10
+      permissions:
+      - rules:
+        - apiGroups:
+          - ""
+          resources:
+          - configmaps
+          verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        - apiGroups:
+          - ""
+          resources:
+          - events
+          verbs:
+          - create
+          - patch
+        - apiGroups:
+          - ""
+          resources:
+          - namespaces
+          verbs:
+          - get
+        - apiGroups:
+          - ""
+          resources:
+          - secrets
+          - configmaps
+          - serviceaccounts
+          verbs:
+          - '*'
+        - apiGroups:
+          - ""
+          resources:
+          - events
+          verbs:
+          - create
+        - apiGroups:
+          - charts.operatorhub.io
+          resources:
+          - cockroachdbs
+          - cockroachdbs/status
+          - cockroachdbs/finalizers
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - apps
+          resources:
+          - statefulsets
+          verbs:
+          - '*'
+        - apiGroups:
+          - batch
+          resources:
+          - jobs
+          verbs:
+          - '*'
+        - apiGroups:
+          - policy
+          resources:
+          - poddisruptionbudgets
+          verbs:
+          - '*'
+        - apiGroups:
+          - ""
+          resources:
+          - services
+          - pods
+          verbs:
+          - '*'
+        - apiGroups:
+          - monitoring.coreos.com
+          resources:
+          - servicemonitors
+          verbs:
+          - '*'
+        - apiGroups:
+          - networking.k8s.io
+          resources:
+          - networkpolicies
+          verbs:
+          - '*'
+        serviceAccountName: default
+    strategy: deployment
+  installModes:
+  - supported: true
+    type: OwnNamespace
+  - supported: true
+    type: SingleNamespace
+  - supported: false
+    type: MultiNamespace
+  - supported: true
+    type: AllNamespaces
+  keywords:
+  - cockroach
+  - cockroachdb
+  links:
+  - name: Helm Chart Source
+    url: https://github.com/helm/charts/tree/master/stable/cockroachdb
+  - name: Configuration Options
+    url: https://github.com/helm/charts/tree/master/stable/cockroachdb#configuration
+  - name: CockroachDB Source
+    url: https://github.com/cockroachdb/cockroach
+  maintainers:
+  - email: dmesser@redhat.com
+    name: Daniel Messer
+  maturity: stable
+  minKubeVersion: 1.8.0
+  provider:
+    name: Helm Community
+    url: https://artifacthub.io/packages/helm/cockroachdb/cockroachdb
+  version: 5.0.3
+`)
+
+func testExtendedTestdataOpmCockroachdbSupportproperties503ManifestsCockroachdbClusterserviceversionYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataOpmCockroachdbSupportproperties503ManifestsCockroachdbClusterserviceversionYaml, nil
+}
+
+func testExtendedTestdataOpmCockroachdbSupportproperties503ManifestsCockroachdbClusterserviceversionYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataOpmCockroachdbSupportproperties503ManifestsCockroachdbClusterserviceversionYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/opm/cockroachdb/supportproperties/5.0.3/manifests/cockroachdb.clusterserviceversion.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataOpmCockroachdbSupportproperties503MetadataPropertiesYaml = []byte(`properties:
+- type: olm.type1
+  value:
+    testname1: testvalue1
+    testname2: testvalue2
+- type: olm.type2
+  value:
+    testname3: 
+    testname4: 'testvalue4'
+- type: olm.type3
+  value: "type3_test"
+- type: olm.type4
+  value: 
+- type: type5.type5
+  value: '''
+version is 5.0.3
+'''
+- type: olm.maxOpenShiftVersion
+  value: "4.9"
+
+`)
+
+func testExtendedTestdataOpmCockroachdbSupportproperties503MetadataPropertiesYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataOpmCockroachdbSupportproperties503MetadataPropertiesYaml, nil
+}
+
+func testExtendedTestdataOpmCockroachdbSupportproperties503MetadataPropertiesYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataOpmCockroachdbSupportproperties503MetadataPropertiesYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/opm/cockroachdb/supportproperties/5.0.3/metadata/properties.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataOpmCockroachdbSupportproperties504ManifestsChartsOperatorhubIo_cockroachdbsYaml = []byte(`apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  creationTimestamp: null
+  name: cockroachdbs.charts.operatorhub.io
+spec:
+  group: charts.operatorhub.io
+  names:
+    kind: Cockroachdb
+    listKind: CockroachdbList
+    plural: cockroachdbs
+    singular: cockroachdb
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: Cockroachdb is the Schema for the cockroachdbs API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: Spec defines the desired state of Cockroachdb
+            type: object
+            x-kubernetes-preserve-unknown-fields: true
+          status:
+            description: Status defines the observed state of Cockroachdb
+            type: object
+            x-kubernetes-preserve-unknown-fields: true
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: null
+  storedVersions: null
+`)
+
+func testExtendedTestdataOpmCockroachdbSupportproperties504ManifestsChartsOperatorhubIo_cockroachdbsYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataOpmCockroachdbSupportproperties504ManifestsChartsOperatorhubIo_cockroachdbsYaml, nil
+}
+
+func testExtendedTestdataOpmCockroachdbSupportproperties504ManifestsChartsOperatorhubIo_cockroachdbsYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataOpmCockroachdbSupportproperties504ManifestsChartsOperatorhubIo_cockroachdbsYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/opm/cockroachdb/supportproperties/5.0.4/manifests/charts.operatorhub.io_cockroachdbs.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataOpmCockroachdbSupportproperties504ManifestsCockroachdbControllerManagerMetricsService_v1_serviceYaml = []byte(`apiVersion: v1
+kind: Service
+metadata:
+  creationTimestamp: null
+  labels:
+    control-plane: controller-manager
+  name: cockroachdb-controller-manager-metrics-service
+spec:
+  ports:
+  - name: https
+    port: 8443
+    targetPort: https
+  selector:
+    control-plane: controller-manager
+status:
+  loadBalancer: {}
+`)
+
+func testExtendedTestdataOpmCockroachdbSupportproperties504ManifestsCockroachdbControllerManagerMetricsService_v1_serviceYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataOpmCockroachdbSupportproperties504ManifestsCockroachdbControllerManagerMetricsService_v1_serviceYaml, nil
+}
+
+func testExtendedTestdataOpmCockroachdbSupportproperties504ManifestsCockroachdbControllerManagerMetricsService_v1_serviceYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataOpmCockroachdbSupportproperties504ManifestsCockroachdbControllerManagerMetricsService_v1_serviceYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/opm/cockroachdb/supportproperties/5.0.4/manifests/cockroachdb-controller-manager-metrics-service_v1_service.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataOpmCockroachdbSupportproperties504ManifestsCockroachdbMetricsReader_rbacAuthorizationK8sIo_v1_clusterroleYaml = []byte(`apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  name: cockroachdb-metrics-reader
+rules:
+- nonResourceURLs:
+  - /metrics
+  verbs:
+  - get
+`)
+
+func testExtendedTestdataOpmCockroachdbSupportproperties504ManifestsCockroachdbMetricsReader_rbacAuthorizationK8sIo_v1_clusterroleYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataOpmCockroachdbSupportproperties504ManifestsCockroachdbMetricsReader_rbacAuthorizationK8sIo_v1_clusterroleYaml, nil
+}
+
+func testExtendedTestdataOpmCockroachdbSupportproperties504ManifestsCockroachdbMetricsReader_rbacAuthorizationK8sIo_v1_clusterroleYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataOpmCockroachdbSupportproperties504ManifestsCockroachdbMetricsReader_rbacAuthorizationK8sIo_v1_clusterroleYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/opm/cockroachdb/supportproperties/5.0.4/manifests/cockroachdb-metrics-reader_rbac.authorization.k8s.io_v1_clusterrole.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataOpmCockroachdbSupportproperties504ManifestsCockroachdbClusterserviceversionYaml = []byte(`apiVersion: operators.coreos.com/v1alpha1
+kind: ClusterServiceVersion
+metadata:
+  annotations:
+    alm-examples: |-
+      [
+        {
+          "apiVersion": "charts.operatorhub.io/v1alpha1",
+          "kind": "Cockroachdb",
+          "metadata": {
+            "name": "cockroachdb-sample"
+          },
+          "spec": {
+            "clusterDomain": "cluster.local",
+            "conf": {
+              "attrs": [],
+              "cache": "25%",
+              "cluster-name": "",
+              "disable-cluster-name-verification": false,
+              "http-port": 8080,
+              "join": [],
+              "locality": "",
+              "logtostderr": "INFO",
+              "max-sql-memory": "25%",
+              "port": 26257,
+              "single-node": false,
+              "sql-audit-dir": ""
+            },
+            "image": {
+              "credentials": {},
+              "pullPolicy": "IfNotPresent",
+              "repository": "cockroachdb/cockroach",
+              "tag": "v20.2.4"
+            },
+            "ingress": {
+              "annotations": {},
+              "enabled": false,
+              "hosts": [],
+              "labels": {},
+              "paths": [
+                "/"
+              ],
+              "tls": []
+            },
+            "init": {
+              "affinity": {},
+              "annotations": {},
+              "labels": {
+                "app.kubernetes.io/component": "init"
+              },
+              "nodeSelector": {},
+              "resources": {},
+              "tolerations": []
+            },
+            "labels": {},
+            "networkPolicy": {
+              "enabled": false,
+              "ingress": {
+                "grpc": [],
+                "http": []
+              }
+            },
+            "service": {
+              "discovery": {
+                "annotations": {},
+                "labels": {
+                  "app.kubernetes.io/component": "cockroachdb"
+                }
+              },
+              "ports": {
+                "grpc": {
+                  "external": {
+                    "name": "grpc",
+                    "port": 26257
+                  },
+                  "internal": {
+                    "name": "grpc-internal",
+                    "port": 26257
+                  }
+                },
+                "http": {
+                  "name": "http",
+                  "port": 8080
+                }
+              },
+              "public": {
+                "annotations": {},
+                "labels": {
+                  "app.kubernetes.io/component": "cockroachdb"
+                },
+                "type": "ClusterIP"
+              }
+            },
+            "serviceMonitor": {
+              "annotations": {},
+              "enabled": false,
+              "interval": "10s",
+              "labels": {}
+            },
+            "statefulset": {
+              "annotations": {},
+              "args": [],
+              "budget": {
+                "maxUnavailable": 1
+              },
+              "env": [],
+              "labels": {
+                "app.kubernetes.io/component": "cockroachdb"
+              },
+              "nodeAffinity": {},
+              "nodeSelector": {},
+              "podAffinity": {},
+              "podAntiAffinity": {
+                "topologyKey": "kubernetes.io/hostname",
+                "type": "soft",
+                "weight": 100
+              },
+              "podManagementPolicy": "Parallel",
+              "priorityClassName": "",
+              "replicas": 3,
+              "resources": {},
+              "secretMounts": [],
+              "tolerations": [],
+              "topologySpreadConstraints": {
+                "maxSkew": 1,
+                "topologyKey": "topology.kubernetes.io/zone",
+                "whenUnsatisfiable": "ScheduleAnyway"
+              },
+              "updateStrategy": {
+                "type": "RollingUpdate"
+              }
+            },
+            "storage": {
+              "hostPath": "",
+              "persistentVolume": {
+                "annotations": {},
+                "enabled": true,
+                "labels": {},
+                "size": "100Gi",
+                "storageClass": ""
+              }
+            },
+            "tls": {
+              "certs": {
+                "clientRootSecret": "cockroachdb-root",
+                "nodeSecret": "cockroachdb-node",
+                "provided": false,
+                "tlsSecret": false
+              },
+              "enabled": false,
+              "init": {
+                "image": {
+                  "credentials": {},
+                  "pullPolicy": "IfNotPresent",
+                  "repository": "cockroachdb/cockroach-k8s-request-cert",
+                  "tag": "0.4"
+                }
+              },
+              "serviceAccount": {
+                "create": true,
+                "name": ""
+              }
+            }
+          }
+        }
+      ]
+    capabilities: Basic Install
+    categories: Database
+    certified: "false"
+    containerImage: quay.io/helmoperators/cockroachdb:v5.0.4
+    createdAt: 2021-01-23T10-00-00Z
+    description: CockroachDB Operator based on the CockroachDB helm chart
+    operators.operatorframework.io/builder: operator-sdk-v1.3.0
+    operators.operatorframework.io/project_layout: helm.sdk.operatorframework.io/v1
+    repository: https://github.com/dmesser/cockroachdb-operator
+    support: dmesser
+  name: cockroachdb.v5.0.4
+  namespace: placeholder
+spec:
+  apiservicedefinitions: {}
+  customresourcedefinitions:
+    owned:
+    - description: Represents a CockroachDB cluster
+      displayName: CockroachDB
+      kind: Cockroachdb
+      name: cockroachdbs.charts.operatorhub.io
+      resources:
+      - kind: Deployment
+        name: ""
+        version: apps/v1
+      - kind: Service
+        name: ""
+        version: v1
+      - kind: ReplicaSet
+        name: ""
+        version: apps/v1
+      - kind: Pod
+        name: ""
+        version: v1
+      - kind: Secret
+        name: ""
+        version: v1
+      - kind: ConfigMap
+        name: ""
+        version: v1
+      - kind: PersistentVolumeClaim
+        name: ""
+        version: v1
+      - kind: StatefulSet
+        name: ""
+        version: apps/v1
+      - kind: Job
+        name: ""
+        version: batch/v1
+      version: v1alpha1
+  description: |
+    CockroachDB is a scalable, survivable, strongly-consistent SQL database.
+    ## About this Operator
+    This Operator is based on a Helm chart for CockroachDB. It supports the same parameters like the official [CockroachDB Helm Chart](https://github.com/cockroachdb/helm-charts/tree/master/cockroachdb).
+
+    ## Core capabilities
+    * **StatefulSet** - Sets up a dynamically scalable CockroachDB cluster using a Kubernetes StatefulSet
+    * **Expand Replicas** - Supports expanding the set of replicas by simply editing your object
+    * **Dashboard** - Installs the CockroachDB user interface to administer your cluster. Easily expose it via an Ingress rule.
+    Review all of the [confiuguration options](https://github.com/helm/charts/tree/master/stable/cockroachdb#configuration) to best run your database instance. The example configuration is derived from the chart's [` + "`" + `values.yaml` + "`" + `](https://github.com/helm/charts/blob/master/stable/cockroachdb/values.yaml).
+    ## Using the cluster
+    The resulting cluster endpoint can be consumed from a ` + "`" + `Service` + "`" + ` that follows the pattern: ` + "`" + `<StatefulSet-name>-public` + "`" + `. For example to connect using the command line client, use something like the following to obtain the name of the service:
+    ` + "`" + `` + "`" + `` + "`" + `
+    kubectl get service -l chart=cockroachdb-5.0.4
+    NAME                                           TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)              AGE
+    example-9f8ngwzrxbxrulxqmdqfhn51h-cdb          ClusterIP   None             <none>        26257/TCP,8080/TCP   24m
+    example-9f8ngwzrxbxrulxqmdqfhn51h-cdb-public   ClusterIP   10.106.249.134   <none>        26257/TCP,8080/TCP   24m
+    ` + "`" + `` + "`" + `` + "`" + `
+    Then you can use the CockroachDB command line client to connect to the database cluster:
+    ` + "`" + `` + "`" + `` + "`" + `
+    kubectl run -it --rm cockroach-client --image=cockroachdb/cockroach --restart=Never --command -- ./cockroach sql --insecure --host example-9f8ngwzrxbxrulxqmdqfhn51h-cdb-public
+    ` + "`" + `` + "`" + `` + "`" + `
+    ## Before you start
+    This Operator requires a cluster with PV support in order to run correctly.
+
+    Note that for a production cluster, you will likely want to override the following parameters in [` + "`" + `values.yaml` + "`" + `](values.yaml) with your own values.
+
+    - ` + "`" + `statefulset.resources.requests.memory` + "`" + ` and ` + "`" + `statefulset.resources.limits.memory` + "`" + ` allocate memory resources to CockroachDB pods in your cluster.
+    - ` + "`" + `conf.cache` + "`" + ` and ` + "`" + `conf.max-sql-memory` + "`" + ` are memory limits that we recommend setting to 1/4 of the above resource allocation. When running CockroachDB, you must set these limits explicitly to avoid running out of memory.
+    - ` + "`" + `storage.persistentVolume.size` + "`" + ` defaults to ` + "`" + `100Gi` + "`" + ` of disk space per pod, which you may increase or decrease for your use case.
+    - ` + "`" + `storage.persistentVolume.storageClass` + "`" + ` uses the default storage class for your environment. We strongly recommend that you specify a storage class which uses an SSD.
+    - ` + "`" + `tls.enabled` + "`" + ` must be set to ` + "`" + `yes` + "`" + `/` + "`" + `true` + "`" + ` to deploy in secure mode.
+
+    For more information on overriding the ` + "`" + `values.yaml` + "`" + ` parameters, please see:
+    > <https://www.cockroachlabs.com/docs/stable/orchestrate-cockroachdb-with-kubernetes.html#step-2-start-cockroachdb>
+
+    If you are running in secure mode (with configuration parameter ` + "`" + `tls.enabled` + "`" + ` set to ` + "`" + `yes` + "`" + `/` + "`" + `true` + "`" + `) and ` + "`" + `tls.certs.provided` + "`" + ` set to ` + "`" + `no` + "`" + `/` + "`" + `false` + "`" + `), then you will have to manually approve the cluster's security certificates as the pods are created. You can see the pending CSRs (certificate signing requests) by running ` + "`" + `kubectl get csr` + "`" + `, and approve them by running ` + "`" + `kubectl certificate approve <csr-name>` + "`" + `. You'll have to approve one certificate for each CockroachDB node (e.g., ` + "`" + `default.node.my-release-cockroachdb-0` + "`" + ` and one client certificate for the job that initializes the cluster (e.g., ` + "`" + `default.node.root` + "`" + `).
+
+    When ` + "`" + `tls.certs.provided` + "`" + ` is set to ` + "`" + `yes` + "`" + `/` + "`" + `true` + "`" + `, this chart will use certificates created outside of Kubernetes. You may want to use this if you want to use a different certificate authority from the one being used by Kubernetes or if your Kubernetes cluster doesn't fully support certificate-signing requests. To use this, first set up your certificates and load them into your Kubernetes cluster as Secrets using the commands below:
+
+    ` + "`" + `` + "`" + `` + "`" + `
+    mkdir certs
+    mkdir my-safe-directory
+    cockroach cert create-ca --certs-dir=certs --ca-key=my-safe-directory/ca.key
+    cockroach cert create-client root --certs-dir=certs --ca-key=my-safe-directory/ca.key
+    kubectl create secret generic cockroachdb-root --from-file=certs
+    cockroach cert create-node --certs-dir=certs --ca-key=my-safe-directory/ca.key localhost 127.0.0.1 eerie-horse-cockroachdb-public eerie-horse-cockroachdb-public.default eerie-horse-cockroachdb-public.default.svc.cluster.local *.eerie-horse-cockroachdb *.eerie-horse-cockroachdb.default *.eerie-horse-cockroachdb.default.svc.cluster.local
+    kubectl create secret generic cockroachdb-node --from-file=certs
+    ` + "`" + `` + "`" + `` + "`" + `
+
+    Set ` + "`" + `tls.certs.tlsSecret` + "`" + ` to ` + "`" + `yes/true` + "`" + ` if you make use of [cert-manager][3] in your cluster.
+
+    [cert-manager][3] stores generated certificates in dedicated TLS secrets. Thus, they are always named:
+
+    * ` + "`" + `ca.crt` + "`" + `
+    * ` + "`" + `tls.crt` + "`" + `
+    * ` + "`" + `tls.key` + "`" + `
+
+    On the other hand, CockroachDB also demands dedicated certificate filenames:
+
+    * ` + "`" + `ca.crt` + "`" + `
+    * ` + "`" + `node.crt` + "`" + `
+    * ` + "`" + `node.key` + "`" + `
+    * ` + "`" + `client.root.crt` + "`" + `
+    * ` + "`" + `client.root.key` + "`" + `
+
+    By activating ` + "`" + `tls.certs.tlsSecret` + "`" + ` we benefit from projected secrets and convert the TLS secret filenames to their according CockroachDB filenames.
+
+    If you are running in secure mode, then you will have to manually approve the cluster's security certificates as the pods are created. You can see the pending CSRs (certificate signing requests) by running ` + "`" + `kubectl get csr` + "`" + `, and approve them by running ` + "`" + `kubectl certificate approve <csr-name>` + "`" + `. You'll have to approve one certificate for each CockroachDB node (e.g., ` + "`" + `default.node.my-release-cockroachdb-0` + "`" + ` and one client certificate for the job that initializes the cluster (e.g., ` + "`" + `default.node.root` + "`" + `).
+
+    Confirm that all pods are ` + "`" + `Running` + "`" + ` successfully and init has been completed:
+
+    ` + "`" + `` + "`" + `` + "`" + `shell
+    kubectl get pods
+    ` + "`" + `` + "`" + `` + "`" + `
+
+    ` + "`" + `` + "`" + `` + "`" + `
+    NAME                                READY     STATUS      RESTARTS   AGE
+    my-release-cockroachdb-0            1/1       Running     0          1m
+    my-release-cockroachdb-1            1/1       Running     0          1m
+    my-release-cockroachdb-2            1/1       Running     0          1m
+    my-release-cockroachdb-init-k6jcr   0/1       Completed   0          1m
+    ` + "`" + `` + "`" + `` + "`" + `
+
+    Confirm that persistent volumes are created and claimed for each pod:
+
+    ` + "`" + `` + "`" + `` + "`" + `shell
+    kubectl get pv
+    ` + "`" + `` + "`" + `` + "`" + `
+
+    ` + "`" + `` + "`" + `` + "`" + `
+    NAME                                       CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS    CLAIM                                      STORAGECLASS   REASON    AGE
+    pvc-64878ebf-f3f0-11e8-ab5b-42010a8e0035   100Gi      RWO            Delete           Bound     default/datadir-my-release-cockroachdb-0   standard                 51s
+    pvc-64945b4f-f3f0-11e8-ab5b-42010a8e0035   100Gi      RWO            Delete           Bound     default/datadir-my-release-cockroachdb-1   standard                 51s
+    pvc-649d920d-f3f0-11e8-ab5b-42010a8e0035   100Gi      RWO            Delete           Bound     default/datadir-my-release-cockroachdb-2   standard                 51s
+    ` + "`" + `` + "`" + `` + "`" + `
+
+    ## Upgrading the cluster
+
+    ### Chart version 3.0.0 and after
+
+    Launch a temporary interactive pod and start the built-in SQL client:
+
+    ` + "`" + `` + "`" + `` + "`" + `shell
+    kubectl run cockroachdb --rm -it \
+    --image=cockroachdb/cockroach \
+    --restart=Never \
+    -- sql --insecure --host=my-release-cockroachdb-public
+    ` + "`" + `` + "`" + `` + "`" + `
+
+    > If you are running in secure mode, you will have to provide a client certificate to the cluster in order to authenticate, so the above command will not work. See [here](https://github.com/cockroachdb/cockroach/blob/master/cloud/kubernetes/client-secure.yaml) for an example of how to set up an interactive SQL shell against a secure cluster or [here](https://github.com/cockroachdb/cockroach/blob/master/cloud/kubernetes/example-app-secure.yaml) for an example application connecting to a secure cluster.
+
+    Set ` + "`" + `cluster.preserve_downgrade_option` + "`" + `, where ` + "`" + `$current_version` + "`" + ` is the CockroachDB version currently running (e.g., ` + "`" + `19.2` + "`" + `):
+
+    ` + "`" + `` + "`" + `` + "`" + `sql
+    > SET CLUSTER SETTING cluster.preserve_downgrade_option = '$current_version';
+    ` + "`" + `` + "`" + `` + "`" + `
+
+    Exit the shell and delete the temporary pod:
+
+    ` + "`" + `` + "`" + `` + "`" + `sql
+    > \q
+    ` + "`" + `` + "`" + `` + "`" + `
+
+    Kick off the upgrade process by changing the new Docker image, where ` + "`" + `$new_version` + "`" + ` is the CockroachDB version to which you are upgrading:
+
+    ` + "`" + `` + "`" + `` + "`" + `shell
+    kubectl delete job my-release-cockroachdb-init
+    ` + "`" + `` + "`" + `` + "`" + `
+
+    ` + "`" + `` + "`" + `` + "`" + `shell
+    kubectl patch cockroachdbs example -p '{"spec": {"image":{"tag":"<new version tag here>"}}}' --type merge
+    ` + "`" + `` + "`" + `` + "`" + `
+
+    Kubernetes will carry out a safe [rolling upgrade](https://kubernetes.io/docs/tutorials/stateful-application/basic-stateful-set/#updating-statefulsets) of your CockroachDB nodes one-by-one. Monitor the cluster's pods until all have been successfully restarted:
+
+    ` + "`" + `` + "`" + `` + "`" + `shell
+    kubectl get pods
+    ` + "`" + `` + "`" + `` + "`" + `
+
+    ` + "`" + `` + "`" + `` + "`" + `
+    NAME                                READY     STATUS              RESTARTS   AGE
+    my-release-cockroachdb-0            1/1       Running             0          2m
+    my-release-cockroachdb-1            1/1       Running             0          3m
+    my-release-cockroachdb-2            1/1       Running             0          3m
+    my-release-cockroachdb-3            0/1       ContainerCreating   0          25s
+    my-release-cockroachdb-init-nwjkh   0/1       ContainerCreating   0          6s
+    ` + "`" + `` + "`" + `` + "`" + `
+
+    ` + "`" + `` + "`" + `` + "`" + `shell
+    kubectl get pods \
+    -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.containers[0].image}{"\n"}'
+    ` + "`" + `` + "`" + `` + "`" + `
+
+    ` + "`" + `` + "`" + `` + "`" + `
+    my-release-cockroachdb-0    cockroachdb/cockroach:v20.2.4
+    my-release-cockroachdb-1    cockroachdb/cockroach:v20.2.4
+    my-release-cockroachdb-2    cockroachdb/cockroach:v20.2.4
+    my-release-cockroachdb-3    cockroachdb/cockroach:v20.2.4
+    ` + "`" + `` + "`" + `` + "`" + `
+
+    Resume normal operations. Once you are comfortable that the stability and performance of the cluster is what you'd expect post-upgrade, finalize the upgrade:
+
+    ` + "`" + `` + "`" + `` + "`" + `shell
+    kubectl run cockroachdb --rm -it \
+    --image=cockroachdb/cockroach \
+    --restart=Never \
+    -- sql --insecure --host=my-release-cockroachdb-public
+    ` + "`" + `` + "`" + `` + "`" + `
+
+    ` + "`" + `` + "`" + `` + "`" + `sql
+    > RESET CLUSTER SETTING cluster.preserve_downgrade_option;
+    > \q
+    ` + "`" + `` + "`" + `` + "`" + `
+
+    ## Configuration
+
+    The following table lists the configurable parameters of the CockroachDB chart and their default values.
+    For details see the [` + "`" + `values.yaml` + "`" + `](values.yaml) file.
+
+    | Parameter                                                 | Description                                                     | Default                                          |
+    | ---------                                                 | -----------                                                     | -------                                          |
+    | ` + "`" + `clusterDomain` + "`" + `                                           | Cluster's default DNS domain                                    | ` + "`" + `cluster.local` + "`" + `                                  |
+    | ` + "`" + `conf.attrs` + "`" + `                                              | CockroachDB node attributes                                     | ` + "`" + `[]` + "`" + `                                             |
+    | ` + "`" + `conf.cache` + "`" + `                                              | Size of CockroachDB's in-memory cache                           | ` + "`" + `25%` + "`" + `                                            |
+    | ` + "`" + `conf.cluster-name` + "`" + `                                       | Name of CockroachDB cluster                                     | ` + "`" + `""` + "`" + `                                             |
+    | ` + "`" + `conf.disable-cluster-name-verification` + "`" + `                  | Disable CockroachDB cluster name verification                   | ` + "`" + `no` + "`" + `                                             |
+    | ` + "`" + `conf.join` + "`" + `                                               | List of already-existing CockroachDB instances                  | ` + "`" + `[]` + "`" + `                                             |
+    | ` + "`" + `conf.max-disk-temp-storage` + "`" + `                              | Max storage capacity for temp data                              | ` + "`" + `0` + "`" + `                                              |
+    | ` + "`" + `conf.max-offset` + "`" + `                                         | Max allowed clock offset for CockroachDB cluster                | ` + "`" + `500ms` + "`" + `                                          |
+    | ` + "`" + `conf.max-sql-memory` + "`" + `                                     | Max memory to use processing SQL querie                         | ` + "`" + `25%` + "`" + `                                            |
+    | ` + "`" + `conf.locality` + "`" + `                                           | Locality attribute for this deployment                          | ` + "`" + `""` + "`" + `                                             |
+    | ` + "`" + `conf.single-node` + "`" + `                                        | Disable CockroachDB clustering (standalone mode)                | ` + "`" + `no` + "`" + `                                             |
+    | ` + "`" + `conf.sql-audit-dir` + "`" + `                                      | Directory for SQL audit log                                     | ` + "`" + `""` + "`" + `                                             |
+    | ` + "`" + `conf.port` + "`" + `                                               | CockroachDB primary serving port in Pods                        | ` + "`" + `26257` + "`" + `                                          |
+    | ` + "`" + `conf.http-port` + "`" + `                                          | CockroachDB HTTP port in Pods                                   | ` + "`" + `8080` + "`" + `                                           |
+    | ` + "`" + `image.repository` + "`" + `                                        | Container image name                                            | ` + "`" + `cockroachdb/cockroach` + "`" + `                          |
+    | ` + "`" + `image.tag` + "`" + `                                               | Container image tag                                             | ` + "`" + `v20.2.4` + "`" + `                                        |
+    | ` + "`" + `image.pullPolicy` + "`" + `                                        | Container pull policy                                           | ` + "`" + `IfNotPresent` + "`" + `                                   |
+    | ` + "`" + `image.credentials` + "`" + `                                       | ` + "`" + `registry` + "`" + `, ` + "`" + `user` + "`" + ` and ` + "`" + `pass` + "`" + ` credentials to pull private image | ` + "`" + `{}` + "`" + `                                             |
+    | ` + "`" + `statefulset.replicas` + "`" + `                                    | StatefulSet replicas number                                     | ` + "`" + `3` + "`" + `                                              |
+    | ` + "`" + `statefulset.updateStrategy` + "`" + `                              | Update strategy for StatefulSet Pods                            | ` + "`" + `{"type": "RollingUpdate"}` + "`" + `                      |
+    | ` + "`" + `statefulset.podManagementPolicy` + "`" + `                         | ` + "`" + `OrderedReady` + "`" + `/` + "`" + `Parallel` + "`" + ` Pods creation/deletion order          | ` + "`" + `Parallel` + "`" + `                                       |
+    | ` + "`" + `statefulset.budget.maxUnavailable` + "`" + `                       | k8s PodDisruptionBudget parameter                               | ` + "`" + `1` + "`" + `                                              |
+    | ` + "`" + `statefulset.args` + "`" + `                                        | Extra command-line arguments                                    | ` + "`" + `[]` + "`" + `                                             |
+    | ` + "`" + `statefulset.env` + "`" + `                                         | Extra env vars                                                  | ` + "`" + `[]` + "`" + `                                             |
+    | ` + "`" + `statefulset.secretMounts` + "`" + `                                | Additional Secrets to mount at cluster members                  | ` + "`" + `[]` + "`" + `                                             |
+    | ` + "`" + `statefulset.labels` + "`" + `                                      | Additional labels of StatefulSet and its Pods                   | ` + "`" + `{"app.kubernetes.io/component": "cockroachdb"}` + "`" + ` |
+    | ` + "`" + `statefulset.annotations` + "`" + `                                 | Additional annotations of StatefulSet Pods                      | ` + "`" + `{}` + "`" + `                                             |
+    | ` + "`" + `statefulset.nodeAffinity` + "`" + `                                | [Node affinity rules][2] of StatefulSet Pods                    | ` + "`" + `{}` + "`" + `                                             |
+    | ` + "`" + `statefulset.podAffinity` + "`" + `                                 | [Inter-Pod affinity rules][1] of StatefulSet Pods               | ` + "`" + `{}` + "`" + `                                             |
+    | ` + "`" + `statefulset.podAntiAffinity` + "`" + `                             | [Anti-affinity rules][1] of StatefulSet Pods                    | auto                                             |
+    | ` + "`" + `statefulset.podAntiAffinity.topologyKey` + "`" + `                 | The topologyKey for auto [anti-affinity rules][1]               | ` + "`" + `kubernetes.io/hostname` + "`" + `                         |
+    | ` + "`" + `statefulset.podAntiAffinity.type` + "`" + `                        | Type of auto [anti-affinity rules][1]                           | ` + "`" + `soft` + "`" + `                                           |
+    | ` + "`" + `statefulset.podAntiAffinity.weight` + "`" + `                      | Weight for ` + "`" + `soft` + "`" + ` auto [anti-affinity rules][1]                 | ` + "`" + `100` + "`" + `                                            |
+    | ` + "`" + `statefulset.nodeSelector` + "`" + `                                | Node labels for StatefulSet Pods assignment                     | ` + "`" + `{}` + "`" + `                                             |
+    | ` + "`" + `statefulset.priorityClassName` + "`" + `                           | [PriorityClassName][4] for StatefulSet Pods                     | ` + "`" + `""` + "`" + `                                             |
+    | ` + "`" + `statefulset.tolerations` + "`" + `                                 | Node taints to tolerate by StatefulSet Pods                     | ` + "`" + `[]` + "`" + `                                             |
+    | ` + "`" + `statefulset.topologySpreadConstraints` + "`" + `                   | [Topology Spread Constraints rules][5] of StatefulSet Pods      | auto                                             |
+    | ` + "`" + `statefulset.topologySpreadConstraints.maxSkew` + "`" + `           | Degree to which Pods may be unevenly distributed                | ` + "`" + `1` + "`" + `                                              |
+    | ` + "`" + `statefulset.topologySpreadConstraints.topologyKey` + "`" + `       | The key of node labels                                          | ` + "`" + `topology.kubernetes.io/zone` + "`" + `                    |
+    | ` + "`" + `statefulset.topologySpreadConstraints.whenUnsatisfiable` + "`" + ` | ` + "`" + `ScheduleAnyway` + "`" + `/` + "`" + `DoNotSchedule` + "`" + ` for unsatisfiable constraints  | ` + "`" + `ScheduleAnyway` + "`" + `                                 |
+    | ` + "`" + `statefulset.resources` + "`" + `                                   | Resource requests and limits for StatefulSet Pods               | ` + "`" + `{}` + "`" + `                                             |
+    | ` + "`" + `service.ports.grpc.external.port` + "`" + `                        | CockroachDB primary serving port in Services                    | ` + "`" + `26257` + "`" + `                                          |
+    | ` + "`" + `service.ports.grpc.external.name` + "`" + `                        | CockroachDB primary serving port name in Services               | ` + "`" + `grpc` + "`" + `                                           |
+    | ` + "`" + `service.ports.grpc.internal.port` + "`" + `                        | CockroachDB inter-communication port in Services                | ` + "`" + `26257` + "`" + `                                          |
+    | ` + "`" + `service.ports.grpc.internal.name` + "`" + `                        | CockroachDB inter-communication port name in Services           | ` + "`" + `grpc-internal` + "`" + `                                  |
+    | ` + "`" + `service.ports.http.port` + "`" + `                                 | CockroachDB HTTP port in Services                               | ` + "`" + `8080` + "`" + `                                           |
+    | ` + "`" + `service.ports.http.name` + "`" + `                                 | CockroachDB HTTP port name in Services                          | ` + "`" + `http` + "`" + `                                           |
+    | ` + "`" + `service.public.type` + "`" + `                                     | Public Service type                                             | ` + "`" + `ClusterIP` + "`" + `                                      |
+    | ` + "`" + `service.public.labels` + "`" + `                                   | Additional labels of public Service                             | ` + "`" + `{"app.kubernetes.io/component": "cockroachdb"}` + "`" + ` |
+    | ` + "`" + `service.public.annotations` + "`" + `                              | Additional annotations of public Service                        | ` + "`" + `{}` + "`" + `                                             |
+    | ` + "`" + `service.discovery.labels` + "`" + `                                | Additional labels of discovery Service                          | ` + "`" + `{"app.kubernetes.io/component": "cockroachdb"}` + "`" + ` |
+    | ` + "`" + `service.discovery.annotations` + "`" + `                           | Additional annotations of discovery Service                     | ` + "`" + `{}` + "`" + `                                             |
+    | ` + "`" + `ingress.enabled` + "`" + `                                         | Enable ingress resource for CockroachDB                         | ` + "`" + `false` + "`" + `                                          |
+    | ` + "`" + `ingress.labels` + "`" + `                                          | Additional labels of Ingress                                    | ` + "`" + `{}` + "`" + `                                             |
+    | ` + "`" + `ingress.annotations` + "`" + `                                     | Additional annotations of Ingress                               | ` + "`" + `{}` + "`" + `                                             |
+    | ` + "`" + `ingress.paths` + "`" + `                                           | Paths for the default host                                      | ` + "`" + `[/]` + "`" + `                                            |
+    | ` + "`" + `ingress.hosts` + "`" + `                                           | CockroachDB Ingress hostnames                                   | ` + "`" + `[]` + "`" + `                                             |
+    | ` + "`" + `ingress.tls[0].hosts` + "`" + `                                    | CockroachDB Ingress tls hostnames                               | ` + "`" + `nil` + "`" + `                                            |
+    | ` + "`" + `ingress.tls[0].secretName` + "`" + `                               | CockroachDB Ingress tls secret name                             | ` + "`" + `nil` + "`" + `                                            |
+    | ` + "`" + `serviceMonitor.enabled` + "`" + `                                  | Create [ServiceMonitor](https://github.com/prometheus-operator/prometheus-operator/blob/master/Documentation/design.md#servicemonitor) Resource for scraping metrics using [PrometheusOperator](https://github.com/prometheus-operator/prometheus-operator/blob/master/Documentation/user-guides/getting-started.md#prometheus-operator)                     | ` + "`" + `false` + "`" + `                                             |
+    | ` + "`" + `serviceMonitor.labels` + "`" + `                                   | Additional labels of ServiceMonitor                             | ` + "`" + `{}` + "`" + `                                             |
+    | ` + "`" + `serviceMonitor.annotations` + "`" + `                              | Additional annotations of ServiceMonitor                        | ` + "`" + `{}` + "`" + `                                             |
+    | ` + "`" + `serviceMonitor.interval` + "`" + `                                 | ServiceMonitor scrape metrics interval                          | ` + "`" + `10s` + "`" + `                                            |
+    | ` + "`" + `serviceMonitor.scrapeTimeout` + "`" + `                            | ServiceMonitor scrape timeout                                   | ` + "`" + `nil` + "`" + `                                            |
+    | ` + "`" + `storage.hostPath` + "`" + `                                        | Absolute path on host to store data                             | ` + "`" + `""` + "`" + `                                             |
+    | ` + "`" + `storage.persistentVolume.enabled` + "`" + `                        | Whether to use PersistentVolume to store data                   | ` + "`" + `yes` + "`" + `                                            |
+    | ` + "`" + `storage.persistentVolume.size` + "`" + `                           | PersistentVolume size                                           | ` + "`" + `100Gi` + "`" + `                                          |
+    | ` + "`" + `storage.persistentVolume.storageClass` + "`" + `                   | PersistentVolume class                                          | ` + "`" + `""` + "`" + `                                             |
+    | ` + "`" + `storage.persistentVolume.labels` + "`" + `                         | Additional labels of PersistentVolumeClaim                      | ` + "`" + `{}` + "`" + `                                             |
+    | ` + "`" + `storage.persistentVolume.annotations` + "`" + `                    | Additional annotations of PersistentVolumeClaim                 | ` + "`" + `{}` + "`" + `                                             |
+    | ` + "`" + `init.labels` + "`" + `                                             | Additional labels of init Job and its Pod                       | ` + "`" + `{"app.kubernetes.io/component": "init"}` + "`" + `        |
+    | ` + "`" + `init.annotations` + "`" + `                                        | Additional labels of the Pod of init Job                        | ` + "`" + `{}` + "`" + `                                             |
+    | ` + "`" + `init.affinity` + "`" + `                                           | [Affinity rules][2] of init Job Pod                             | ` + "`" + `{}` + "`" + `                                             |
+    | ` + "`" + `init.nodeSelector` + "`" + `                                       | Node labels for init Job Pod assignment                         | ` + "`" + `{}` + "`" + `                                             |
+    | ` + "`" + `init.tolerations` + "`" + `                                        | Node taints to tolerate by init Job Pod                         | ` + "`" + `[]` + "`" + `                                             |
+    | ` + "`" + `init.resources` + "`" + `                                          | Resource requests and limits for the Pod of init Job            | ` + "`" + `{}` + "`" + `                                             |
+    | ` + "`" + `tls.enabled` + "`" + `                                             | Whether to run securely using TLS certificates                  | ` + "`" + `no` + "`" + `                                             |
+    | ` + "`" + `tls.serviceAccount.create` + "`" + `                               | Whether to create a new RBAC service account                    | ` + "`" + `yes` + "`" + `                                            |
+    | ` + "`" + `tls.serviceAccount.name` + "`" + `                                 | Name of RBAC service account to use                             | ` + "`" + `""` + "`" + `                                             |
+    | ` + "`" + `tls.certs.provided` + "`" + `                                      | Bring your own certs scenario, i.e certificates are provided    | ` + "`" + `no` + "`" + `                                             |
+    | ` + "`" + `tls.certs.clientRootSecret` + "`" + `                              | If certs are provided, secret name for client root cert         | ` + "`" + `cockroachdb-root` + "`" + `                               |
+    | ` + "`" + `tls.certs.nodeSecret` + "`" + `                                    | If certs are provided, secret name for node cert                | ` + "`" + `cockroachdb-node` + "`" + `                               |
+    | ` + "`" + `tls.certs.tlsSecret` + "`" + `                                     | Own certs are stored in TLS secret                              | ` + "`" + `no` + "`" + `                                             |
+    | ` + "`" + `tls.init.image.repository` + "`" + `                               | Image to use for requesting TLS certificates                    | ` + "`" + `cockroachdb/cockroach-k8s-request-cert` + "`" + `         |
+    | ` + "`" + `tls.init.image.tag` + "`" + `                                      | Image tag to use for requesting TLS certificates                | ` + "`" + `0.4` + "`" + `                                            |
+    | ` + "`" + `tls.init.image.pullPolicy` + "`" + `                               | Requesting TLS certificates container pull policy               | ` + "`" + `IfNotPresent` + "`" + `                                   |
+    | ` + "`" + `tls.init.image.credentials` + "`" + `                              | ` + "`" + `registry` + "`" + `, ` + "`" + `user` + "`" + ` and ` + "`" + `pass` + "`" + ` credentials to pull private image | ` + "`" + `{}` + "`" + `                                             |
+    | ` + "`" + `networkPolicy.enabled` + "`" + `                                   | Enable NetworkPolicy for CockroachDB's Pods                     | ` + "`" + `no` + "`" + `                                             |
+    | ` + "`" + `networkPolicy.ingress.grpc` + "`" + `                              | Whitelist resources to access gRPC port of CockroachDB's Pods   | ` + "`" + `[]` + "`" + `                                             |
+    | ` + "`" + `networkPolicy.ingress.http` + "`" + `                              | Whitelist resources to access gRPC port of CockroachDB's Pods   | ` + "`" + `[]` + "`" + `                                             |
+
+
+    Override the default parameters using the ` + "`" + `CockroachDB` + "`" + ` custom resource.
+
+    ## Deep dive
+
+    ### Connecting to the CockroachDB cluster
+
+    Once you've created the cluster, you can start talking to it by connecting to its ` + "`" + `-public` + "`" + ` Service. CockroachDB is PostgreSQL wire protocol compatible, so there's a [wide variety of supported clients](https://www.cockroachlabs.com/docs/install-client-drivers.html). As an example, we'll open up a SQL shell using CockroachDB's built-in shell and play around with it a bit, like this (likely needing to replace ` + "`" + `my-release-cockroachdb-public` + "`" + ` with the name of the ` + "`" + `-public` + "`" + ` Service that was created with your installed chart):
+
+    ` + "`" + `` + "`" + `` + "`" + `shell
+    kubectl run cockroach-client --rm -it \
+    --image=cockroachdb/cockroach \
+    --restart=Never \
+    -- sql --insecure --host my-release-cockroachdb-public
+    ` + "`" + `` + "`" + `` + "`" + `
+
+    ` + "`" + `` + "`" + `` + "`" + `
+    Waiting for pod default/cockroach-client to be running, status is Pending,
+    pod ready: false
+    If you don't see a command prompt, try pressing enter.
+    root@my-release-cockroachdb-public:26257> SHOW DATABASES;
+    +--------------------+
+    |      Database      |
+    +--------------------+
+    | information_schema |
+    | pg_catalog         |
+    | system             |
+    +--------------------+
+    (3 rows)
+    root@my-release-cockroachdb-public:26257> CREATE DATABASE bank;
+    CREATE DATABASE
+    root@my-release-cockroachdb-public:26257> CREATE TABLE bank.accounts (id INT
+    PRIMARY KEY, balance DECIMAL);
+    CREATE TABLE
+    root@my-release-cockroachdb-public:26257> INSERT INTO bank.accounts VALUES
+    (1234, 10000.50);
+    INSERT 1
+    root@my-release-cockroachdb-public:26257> SELECT * FROM bank.accounts;
+    +------+---------+
+    |  id  | balance |
+    +------+---------+
+    | 1234 | 10000.5 |
+    +------+---------+
+    (1 row)
+    root@my-release-cockroachdb-public:26257> \q
+    Waiting for pod default/cockroach-client to terminate, status is Running
+    pod "cockroach-client" deleted
+    ` + "`" + `` + "`" + `` + "`" + `
+
+    > If you are running in secure mode, you will have to provide a client certificate to the cluster in order to authenticate, so the above command will not work. See [here](https://github.com/cockroachdb/cockroach/blob/master/cloud/kubernetes/client-secure.yaml) for an example of how to set up an interactive SQL shell against a secure cluster or [here](https://github.com/cockroachdb/cockroach/blob/master/cloud/kubernetes/example-app-secure.yaml) for an example application connecting to a secure cluster.
+
+    ### Cluster health
+
+    Because our pod spec includes regular health checks of the CockroachDB processes, simply running ` + "`" + `kubectl get pods` + "`" + ` and looking at the ` + "`" + `STATUS` + "`" + ` column is sufficient to determine the health of each instance in the cluster.
+
+    If you want more detailed information about the cluster, the best place to look is the Admin UI.
+
+    ### Accessing the Admin UI
+
+    If you want to see information about how the cluster is doing, you can try pulling up the CockroachDB Admin UI by port-forwarding from your local machine to one of the pods (replacing ` + "`" + `my-release-cockroachdb-0` + "`" + ` with the name of one of your pods:
+
+    ` + "`" + `` + "`" + `` + "`" + `shell
+    kubectl port-forward my-release-cockroachdb-0 8080
+    ` + "`" + `` + "`" + `` + "`" + `
+
+    You should then be able to access the Admin UI by visiting <http://localhost:8080/> in your web browser.
+
+    ### Failover
+
+    If any CockroachDB member fails, it is restarted or recreated automatically by the Kubernetes infrastructure, and will re-join the cluster automatically when it comes back up. You can test this scenario by killing any of the CockroachDB pods:
+
+    ` + "`" + `` + "`" + `` + "`" + `shell
+    kubectl delete pod my-release-cockroachdb-1
+    ` + "`" + `` + "`" + `` + "`" + `
+
+    ` + "`" + `` + "`" + `` + "`" + `shell
+    kubectl get pods -l "app.kubernetes.io/instance=my-release,app.kubernetes.io/component=cockroachdb"
+    ` + "`" + `` + "`" + `` + "`" + `
+
+    ` + "`" + `` + "`" + `` + "`" + `
+    NAME                      READY     STATUS        RESTARTS   AGE
+    my-release-cockroachdb-0  1/1       Running       0          5m
+    my-release-cockroachdb-2  1/1       Running       0          5m
+    ` + "`" + `` + "`" + `` + "`" + `
+
+    After a while:
+
+    ` + "`" + `` + "`" + `` + "`" + `shell
+    kubectl get pods -l "app.kubernetes.io/instance=my-release,app.kubernetes.io/component=cockroachdb"
+    ` + "`" + `` + "`" + `` + "`" + `
+
+    ` + "`" + `` + "`" + `` + "`" + `
+    NAME                      READY     STATUS        RESTARTS   AGE
+    my-release-cockroachdb-0  1/1       Running       0          5m
+    my-release-cockroachdb-1  1/1       Running       0          20s
+    my-release-cockroachdb-2  1/1       Running       0          5m
+    ` + "`" + `` + "`" + `` + "`" + `
+
+    You can check the state of re-joining from the new pod's logs:
+
+    ` + "`" + `` + "`" + `` + "`" + `shell
+    kubectl logs my-release-cockroachdb-1
+    ` + "`" + `` + "`" + `` + "`" + `
+
+    ` + "`" + `` + "`" + `` + "`" + `
+    [...]
+    I161028 19:32:09.754026 1 server/node.go:586  [n1] node connected via gossip and
+    verified as part of cluster {"35ecbc27-3f67-4e7d-9b8f-27c31aae17d6"}
+    [...]
+    cockroachdb-0.my-release-cockroachdb.default.svc.cluster.local:26257
+    build:      beta-20161027-55-gd2d3c7f @ 2016/10/28 19:27:25 (go1.7.3)
+    admin:      http://0.0.0.0:8080
+    sql:
+    postgresql://root@my-release-cockroachdb-1.my-release-cockroachdb.default.svc.cluster.local:26257?sslmode=disable
+    logs:       cockroach-data/logs
+    store[0]:   path=cockroach-data
+    status:     restarted pre-existing node
+    clusterID:  {35ecbc27-3f67-4e7d-9b8f-27c31aae17d6}
+    nodeID:     2
+    [...]
+    ` + "`" + `` + "`" + `` + "`" + `
+
+    ### NetworkPolicy
+
+    To enable NetworkPolicy for CockroachDB, install [a networking plugin that implements the Kubernetes NetworkPolicy spec](https://kubernetes.io/docs/tasks/administer-cluster/declare-network-policy#before-you-begin), and set ` + "`" + `networkPolicy.enabled` + "`" + ` to ` + "`" + `yes` + "`" + `/` + "`" + `true` + "`" + `.
+
+    For Kubernetes v1.5 & v1.6, you must also turn on NetworkPolicy by setting the ` + "`" + `DefaultDeny` + "`" + ` Namespace annotation. Note: this will enforce policy for _all_ pods in the Namespace:
+
+    ` + "`" + `` + "`" + `` + "`" + `shell
+    kubectl annotate namespace default "net.beta.kubernetes.io/network-policy={\"ingress\":{\"isolation\":\"DefaultDeny\"}}"
+    ` + "`" + `` + "`" + `` + "`" + `
+
+    For more precise policy, set ` + "`" + `networkPolicy.ingress.grpc` + "`" + ` and ` + "`" + `networkPolicy.ingress.http` + "`" + ` rules. This will only allow pods that match the provided rules to connect to CockroachDB.
+
+    ### Scaling
+
+    Scaling should be managed via the ` + "`" + `helm upgrade` + "`" + ` command. After resizing your cluster on your cloud environment (e.g., GKE or EKS), run the following command to add a pod. This assumes you scaled from 3 to 4 nodes:
+
+    ` + "`" + `` + "`" + `` + "`" + `shell
+    kubectl patch cockroachdbs example -p '{"spec": {"statefulset":{"replicas":"4"}}}' --type merge
+    ` + "`" + `` + "`" + `` + "`" + `
+
+    Note, that if you are running in secure mode (` + "`" + `tls.enabled` + "`" + ` is ` + "`" + `yes` + "`" + `/` + "`" + `true` + "`" + `) and increase the size of your cluster, you will also have to approve the CSR (certificate-signing request) of each new node (using ` + "`" + `kubectl get csr` + "`" + ` and ` + "`" + `kubectl certificate approve` + "`" + `).
+
+    [1]: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#inter-pod-affinity-and-anti-affinity
+    [2]: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#node-affinity
+    [3]: https://cert-manager.io/
+    [4]: https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/#priorityclass
+    [5]: https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/
+  displayName: CockroachDB Helm Operator
+  icon:
+  - base64data: PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMS44MiAzMiIgd2lkdGg9IjI0ODYiIGhlaWdodD0iMjUwMCI+PHRpdGxlPkNMPC90aXRsZT48cGF0aCBkPSJNMTkuNDIgOS4xN2ExNS4zOSAxNS4zOSAwIDAgMS0zLjUxLjQgMTUuNDYgMTUuNDYgMCAwIDEtMy41MS0uNCAxNS42MyAxNS42MyAwIDAgMSAzLjUxLTMuOTEgMTUuNzEgMTUuNzEgMCAwIDEgMy41MSAzLjkxek0zMCAuNTdBMTcuMjIgMTcuMjIgMCAwIDAgMjUuNTkgMGExNy40IDE3LjQgMCAwIDAtOS42OCAyLjkzQTE3LjM4IDE3LjM4IDAgMCAwIDYuMjMgMGExNy4yMiAxNy4yMiAwIDAgMC00LjQ0LjU3QTE2LjIyIDE2LjIyIDAgMCAwIDAgMS4xM2EuMDcuMDcgMCAwIDAgMCAuMDkgMTcuMzIgMTcuMzIgMCAwIDAgLjgzIDEuNTcuMDcuMDcgMCAwIDAgLjA4IDAgMTYuMzkgMTYuMzkgMCAwIDEgMS44MS0uNTQgMTUuNjUgMTUuNjUgMCAwIDEgMTEuNTkgMS44OCAxNy41MiAxNy41MiAwIDAgMC0zLjc4IDQuNDhjLS4yLjMyLS4zNy42NS0uNTUgMXMtLjIyLjQ1LS4zMy42OS0uMzEuNzItLjQ0IDEuMDhhMTcuNDYgMTcuNDYgMCAwIDAgNC4yOSAxOC43Yy4yNi4yNS41My40OS44MS43M3MuNDQuMzcuNjcuNTQuNTkuNDQuODkuNjRhLjA3LjA3IDAgMCAwIC4wOCAwYy4zLS4yMS42LS40Mi44OS0uNjRzLjQ1LS4zNS42Ny0uNTQuNTUtLjQ4LjgxLS43M2ExNy40NSAxNy40NSAwIDAgMCA1LjM4LTEyLjYxIDE3LjM5IDE3LjM5IDAgMCAwLTEuMDktNi4wOWMtLjE0LS4zNy0uMjktLjczLS40NS0xLjA5cy0uMjItLjQ3LS4zMy0uNjktLjM1LS42Ni0uNTUtMWExNy42MSAxNy42MSAwIDAgMC0zLjc4LTQuNDggMTUuNjUgMTUuNjUgMCAwIDEgMTEuNi0xLjg0IDE2LjEzIDE2LjEzIDAgMCAxIDEuODEuNTQuMDcuMDcgMCAwIDAgLjA4IDBxLjQ0LS43Ni44Mi0xLjU2YS4wNy4wNyAwIDAgMCAwLS4wOUExNi44OSAxNi44OSAwIDAgMCAzMCAuNTd6IiBmaWxsPSIjMTUxZjM0Ii8+PHBhdGggZD0iTTIxLjgyIDE3LjQ3YTE1LjUxIDE1LjUxIDAgMCAxLTQuMjUgMTAuNjkgMTUuNjYgMTUuNjYgMCAwIDEtLjcyLTQuNjggMTUuNSAxNS41IDAgMCAxIDQuMjUtMTAuNjkgMTUuNjIgMTUuNjIgMCAwIDEgLjcyIDQuNjgiIGZpbGw9IiMzNDg1NDAiLz48cGF0aCBkPSJNMTUgMjMuNDhhMTUuNTUgMTUuNTUgMCAwIDEtLjcyIDQuNjggMTUuNTQgMTUuNTQgMCAwIDEtMy41My0xNS4zN0ExNS41IDE1LjUgMCAwIDEgMTUgMjMuNDgiIGZpbGw9IiM3ZGJjNDIiLz48L3N2Zz4=
+    mediatype: image/svg+xml
+  install:
+    spec:
+      clusterPermissions:
+      - rules:
+        - apiGroups:
+          - rbac.authorization.k8s.io
+          resources:
+          - roles
+          - clusterroles
+          - rolebindings
+          - clusterrolebindings
+          verbs:
+          - '*'
+        - apiGroups:
+          - authentication.k8s.io
+          resources:
+          - tokenreviews
+          verbs:
+          - create
+        - apiGroups:
+          - authorization.k8s.io
+          resources:
+          - subjectaccessreviews
+          verbs:
+          - create
+        serviceAccountName: default
+      deployments:
+      - name: cockroachdb-controller-manager
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              control-plane: controller-manager
+          strategy: {}
+          template:
+            metadata:
+              labels:
+                control-plane: controller-manager
+            spec:
+              containers:
+              - args:
+                - --secure-listen-address=0.0.0.0:8443
+                - --upstream=http://127.0.0.1:8080/
+                - --logtostderr=true
+                - --v=10
+                image: gcr.io/kubebuilder/kube-rbac-proxy:v0.5.0
+                name: kube-rbac-proxy
+                ports:
+                - containerPort: 8443
+                  name: https
+                resources: {}
+              - args:
+                - --metrics-addr=127.0.0.1:8080
+                - --enable-leader-election
+                - --leader-election-id=cockroachdb
+                env:
+                - name: WATCH_NAMESPACE
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.annotations['olm.targetNamespaces']
+                - name: POD_NAME
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.name
+                - name: OPERATOR_NAME
+                  value: cockroachdb
+                image: quay.io/helmoperators/cockroachdb:v5.0.4
+                name: manager
+                resources:
+                  limits:
+                    cpu: 100m
+                    memory: 90Mi
+                  requests:
+                    cpu: 100m
+                    memory: 60Mi
+              terminationGracePeriodSeconds: 10
+      permissions:
+      - rules:
+        - apiGroups:
+          - ""
+          resources:
+          - configmaps
+          verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        - apiGroups:
+          - ""
+          resources:
+          - events
+          verbs:
+          - create
+          - patch
+        - apiGroups:
+          - ""
+          resources:
+          - namespaces
+          verbs:
+          - get
+        - apiGroups:
+          - ""
+          resources:
+          - secrets
+          - configmaps
+          - serviceaccounts
+          verbs:
+          - '*'
+        - apiGroups:
+          - ""
+          resources:
+          - events
+          verbs:
+          - create
+        - apiGroups:
+          - charts.operatorhub.io
+          resources:
+          - cockroachdbs
+          - cockroachdbs/status
+          - cockroachdbs/finalizers
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - apps
+          resources:
+          - statefulsets
+          verbs:
+          - '*'
+        - apiGroups:
+          - batch
+          resources:
+          - jobs
+          verbs:
+          - '*'
+        - apiGroups:
+          - policy
+          resources:
+          - poddisruptionbudgets
+          verbs:
+          - '*'
+        - apiGroups:
+          - ""
+          resources:
+          - services
+          - pods
+          verbs:
+          - '*'
+        - apiGroups:
+          - monitoring.coreos.com
+          resources:
+          - servicemonitors
+          verbs:
+          - '*'
+        - apiGroups:
+          - networking.k8s.io
+          resources:
+          - networkpolicies
+          verbs:
+          - '*'
+        serviceAccountName: default
+    strategy: deployment
+  installModes:
+  - supported: true
+    type: OwnNamespace
+  - supported: true
+    type: SingleNamespace
+  - supported: false
+    type: MultiNamespace
+  - supported: true
+    type: AllNamespaces
+  keywords:
+  - cockroach
+  - cockroachdb
+  links:
+  - name: Helm Chart Source
+    url: https://github.com/helm/charts/tree/master/stable/cockroachdb
+  - name: Configuration Options
+    url: https://github.com/helm/charts/tree/master/stable/cockroachdb#configuration
+  - name: CockroachDB Source
+    url: https://github.com/cockroachdb/cockroach
+  maintainers:
+  - email: dmesser@redhat.com
+    name: Daniel Messer
+  maturity: stable
+  minKubeVersion: 1.8.0
+  provider:
+    name: Helm Community
+    url: https://artifacthub.io/packages/helm/cockroachdb/cockroachdb
+  version: 5.0.4
+  replaces: cockroachdb.v5.0.3
+`)
+
+func testExtendedTestdataOpmCockroachdbSupportproperties504ManifestsCockroachdbClusterserviceversionYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataOpmCockroachdbSupportproperties504ManifestsCockroachdbClusterserviceversionYaml, nil
+}
+
+func testExtendedTestdataOpmCockroachdbSupportproperties504ManifestsCockroachdbClusterserviceversionYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataOpmCockroachdbSupportproperties504ManifestsCockroachdbClusterserviceversionYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/opm/cockroachdb/supportproperties/5.0.4/manifests/cockroachdb.clusterserviceversion.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataOpmCockroachdbSupportproperties504MetadataPropertiesYaml = []byte(`properties:
+- type: olm.type1
+  value:
+    testname1: testvalue1
+    testname2: testvalue2
+- type: olm.type2
+  value:
+    testname3: 
+    testname4: 'testvalue4'
+- type: olm.type3
+  value: "type3_test"
+- type: olm.type4
+  value: 
+- type: type5.type5
+  value: '''
+version is 5.0.4
+'''
+- type: olm.maxOpenShiftVersion
+  value: "4.9"
+
+`)
+
+func testExtendedTestdataOpmCockroachdbSupportproperties504MetadataPropertiesYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataOpmCockroachdbSupportproperties504MetadataPropertiesYaml, nil
+}
+
+func testExtendedTestdataOpmCockroachdbSupportproperties504MetadataPropertiesYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataOpmCockroachdbSupportproperties504MetadataPropertiesYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/opm/cockroachdb/supportproperties/5.0.4/metadata/properties.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
 var _testExtendedTestdataOpmCockroachdbSupportsemver503ChartsOperatorhubIo_cockroachdbsYaml = []byte(`apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
@@ -23370,221 +25165,231 @@ func AssetNames() []string {
 
 // _bindata is a table, holding each asset generator, mapped to its name.
 var _bindata = map[string]func() (*asset, error){
-	"test/extended/testdata/apiserver_and_auth/allow-same-namespace.yaml":                                                                  testExtendedTestdataApiserver_and_authAllowSameNamespaceYaml,
-	"test/extended/testdata/apiserver_and_auth/deny-network-policy.yaml":                                                                   testExtendedTestdataApiserver_and_authDenyNetworkPolicyYaml,
-	"test/extended/testdata/clusterinfrastructure/aws-machineset.yaml":                                                                     testExtendedTestdataClusterinfrastructureAwsMachinesetYaml,
-	"test/extended/testdata/clusterinfrastructure/azure-machineset.yaml":                                                                   testExtendedTestdataClusterinfrastructureAzureMachinesetYaml,
-	"test/extended/testdata/clusterinfrastructure/gcp-machineset.yaml":                                                                     testExtendedTestdataClusterinfrastructureGcpMachinesetYaml,
-	"test/extended/testdata/clusterinfrastructure/osp-machineset.yaml":                                                                     testExtendedTestdataClusterinfrastructureOspMachinesetYaml,
-	"test/extended/testdata/clusterinfrastructure/vsphere-machineset.yaml":                                                                 testExtendedTestdataClusterinfrastructureVsphereMachinesetYaml,
-	"test/extended/testdata/container_engine_tools/containerRuntimeConfig.yaml":                                                            testExtendedTestdataContainer_engine_toolsContainerruntimeconfigYaml,
-	"test/extended/testdata/container_engine_tools/pod-modify.yaml":                                                                        testExtendedTestdataContainer_engine_toolsPodModifyYaml,
-	"test/extended/testdata/image_registry/inputimage.yaml":                                                                                testExtendedTestdataImage_registryInputimageYaml,
-	"test/extended/testdata/ldap/groupsync.sh":                                                                                             testExtendedTestdataLdapGroupsyncSh,
-	"test/extended/testdata/ldap/ldapserver-config-cm.yaml":                                                                                testExtendedTestdataLdapLdapserverConfigCmYaml,
-	"test/extended/testdata/ldap/ldapserver-deployment.yaml":                                                                               testExtendedTestdataLdapLdapserverDeploymentYaml,
-	"test/extended/testdata/ldap/ldapserver-scripts-cm.yaml":                                                                               testExtendedTestdataLdapLdapserverScriptsCmYaml,
-	"test/extended/testdata/ldap/ldapserver-service.yaml":                                                                                  testExtendedTestdataLdapLdapserverServiceYaml,
-	"test/extended/testdata/logging/clusterlogforwarder/42363.yaml":                                                                        testExtendedTestdataLoggingClusterlogforwarder42363Yaml,
-	"test/extended/testdata/logging/clusterlogforwarder/42475.yaml":                                                                        testExtendedTestdataLoggingClusterlogforwarder42475Yaml,
-	"test/extended/testdata/logging/clusterlogging/cl-storage-template.yaml":                                                               testExtendedTestdataLoggingClusterloggingClStorageTemplateYaml,
-	"test/extended/testdata/logging/clusterlogging/cl-template.yaml":                                                                       testExtendedTestdataLoggingClusterloggingClTemplateYaml,
-	"test/extended/testdata/logging/generatelog/container_json_log_template.json":                                                          testExtendedTestdataLoggingGeneratelogContainer_json_log_templateJson,
-	"test/extended/testdata/logging/generatelog/container_non_json_log_template.json":                                                      testExtendedTestdataLoggingGeneratelogContainer_non_json_log_templateJson,
-	"test/extended/testdata/logging/subscription/allnamespace-og.yaml":                                                                     testExtendedTestdataLoggingSubscriptionAllnamespaceOgYaml,
-	"test/extended/testdata/logging/subscription/singlenamespace-og.yaml":                                                                  testExtendedTestdataLoggingSubscriptionSinglenamespaceOgYaml,
-	"test/extended/testdata/logging/subscription/sub-template.yaml":                                                                        testExtendedTestdataLoggingSubscriptionSubTemplateYaml,
-	"test/extended/testdata/mco/bz1866117-add-dummy-files.yaml":                                                                            testExtendedTestdataMcoBz1866117AddDummyFilesYaml,
-	"test/extended/testdata/mco/change-workers-chrony-configuration.yaml":                                                                  testExtendedTestdataMcoChangeWorkersChronyConfigurationYaml,
-	"test/extended/testdata/networking/egressfirewall1.yaml":                                                                               testExtendedTestdataNetworkingEgressfirewall1Yaml,
-	"test/extended/testdata/networking/egressfirewall2.yaml":                                                                               testExtendedTestdataNetworkingEgressfirewall2Yaml,
-	"test/extended/testdata/networking/egressip-config1.yaml":                                                                              testExtendedTestdataNetworkingEgressipConfig1Yaml,
-	"test/extended/testdata/networking/ping-for-pod.yaml":                                                                                  testExtendedTestdataNetworkingPingForPodYaml,
-	"test/extended/testdata/node/pod-modify.yaml":                                                                                          testExtendedTestdataNodePodModifyYaml,
-	"test/extended/testdata/oauthserver/cabundle-cm.yaml":                                                                                  testExtendedTestdataOauthserverCabundleCmYaml,
-	"test/extended/testdata/oauthserver/oauth-network.yaml":                                                                                testExtendedTestdataOauthserverOauthNetworkYaml,
-	"test/extended/testdata/oauthserver/oauth-pod.yaml":                                                                                    testExtendedTestdataOauthserverOauthPodYaml,
-	"test/extended/testdata/oauthserver/oauth-sa.yaml":                                                                                     testExtendedTestdataOauthserverOauthSaYaml,
-	"test/extended/testdata/olm/apiservice.yaml":                                                                                           testExtendedTestdataOlmApiserviceYaml,
-	"test/extended/testdata/olm/catalogsource-address.yaml":                                                                                testExtendedTestdataOlmCatalogsourceAddressYaml,
-	"test/extended/testdata/olm/catalogsource-configmap.yaml":                                                                              testExtendedTestdataOlmCatalogsourceConfigmapYaml,
-	"test/extended/testdata/olm/catalogsource-image.yaml":                                                                                  testExtendedTestdataOlmCatalogsourceImageYaml,
-	"test/extended/testdata/olm/catalogsource-namespace.yaml":                                                                              testExtendedTestdataOlmCatalogsourceNamespaceYaml,
-	"test/extended/testdata/olm/cm-25644-etcd-csv.yaml":                                                                                    testExtendedTestdataOlmCm25644EtcdCsvYaml,
-	"test/extended/testdata/olm/cm-certutil-readytest.yaml":                                                                                testExtendedTestdataOlmCmCertutilReadytestYaml,
-	"test/extended/testdata/olm/cm-certutil-readytests.yaml":                                                                               testExtendedTestdataOlmCmCertutilReadytestsYaml,
-	"test/extended/testdata/olm/cm-csv-etcd.yaml":                                                                                          testExtendedTestdataOlmCmCsvEtcdYaml,
-	"test/extended/testdata/olm/cm-learn-v1.yaml":                                                                                          testExtendedTestdataOlmCmLearnV1Yaml,
-	"test/extended/testdata/olm/cm-learn-v2.yaml":                                                                                          testExtendedTestdataOlmCmLearnV2Yaml,
-	"test/extended/testdata/olm/cm-lightbend.yaml":                                                                                         testExtendedTestdataOlmCmLightbendYaml,
-	"test/extended/testdata/olm/cm-namespaceconfig.yaml":                                                                                   testExtendedTestdataOlmCmNamespaceconfigYaml,
-	"test/extended/testdata/olm/cm-template.yaml":                                                                                          testExtendedTestdataOlmCmTemplateYaml,
-	"test/extended/testdata/olm/configmap-ectd-alpha-beta.yaml":                                                                            testExtendedTestdataOlmConfigmapEctdAlphaBetaYaml,
-	"test/extended/testdata/olm/configmap-etcd.yaml":                                                                                       testExtendedTestdataOlmConfigmapEtcdYaml,
-	"test/extended/testdata/olm/configmap-test.yaml":                                                                                       testExtendedTestdataOlmConfigmapTestYaml,
-	"test/extended/testdata/olm/configmap-with-defaultchannel.yaml":                                                                        testExtendedTestdataOlmConfigmapWithDefaultchannelYaml,
-	"test/extended/testdata/olm/configmap-without-defaultchannel.yaml":                                                                     testExtendedTestdataOlmConfigmapWithoutDefaultchannelYaml,
-	"test/extended/testdata/olm/cr-webhookTest.yaml":                                                                                       testExtendedTestdataOlmCrWebhooktestYaml,
-	"test/extended/testdata/olm/cs-without-image.yaml":                                                                                     testExtendedTestdataOlmCsWithoutImageYaml,
-	"test/extended/testdata/olm/csc.yaml":                                                                                                  testExtendedTestdataOlmCscYaml,
-	"test/extended/testdata/olm/dockerconfig.json":                                                                                         testExtendedTestdataOlmDockerconfigJson,
-	"test/extended/testdata/olm/etcd-cluster.yaml":                                                                                         testExtendedTestdataOlmEtcdClusterYaml,
-	"test/extended/testdata/olm/etcd-custom-csc.yaml":                                                                                      testExtendedTestdataOlmEtcdCustomCscYaml,
-	"test/extended/testdata/olm/etcd-subscription-manual.yaml":                                                                             testExtendedTestdataOlmEtcdSubscriptionManualYaml,
-	"test/extended/testdata/olm/etcd-subscription.yaml":                                                                                    testExtendedTestdataOlmEtcdSubscriptionYaml,
-	"test/extended/testdata/olm/mutatingwebhook-csv.yaml":                                                                                  testExtendedTestdataOlmMutatingwebhookCsvYaml,
-	"test/extended/testdata/olm/og-allns.yaml":                                                                                             testExtendedTestdataOlmOgAllnsYaml,
-	"test/extended/testdata/olm/og-multins.yaml":                                                                                           testExtendedTestdataOlmOgMultinsYaml,
-	"test/extended/testdata/olm/olm-proxy-subscription.yaml":                                                                               testExtendedTestdataOlmOlmProxySubscriptionYaml,
-	"test/extended/testdata/olm/olm-subscription.yaml":                                                                                     testExtendedTestdataOlmOlmSubscriptionYaml,
-	"test/extended/testdata/olm/operatorgroup-serviceaccount.yaml":                                                                         testExtendedTestdataOlmOperatorgroupServiceaccountYaml,
-	"test/extended/testdata/olm/operatorgroup.yaml":                                                                                        testExtendedTestdataOlmOperatorgroupYaml,
-	"test/extended/testdata/olm/opsrc.yaml":                                                                                                testExtendedTestdataOlmOpsrcYaml,
-	"test/extended/testdata/olm/packageserver.yaml":                                                                                        testExtendedTestdataOlmPackageserverYaml,
-	"test/extended/testdata/olm/role-binding.yaml":                                                                                         testExtendedTestdataOlmRoleBindingYaml,
-	"test/extended/testdata/olm/role.yaml":                                                                                                 testExtendedTestdataOlmRoleYaml,
-	"test/extended/testdata/olm/scoped-sa-etcd.yaml":                                                                                       testExtendedTestdataOlmScopedSaEtcdYaml,
-	"test/extended/testdata/olm/scoped-sa-fine-grained-roles.yaml":                                                                         testExtendedTestdataOlmScopedSaFineGrainedRolesYaml,
-	"test/extended/testdata/olm/scoped-sa-roles.yaml":                                                                                      testExtendedTestdataOlmScopedSaRolesYaml,
-	"test/extended/testdata/olm/validatingwebhook-csv.yaml":                                                                                testExtendedTestdataOlmValidatingwebhookCsvYaml,
-	"test/extended/testdata/olm/vpa-crd.yaml":                                                                                              testExtendedTestdataOlmVpaCrdYaml,
-	"test/extended/testdata/operators/argocd-cr.yaml":                                                                                      testExtendedTestdataOperatorsArgocdCrYaml,
-	"test/extended/testdata/operators/couchbase-enterprise-cr.yaml":                                                                        testExtendedTestdataOperatorsCouchbaseEnterpriseCrYaml,
-	"test/extended/testdata/operators/crunchy-cr.yaml":                                                                                     testExtendedTestdataOperatorsCrunchyCrYaml,
-	"test/extended/testdata/operators/jaeger.yaml":                                                                                         testExtendedTestdataOperatorsJaegerYaml,
-	"test/extended/testdata/operators/kafka.yaml":                                                                                          testExtendedTestdataOperatorsKafkaYaml,
-	"test/extended/testdata/operators/keycloak-cr.yaml":                                                                                    testExtendedTestdataOperatorsKeycloakCrYaml,
-	"test/extended/testdata/operators/kiali-cr.yaml":                                                                                       testExtendedTestdataOperatorsKialiCrYaml,
-	"test/extended/testdata/operators/mongodb-ops-manager-cr.yaml":                                                                         testExtendedTestdataOperatorsMongodbOpsManagerCrYaml,
-	"test/extended/testdata/operators/mongodb-ops-manager-secret.yaml":                                                                     testExtendedTestdataOperatorsMongodbOpsManagerSecretYaml,
-	"test/extended/testdata/operators/operator_group.yaml":                                                                                 testExtendedTestdataOperatorsOperator_groupYaml,
-	"test/extended/testdata/operators/portworx-snode-cr.yaml":                                                                              testExtendedTestdataOperatorsPortworxSnodeCrYaml,
-	"test/extended/testdata/operators/radanalytics-spark-sparkapplication-cr.yaml":                                                         testExtendedTestdataOperatorsRadanalyticsSparkSparkapplicationCrYaml,
-	"test/extended/testdata/operators/radanalytics-spark-sparkcluster-cr.yaml":                                                             testExtendedTestdataOperatorsRadanalyticsSparkSparkclusterCrYaml,
-	"test/extended/testdata/operators/resourcelocker-cr.yaml":                                                                              testExtendedTestdataOperatorsResourcelockerCrYaml,
-	"test/extended/testdata/operators/resourcelocker-role.yaml":                                                                            testExtendedTestdataOperatorsResourcelockerRoleYaml,
-	"test/extended/testdata/operators/spark-gcp-sparkapplication-cr.yaml":                                                                  testExtendedTestdataOperatorsSparkGcpSparkapplicationCrYaml,
-	"test/extended/testdata/operators/storageos-secret.yaml":                                                                               testExtendedTestdataOperatorsStorageosSecretYaml,
-	"test/extended/testdata/operators/storageoscluster-cr.yaml":                                                                            testExtendedTestdataOperatorsStorageosclusterCrYaml,
-	"test/extended/testdata/operators/storageosupgrade-cr.yaml":                                                                            testExtendedTestdataOperatorsStorageosupgradeCrYaml,
-	"test/extended/testdata/operators/strimzi-cr.yaml":                                                                                     testExtendedTestdataOperatorsStrimziCrYaml,
-	"test/extended/testdata/operators/subscription.yaml":                                                                                   testExtendedTestdataOperatorsSubscriptionYaml,
-	"test/extended/testdata/operatorsdk/cache1_v1_blacklist.yaml":                                                                          testExtendedTestdataOperatorsdkCache1_v1_blacklistYaml,
-	"test/extended/testdata/operatorsdk/cache2_v1_modulescollect.yaml":                                                                     testExtendedTestdataOperatorsdkCache2_v1_modulescollectYaml,
-	"test/extended/testdata/operatorsdk/cache3_v1_k8sstatus.yaml":                                                                          testExtendedTestdataOperatorsdkCache3_v1_k8sstatusYaml,
-	"test/extended/testdata/operatorsdk/cache5_v1_collectiontest.yaml":                                                                     testExtendedTestdataOperatorsdkCache5_v1_collectiontestYaml,
-	"test/extended/testdata/operatorsdk/cache_v1_collectiontest.yaml":                                                                      testExtendedTestdataOperatorsdkCache_v1_collectiontestYaml,
-	"test/extended/testdata/operatorsdk/cache_v1_memcached.yaml":                                                                           testExtendedTestdataOperatorsdkCache_v1_memcachedYaml,
-	"test/extended/testdata/operatorsdk/cache_v1_previous.yaml":                                                                            testExtendedTestdataOperatorsdkCache_v1_previousYaml,
-	"test/extended/testdata/operatorsdk/catalogsource.yaml":                                                                                testExtendedTestdataOperatorsdkCatalogsourceYaml,
-	"test/extended/testdata/operatorsdk/demo_v1_nginx.yaml":                                                                                testExtendedTestdataOperatorsdkDemo_v1_nginxYaml,
-	"test/extended/testdata/operatorsdk/helmbase_v1_nginx.yaml":                                                                            testExtendedTestdataOperatorsdkHelmbase_v1_nginxYaml,
-	"test/extended/testdata/operatorsdk/operatorgroup.yaml":                                                                                testExtendedTestdataOperatorsdkOperatorgroupYaml,
-	"test/extended/testdata/operatorsdk/previous_v1_collectiontest.yaml":                                                                   testExtendedTestdataOperatorsdkPrevious_v1_collectiontestYaml,
-	"test/extended/testdata/operatorsdk/sub.yaml":                                                                                          testExtendedTestdataOperatorsdkSubYaml,
-	"test/extended/testdata/opm/aqua/1.0.1/aqua-operator.v1.0.1.clusterserviceversion.yaml":                                                testExtendedTestdataOpmAqua101AquaOperatorV101ClusterserviceversionYaml,
-	"test/extended/testdata/opm/aqua/1.0.1/aquacsps.operator.aquasec.com.crd.yaml":                                                         testExtendedTestdataOpmAqua101AquacspsOperatorAquasecComCrdYaml,
-	"test/extended/testdata/opm/aqua/1.0.1/aquadatabases.operator.aquasec.com.crd.yaml":                                                    testExtendedTestdataOpmAqua101AquadatabasesOperatorAquasecComCrdYaml,
-	"test/extended/testdata/opm/aqua/1.0.1/aquaenforcers.operator.aquasec.com.crd.yaml":                                                    testExtendedTestdataOpmAqua101AquaenforcersOperatorAquasecComCrdYaml,
-	"test/extended/testdata/opm/aqua/1.0.1/aquagateways.operator.aquasec.com.crd.yaml":                                                     testExtendedTestdataOpmAqua101AquagatewaysOperatorAquasecComCrdYaml,
-	"test/extended/testdata/opm/aqua/1.0.1/aquascanners.operator.aquasec.com.crd.yaml":                                                     testExtendedTestdataOpmAqua101AquascannersOperatorAquasecComCrdYaml,
-	"test/extended/testdata/opm/aqua/1.0.1/aquaservers.operator.aquasec.com.crd.yaml":                                                      testExtendedTestdataOpmAqua101AquaserversOperatorAquasecComCrdYaml,
-	"test/extended/testdata/opm/aqua/aqua-operator.package.yaml":                                                                           testExtendedTestdataOpmAquaAquaOperatorPackageYaml,
-	"test/extended/testdata/opm/cockroachdb/supportsemver/5.0.3/charts.operatorhub.io_cockroachdbs.yaml":                                   testExtendedTestdataOpmCockroachdbSupportsemver503ChartsOperatorhubIo_cockroachdbsYaml,
-	"test/extended/testdata/opm/cockroachdb/supportsemver/5.0.3/cockroachdb-controller-manager-metrics-service_v1_service.yaml":            testExtendedTestdataOpmCockroachdbSupportsemver503CockroachdbControllerManagerMetricsService_v1_serviceYaml,
-	"test/extended/testdata/opm/cockroachdb/supportsemver/5.0.3/cockroachdb-metrics-reader_rbac.authorization.k8s.io_v1_clusterrole.yaml":  testExtendedTestdataOpmCockroachdbSupportsemver503CockroachdbMetricsReader_rbacAuthorizationK8sIo_v1_clusterroleYaml,
-	"test/extended/testdata/opm/cockroachdb/supportsemver/5.0.3/cockroachdb.clusterserviceversion.yaml":                                    testExtendedTestdataOpmCockroachdbSupportsemver503CockroachdbClusterserviceversionYaml,
-	"test/extended/testdata/opm/cockroachdb/supportsemver/5.0.4/charts.operatorhub.io_cockroachdbs.yaml":                                   testExtendedTestdataOpmCockroachdbSupportsemver504ChartsOperatorhubIo_cockroachdbsYaml,
-	"test/extended/testdata/opm/cockroachdb/supportsemver/5.0.4/cockroachdb-controller-manager-metrics-service_v1_service.yaml":            testExtendedTestdataOpmCockroachdbSupportsemver504CockroachdbControllerManagerMetricsService_v1_serviceYaml,
-	"test/extended/testdata/opm/cockroachdb/supportsemver/5.0.4/cockroachdb-metrics-reader_rbac.authorization.k8s.io_v1_clusterrole.yaml":  testExtendedTestdataOpmCockroachdbSupportsemver504CockroachdbMetricsReader_rbacAuthorizationK8sIo_v1_clusterroleYaml,
-	"test/extended/testdata/opm/cockroachdb/supportsemver/5.0.4/cockroachdb.clusterserviceversion.yaml":                                    testExtendedTestdataOpmCockroachdbSupportsemver504CockroachdbClusterserviceversionYaml,
-	"test/extended/testdata/opm/eclipse-che/7.32.2/checlusters.org.eclipse.che.crd.yaml":                                                   testExtendedTestdataOpmEclipseChe7322CheclustersOrgEclipseCheCrdYaml,
-	"test/extended/testdata/opm/eclipse-che/7.32.2/eclipse-che.v7.32.2.clusterserviceversion.yaml":                                         testExtendedTestdataOpmEclipseChe7322EclipseCheV7322ClusterserviceversionYaml,
-	"test/extended/testdata/opm/etcd_operator/0.9.2/manifests/etcdbackups.etcd.database.coreos.com.crd.yaml":                               testExtendedTestdataOpmEtcd_operator092ManifestsEtcdbackupsEtcdDatabaseCoreosComCrdYaml,
-	"test/extended/testdata/opm/etcd_operator/0.9.2/manifests/etcdclusters.etcd.database.coreos.com.crd.yaml":                              testExtendedTestdataOpmEtcd_operator092ManifestsEtcdclustersEtcdDatabaseCoreosComCrdYaml,
-	"test/extended/testdata/opm/etcd_operator/0.9.2/manifests/etcdoperator.v0.9.2.clusterserviceversion.yaml":                              testExtendedTestdataOpmEtcd_operator092ManifestsEtcdoperatorV092ClusterserviceversionYaml,
-	"test/extended/testdata/opm/etcd_operator/0.9.2/manifests/etcdrestores.etcd.database.coreos.com.crd.yaml":                              testExtendedTestdataOpmEtcd_operator092ManifestsEtcdrestoresEtcdDatabaseCoreosComCrdYaml,
-	"test/extended/testdata/opm/etcd_operator/0.9.2/metadata/annotations.yaml":                                                             testExtendedTestdataOpmEtcd_operator092MetadataAnnotationsYaml,
-	"test/extended/testdata/opm/etcd_operator/etcd_community/0.9.4/etcdbackups.etcd.database.coreos.com.crd.yaml":                          testExtendedTestdataOpmEtcd_operatorEtcd_community094EtcdbackupsEtcdDatabaseCoreosComCrdYaml,
-	"test/extended/testdata/opm/etcd_operator/etcd_community/0.9.4/etcdclusters.etcd.database.coreos.com.crd.yaml":                         testExtendedTestdataOpmEtcd_operatorEtcd_community094EtcdclustersEtcdDatabaseCoreosComCrdYaml,
-	"test/extended/testdata/opm/etcd_operator/etcd_community/0.9.4/etcdoperator.v0.9.4.clusterserviceversion.yaml":                         testExtendedTestdataOpmEtcd_operatorEtcd_community094EtcdoperatorV094ClusterserviceversionYaml,
-	"test/extended/testdata/opm/etcd_operator/etcd_community/0.9.4/etcdrestores.etcd.database.coreos.com.crd.yaml":                         testExtendedTestdataOpmEtcd_operatorEtcd_community094EtcdrestoresEtcdDatabaseCoreosComCrdYaml,
-	"test/extended/testdata/opm/etcd_operator/etcd_community/0.9.4-clusterwide/etcdbackups.etcd.database.coreos.com.crd.yaml":              testExtendedTestdataOpmEtcd_operatorEtcd_community094ClusterwideEtcdbackupsEtcdDatabaseCoreosComCrdYaml,
-	"test/extended/testdata/opm/etcd_operator/etcd_community/0.9.4-clusterwide/etcdclusters.etcd.database.coreos.com.crd.yaml":             testExtendedTestdataOpmEtcd_operatorEtcd_community094ClusterwideEtcdclustersEtcdDatabaseCoreosComCrdYaml,
-	"test/extended/testdata/opm/etcd_operator/etcd_community/0.9.4-clusterwide/etcdoperator.v0.9.4-clusterwide.clusterserviceversion.yaml": testExtendedTestdataOpmEtcd_operatorEtcd_community094ClusterwideEtcdoperatorV094ClusterwideClusterserviceversionYaml,
-	"test/extended/testdata/opm/etcd_operator/etcd_community/0.9.4-clusterwide/etcdrestores.etcd.database.coreos.com.crd.yaml":             testExtendedTestdataOpmEtcd_operatorEtcd_community094ClusterwideEtcdrestoresEtcdDatabaseCoreosComCrdYaml,
-	"test/extended/testdata/opm/etcd_operator/etcd_community/etcd.package.yaml":                                                            testExtendedTestdataOpmEtcd_operatorEtcd_communityEtcdPackageYaml,
-	"test/extended/testdata/opm/index_34016.db":                                                                                            testExtendedTestdataOpmIndex_34016Db,
-	"test/extended/testdata/opm/learn_operator/package/0.0.1/learn-operator.v0.0.1.clusterserviceversion.yaml":                             testExtendedTestdataOpmLearn_operatorPackage001LearnOperatorV001ClusterserviceversionYaml,
-	"test/extended/testdata/opm/learn_operator/package/0.0.1/learn.crd.yaml":                                                               testExtendedTestdataOpmLearn_operatorPackage001LearnCrdYaml,
-	"test/extended/testdata/opm/learn_operator/package/0.0.2/learn-operator.v0.0.2.clusterserviceversion.yaml":                             testExtendedTestdataOpmLearn_operatorPackage002LearnOperatorV002ClusterserviceversionYaml,
-	"test/extended/testdata/opm/learn_operator/package/0.0.2/learn.crd.yaml":                                                               testExtendedTestdataOpmLearn_operatorPackage002LearnCrdYaml,
-	"test/extended/testdata/opm/learn_operator/package/learn.package.yaml":                                                                 testExtendedTestdataOpmLearn_operatorPackageLearnPackageYaml,
-	"test/extended/testdata/ota/osus/operatorgroup.yaml":                                                                                   testExtendedTestdataOtaOsusOperatorgroupYaml,
-	"test/extended/testdata/ota/osus/subscription.yaml":                                                                                    testExtendedTestdataOtaOsusSubscriptionYaml,
-	"test/extended/testdata/router/ca-bundle.pem":                                                                                          testExtendedTestdataRouterCaBundlePem,
-	"test/extended/testdata/router/error-page-404.http":                                                                                    testExtendedTestdataRouterErrorPage404Http,
-	"test/extended/testdata/router/error-page-503.http":                                                                                    testExtendedTestdataRouterErrorPage503Http,
-	"test/extended/testdata/router/ingress-with-class.yaml":                                                                                testExtendedTestdataRouterIngressWithClassYaml,
-	"test/extended/testdata/router/ingresscontroller-hn-PROXY.yaml":                                                                        testExtendedTestdataRouterIngresscontrollerHnProxyYaml,
-	"test/extended/testdata/router/ingresscontroller-np-PROXY.yaml":                                                                        testExtendedTestdataRouterIngresscontrollerNpProxyYaml,
-	"test/extended/testdata/router/ingresscontroller-np.yaml":                                                                              testExtendedTestdataRouterIngresscontrollerNpYaml,
-	"test/extended/testdata/router/ipfailover.yaml":                                                                                        testExtendedTestdataRouterIpfailoverYaml,
-	"test/extended/testdata/router/web-server-rc.yaml":                                                                                     testExtendedTestdataRouterWebServerRcYaml,
-	"test/extended/testdata/securityandcompliance/aide.conf.rhel8":                                                                         testExtendedTestdataSecurityandcomplianceAideConfRhel8,
-	"test/extended/testdata/securityandcompliance/aide.conf.rhel8.1":                                                                       testExtendedTestdataSecurityandcomplianceAideConfRhel81,
-	"test/extended/testdata/securityandcompliance/aide.conf.rhel8.err":                                                                     testExtendedTestdataSecurityandcomplianceAideConfRhel8Err,
-	"test/extended/testdata/securityandcompliance/catalogsource-image.yaml":                                                                testExtendedTestdataSecurityandcomplianceCatalogsourceImageYaml,
-	"test/extended/testdata/securityandcompliance/compliancescan.yaml":                                                                     testExtendedTestdataSecurityandcomplianceCompliancescanYaml,
-	"test/extended/testdata/securityandcompliance/compliancescanStorageClass.yaml":                                                         testExtendedTestdataSecurityandcomplianceCompliancescanstorageclassYaml,
-	"test/extended/testdata/securityandcompliance/compliancescantaint.yaml":                                                                testExtendedTestdataSecurityandcomplianceCompliancescantaintYaml,
-	"test/extended/testdata/securityandcompliance/compliancescantaints.yaml":                                                               testExtendedTestdataSecurityandcomplianceCompliancescantaintsYaml,
-	"test/extended/testdata/securityandcompliance/compliancesuite.yaml":                                                                    testExtendedTestdataSecurityandcomplianceCompliancesuiteYaml,
-	"test/extended/testdata/securityandcompliance/compliancesuiteStorageClass.yaml":                                                        testExtendedTestdataSecurityandcomplianceCompliancesuitestorageclassYaml,
-	"test/extended/testdata/securityandcompliance/compliancesuitenodes.yaml":                                                               testExtendedTestdataSecurityandcomplianceCompliancesuitenodesYaml,
-	"test/extended/testdata/securityandcompliance/compliancesuitetaint.yaml":                                                               testExtendedTestdataSecurityandcomplianceCompliancesuitetaintYaml,
-	"test/extended/testdata/securityandcompliance/compliancesuitetpconfmap.yaml":                                                           testExtendedTestdataSecurityandcomplianceCompliancesuitetpconfmapYaml,
-	"test/extended/testdata/securityandcompliance/fileintegrity.yaml":                                                                      testExtendedTestdataSecurityandcomplianceFileintegrityYaml,
-	"test/extended/testdata/securityandcompliance/oc-compliance-scansetting.yaml":                                                          testExtendedTestdataSecurityandcomplianceOcComplianceScansettingYaml,
-	"test/extended/testdata/securityandcompliance/oc-compliance-scansettingbinding.yaml":                                                   testExtendedTestdataSecurityandcomplianceOcComplianceScansettingbindingYaml,
-	"test/extended/testdata/securityandcompliance/operator-group.yaml":                                                                     testExtendedTestdataSecurityandcomplianceOperatorGroupYaml,
-	"test/extended/testdata/securityandcompliance/pod_modify.yaml":                                                                         testExtendedTestdataSecurityandcompliancePod_modifyYaml,
-	"test/extended/testdata/securityandcompliance/profilebundle.yaml":                                                                      testExtendedTestdataSecurityandcomplianceProfilebundleYaml,
-	"test/extended/testdata/securityandcompliance/pv-extract-pod.yaml":                                                                     testExtendedTestdataSecurityandcompliancePvExtractPodYaml,
-	"test/extended/testdata/securityandcompliance/scansetting.yaml":                                                                        testExtendedTestdataSecurityandcomplianceScansettingYaml,
-	"test/extended/testdata/securityandcompliance/scansettingbinding.yaml":                                                                 testExtendedTestdataSecurityandcomplianceScansettingbindingYaml,
-	"test/extended/testdata/securityandcompliance/storage_class.yaml":                                                                      testExtendedTestdataSecurityandcomplianceStorage_classYaml,
-	"test/extended/testdata/securityandcompliance/subscription.yaml":                                                                       testExtendedTestdataSecurityandcomplianceSubscriptionYaml,
-	"test/extended/testdata/securityandcompliance/tailoredprofile-withoutvariable.yaml":                                                    testExtendedTestdataSecurityandcomplianceTailoredprofileWithoutvariableYaml,
-	"test/extended/testdata/securityandcompliance/tailoredprofile.yaml":                                                                    testExtendedTestdataSecurityandcomplianceTailoredprofileYaml,
-	"test/extended/testdata/winc/aws_windows_machineset_no_label.yaml":                                                                     testExtendedTestdataWincAws_windows_machineset_no_labelYaml,
-	"test/extended/testdata/winc/azure_windows_machineset_no_label.yaml":                                                                   testExtendedTestdataWincAzure_windows_machineset_no_labelYaml,
-	"test/extended/testdata/winc/linux_web_server.yaml":                                                                                    testExtendedTestdataWincLinux_web_serverYaml,
-	"test/extended/testdata/winc/windows_web_server.yaml":                                                                                  testExtendedTestdataWincWindows_web_serverYaml,
-	"test/extended/testdata/winc/windows_web_server_no_taint.yaml":                                                                         testExtendedTestdataWincWindows_web_server_no_taintYaml,
-	"test/extended/testdata/workloads/deploy_demopod.yaml":                                                                                 testExtendedTestdataWorkloadsDeploy_demopodYaml,
-	"test/extended/testdata/workloads/deploy_duplicatepods.yaml":                                                                           testExtendedTestdataWorkloadsDeploy_duplicatepodsYaml,
-	"test/extended/testdata/workloads/deploy_duplicatepodsrs.yaml":                                                                         testExtendedTestdataWorkloadsDeploy_duplicatepodsrsYaml,
-	"test/extended/testdata/workloads/deploy_interpodantiaffinity.yaml":                                                                    testExtendedTestdataWorkloadsDeploy_interpodantiaffinityYaml,
-	"test/extended/testdata/workloads/deploy_nodeaffinity.yaml":                                                                            testExtendedTestdataWorkloadsDeploy_nodeaffinityYaml,
-	"test/extended/testdata/workloads/deploy_nodeselect.yaml":                                                                              testExtendedTestdataWorkloadsDeploy_nodeselectYaml,
-	"test/extended/testdata/workloads/deploy_nodetaint.yaml":                                                                               testExtendedTestdataWorkloadsDeploy_nodetaintYaml,
-	"test/extended/testdata/workloads/deploy_podTopologySpread.yaml":                                                                       testExtendedTestdataWorkloadsDeploy_podtopologyspreadYaml,
-	"test/extended/testdata/workloads/deploy_single_pts.yaml":                                                                              testExtendedTestdataWorkloadsDeploy_single_ptsYaml,
-	"test/extended/testdata/workloads/init.ldif":                                                                                           testExtendedTestdataWorkloadsInitLdif,
-	"test/extended/testdata/workloads/kubedescheduler.yaml":                                                                                testExtendedTestdataWorkloadsKubedeschedulerYaml,
-	"test/extended/testdata/workloads/operatorgroup.yaml":                                                                                  testExtendedTestdataWorkloadsOperatorgroupYaml,
-	"test/extended/testdata/workloads/pod_multipts.yaml":                                                                                   testExtendedTestdataWorkloadsPod_multiptsYaml,
-	"test/extended/testdata/workloads/pod_nodeselect.yaml":                                                                                 testExtendedTestdataWorkloadsPod_nodeselectYaml,
-	"test/extended/testdata/workloads/pod_pts_nodeaffinity_required.yaml":                                                                  testExtendedTestdataWorkloadsPod_pts_nodeaffinity_requiredYaml,
-	"test/extended/testdata/workloads/pod_single_nodeaffinity_required.yaml":                                                               testExtendedTestdataWorkloadsPod_single_nodeaffinity_requiredYaml,
-	"test/extended/testdata/workloads/pod_singlepts.yaml":                                                                                  testExtendedTestdataWorkloadsPod_singleptsYaml,
-	"test/extended/testdata/workloads/pod_singlepts_nodeselect.yaml":                                                                       testExtendedTestdataWorkloadsPod_singlepts_nodeselectYaml,
-	"test/extended/testdata/workloads/pod_singlepts_prefer.yaml":                                                                           testExtendedTestdataWorkloadsPod_singlepts_preferYaml,
-	"test/extended/testdata/workloads/pod_singlepts_required.yaml":                                                                         testExtendedTestdataWorkloadsPod_singlepts_requiredYaml,
-	"test/extended/testdata/workloads/pod_tolerationseconds.yaml":                                                                          testExtendedTestdataWorkloadsPod_tolerationsecondsYaml,
-	"test/extended/testdata/workloads/subscription.yaml":                                                                                   testExtendedTestdataWorkloadsSubscriptionYaml,
-	"test/extended/testdata/workloads/sync-config-user-defined.yaml":                                                                       testExtendedTestdataWorkloadsSyncConfigUserDefinedYaml,
+	"test/extended/testdata/apiserver_and_auth/allow-same-namespace.yaml":                                                                     testExtendedTestdataApiserver_and_authAllowSameNamespaceYaml,
+	"test/extended/testdata/apiserver_and_auth/deny-network-policy.yaml":                                                                      testExtendedTestdataApiserver_and_authDenyNetworkPolicyYaml,
+	"test/extended/testdata/clusterinfrastructure/aws-machineset.yaml":                                                                        testExtendedTestdataClusterinfrastructureAwsMachinesetYaml,
+	"test/extended/testdata/clusterinfrastructure/azure-machineset.yaml":                                                                      testExtendedTestdataClusterinfrastructureAzureMachinesetYaml,
+	"test/extended/testdata/clusterinfrastructure/gcp-machineset.yaml":                                                                        testExtendedTestdataClusterinfrastructureGcpMachinesetYaml,
+	"test/extended/testdata/clusterinfrastructure/osp-machineset.yaml":                                                                        testExtendedTestdataClusterinfrastructureOspMachinesetYaml,
+	"test/extended/testdata/clusterinfrastructure/vsphere-machineset.yaml":                                                                    testExtendedTestdataClusterinfrastructureVsphereMachinesetYaml,
+	"test/extended/testdata/container_engine_tools/containerRuntimeConfig.yaml":                                                               testExtendedTestdataContainer_engine_toolsContainerruntimeconfigYaml,
+	"test/extended/testdata/container_engine_tools/pod-modify.yaml":                                                                           testExtendedTestdataContainer_engine_toolsPodModifyYaml,
+	"test/extended/testdata/image_registry/inputimage.yaml":                                                                                   testExtendedTestdataImage_registryInputimageYaml,
+	"test/extended/testdata/ldap/groupsync.sh":                                                                                                testExtendedTestdataLdapGroupsyncSh,
+	"test/extended/testdata/ldap/ldapserver-config-cm.yaml":                                                                                   testExtendedTestdataLdapLdapserverConfigCmYaml,
+	"test/extended/testdata/ldap/ldapserver-deployment.yaml":                                                                                  testExtendedTestdataLdapLdapserverDeploymentYaml,
+	"test/extended/testdata/ldap/ldapserver-scripts-cm.yaml":                                                                                  testExtendedTestdataLdapLdapserverScriptsCmYaml,
+	"test/extended/testdata/ldap/ldapserver-service.yaml":                                                                                     testExtendedTestdataLdapLdapserverServiceYaml,
+	"test/extended/testdata/logging/clusterlogforwarder/42363.yaml":                                                                           testExtendedTestdataLoggingClusterlogforwarder42363Yaml,
+	"test/extended/testdata/logging/clusterlogforwarder/42475.yaml":                                                                           testExtendedTestdataLoggingClusterlogforwarder42475Yaml,
+	"test/extended/testdata/logging/clusterlogging/cl-storage-template.yaml":                                                                  testExtendedTestdataLoggingClusterloggingClStorageTemplateYaml,
+	"test/extended/testdata/logging/clusterlogging/cl-template.yaml":                                                                          testExtendedTestdataLoggingClusterloggingClTemplateYaml,
+	"test/extended/testdata/logging/generatelog/container_json_log_template.json":                                                             testExtendedTestdataLoggingGeneratelogContainer_json_log_templateJson,
+	"test/extended/testdata/logging/generatelog/container_non_json_log_template.json":                                                         testExtendedTestdataLoggingGeneratelogContainer_non_json_log_templateJson,
+	"test/extended/testdata/logging/subscription/allnamespace-og.yaml":                                                                        testExtendedTestdataLoggingSubscriptionAllnamespaceOgYaml,
+	"test/extended/testdata/logging/subscription/singlenamespace-og.yaml":                                                                     testExtendedTestdataLoggingSubscriptionSinglenamespaceOgYaml,
+	"test/extended/testdata/logging/subscription/sub-template.yaml":                                                                           testExtendedTestdataLoggingSubscriptionSubTemplateYaml,
+	"test/extended/testdata/mco/bz1866117-add-dummy-files.yaml":                                                                               testExtendedTestdataMcoBz1866117AddDummyFilesYaml,
+	"test/extended/testdata/mco/change-workers-chrony-configuration.yaml":                                                                     testExtendedTestdataMcoChangeWorkersChronyConfigurationYaml,
+	"test/extended/testdata/networking/egressfirewall1.yaml":                                                                                  testExtendedTestdataNetworkingEgressfirewall1Yaml,
+	"test/extended/testdata/networking/egressfirewall2.yaml":                                                                                  testExtendedTestdataNetworkingEgressfirewall2Yaml,
+	"test/extended/testdata/networking/egressip-config1.yaml":                                                                                 testExtendedTestdataNetworkingEgressipConfig1Yaml,
+	"test/extended/testdata/networking/ping-for-pod.yaml":                                                                                     testExtendedTestdataNetworkingPingForPodYaml,
+	"test/extended/testdata/node/pod-modify.yaml":                                                                                             testExtendedTestdataNodePodModifyYaml,
+	"test/extended/testdata/oauthserver/cabundle-cm.yaml":                                                                                     testExtendedTestdataOauthserverCabundleCmYaml,
+	"test/extended/testdata/oauthserver/oauth-network.yaml":                                                                                   testExtendedTestdataOauthserverOauthNetworkYaml,
+	"test/extended/testdata/oauthserver/oauth-pod.yaml":                                                                                       testExtendedTestdataOauthserverOauthPodYaml,
+	"test/extended/testdata/oauthserver/oauth-sa.yaml":                                                                                        testExtendedTestdataOauthserverOauthSaYaml,
+	"test/extended/testdata/olm/apiservice.yaml":                                                                                              testExtendedTestdataOlmApiserviceYaml,
+	"test/extended/testdata/olm/catalogsource-address.yaml":                                                                                   testExtendedTestdataOlmCatalogsourceAddressYaml,
+	"test/extended/testdata/olm/catalogsource-configmap.yaml":                                                                                 testExtendedTestdataOlmCatalogsourceConfigmapYaml,
+	"test/extended/testdata/olm/catalogsource-image.yaml":                                                                                     testExtendedTestdataOlmCatalogsourceImageYaml,
+	"test/extended/testdata/olm/catalogsource-namespace.yaml":                                                                                 testExtendedTestdataOlmCatalogsourceNamespaceYaml,
+	"test/extended/testdata/olm/cm-25644-etcd-csv.yaml":                                                                                       testExtendedTestdataOlmCm25644EtcdCsvYaml,
+	"test/extended/testdata/olm/cm-certutil-readytest.yaml":                                                                                   testExtendedTestdataOlmCmCertutilReadytestYaml,
+	"test/extended/testdata/olm/cm-certutil-readytests.yaml":                                                                                  testExtendedTestdataOlmCmCertutilReadytestsYaml,
+	"test/extended/testdata/olm/cm-csv-etcd.yaml":                                                                                             testExtendedTestdataOlmCmCsvEtcdYaml,
+	"test/extended/testdata/olm/cm-learn-v1.yaml":                                                                                             testExtendedTestdataOlmCmLearnV1Yaml,
+	"test/extended/testdata/olm/cm-learn-v2.yaml":                                                                                             testExtendedTestdataOlmCmLearnV2Yaml,
+	"test/extended/testdata/olm/cm-lightbend.yaml":                                                                                            testExtendedTestdataOlmCmLightbendYaml,
+	"test/extended/testdata/olm/cm-namespaceconfig.yaml":                                                                                      testExtendedTestdataOlmCmNamespaceconfigYaml,
+	"test/extended/testdata/olm/cm-template.yaml":                                                                                             testExtendedTestdataOlmCmTemplateYaml,
+	"test/extended/testdata/olm/configmap-ectd-alpha-beta.yaml":                                                                               testExtendedTestdataOlmConfigmapEctdAlphaBetaYaml,
+	"test/extended/testdata/olm/configmap-etcd.yaml":                                                                                          testExtendedTestdataOlmConfigmapEtcdYaml,
+	"test/extended/testdata/olm/configmap-test.yaml":                                                                                          testExtendedTestdataOlmConfigmapTestYaml,
+	"test/extended/testdata/olm/configmap-with-defaultchannel.yaml":                                                                           testExtendedTestdataOlmConfigmapWithDefaultchannelYaml,
+	"test/extended/testdata/olm/configmap-without-defaultchannel.yaml":                                                                        testExtendedTestdataOlmConfigmapWithoutDefaultchannelYaml,
+	"test/extended/testdata/olm/cr-webhookTest.yaml":                                                                                          testExtendedTestdataOlmCrWebhooktestYaml,
+	"test/extended/testdata/olm/cs-without-image.yaml":                                                                                        testExtendedTestdataOlmCsWithoutImageYaml,
+	"test/extended/testdata/olm/csc.yaml":                                                                                                     testExtendedTestdataOlmCscYaml,
+	"test/extended/testdata/olm/dockerconfig.json":                                                                                            testExtendedTestdataOlmDockerconfigJson,
+	"test/extended/testdata/olm/etcd-cluster.yaml":                                                                                            testExtendedTestdataOlmEtcdClusterYaml,
+	"test/extended/testdata/olm/etcd-custom-csc.yaml":                                                                                         testExtendedTestdataOlmEtcdCustomCscYaml,
+	"test/extended/testdata/olm/etcd-subscription-manual.yaml":                                                                                testExtendedTestdataOlmEtcdSubscriptionManualYaml,
+	"test/extended/testdata/olm/etcd-subscription.yaml":                                                                                       testExtendedTestdataOlmEtcdSubscriptionYaml,
+	"test/extended/testdata/olm/mutatingwebhook-csv.yaml":                                                                                     testExtendedTestdataOlmMutatingwebhookCsvYaml,
+	"test/extended/testdata/olm/og-allns.yaml":                                                                                                testExtendedTestdataOlmOgAllnsYaml,
+	"test/extended/testdata/olm/og-multins.yaml":                                                                                              testExtendedTestdataOlmOgMultinsYaml,
+	"test/extended/testdata/olm/olm-proxy-subscription.yaml":                                                                                  testExtendedTestdataOlmOlmProxySubscriptionYaml,
+	"test/extended/testdata/olm/olm-subscription.yaml":                                                                                        testExtendedTestdataOlmOlmSubscriptionYaml,
+	"test/extended/testdata/olm/operatorgroup-serviceaccount.yaml":                                                                            testExtendedTestdataOlmOperatorgroupServiceaccountYaml,
+	"test/extended/testdata/olm/operatorgroup.yaml":                                                                                           testExtendedTestdataOlmOperatorgroupYaml,
+	"test/extended/testdata/olm/opsrc.yaml":                                                                                                   testExtendedTestdataOlmOpsrcYaml,
+	"test/extended/testdata/olm/packageserver.yaml":                                                                                           testExtendedTestdataOlmPackageserverYaml,
+	"test/extended/testdata/olm/role-binding.yaml":                                                                                            testExtendedTestdataOlmRoleBindingYaml,
+	"test/extended/testdata/olm/role.yaml":                                                                                                    testExtendedTestdataOlmRoleYaml,
+	"test/extended/testdata/olm/scoped-sa-etcd.yaml":                                                                                          testExtendedTestdataOlmScopedSaEtcdYaml,
+	"test/extended/testdata/olm/scoped-sa-fine-grained-roles.yaml":                                                                            testExtendedTestdataOlmScopedSaFineGrainedRolesYaml,
+	"test/extended/testdata/olm/scoped-sa-roles.yaml":                                                                                         testExtendedTestdataOlmScopedSaRolesYaml,
+	"test/extended/testdata/olm/validatingwebhook-csv.yaml":                                                                                   testExtendedTestdataOlmValidatingwebhookCsvYaml,
+	"test/extended/testdata/olm/vpa-crd.yaml":                                                                                                 testExtendedTestdataOlmVpaCrdYaml,
+	"test/extended/testdata/operators/argocd-cr.yaml":                                                                                         testExtendedTestdataOperatorsArgocdCrYaml,
+	"test/extended/testdata/operators/couchbase-enterprise-cr.yaml":                                                                           testExtendedTestdataOperatorsCouchbaseEnterpriseCrYaml,
+	"test/extended/testdata/operators/crunchy-cr.yaml":                                                                                        testExtendedTestdataOperatorsCrunchyCrYaml,
+	"test/extended/testdata/operators/jaeger.yaml":                                                                                            testExtendedTestdataOperatorsJaegerYaml,
+	"test/extended/testdata/operators/kafka.yaml":                                                                                             testExtendedTestdataOperatorsKafkaYaml,
+	"test/extended/testdata/operators/keycloak-cr.yaml":                                                                                       testExtendedTestdataOperatorsKeycloakCrYaml,
+	"test/extended/testdata/operators/kiali-cr.yaml":                                                                                          testExtendedTestdataOperatorsKialiCrYaml,
+	"test/extended/testdata/operators/mongodb-ops-manager-cr.yaml":                                                                            testExtendedTestdataOperatorsMongodbOpsManagerCrYaml,
+	"test/extended/testdata/operators/mongodb-ops-manager-secret.yaml":                                                                        testExtendedTestdataOperatorsMongodbOpsManagerSecretYaml,
+	"test/extended/testdata/operators/operator_group.yaml":                                                                                    testExtendedTestdataOperatorsOperator_groupYaml,
+	"test/extended/testdata/operators/portworx-snode-cr.yaml":                                                                                 testExtendedTestdataOperatorsPortworxSnodeCrYaml,
+	"test/extended/testdata/operators/radanalytics-spark-sparkapplication-cr.yaml":                                                            testExtendedTestdataOperatorsRadanalyticsSparkSparkapplicationCrYaml,
+	"test/extended/testdata/operators/radanalytics-spark-sparkcluster-cr.yaml":                                                                testExtendedTestdataOperatorsRadanalyticsSparkSparkclusterCrYaml,
+	"test/extended/testdata/operators/resourcelocker-cr.yaml":                                                                                 testExtendedTestdataOperatorsResourcelockerCrYaml,
+	"test/extended/testdata/operators/resourcelocker-role.yaml":                                                                               testExtendedTestdataOperatorsResourcelockerRoleYaml,
+	"test/extended/testdata/operators/spark-gcp-sparkapplication-cr.yaml":                                                                     testExtendedTestdataOperatorsSparkGcpSparkapplicationCrYaml,
+	"test/extended/testdata/operators/storageos-secret.yaml":                                                                                  testExtendedTestdataOperatorsStorageosSecretYaml,
+	"test/extended/testdata/operators/storageoscluster-cr.yaml":                                                                               testExtendedTestdataOperatorsStorageosclusterCrYaml,
+	"test/extended/testdata/operators/storageosupgrade-cr.yaml":                                                                               testExtendedTestdataOperatorsStorageosupgradeCrYaml,
+	"test/extended/testdata/operators/strimzi-cr.yaml":                                                                                        testExtendedTestdataOperatorsStrimziCrYaml,
+	"test/extended/testdata/operators/subscription.yaml":                                                                                      testExtendedTestdataOperatorsSubscriptionYaml,
+	"test/extended/testdata/operatorsdk/cache1_v1_blacklist.yaml":                                                                             testExtendedTestdataOperatorsdkCache1_v1_blacklistYaml,
+	"test/extended/testdata/operatorsdk/cache2_v1_modulescollect.yaml":                                                                        testExtendedTestdataOperatorsdkCache2_v1_modulescollectYaml,
+	"test/extended/testdata/operatorsdk/cache3_v1_k8sstatus.yaml":                                                                             testExtendedTestdataOperatorsdkCache3_v1_k8sstatusYaml,
+	"test/extended/testdata/operatorsdk/cache5_v1_collectiontest.yaml":                                                                        testExtendedTestdataOperatorsdkCache5_v1_collectiontestYaml,
+	"test/extended/testdata/operatorsdk/cache_v1_collectiontest.yaml":                                                                         testExtendedTestdataOperatorsdkCache_v1_collectiontestYaml,
+	"test/extended/testdata/operatorsdk/cache_v1_memcached.yaml":                                                                              testExtendedTestdataOperatorsdkCache_v1_memcachedYaml,
+	"test/extended/testdata/operatorsdk/cache_v1_previous.yaml":                                                                               testExtendedTestdataOperatorsdkCache_v1_previousYaml,
+	"test/extended/testdata/operatorsdk/catalogsource.yaml":                                                                                   testExtendedTestdataOperatorsdkCatalogsourceYaml,
+	"test/extended/testdata/operatorsdk/demo_v1_nginx.yaml":                                                                                   testExtendedTestdataOperatorsdkDemo_v1_nginxYaml,
+	"test/extended/testdata/operatorsdk/helmbase_v1_nginx.yaml":                                                                               testExtendedTestdataOperatorsdkHelmbase_v1_nginxYaml,
+	"test/extended/testdata/operatorsdk/operatorgroup.yaml":                                                                                   testExtendedTestdataOperatorsdkOperatorgroupYaml,
+	"test/extended/testdata/operatorsdk/previous_v1_collectiontest.yaml":                                                                      testExtendedTestdataOperatorsdkPrevious_v1_collectiontestYaml,
+	"test/extended/testdata/operatorsdk/sub.yaml":                                                                                             testExtendedTestdataOperatorsdkSubYaml,
+	"test/extended/testdata/opm/aqua/1.0.1/aqua-operator.v1.0.1.clusterserviceversion.yaml":                                                   testExtendedTestdataOpmAqua101AquaOperatorV101ClusterserviceversionYaml,
+	"test/extended/testdata/opm/aqua/1.0.1/aquacsps.operator.aquasec.com.crd.yaml":                                                            testExtendedTestdataOpmAqua101AquacspsOperatorAquasecComCrdYaml,
+	"test/extended/testdata/opm/aqua/1.0.1/aquadatabases.operator.aquasec.com.crd.yaml":                                                       testExtendedTestdataOpmAqua101AquadatabasesOperatorAquasecComCrdYaml,
+	"test/extended/testdata/opm/aqua/1.0.1/aquaenforcers.operator.aquasec.com.crd.yaml":                                                       testExtendedTestdataOpmAqua101AquaenforcersOperatorAquasecComCrdYaml,
+	"test/extended/testdata/opm/aqua/1.0.1/aquagateways.operator.aquasec.com.crd.yaml":                                                        testExtendedTestdataOpmAqua101AquagatewaysOperatorAquasecComCrdYaml,
+	"test/extended/testdata/opm/aqua/1.0.1/aquascanners.operator.aquasec.com.crd.yaml":                                                        testExtendedTestdataOpmAqua101AquascannersOperatorAquasecComCrdYaml,
+	"test/extended/testdata/opm/aqua/1.0.1/aquaservers.operator.aquasec.com.crd.yaml":                                                         testExtendedTestdataOpmAqua101AquaserversOperatorAquasecComCrdYaml,
+	"test/extended/testdata/opm/aqua/aqua-operator.package.yaml":                                                                              testExtendedTestdataOpmAquaAquaOperatorPackageYaml,
+	"test/extended/testdata/opm/cockroachdb/supportproperties/5.0.3/manifests/charts.operatorhub.io_cockroachdbs.yaml":                        testExtendedTestdataOpmCockroachdbSupportproperties503ManifestsChartsOperatorhubIo_cockroachdbsYaml,
+	"test/extended/testdata/opm/cockroachdb/supportproperties/5.0.3/manifests/cockroachdb-controller-manager-metrics-service_v1_service.yaml": testExtendedTestdataOpmCockroachdbSupportproperties503ManifestsCockroachdbControllerManagerMetricsService_v1_serviceYaml,
+	"test/extended/testdata/opm/cockroachdb/supportproperties/5.0.3/manifests/cockroachdb-metrics-reader_rbac.authorization.k8s.io_v1_clusterrole.yaml": testExtendedTestdataOpmCockroachdbSupportproperties503ManifestsCockroachdbMetricsReader_rbacAuthorizationK8sIo_v1_clusterroleYaml,
+	"test/extended/testdata/opm/cockroachdb/supportproperties/5.0.3/manifests/cockroachdb.clusterserviceversion.yaml":                                   testExtendedTestdataOpmCockroachdbSupportproperties503ManifestsCockroachdbClusterserviceversionYaml,
+	"test/extended/testdata/opm/cockroachdb/supportproperties/5.0.3/metadata/properties.yaml":                                                           testExtendedTestdataOpmCockroachdbSupportproperties503MetadataPropertiesYaml,
+	"test/extended/testdata/opm/cockroachdb/supportproperties/5.0.4/manifests/charts.operatorhub.io_cockroachdbs.yaml":                                  testExtendedTestdataOpmCockroachdbSupportproperties504ManifestsChartsOperatorhubIo_cockroachdbsYaml,
+	"test/extended/testdata/opm/cockroachdb/supportproperties/5.0.4/manifests/cockroachdb-controller-manager-metrics-service_v1_service.yaml":           testExtendedTestdataOpmCockroachdbSupportproperties504ManifestsCockroachdbControllerManagerMetricsService_v1_serviceYaml,
+	"test/extended/testdata/opm/cockroachdb/supportproperties/5.0.4/manifests/cockroachdb-metrics-reader_rbac.authorization.k8s.io_v1_clusterrole.yaml": testExtendedTestdataOpmCockroachdbSupportproperties504ManifestsCockroachdbMetricsReader_rbacAuthorizationK8sIo_v1_clusterroleYaml,
+	"test/extended/testdata/opm/cockroachdb/supportproperties/5.0.4/manifests/cockroachdb.clusterserviceversion.yaml":                                   testExtendedTestdataOpmCockroachdbSupportproperties504ManifestsCockroachdbClusterserviceversionYaml,
+	"test/extended/testdata/opm/cockroachdb/supportproperties/5.0.4/metadata/properties.yaml":                                                           testExtendedTestdataOpmCockroachdbSupportproperties504MetadataPropertiesYaml,
+	"test/extended/testdata/opm/cockroachdb/supportsemver/5.0.3/charts.operatorhub.io_cockroachdbs.yaml":                                                testExtendedTestdataOpmCockroachdbSupportsemver503ChartsOperatorhubIo_cockroachdbsYaml,
+	"test/extended/testdata/opm/cockroachdb/supportsemver/5.0.3/cockroachdb-controller-manager-metrics-service_v1_service.yaml":                         testExtendedTestdataOpmCockroachdbSupportsemver503CockroachdbControllerManagerMetricsService_v1_serviceYaml,
+	"test/extended/testdata/opm/cockroachdb/supportsemver/5.0.3/cockroachdb-metrics-reader_rbac.authorization.k8s.io_v1_clusterrole.yaml":               testExtendedTestdataOpmCockroachdbSupportsemver503CockroachdbMetricsReader_rbacAuthorizationK8sIo_v1_clusterroleYaml,
+	"test/extended/testdata/opm/cockroachdb/supportsemver/5.0.3/cockroachdb.clusterserviceversion.yaml":                                                 testExtendedTestdataOpmCockroachdbSupportsemver503CockroachdbClusterserviceversionYaml,
+	"test/extended/testdata/opm/cockroachdb/supportsemver/5.0.4/charts.operatorhub.io_cockroachdbs.yaml":                                                testExtendedTestdataOpmCockroachdbSupportsemver504ChartsOperatorhubIo_cockroachdbsYaml,
+	"test/extended/testdata/opm/cockroachdb/supportsemver/5.0.4/cockroachdb-controller-manager-metrics-service_v1_service.yaml":                         testExtendedTestdataOpmCockroachdbSupportsemver504CockroachdbControllerManagerMetricsService_v1_serviceYaml,
+	"test/extended/testdata/opm/cockroachdb/supportsemver/5.0.4/cockroachdb-metrics-reader_rbac.authorization.k8s.io_v1_clusterrole.yaml":               testExtendedTestdataOpmCockroachdbSupportsemver504CockroachdbMetricsReader_rbacAuthorizationK8sIo_v1_clusterroleYaml,
+	"test/extended/testdata/opm/cockroachdb/supportsemver/5.0.4/cockroachdb.clusterserviceversion.yaml":                                                 testExtendedTestdataOpmCockroachdbSupportsemver504CockroachdbClusterserviceversionYaml,
+	"test/extended/testdata/opm/eclipse-che/7.32.2/checlusters.org.eclipse.che.crd.yaml":                                                                testExtendedTestdataOpmEclipseChe7322CheclustersOrgEclipseCheCrdYaml,
+	"test/extended/testdata/opm/eclipse-che/7.32.2/eclipse-che.v7.32.2.clusterserviceversion.yaml":                                                      testExtendedTestdataOpmEclipseChe7322EclipseCheV7322ClusterserviceversionYaml,
+	"test/extended/testdata/opm/etcd_operator/0.9.2/manifests/etcdbackups.etcd.database.coreos.com.crd.yaml":                                            testExtendedTestdataOpmEtcd_operator092ManifestsEtcdbackupsEtcdDatabaseCoreosComCrdYaml,
+	"test/extended/testdata/opm/etcd_operator/0.9.2/manifests/etcdclusters.etcd.database.coreos.com.crd.yaml":                                           testExtendedTestdataOpmEtcd_operator092ManifestsEtcdclustersEtcdDatabaseCoreosComCrdYaml,
+	"test/extended/testdata/opm/etcd_operator/0.9.2/manifests/etcdoperator.v0.9.2.clusterserviceversion.yaml":                                           testExtendedTestdataOpmEtcd_operator092ManifestsEtcdoperatorV092ClusterserviceversionYaml,
+	"test/extended/testdata/opm/etcd_operator/0.9.2/manifests/etcdrestores.etcd.database.coreos.com.crd.yaml":                                           testExtendedTestdataOpmEtcd_operator092ManifestsEtcdrestoresEtcdDatabaseCoreosComCrdYaml,
+	"test/extended/testdata/opm/etcd_operator/0.9.2/metadata/annotations.yaml":                                                                          testExtendedTestdataOpmEtcd_operator092MetadataAnnotationsYaml,
+	"test/extended/testdata/opm/etcd_operator/etcd_community/0.9.4/etcdbackups.etcd.database.coreos.com.crd.yaml":                                       testExtendedTestdataOpmEtcd_operatorEtcd_community094EtcdbackupsEtcdDatabaseCoreosComCrdYaml,
+	"test/extended/testdata/opm/etcd_operator/etcd_community/0.9.4/etcdclusters.etcd.database.coreos.com.crd.yaml":                                      testExtendedTestdataOpmEtcd_operatorEtcd_community094EtcdclustersEtcdDatabaseCoreosComCrdYaml,
+	"test/extended/testdata/opm/etcd_operator/etcd_community/0.9.4/etcdoperator.v0.9.4.clusterserviceversion.yaml":                                      testExtendedTestdataOpmEtcd_operatorEtcd_community094EtcdoperatorV094ClusterserviceversionYaml,
+	"test/extended/testdata/opm/etcd_operator/etcd_community/0.9.4/etcdrestores.etcd.database.coreos.com.crd.yaml":                                      testExtendedTestdataOpmEtcd_operatorEtcd_community094EtcdrestoresEtcdDatabaseCoreosComCrdYaml,
+	"test/extended/testdata/opm/etcd_operator/etcd_community/0.9.4-clusterwide/etcdbackups.etcd.database.coreos.com.crd.yaml":                           testExtendedTestdataOpmEtcd_operatorEtcd_community094ClusterwideEtcdbackupsEtcdDatabaseCoreosComCrdYaml,
+	"test/extended/testdata/opm/etcd_operator/etcd_community/0.9.4-clusterwide/etcdclusters.etcd.database.coreos.com.crd.yaml":                          testExtendedTestdataOpmEtcd_operatorEtcd_community094ClusterwideEtcdclustersEtcdDatabaseCoreosComCrdYaml,
+	"test/extended/testdata/opm/etcd_operator/etcd_community/0.9.4-clusterwide/etcdoperator.v0.9.4-clusterwide.clusterserviceversion.yaml":              testExtendedTestdataOpmEtcd_operatorEtcd_community094ClusterwideEtcdoperatorV094ClusterwideClusterserviceversionYaml,
+	"test/extended/testdata/opm/etcd_operator/etcd_community/0.9.4-clusterwide/etcdrestores.etcd.database.coreos.com.crd.yaml":                          testExtendedTestdataOpmEtcd_operatorEtcd_community094ClusterwideEtcdrestoresEtcdDatabaseCoreosComCrdYaml,
+	"test/extended/testdata/opm/etcd_operator/etcd_community/etcd.package.yaml":                                                                         testExtendedTestdataOpmEtcd_operatorEtcd_communityEtcdPackageYaml,
+	"test/extended/testdata/opm/index_34016.db":                                                                testExtendedTestdataOpmIndex_34016Db,
+	"test/extended/testdata/opm/learn_operator/package/0.0.1/learn-operator.v0.0.1.clusterserviceversion.yaml": testExtendedTestdataOpmLearn_operatorPackage001LearnOperatorV001ClusterserviceversionYaml,
+	"test/extended/testdata/opm/learn_operator/package/0.0.1/learn.crd.yaml":                                   testExtendedTestdataOpmLearn_operatorPackage001LearnCrdYaml,
+	"test/extended/testdata/opm/learn_operator/package/0.0.2/learn-operator.v0.0.2.clusterserviceversion.yaml": testExtendedTestdataOpmLearn_operatorPackage002LearnOperatorV002ClusterserviceversionYaml,
+	"test/extended/testdata/opm/learn_operator/package/0.0.2/learn.crd.yaml":                                   testExtendedTestdataOpmLearn_operatorPackage002LearnCrdYaml,
+	"test/extended/testdata/opm/learn_operator/package/learn.package.yaml":                                     testExtendedTestdataOpmLearn_operatorPackageLearnPackageYaml,
+	"test/extended/testdata/ota/osus/operatorgroup.yaml":                                                       testExtendedTestdataOtaOsusOperatorgroupYaml,
+	"test/extended/testdata/ota/osus/subscription.yaml":                                                        testExtendedTestdataOtaOsusSubscriptionYaml,
+	"test/extended/testdata/router/ca-bundle.pem":                                                              testExtendedTestdataRouterCaBundlePem,
+	"test/extended/testdata/router/error-page-404.http":                                                        testExtendedTestdataRouterErrorPage404Http,
+	"test/extended/testdata/router/error-page-503.http":                                                        testExtendedTestdataRouterErrorPage503Http,
+	"test/extended/testdata/router/ingress-with-class.yaml":                                                    testExtendedTestdataRouterIngressWithClassYaml,
+	"test/extended/testdata/router/ingresscontroller-hn-PROXY.yaml":                                            testExtendedTestdataRouterIngresscontrollerHnProxyYaml,
+	"test/extended/testdata/router/ingresscontroller-np-PROXY.yaml":                                            testExtendedTestdataRouterIngresscontrollerNpProxyYaml,
+	"test/extended/testdata/router/ingresscontroller-np.yaml":                                                  testExtendedTestdataRouterIngresscontrollerNpYaml,
+	"test/extended/testdata/router/ipfailover.yaml":                                                            testExtendedTestdataRouterIpfailoverYaml,
+	"test/extended/testdata/router/web-server-rc.yaml":                                                         testExtendedTestdataRouterWebServerRcYaml,
+	"test/extended/testdata/securityandcompliance/aide.conf.rhel8":                                             testExtendedTestdataSecurityandcomplianceAideConfRhel8,
+	"test/extended/testdata/securityandcompliance/aide.conf.rhel8.1":                                           testExtendedTestdataSecurityandcomplianceAideConfRhel81,
+	"test/extended/testdata/securityandcompliance/aide.conf.rhel8.err":                                         testExtendedTestdataSecurityandcomplianceAideConfRhel8Err,
+	"test/extended/testdata/securityandcompliance/catalogsource-image.yaml":                                    testExtendedTestdataSecurityandcomplianceCatalogsourceImageYaml,
+	"test/extended/testdata/securityandcompliance/compliancescan.yaml":                                         testExtendedTestdataSecurityandcomplianceCompliancescanYaml,
+	"test/extended/testdata/securityandcompliance/compliancescanStorageClass.yaml":                             testExtendedTestdataSecurityandcomplianceCompliancescanstorageclassYaml,
+	"test/extended/testdata/securityandcompliance/compliancescantaint.yaml":                                    testExtendedTestdataSecurityandcomplianceCompliancescantaintYaml,
+	"test/extended/testdata/securityandcompliance/compliancescantaints.yaml":                                   testExtendedTestdataSecurityandcomplianceCompliancescantaintsYaml,
+	"test/extended/testdata/securityandcompliance/compliancesuite.yaml":                                        testExtendedTestdataSecurityandcomplianceCompliancesuiteYaml,
+	"test/extended/testdata/securityandcompliance/compliancesuiteStorageClass.yaml":                            testExtendedTestdataSecurityandcomplianceCompliancesuitestorageclassYaml,
+	"test/extended/testdata/securityandcompliance/compliancesuitenodes.yaml":                                   testExtendedTestdataSecurityandcomplianceCompliancesuitenodesYaml,
+	"test/extended/testdata/securityandcompliance/compliancesuitetaint.yaml":                                   testExtendedTestdataSecurityandcomplianceCompliancesuitetaintYaml,
+	"test/extended/testdata/securityandcompliance/compliancesuitetpconfmap.yaml":                               testExtendedTestdataSecurityandcomplianceCompliancesuitetpconfmapYaml,
+	"test/extended/testdata/securityandcompliance/fileintegrity.yaml":                                          testExtendedTestdataSecurityandcomplianceFileintegrityYaml,
+	"test/extended/testdata/securityandcompliance/oc-compliance-scansetting.yaml":                              testExtendedTestdataSecurityandcomplianceOcComplianceScansettingYaml,
+	"test/extended/testdata/securityandcompliance/oc-compliance-scansettingbinding.yaml":                       testExtendedTestdataSecurityandcomplianceOcComplianceScansettingbindingYaml,
+	"test/extended/testdata/securityandcompliance/operator-group.yaml":                                         testExtendedTestdataSecurityandcomplianceOperatorGroupYaml,
+	"test/extended/testdata/securityandcompliance/pod_modify.yaml":                                             testExtendedTestdataSecurityandcompliancePod_modifyYaml,
+	"test/extended/testdata/securityandcompliance/profilebundle.yaml":                                          testExtendedTestdataSecurityandcomplianceProfilebundleYaml,
+	"test/extended/testdata/securityandcompliance/pv-extract-pod.yaml":                                         testExtendedTestdataSecurityandcompliancePvExtractPodYaml,
+	"test/extended/testdata/securityandcompliance/scansetting.yaml":                                            testExtendedTestdataSecurityandcomplianceScansettingYaml,
+	"test/extended/testdata/securityandcompliance/scansettingbinding.yaml":                                     testExtendedTestdataSecurityandcomplianceScansettingbindingYaml,
+	"test/extended/testdata/securityandcompliance/storage_class.yaml":                                          testExtendedTestdataSecurityandcomplianceStorage_classYaml,
+	"test/extended/testdata/securityandcompliance/subscription.yaml":                                           testExtendedTestdataSecurityandcomplianceSubscriptionYaml,
+	"test/extended/testdata/securityandcompliance/tailoredprofile-withoutvariable.yaml":                        testExtendedTestdataSecurityandcomplianceTailoredprofileWithoutvariableYaml,
+	"test/extended/testdata/securityandcompliance/tailoredprofile.yaml":                                        testExtendedTestdataSecurityandcomplianceTailoredprofileYaml,
+	"test/extended/testdata/winc/aws_windows_machineset_no_label.yaml":                                         testExtendedTestdataWincAws_windows_machineset_no_labelYaml,
+	"test/extended/testdata/winc/azure_windows_machineset_no_label.yaml":                                       testExtendedTestdataWincAzure_windows_machineset_no_labelYaml,
+	"test/extended/testdata/winc/linux_web_server.yaml":                                                        testExtendedTestdataWincLinux_web_serverYaml,
+	"test/extended/testdata/winc/windows_web_server.yaml":                                                      testExtendedTestdataWincWindows_web_serverYaml,
+	"test/extended/testdata/winc/windows_web_server_no_taint.yaml":                                             testExtendedTestdataWincWindows_web_server_no_taintYaml,
+	"test/extended/testdata/workloads/deploy_demopod.yaml":                                                     testExtendedTestdataWorkloadsDeploy_demopodYaml,
+	"test/extended/testdata/workloads/deploy_duplicatepods.yaml":                                               testExtendedTestdataWorkloadsDeploy_duplicatepodsYaml,
+	"test/extended/testdata/workloads/deploy_duplicatepodsrs.yaml":                                             testExtendedTestdataWorkloadsDeploy_duplicatepodsrsYaml,
+	"test/extended/testdata/workloads/deploy_interpodantiaffinity.yaml":                                        testExtendedTestdataWorkloadsDeploy_interpodantiaffinityYaml,
+	"test/extended/testdata/workloads/deploy_nodeaffinity.yaml":                                                testExtendedTestdataWorkloadsDeploy_nodeaffinityYaml,
+	"test/extended/testdata/workloads/deploy_nodeselect.yaml":                                                  testExtendedTestdataWorkloadsDeploy_nodeselectYaml,
+	"test/extended/testdata/workloads/deploy_nodetaint.yaml":                                                   testExtendedTestdataWorkloadsDeploy_nodetaintYaml,
+	"test/extended/testdata/workloads/deploy_podTopologySpread.yaml":                                           testExtendedTestdataWorkloadsDeploy_podtopologyspreadYaml,
+	"test/extended/testdata/workloads/deploy_single_pts.yaml":                                                  testExtendedTestdataWorkloadsDeploy_single_ptsYaml,
+	"test/extended/testdata/workloads/init.ldif":                                                               testExtendedTestdataWorkloadsInitLdif,
+	"test/extended/testdata/workloads/kubedescheduler.yaml":                                                    testExtendedTestdataWorkloadsKubedeschedulerYaml,
+	"test/extended/testdata/workloads/operatorgroup.yaml":                                                      testExtendedTestdataWorkloadsOperatorgroupYaml,
+	"test/extended/testdata/workloads/pod_multipts.yaml":                                                       testExtendedTestdataWorkloadsPod_multiptsYaml,
+	"test/extended/testdata/workloads/pod_nodeselect.yaml":                                                     testExtendedTestdataWorkloadsPod_nodeselectYaml,
+	"test/extended/testdata/workloads/pod_pts_nodeaffinity_required.yaml":                                      testExtendedTestdataWorkloadsPod_pts_nodeaffinity_requiredYaml,
+	"test/extended/testdata/workloads/pod_single_nodeaffinity_required.yaml":                                   testExtendedTestdataWorkloadsPod_single_nodeaffinity_requiredYaml,
+	"test/extended/testdata/workloads/pod_singlepts.yaml":                                                      testExtendedTestdataWorkloadsPod_singleptsYaml,
+	"test/extended/testdata/workloads/pod_singlepts_nodeselect.yaml":                                           testExtendedTestdataWorkloadsPod_singlepts_nodeselectYaml,
+	"test/extended/testdata/workloads/pod_singlepts_prefer.yaml":                                               testExtendedTestdataWorkloadsPod_singlepts_preferYaml,
+	"test/extended/testdata/workloads/pod_singlepts_required.yaml":                                             testExtendedTestdataWorkloadsPod_singlepts_requiredYaml,
+	"test/extended/testdata/workloads/pod_tolerationseconds.yaml":                                              testExtendedTestdataWorkloadsPod_tolerationsecondsYaml,
+	"test/extended/testdata/workloads/subscription.yaml":                                                       testExtendedTestdataWorkloadsSubscriptionYaml,
+	"test/extended/testdata/workloads/sync-config-user-defined.yaml":                                           testExtendedTestdataWorkloadsSyncConfigUserDefinedYaml,
 }
 
 // AssetDir returns the file names below a certain
@@ -23791,6 +25596,30 @@ var _bintree = &bintree{nil, map[string]*bintree{
 						"aqua-operator.package.yaml": {testExtendedTestdataOpmAquaAquaOperatorPackageYaml, map[string]*bintree{}},
 					}},
 					"cockroachdb": {nil, map[string]*bintree{
+						"supportproperties": {nil, map[string]*bintree{
+							"5.0.3": {nil, map[string]*bintree{
+								"manifests": {nil, map[string]*bintree{
+									"charts.operatorhub.io_cockroachdbs.yaml":                                  {testExtendedTestdataOpmCockroachdbSupportproperties503ManifestsChartsOperatorhubIo_cockroachdbsYaml, map[string]*bintree{}},
+									"cockroachdb-controller-manager-metrics-service_v1_service.yaml":           {testExtendedTestdataOpmCockroachdbSupportproperties503ManifestsCockroachdbControllerManagerMetricsService_v1_serviceYaml, map[string]*bintree{}},
+									"cockroachdb-metrics-reader_rbac.authorization.k8s.io_v1_clusterrole.yaml": {testExtendedTestdataOpmCockroachdbSupportproperties503ManifestsCockroachdbMetricsReader_rbacAuthorizationK8sIo_v1_clusterroleYaml, map[string]*bintree{}},
+									"cockroachdb.clusterserviceversion.yaml":                                   {testExtendedTestdataOpmCockroachdbSupportproperties503ManifestsCockroachdbClusterserviceversionYaml, map[string]*bintree{}},
+								}},
+								"metadata": {nil, map[string]*bintree{
+									"properties.yaml": {testExtendedTestdataOpmCockroachdbSupportproperties503MetadataPropertiesYaml, map[string]*bintree{}},
+								}},
+							}},
+							"5.0.4": {nil, map[string]*bintree{
+								"manifests": {nil, map[string]*bintree{
+									"charts.operatorhub.io_cockroachdbs.yaml":                                  {testExtendedTestdataOpmCockroachdbSupportproperties504ManifestsChartsOperatorhubIo_cockroachdbsYaml, map[string]*bintree{}},
+									"cockroachdb-controller-manager-metrics-service_v1_service.yaml":           {testExtendedTestdataOpmCockroachdbSupportproperties504ManifestsCockroachdbControllerManagerMetricsService_v1_serviceYaml, map[string]*bintree{}},
+									"cockroachdb-metrics-reader_rbac.authorization.k8s.io_v1_clusterrole.yaml": {testExtendedTestdataOpmCockroachdbSupportproperties504ManifestsCockroachdbMetricsReader_rbacAuthorizationK8sIo_v1_clusterroleYaml, map[string]*bintree{}},
+									"cockroachdb.clusterserviceversion.yaml":                                   {testExtendedTestdataOpmCockroachdbSupportproperties504ManifestsCockroachdbClusterserviceversionYaml, map[string]*bintree{}},
+								}},
+								"metadata": {nil, map[string]*bintree{
+									"properties.yaml": {testExtendedTestdataOpmCockroachdbSupportproperties504MetadataPropertiesYaml, map[string]*bintree{}},
+								}},
+							}},
+						}},
 						"supportsemver": {nil, map[string]*bintree{
 							"5.0.3": {nil, map[string]*bintree{
 								"charts.operatorhub.io_cockroachdbs.yaml":                                  {testExtendedTestdataOpmCockroachdbSupportsemver503ChartsOperatorhubIo_cockroachdbsYaml, map[string]*bintree{}},

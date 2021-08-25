@@ -7207,6 +7207,166 @@ var _ = g.Describe("[sig-operators] OLM on VM for an end user handle within a na
 
 	})
 
+	g.It("VMonly-ConnectedOnly-Author:xzha-High-42979-Bundle authors can explicitly specify arbitrary properties", func() {
+		var (
+			containerCLI    = container.NewPodmanCLI()
+			containerTool   = "podman"
+			quayCLI         = container.NewQuayCLI()
+			opmCLI          = opm.NewOpmCLI()
+			bundleImageTag1 = "quay.io/olmqe/cockroachdb-operator:5.0.3-42979-" + getRandomString()
+			bundleImageTag2 = "quay.io/olmqe/cockroachdb-operator:5.0.4-42979-" + getRandomString()
+			indexImageTag   = "quay.io/olmqe/cockroachdb-index:42979-" + getRandomString()
+		)
+
+		defer containerCLI.RemoveImage(indexImageTag)
+		defer containerCLI.RemoveImage(bundleImageTag1)
+		defer containerCLI.RemoveImage(bundleImageTag2)
+		defer quayCLI.DeleteTag(strings.Replace(indexImageTag, "quay.io/", "", 1))
+		defer quayCLI.DeleteTag(strings.Replace(bundleImageTag1, "quay.io/", "", 1))
+		defer quayCLI.DeleteTag(strings.Replace(bundleImageTag2, "quay.io/", "", 1))
+
+		output := ""
+		var err error
+		g.By("build bundle image 1")
+		opmBaseDir := exutil.FixturePath("testdata", "opm", "cockroachdb", "supportproperties")
+		TestDataPath1 := filepath.Join(opmBaseDir, "5.0.3")
+		defer DeleteDir(TestDataPath1, "fixture-testdata")
+		opmCLI.ExecCommandPath = TestDataPath1
+		if output, err = opmCLI.Run("alpha").Args("bundle", "build", "-d", "manifests", "-b", containerTool, "-t", bundleImageTag1, "-p", "cockroachdb", "-c", "alpha", "-e", "alpha").Output(); err != nil {
+			e2e.Logf(output)
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}
+		if !strings.Contains(output, "Writing annotations.yaml") || !strings.Contains(output, "Writing bundle.Dockerfile") {
+			e2e.Failf("Failed to execute opm alpha bundle build : %s", output)
+		}
+		if output, err = containerCLI.Run("push").Args(bundleImageTag1).Output(); err != nil {
+			e2e.Logf(output)
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}
+		DeleteDir(TestDataPath1, "fixture-testdata")
+
+		g.By("build bundle image 2")
+		opmBaseDir = exutil.FixturePath("testdata", "opm", "cockroachdb", "supportproperties")
+		TestDataPath2 := filepath.Join(opmBaseDir, "5.0.4")
+		defer DeleteDir(TestDataPath2, "fixture-testdata")
+		opmCLI.ExecCommandPath = TestDataPath2
+		if output, err = opmCLI.Run("alpha").Args("bundle", "build", "-d", "manifests", "-b", containerTool, "-t", bundleImageTag2, "-p", "cockroachdb", "-c", "alpha", "-e", "alpha").Output(); err != nil {
+			e2e.Logf(output)
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}
+		if !strings.Contains(output, "Writing annotations.yaml") || !strings.Contains(output, "Writing bundle.Dockerfile") {
+			e2e.Failf("Failed to execute opm alpha bundle build : %s", output)
+		}
+		if output, err = containerCLI.Run("push").Args(bundleImageTag2).Output(); err != nil {
+			e2e.Logf(output)
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}
+
+		g.By("build index image")
+		if output, err := opmCLI.Run("index").Args("add", "-b", bundleImageTag1+","+bundleImageTag2, "-t", indexImageTag, "-c", containerTool).Output(); err != nil {
+			e2e.Logf(output)
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}
+		if output, err := containerCLI.Run("push").Args(indexImageTag).Output(); err != nil {
+			e2e.Logf(output)
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}
+
+		g.By("get index.db")
+		TmpDataPath := filepath.Join(opmBaseDir, "tmp")
+		dbFilePath := filepath.Join(TmpDataPath, "index.db")
+		err = os.MkdirAll(TmpDataPath, 0755)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		_, err = oc.AsAdmin().WithoutNamespace().Run("image").Args("extract", indexImageTag, "--path", "/database/index.db:"+TmpDataPath).Output()
+		e2e.Logf("get index.db SUCCESS, path is %s", dbFilePath)
+		if _, err := os.Stat(dbFilePath); os.IsNotExist(err) {
+			e2e.Logf("get index.db Failed")
+		}
+
+		g.By("Run the opm registry server binary to load manifest and serves a grpc API to query it.")
+		defer exec.Command("kill", "-9", "$(lsof -t -i:42979)").Output()
+		e2e.Logf("step: Run the registry-server")
+		cmd := exec.Command("opm", "registry", "serve", "-d", dbFilePath, "-t", filepath.Join(TmpDataPath, "42979.log"), "-p", "42979")
+		cmd.Dir = TmpDataPath
+		err = cmd.Start()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		time.Sleep(time.Second * 1)
+		e2e.Logf("step: check api.Registry/ListBundles")
+		outputCurl, err := exec.Command("grpcurl", "-plaintext", "localhost:42979", "api.Registry/ListBundles").Output()
+		e2e.Logf(string(outputCurl))
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(string(outputCurl)).To(o.ContainSubstring("cockroachdb.v5.0.3"))
+		o.Expect(string(outputCurl)).To(o.ContainSubstring("cockroachdb.v5.0.4"))
+		o.Expect(string(outputCurl)).To(o.ContainSubstring("olm.maxOpenShiftVersion"))
+		o.Expect(string(outputCurl)).To(o.ContainSubstring("version is 5.0.3"))
+		o.Expect(string(outputCurl)).To(o.ContainSubstring("version is 5.0.4"))
+		cmd.Process.Kill()
+
+		var (
+			itName            = g.CurrentGinkgoTestDescription().TestText
+			buildIndexBaseDir = exutil.FixturePath("testdata", "olm")
+			ogSingleTemplate  = filepath.Join(buildIndexBaseDir, "operatorgroup.yaml")
+			catsrcTemplate    = filepath.Join(buildIndexBaseDir, "catalogsource-image.yaml")
+			subTemplate       = filepath.Join(buildIndexBaseDir, "olm-subscription.yaml")
+			og                = operatorGroupDescription{
+				name:      "test-og",
+				namespace: "",
+				template:  ogSingleTemplate,
+			}
+			catsrc = catalogSourceDescription{
+				name:        "catsrc-42979",
+				namespace:   "",
+				displayName: "Test Catsrc 42979 Operators",
+				publisher:   "Red Hat",
+				sourceType:  "grpc",
+				address:     indexImageTag,
+				template:    catsrcTemplate,
+			}
+			sub = subscriptionDescription{
+				subName:                "cockroachdb",
+				namespace:              "",
+				channel:                "alpha",
+				ipApproval:             "Automatic",
+				operatorPackage:        "cockroachdb",
+				catalogSourceName:      catsrc.name,
+				catalogSourceNamespace: "",
+				startingCSV:            "cockroachdb.v5.0.3",
+				template:               subTemplate,
+				singleNamespace:        true,
+			}
+		)
+
+		defer DeleteDir(buildIndexBaseDir, "fixture-testdata")
+		oc.SetupProject()
+		og.namespace = oc.Namespace()
+		catsrc.namespace = oc.Namespace()
+		sub.namespace = oc.Namespace()
+		sub.catalogSourceNamespace = oc.Namespace()
+
+		g.By("create the OperatorGroup ")
+		og.createwithCheck(oc, itName, dr)
+
+		g.By("Create catalog source")
+		catsrc.create(oc, itName, dr)
+		err = wait.Poll(3*time.Second, 120*time.Second, func() (bool, error) {
+			exists, error := clusterPackageExists(oc, sub)
+			if !exists || error != nil {
+				return false, nil
+			}
+			return true, nil
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("install operator")
+		sub.createWithoutCheck(oc, itName, dr)
+		sub.expectCSV(oc, itName, dr, "cockroachdb.v5.0.4")
+		csvOutput := getResource(oc, asAdmin, withoutNamespace, "csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={.metadata.annotations}")
+		o.Expect(string(csvOutput)).To(o.ContainSubstring("version is 5.0.4"))
+		o.Expect(string(csvOutput)).To(o.ContainSubstring("olm.maxOpenShiftVersion"))
+
+		g.By("SUCCESS")
+	})
+
 	// Test case: OCP-30835, author:kuiwang@redhat.com
 	g.It("VMonly-ConnectedOnly-Author:kuiwang-Medium-30835-complete operator upgrades automatically based on SemVer setting default channel in opm alpha bundle build", func() {
 		var (
