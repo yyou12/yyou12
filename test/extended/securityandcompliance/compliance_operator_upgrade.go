@@ -94,14 +94,14 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance Pre-check and post-check f
 				"-o=jsonpath={.items[0].metadata.name}"}).check(oc)
 
 			g.By("Check ComplianceSuite status, name and result.. !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "RUNNING", ok, []string{"compliancesuite", ssb.name, "-n", ns1,
+				"-o=jsonpath={.status.phase}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "RUNNING", ok, []string{"compliancesuite", ssb2.name, "-n", ns2,
+				"-o=jsonpath={.status.phase}"}).check(oc)
 			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", ssb.name, "-n", ns1,
 				"-o=jsonpath={.status.phase}"}).check(oc)
-			newCheck("expect", asAdmin, withoutNamespace, contain, "NON-COMPLIANT", ok, []string{"compliancesuite", ssb.name, "-n", ns1,
-				"-o=jsonpath={.status.result}"}).check(oc)
 			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", ssb2.name, "-n", ns2,
 				"-o=jsonpath={.status.phase}"}).check(oc)
-			newCheck("expect", asAdmin, withoutNamespace, contain, "NON-COMPLIANT", ok, []string{"compliancesuite", ssb2.name, "-n", ns2,
-				"-o=jsonpath={.status.result}"}).check(oc)
 			checkComplianceSuiteResult(oc, ns1, ssb.name, "NON-COMPLIANT INCONSISTENT")
 			checkComplianceSuiteResult(oc, ns2, ssb2.name, "NON-COMPLIANT INCONSISTENT")
 		})
