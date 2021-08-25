@@ -5,10 +5,12 @@ import (
 	"regexp"
 	"os/exec"
 	"strings"
+	"time"
 
 	g "github.com/onsi/ginkgo"
 	o "github.com/onsi/gomega"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
+	"k8s.io/apimachinery/pkg/util/wait"
 
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
 )
@@ -52,6 +54,35 @@ var _ = g.Describe("[sig-cli] Workloads", func() {
 				}
 			}
 		}
+
+	})
+	// author: yinzhou@redhat.com
+	g.It("Author:yinzhou-Medium-42983-always delete the debug pod when the oc debug node command exist", func() {
+		g.By("Get all the node name list")
+		out, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("node", "-o=jsonpath={.items[*].metadata.name}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		nodeList := strings.Fields(out)
+
+		g.By("Create a new namespace")
+		oc.SetupProject()
+
+		g.By("Run debug node")
+		for  _, nodeName := range nodeList {
+			err = oc.AsAdmin().Run("debug").Args("node/"+nodeName, "--", "chroot", "/host", "date").Execute()
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}
+
+		g.By("Make sure debug pods have been deleted")
+		err = wait.Poll(5*time.Second, 30*time.Second, func() (bool, error) {
+			output, err := oc.Run("get").Args("pods", "-n", oc.Namespace()).Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			if matched, _ := regexp.MatchString("No resources found", output); !matched {
+				e2e.Logf("pods still not deleted :\n%s, try again ", output)
+				return false, nil
+			}
+			return true, nil
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
 
 	})
 })
