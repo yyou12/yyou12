@@ -19,10 +19,11 @@ import (
 var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 	defer g.GinkgoRecover()
 	var (
-		oc        = exutil.NewCLI("default-image-registry", exutil.KubeConfigPath())
-		bcName    = "rails-postgresql-example"
-		bcNameOne = fmt.Sprintf("%s-1", bcName)
-		logInfo   = `Unsupported value: "abc": supported values: "", "Normal", "Debug", "Trace", "TraceAll"`
+		oc           = exutil.NewCLI("default-image-registry", exutil.KubeConfigPath())
+		bcName       = "rails-postgresql-example"
+		bcNameOne    = fmt.Sprintf("%s-1", bcName)
+		logInfo      = `Unsupported value: "abc": supported values: "", "Normal", "Debug", "Trace", "TraceAll"`
+		updatePolicy = `"maxSurge":0,"maxUnavailable":"10%"`
 	)
 	// author: wewang@redhat.com
 	g.It("Author:wewang-High-39027-Check AWS secret and access key with an OpenShift installed in a regular way", func() {
@@ -274,5 +275,12 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 		g.By("Check 2 pods in the same node")
 		numi, _ = comparePodHostIp(oc)
 		o.Expect(numi >= 1).To(o.BeTrue())
+	})
+
+	// author: xiuwang@redhat.com
+	g.It("Author:xiuwang-Low-43669-Update openshift-image-registry/node-ca DaemonSet using maxUnavailable", func() {
+		g.By("Check node-ca updatepolicy")
+		out := getResource(oc, asAdmin, withoutNamespace, "daemonset/node-ca", "-n", "openshift-image-registry", "-o=jsonpath={.spec.updateStrategy.rollingUpdate}")
+		o.Expect(out).To(o.ContainSubstring(updatePolicy))
 	})
 })
