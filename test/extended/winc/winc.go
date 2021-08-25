@@ -627,6 +627,34 @@ var _ = g.Describe("[sig-windows] Windows_Containers", func() {
 		}
 
 	})
+	// author: rrasouli@redhat.com
+	g.It("Author:rrasouli-High-38186 Check Windows LB service [Slow]", func() {
+		namespace := "winc-38186"
+		createWindowsWorkload(oc, namespace)
+		defer deleteProject(oc, namespace)
+		// we determine range of 20
+		attempts := 20
+		e2e.Logf("Scaling up 2 workloads")
+		// we scale here for to start testing with 2 workloads.
+		scaleDeployment(oc, "windows", 2, namespace)
+		// fetching here the external IP
+		externalIP := getExternalIP("aws", oc, "windows", namespace)
+		e2e.Logf("External IP is: " + externalIP)
+		g.By("Test LB works well several times and should not get Connection timed out error")
+		if checkLBConnectivity(attempts, externalIP) {
+			e2e.Logf("Successfully tested loadbalancer on the same node")
+		} else {
+			e2e.Failf("Failed testing loadbalancer on same node scheduling")
+		}
+
+		g.By("2 Windows node + N Windows pods, N >= 2 and Windows pods should be landed on different nodes, we scale to 6 Windows workloads")
+		scaleDeployment(oc, "windows", 6, namespace)
+		if checkLBConnectivity(attempts, externalIP) {
+			e2e.Logf("Successfully tested loadbalancer on differnt node scheduling")
+		} else {
+			e2e.Failf("Failed testing loadbalancer on differnt node scheduling")
+		}
+	})
 
 	// author: sgao@redhat.com
 	g.It("Author:sgao-Critical-25593-Prevent scheduling non Windows workloads on Windows nodes", func() {
@@ -935,4 +963,18 @@ func truncatedVersion(s string) string {
 	str := strings.Split(s, ".")
 	str = str[:2]
 	return strings.Join(str[:], ".")
+}
+
+func checkLBConnectivity(attempts int, externalIP string) bool {
+	retcode := true
+	for v := 1; v < attempts; v++ {
+		e2e.Logf("Check the Load balancer cluster IP responding: " + externalIP)
+		msg, _ := exec.Command("bash", "-c", "curl "+externalIP).Output()
+		if !strings.Contains(string(msg), "Windows Container Web Server") {
+			e2e.Logf("Windows Load balancer isn't working properly on the %v attempt", v)
+			retcode = false
+			break
+		}
+	}
+	return retcode
 }
