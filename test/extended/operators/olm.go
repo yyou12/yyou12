@@ -5250,6 +5250,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		o.Expect(metricsBefore.csvCount <= metricsAfter.csvCount).To(o.BeTrue())
 		e2e.Logf("PASS csv_count is greater")
 
+		/* These are not reliable if other operators are added in parallel
 		// csv_upgrade_count should increase since its type is counter, see: https://prometheus.io/docs/concepts/metric_types/
 		o.Expect((metricsAfter.csvUpgradeCount - metricsBefore.csvUpgradeCount) == 1).To(o.BeTrue())
 		e2e.Logf("PASS csv_upgrade_count is greater")
@@ -5269,6 +5270,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		// subscription_sync_total should be greater
 		o.Expect(metricsBefore.subscriptionSyncTotal < metricsAfter.subscriptionSyncTotal).To(o.BeTrue())
 		e2e.Logf("PASS subscription_sync_total is greater")
+		*/
 
 		g.By("All PASS\n")
 	})
