@@ -26,6 +26,7 @@
 // test/extended/testdata/logging/subscription/sub-template.yaml
 // test/extended/testdata/mco/bz1866117-add-dummy-files.yaml
 // test/extended/testdata/mco/change-workers-chrony-configuration.yaml
+// test/extended/testdata/mco/custom-machine-config-pool.yaml
 // test/extended/testdata/monitoring/cluster-monitoring-cm.yaml
 // test/extended/testdata/monitoring/example-app-rule.yaml
 // test/extended/testdata/networking/egressfirewall1.yaml
@@ -2928,6 +2929,41 @@ func testExtendedTestdataMcoChangeWorkersChronyConfigurationYaml() (*asset, erro
 	}
 
 	info := bindataFileInfo{name: "test/extended/testdata/mco/change-workers-chrony-configuration.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataMcoCustomMachineConfigPoolYaml = []byte(`apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: mcp-template
+objects:
+  - kind: MachineConfigPool
+    apiVersion: machineconfiguration.openshift.io/v1
+    metadata:
+      name: "${NAME}"
+    spec:
+      machineConfigSelector:
+        matchExpressions:
+          - { key: machineconfiguration.openshift.io/role, operator: In, values: [ worker,"${NAME}" ] }
+      nodeSelector:
+        matchLabels:
+          node-role.kubernetes.io/infra: ""
+parameters:
+  - name: NAME
+`)
+
+func testExtendedTestdataMcoCustomMachineConfigPoolYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataMcoCustomMachineConfigPoolYaml, nil
+}
+
+func testExtendedTestdataMcoCustomMachineConfigPoolYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataMcoCustomMachineConfigPoolYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/mco/custom-machine-config-pool.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -25307,6 +25343,7 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/logging/subscription/sub-template.yaml":                                                                           testExtendedTestdataLoggingSubscriptionSubTemplateYaml,
 	"test/extended/testdata/mco/bz1866117-add-dummy-files.yaml":                                                                               testExtendedTestdataMcoBz1866117AddDummyFilesYaml,
 	"test/extended/testdata/mco/change-workers-chrony-configuration.yaml":                                                                     testExtendedTestdataMcoChangeWorkersChronyConfigurationYaml,
+	"test/extended/testdata/mco/custom-machine-config-pool.yaml":                                                                              testExtendedTestdataMcoCustomMachineConfigPoolYaml,
 	"test/extended/testdata/monitoring/cluster-monitoring-cm.yaml":                                                                            testExtendedTestdataMonitoringClusterMonitoringCmYaml,
 	"test/extended/testdata/monitoring/example-app-rule.yaml":                                                                                 testExtendedTestdataMonitoringExampleAppRuleYaml,
 	"test/extended/testdata/networking/egressfirewall1.yaml":                                                                                  testExtendedTestdataNetworkingEgressfirewall1Yaml,
@@ -25601,6 +25638,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 				"mco": {nil, map[string]*bintree{
 					"bz1866117-add-dummy-files.yaml":           {testExtendedTestdataMcoBz1866117AddDummyFilesYaml, map[string]*bintree{}},
 					"change-workers-chrony-configuration.yaml": {testExtendedTestdataMcoChangeWorkersChronyConfigurationYaml, map[string]*bintree{}},
+					"custom-machine-config-pool.yaml":          {testExtendedTestdataMcoCustomMachineConfigPoolYaml, map[string]*bintree{}},
 				}},
 				"monitoring": {nil, map[string]*bintree{
 					"cluster-monitoring-cm.yaml": {testExtendedTestdataMonitoringClusterMonitoringCmYaml, map[string]*bintree{}},

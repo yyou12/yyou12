@@ -101,4 +101,47 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		o.Expect(float64(timecost)).Should(o.BeNumerically("<", 10.0))
 
 	})
+
+	g.It("Author:mhanss-CPaasrunOnly-Critical-43043-Critical-43064-create/delete custom machine config pool [Disruptive]", func() {
+		g.By("get worker node to change the label")
+		workerNode, err := getFirstWorkerNode(oc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Add label as infra to the existing node")
+		labelOutput, err := addCustomLabelToNode(oc, workerNode, "infra=")
+		defer deleteCustomLabelFromNode(oc, workerNode, "infra")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(labelOutput).Should(o.ContainSubstring(workerNode))
+		nodeLabel, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("nodes/" + workerNode).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(nodeLabel).Should(o.ContainSubstring("infra"))
+
+		g.By("Create custom infra mcp")
+		mcpName := "infra"
+		mcpTemplate := generateTemplateAbsolutePath("custom-machine-config-pool.yaml")
+		mcp := machineConfigPool{name: mcpName, template: mcpTemplate}
+		defer mcp.delete(oc)
+		defer waitForNodeDoesNotContain(oc, workerNode, mcpName)
+		defer deleteCustomLabelFromNode(oc, workerNode, mcpName)
+		mcp.create(oc)
+		e2e.Logf("Custom mcp is created successfully!")
+
+		g.By("Remove custom label from the node")
+		unlabeledOutput, err := deleteCustomLabelFromNode(oc, workerNode, mcpName)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(unlabeledOutput).Should(o.ContainSubstring(workerNode))
+		waitForNodeDoesNotContain(oc, workerNode, mcpName)
+
+		g.By("Check custom infra label is removed from the node")
+		nodeOut, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("nodes", "-l", "node-role.kubernetes.io/infra").Output()
+		o.Expect(nodeOut).Should(o.ContainSubstring("No resources found"))
+
+		g.By("Remove custom infra mcp")
+		mcp.delete(oc)
+
+		g.By("Check custom infra mcp is deleted")
+		mcpOut, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("mcp/" + mcpName).Output()
+		o.Expect(mcpOut).Should(o.ContainSubstring("NotFound"))
+		e2e.Logf("Custom mcp is deleted successfully!")
+	})
 })

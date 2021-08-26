@@ -20,7 +20,8 @@ type machineConfig struct {
 }
 
 type machineConfigPool struct {
-	name string
+	name     string
+	template string
 }
 
 func (mc *machineConfig) create(oc *exutil.CLI) {
@@ -51,6 +52,17 @@ func (mc *machineConfig) delete(oc *exutil.CLI) {
 	mcp.waitForComplete(oc)
 }
 
+func (mcp *machineConfigPool) create(oc *exutil.CLI) {
+	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", mcp.template, "-p", "NAME="+mcp.name)
+	o.Expect(err).NotTo(o.HaveOccurred())
+	mcp.waitForComplete(oc)
+}
+
+func (mcp *machineConfigPool) delete(oc *exutil.CLI) {
+	e2e.Logf("deleting custom mcp: %s", mcp.name)
+	oc.AsAdmin().WithoutNamespace().Run("delete").Args("mcp", mcp.name).Execute()
+}
+
 func (mcp *machineConfigPool) waitForComplete(oc *exutil.CLI) {
 	err := wait.Poll(1*time.Minute, 25*time.Minute, func() (bool, error) {
 		stdout, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("mcp/"+mcp.name, "-o", "jsonpath='{.status.conditions[?(@.type==\"Updated\")].status}'").Output()
@@ -67,6 +79,31 @@ func (mcp *machineConfigPool) waitForComplete(oc *exutil.CLI) {
 	})
 
 	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+func waitForNodeDoesNotContain(oc *exutil.CLI, node string, value string) {
+	err := wait.Poll(1*time.Minute, 10*time.Minute, func() (bool, error) {
+		stdout, err := oc.AsAdmin().WithoutNamespace().Run("describe").Args("node/" + node).Output()
+		if err != nil {
+			e2e.Logf("the err:%v, and try next round", err)
+			return false, nil
+		}
+		if !strings.Contains(stdout, value) {
+			e2e.Logf("node does not contain %s", value)
+			return true, nil
+		}
+		return false, nil
+	})
+
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+func deleteCustomLabelFromNode(oc *exutil.CLI, node string, label string) (string, error) {
+	return oc.AsAdmin().WithoutNamespace().Run("label").Args("node", node, "node-role.kubernetes.io/"+label+"-").Output()
+}
+
+func addCustomLabelToNode(oc *exutil.CLI, node string, label string) (string, error) {
+	return oc.AsAdmin().WithoutNamespace().Run("label").Args("node", node, "node-role.kubernetes.io/"+label).Output()
 }
 
 func getFirstWorkerNode(oc *exutil.CLI) (string, error) {
