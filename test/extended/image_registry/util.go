@@ -180,3 +180,17 @@ func comparePodHostIp(oc *exutil.CLI) (int, int) {
 	}
 	return numi, numj
 }
+
+func imagePruneLog(oc *exutil.CLI, matchlogs string) bool {
+	podsOfImagePrune := []corev1.Pod{}
+	podsOfImagePrune = ListPodStartingWith("image-pruner", oc, "openshift-image-registry")
+	for _, pod := range podsOfImagePrune {
+		depOutput, err := oc.AsAdmin().Run("logs").WithoutNamespace().Args("pod/"+pod.Name, "-n", pod.Namespace).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		if strings.Contains(depOutput, matchlogs) {
+			return true
+			break
+		}
+	}
+	return false
+}
