@@ -5871,9 +5871,9 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 
 		g.By("The install plan is Failed, without og")
 		installPlan := sub.getIP(oc)
-		newCheck("expect", asAdmin, withoutNamespace, compare, "Failed", ok, []string{"ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Installing", ok, []string{"ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
 		newCheck("expect", asAdmin, withoutNamespace, contain, "no operator group found", ok, []string{"ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.conditions}"}).check(oc)
-		newCheck("expect", asAdmin, withoutNamespace, contain, "InstallCheckFailed", ok, []string{"sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.conditions}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, contain, "InstallPlanPending", ok, []string{"sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.conditions}"}).check(oc)
 
 		g.By("delete operator")
 		sub.delete(itName, dr)
@@ -5889,9 +5889,9 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 
 		g.By("The install plan is Failed, multiple og")
 		installPlan = sub.getIP(oc)
-		newCheck("expect", asAdmin, withoutNamespace, compare, "Failed", ok, []string{"ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Installing", ok, []string{"ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
 		newCheck("expect", asAdmin, withoutNamespace, contain, "more than one operator group", ok, []string{"ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.conditions}"}).check(oc)
-		newCheck("expect", asAdmin, withoutNamespace, contain, "InstallCheckFailed", ok, []string{"sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.conditions}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, contain, "InstallPlanPending", ok, []string{"sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.conditions}"}).check(oc)
 
 		g.By("delete resource for next step")
 		sub.delete(itName, dr)
@@ -5915,9 +5915,9 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 
 		g.By("The install plan is Failed, without sa for og")
 		installPlan = sub.getIP(oc)
-		newCheck("expect", asAdmin, withoutNamespace, compare, "Failed", ok, []string{"ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Installing", ok, []string{"ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
 		newCheck("expect", asAdmin, withoutNamespace, contain, "not found+2+please make sure the service account exists", ok, []string{"ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.conditions}"}).check(oc)
-		newCheck("expect", asAdmin, withoutNamespace, contain, "InstallComponentFailed+2+InstallCheckFailed", ok, []string{"sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.conditions}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, contain, "InstallComponentFailed+2+InstallPlanPending", ok, []string{"sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.conditions}"}).check(oc)
 	})
 
 	// author: xzha@redhat.com
