@@ -765,6 +765,34 @@ var _ = g.Describe("[sig-operators] OLM opm with podman", func() {
 		g.By("step: 43147 SUCCESS")
 	})
 
+	// author: xzha@redhat.com
+	g.It("Author:xzha-ConnectedOnly-VMonly-Medium-43562-opm should raise error when adding an bundle whose version is higher than the bundle being added", func() {
+		containerCLI := podmanCLI
+		containerTool := "podman"
+		indexImage := "quay.io/olmqe/ditto-index:43562"
+		indexImage1 := "quay.io/olmqe/ditto-index:43562-1" + getRandomString()
+		indexImage2 := "quay.io/olmqe/ditto-index:43562-2" + getRandomString()
+
+		defer containerCLI.RemoveImage(indexImage)
+		defer containerCLI.RemoveImage(indexImage1)
+		defer containerCLI.RemoveImage(indexImage2)
+
+		g.By("step: run add ditto-operator.v0.1.0 replace ditto-operator.v0.1.1")
+		output1, err := opmCLI.Run("index").Args("add", "-b", "quay.io/olmqe/ditto-operator:43562-0.1.0", "-f", indexImage, "-t", indexImage1, "-c", containerTool).Output()
+		o.Expect(err).To(o.HaveOccurred())
+		o.Expect(string(output1)).To(o.ContainSubstring("error"))
+		o.Expect(string(output1)).To(o.ContainSubstring("permissive mode disabled"))
+		o.Expect(string(output1)).To(o.ContainSubstring("this may be due to incorrect channel head"))
+
+		output2, err := opmCLI.Run("index").Args("add", "-b", "quay.io/olmqe/ditto-operator:43562-0.1.2", "-f", indexImage, "-t", indexImage1, "-c", containerTool).Output()
+		o.Expect(err).To(o.HaveOccurred())
+		o.Expect(string(output2)).To(o.ContainSubstring("error"))
+		o.Expect(string(output2)).To(o.ContainSubstring("permissive mode disabled"))
+		o.Expect(string(output2)).To(o.ContainSubstring("this may be due to incorrect channel head"))
+
+		g.By("test case 43562 SUCCESS")
+	})
+
 	// author: tbuskey@redhat.com
 	g.It("Author:tbuskey-VMonly-High-30786-Bundle addition commutativity", func() {
 		opmBaseDir := exutil.FixturePath("testdata", "opm")
