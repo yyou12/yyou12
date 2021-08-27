@@ -719,6 +719,52 @@ var _ = g.Describe("[sig-operators] OLM opm with podman", func() {
 		g.By("step: SUCCESS")
 	})
 
+	// author: xzha@redhat.com
+	g.It("Author:xzha-ConnectedOnly-VMonly-Medium-43147-opm support rebuild index if any bundles have been truncated", func() {
+		containerCLI := podmanCLI
+		containerTool := "podman"
+		indexImage := "quay.io/olmqe/ditto-index:43147"
+		indexImageDep := "quay.io/olmqe/ditto-index:43147-dep" + getRandomString()
+		indexImageOW := "quay.io/olmqe/ditto-index:43147-ow" + getRandomString()
+
+		defer containerCLI.RemoveImage(indexImage)
+		defer containerCLI.RemoveImage(indexImageDep)
+		defer containerCLI.RemoveImage(indexImageOW)
+		defer quayCLI.DeleteTag(strings.Replace(indexImageDep, "quay.io/", "", 1))
+
+		g.By("step: run deprecatetruncate")
+		output, err := opmCLI.Run("index").Args("deprecatetruncate", "-b", "quay.io/olmqe/ditto-operator:0.1.1", "-f", indexImage, "-t", indexImageDep, "-c", containerTool).Output()
+		if err != nil {
+			e2e.Logf(output)
+		}
+		o.Expect(err).NotTo(o.HaveOccurred())
+		output, err = containerCLI.Run("push").Args(indexImageDep).Output()
+		if err != nil {
+			e2e.Logf(output)
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}
+
+		g.By("check there is no channel alpha")
+		output, err = opmCLI.Run("alpha").Args("list", "channels", indexImageDep).Output()
+		if err != nil {
+			e2e.Logf(output)
+		}
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(string(output)).NotTo(o.ContainSubstring("alpha"))
+		o.Expect(string(output)).To(o.ContainSubstring("beta"))
+		o.Expect(string(output)).NotTo(o.ContainSubstring("ditto-operator.v0.1.0"))
+
+		g.By("re-adding the bundle")
+		output, err = opmCLI.Run("index").Args("add", "-b", "quay.io/olmqe/ditto-operator:0.1.1,quay.io/olmqe/ditto-operator:0.2.0", "-f", indexImageDep, "-t", indexImageOW, "--overwrite-latest", "-c", containerTool).Output()
+		if err != nil {
+			e2e.Logf(output)
+		}
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(string(output)).NotTo(o.ContainSubstring("ERRO"))
+
+		g.By("step: 43147 SUCCESS")
+	})
+
 	// author: tbuskey@redhat.com
 	g.It("Author:tbuskey-VMonly-High-30786-Bundle addition commutativity", func() {
 		opmBaseDir := exutil.FixturePath("testdata", "opm")
