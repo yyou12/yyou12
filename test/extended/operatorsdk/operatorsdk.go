@@ -10,6 +10,7 @@ import (
 
     exutil "github.com/openshift/openshift-tests-private/test/extended/util"
     e2e "k8s.io/kubernetes/test/e2e/framework"
+    container "github.com/openshift/openshift-tests-private/test/extended/util/container"
     "k8s.io/apimachinery/pkg/util/wait"
     "path/filepath"
 )
@@ -714,6 +715,60 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
         msg, _ = operatorsdkCLI.Run("bundle").Args("validate", "/tmp/ocp-42614/traefikee-operator/bundle", "--select-optional", "name=community", "-o", "json-alpha1").Output()
         o.Expect(msg).To(o.ContainSubstring("csv.Annotations not specified olm.maxOpenShiftVersion for an OCP version"))
         o.Expect(msg).To(o.ContainSubstring("error"))
+    })
+
+    // author: jfan@redhat.com
+    g.It("VMonly-ConnectedOnly-Author:jfan-High-34462-SDK playbook ansible operator generate the catalog [Slow]", func() {
+        buildPruningBaseDir := exutil.FixturePath("testdata", "operatorsdk")
+        var catalogofcatalog = filepath.Join(buildPruningBaseDir, "catalogsource.yaml")
+        var ogofcatalog = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+        var subofcatalog = filepath.Join(buildPruningBaseDir, "sub.yaml")
+        oc.SetupProject()
+        namespace := oc.Namespace()
+        containerCLI := container.NewPodmanCLI()
+        g.By("Create the playbook ansible operator")
+        _, err := exec.Command("bash", "-c", "mkdir -p /tmp/ocp-34462/catalogtest && cd /tmp/ocp-34462/catalogtest && operator-sdk init --plugins=ansible --domain catalogtest.com").Output()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        defer exec.Command("bash", "-c", "rm -rf /tmp/ocp-34462").Output()
+        _, err = exec.Command("bash", "-c", "cd /tmp/ocp-34462/catalogtest && operator-sdk create api --group cache --version v1 --kind Catalogtest --generate-playbook").Output()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        exec.Command("bash", "-c", "cp -rf test/extended/util/operatorsdk/ocp-34462-data/Dockerfile /tmp/ocp-34462/catalogtest/Dockerfile").Output()
+        exec.Command("bash", "-c", "cp -rf test/extended/util/operatorsdk/ocp-34462-data/config/default/manager_auth_proxy_patch.yaml /tmp/ocp-34462/catalogtest/config/default/manager_auth_proxy_patch.yaml").Output()
+        _, err = exec.Command("bash", "-c", "cd /tmp/ocp-34462/catalogtest && make docker-build docker-push IMG=quay.io/olmqe/catalogtest-operator:v4.9").Output()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        defer containerCLI.RemoveImage("quay.io/olmqe/catalogtest-operator:v4.9")
+
+        // ocp-40219
+        g.By("Generate the bundle image and catalog index image")
+        _, err = exec.Command("bash", "-c", "cd /tmp/ocp-34462/catalogtest && sed -i 's#controller:latest#quay.io/olmqe/catalogtest-operator:v4.9#g' /tmp/ocp-34462/catalogtest/Makefile").Output()
+        _, err = exec.Command("bash", "-c", "cp -rf test/extended/util/operatorsdk/ocp-34462-data/manifests/bases/ /tmp/ocp-34462/catalogtest/config/manifests/").Output()
+        _, err = exec.Command("bash", "-c", "cd /tmp/ocp-34462/catalogtest && make bundle").Output()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        _, err = exec.Command("bash", "-c", "cd /tmp/ocp-34462/catalogtest && sed -i 's/--container-tool docker //g' Makefile").Output()
+        _, err = exec.Command("bash", "-c", "cd /tmp/ocp-34462/catalogtest && make bundle-build bundle-push catalog-build catalog-push BUNDLE_IMG=quay.io/olmqe/catalogtest-bundle:v4.9 CATALOG_IMG=quay.io/olmqe/catalogtest-index:v4.9").Output()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        defer containerCLI.RemoveImage("quay.io/olmqe/catalogtest-bundle:v4.9")
+        defer containerCLI.RemoveImage("quay.io/olmqe/catalogtest-index:v4.9")
+
+        g.By("Install the operator through olm")
+        createCatalog, _ := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", catalogofcatalog, "-p", "NAME=cs-catalog", "NAMESPACE=" + namespace, "ADDRESS=quay.io/olmqe/catalogtest-index:v4.9", "DISPLAYNAME=CatalogTest").OutputToFile("catalogsource-34462.json")
+        err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", createCatalog, "-n", namespace).Execute()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        createOg, _ := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", ogofcatalog, "-p", "NAME=catalogtest-single", "NAMESPACE=" + namespace, "KAKA=" + namespace).OutputToFile("createog-34462.json")
+        err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", createOg, "-n", namespace).Execute()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        createSub, _ := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", subofcatalog, "-p", "NAME=cataloginstall", "NAMESPACE=" + namespace, "SOURCENAME=cs-catalog", "OPERATORNAME=catalogtest", "SOURCENAMESPACE=" + namespace, "STARTINGCSV=catalogtest.v0.0.1").OutputToFile("createsub-34462.json")
+        err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", createSub, "-n", namespace).Execute()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        waitErr := wait.Poll(15*time.Second, 360*time.Second, func() (bool, error) {
+            msg, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", "catalogtest.v0.0.1", "-o=jsonpath={.status.phase}", "-n", namespace).Output()
+            if strings.Contains(msg, "Succeeded") {
+                e2e.Logf("catalogtest installed successfully")
+                return true, nil
+            }
+            return false, nil
+        })
+        o.Expect(waitErr).NotTo(o.HaveOccurred())
     })
    
     // author: chuo@redhat.com
