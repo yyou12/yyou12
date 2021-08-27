@@ -2,6 +2,8 @@ package workloads
 
 import (
 	o "github.com/onsi/gomega"
+	"encoding/json"
+	"regexp"
 
 	"math/rand"
 	"strconv"
@@ -142,6 +144,14 @@ type podTolerate struct {
         effectPolicy   string
         tolerateTime   int
         template       string
+}
+
+type ControlplaneInfo struct {
+	HolderIdentity       string        `json:"holderIdentity"`
+	LeaseDurationSeconds int           `json:"leaseDurationSeconds"`
+	AcquireTime          string        `json:"acquireTime"`
+	RenewTime            string        `json:"renewTime"`
+	LeaderTransitions    int           `json:"leaderTransitions"`
 }
 
 func (pod *podNodeSelector) createPodNodeSelector(oc *exutil.CLI) {
@@ -414,4 +424,31 @@ func getSyncGroup(oc *exutil.CLI, syncConfig string) string {
                 e2e.Failf("Failed to get group infomation!")
 	}
 	return groupFile
+}
+
+func getLeaderKCM(oc *exutil.CLI) string {
+	var leaderKCM string
+	e2e.Logf("Get the control-plane from configmap")
+	output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("configmap/kube-controller-manager", "-n", "kube-system", "-o=jsonpath={.metadata.annotations.control-plane\\.alpha\\.kubernetes\\.io/leader}").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	e2e.Logf("Print the output: %v ", output)
+	contronplanInfo := &ControlplaneInfo{}
+	e2e.Logf("convert to json file ")
+	if err = json.Unmarshal([]byte(output), &contronplanInfo); err != nil {
+		e2e.Failf("unable to decode with error: %v", err)
+	}
+	o.Expect(err).NotTo(o.HaveOccurred())
+	leaderIp := strings.Split(contronplanInfo.HolderIdentity, "_")[0]
+        
+	out, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("node", "-l", "node-role.kubernetes.io/master=", "-o=jsonpath={.items[*].metadata.name}").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	masterList := strings.Fields(out)
+	for _, masterNode := range masterList {
+		if matched, _ := regexp.MatchString(leaderIp, masterNode); matched {
+			e2e.Logf("Find the leader of KCM :%s\n", masterNode)
+			leaderKCM = masterNode
+			break
+                }
+	}
+	return leaderKCM
 }

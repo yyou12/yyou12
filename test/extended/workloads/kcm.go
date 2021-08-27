@@ -244,4 +244,48 @@ var _ = g.Describe("[sig-apps] Workloads", func() {
                 }
 	})
 
+	// author: yinzhou@redhat.com
+	g.It("Author:yinzhou-High-43035-KCM use internal LB to avoid outages during kube-apiserver rollout [Disruptive]", func() {
+		g.By("Get the route")
+		output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("route/console", "-n", "openshift-console", "-o=jsonpath={.spec.host}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		routeS := strings.Split(output, "apps")
+		internalLB := "server: https://api-int" + routeS[1]
+
+		g.By("Check the configmap in project openshift-kube-controller-manager")
+		output, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("configmap", "controller-manager-kubeconfig", "-n", "openshift-kube-controller-manager", "-oyaml").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		if matched, _ := regexp.MatchString(internalLB, output); matched {
+			e2e.Logf("use the internal LB :\n%s", output)
+		} else {
+			e2e.Failf("Does not use the internal LB: %v", output)
+		}
+
+		g.By("Get the master with KCM leader")
+		leaderKcm := getLeaderKCM(oc)
+		g.By("Remove the apiserver pod from KCM leader master")
+		defer oc.AsAdmin().WithoutNamespace().Run("debug").Args("node/"+leaderKcm, "--", "chroot", "/host", "mv", "/home/kube-apiserver-pod.yaml", "/etc/kubernetes/manifests/").Execute()
+		err = oc.AsAdmin().WithoutNamespace().Run("debug").Args("node/"+leaderKcm, "--", "chroot", "/host", "mv", "/etc/kubernetes/manifests/kube-apiserver-pod.yaml", "/home/").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		
+		err = oc.AsAdmin().WithoutNamespace().Run("delete").Args("-n", "openshift-kube-apiserver", "pod/"+"kube-apiserver-"+leaderKcm ).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Check the KCM operator")
+		err = wait.Poll(5*time.Second, 30*time.Second, func() (bool, error) {
+			output, err := oc.AsAdmin().Run("get").Args("co", "kube-controller-manager").Output()
+			if err != nil {
+				e2e.Logf("Fail to get clusteroperator kube-controller-manager, error: %s. Trying again", err)
+				return false, nil
+			}
+			if matched, _ := regexp.MatchString("True.*False.*False", output); !matched {
+				e2e.Logf("clusteroperator kube-controller-manager is abnormal:\n%s", output)
+				return false, nil
+			}
+			return true, nil
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+	})
+
 })
