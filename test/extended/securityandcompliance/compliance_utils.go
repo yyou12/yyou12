@@ -669,3 +669,31 @@ func getResourceNameWithKeywordForNamespace(oc *exutil.CLI, rs string, keyword s
 	}
 	return resourceName
 }
+
+func checkOperatorPodStatus(oc *exutil.CLI, namespace string) string {
+	var podname string
+	podnames, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-n", namespace).Output()
+	podname = fmt.Sprintf("%s", podnames)
+	if strings.Contains(podname, "cluster-logging-operator") {
+		podStat, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-n", namespace, "-o=jsonpath={.items[0].status.phase}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		return podStat
+	} else {
+		return podname
+	}
+}
+
+func assertCheckAuditLogsForword(oc *exutil.CLI, namespace string, csvname string) {
+	var auditlogs string
+	podnames, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-l logging-infra=fluentdserver", "-n", namespace, "-o=jsonpath={.items[0].metadata.name}").Output()
+	auditlog, err := oc.AsAdmin().WithoutNamespace().Run("rsh").Args("-n", namespace, podnames, "cat", "/fluentd/log/audit.log").OutputToFile(getRandomString() + "isc-audit.json")
+	o.Expect(err).NotTo(o.HaveOccurred())
+	result, err1 := exec.Command("bash", "-c", "cat "+auditlog+" | grep "+csvname+" |tail -n5; rm -rf "+auditlog).Output()
+	o.Expect(err1).NotTo(o.HaveOccurred())
+	auditlogs = fmt.Sprintf("%s", result)
+	if strings.Contains(auditlogs, csvname) {
+		e2e.Logf("The keyword does match with auditlogs: %v", csvname)
+	} else {
+		e2e.Failf("The keyword does not match with auditlogs: %v", csvname)
+	}
+}

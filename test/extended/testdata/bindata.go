@@ -174,9 +174,13 @@
 // test/extended/testdata/router/ingresscontroller-np.yaml
 // test/extended/testdata/router/ipfailover.yaml
 // test/extended/testdata/router/web-server-rc.yaml
+// test/extended/testdata/securityandcompliance/ClusterLogForwarder.yaml
+// test/extended/testdata/securityandcompliance/ClusterLogging.yaml
 // test/extended/testdata/securityandcompliance/aide.conf.rhel8
 // test/extended/testdata/securityandcompliance/aide.conf.rhel8.1
 // test/extended/testdata/securityandcompliance/aide.conf.rhel8.err
+// test/extended/testdata/securityandcompliance/ca.crt
+// test/extended/testdata/securityandcompliance/ca.key
 // test/extended/testdata/securityandcompliance/catalogsource-image.yaml
 // test/extended/testdata/securityandcompliance/compliancescan.yaml
 // test/extended/testdata/securityandcompliance/compliancescanStorageClass.yaml
@@ -188,6 +192,10 @@
 // test/extended/testdata/securityandcompliance/compliancesuitetaint.yaml
 // test/extended/testdata/securityandcompliance/compliancesuitetpconfmap.yaml
 // test/extended/testdata/securityandcompliance/fileintegrity.yaml
+// test/extended/testdata/securityandcompliance/fluentdConfigMap.yaml
+// test/extended/testdata/securityandcompliance/fluentdDeployment.yaml
+// test/extended/testdata/securityandcompliance/logging-es.crt
+// test/extended/testdata/securityandcompliance/logging-es.key
 // test/extended/testdata/securityandcompliance/oc-compliance-scansetting.yaml
 // test/extended/testdata/securityandcompliance/oc-compliance-scansettingbinding.yaml
 // test/extended/testdata/securityandcompliance/operator-group.yaml
@@ -21385,6 +21393,69 @@ func testExtendedTestdataRouterWebServerRcYaml() (*asset, error) {
 	return a, nil
 }
 
+var _testExtendedTestdataSecurityandcomplianceClusterlogforwarderYaml = []byte(`apiVersion: logging.openshift.io/v1
+kind: ClusterLogForwarder
+metadata:
+  name: instance
+  namespace: openshift-logging
+spec:
+  outputs:
+    - name: fluentd-created-by-user
+      type: fluentdForward
+      url: 'tls://fluentdserver.openshift-logging.svc:24224'
+      secret:
+         name: 'fluentdserver'
+  pipelines:
+   - name: audit-logs
+     inputRefs:
+     - audit
+     outputRefs:
+     - fluentd-created-by-user
+`)
+
+func testExtendedTestdataSecurityandcomplianceClusterlogforwarderYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataSecurityandcomplianceClusterlogforwarderYaml, nil
+}
+
+func testExtendedTestdataSecurityandcomplianceClusterlogforwarderYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataSecurityandcomplianceClusterlogforwarderYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/securityandcompliance/ClusterLogForwarder.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataSecurityandcomplianceClusterloggingYaml = []byte(`apiVersion: "logging.openshift.io/v1"
+kind: "ClusterLogging"
+metadata:
+  name: "instance"
+  namespace: openshift-logging
+spec:
+  managementState: "Managed"
+  collection:
+    logs:
+      type: "fluentd"
+      fluentd: {}
+`)
+
+func testExtendedTestdataSecurityandcomplianceClusterloggingYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataSecurityandcomplianceClusterloggingYaml, nil
+}
+
+func testExtendedTestdataSecurityandcomplianceClusterloggingYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataSecurityandcomplianceClusterloggingYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/securityandcompliance/ClusterLogging.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
 var _testExtendedTestdataSecurityandcomplianceAideConfRhel8 = []byte(`# Example configuration file for AIDE.
 
 @@define DBDIR /var/lib/aide
@@ -22384,6 +22455,122 @@ func testExtendedTestdataSecurityandcomplianceAideConfRhel8Err() (*asset, error)
 	return a, nil
 }
 
+var _testExtendedTestdataSecurityandcomplianceCaCrt = []byte(`-----BEGIN CERTIFICATE-----
+MIIFNzCCAx+gAwIBAgIUMKDoAkWku1RoHYEsHz7BvqGsFqcwDQYJKoZIhvcNAQEL
+BQAwKzEpMCcGA1UEAwwgb3BlbnNoaWZ0LWNsdXN0ZXItbG9nZ2luZy1zaWduZXIw
+HhcNMjEwODE3MDYzOTAyWhcNMjYwODE2MDYzOTAyWjArMSkwJwYDVQQDDCBvcGVu
+c2hpZnQtY2x1c3Rlci1sb2dnaW5nLXNpZ25lcjCCAiIwDQYJKoZIhvcNAQEBBQAD
+ggIPADCCAgoCggIBANgB0KwUZBzrlfpJOhlBz+tBkbW2ZRPI+oamAgB/uW3PxX6r
+YjMYa4bufBTuO5RX2gSsAfpx8igkxDy8o9goDc0dSTnNV9a4ZeGAyAJEYU5ZTuua
+BSjuhZKBSC4XXHXMXiLRNnYafVzJZY9wBX0ZpIr3pdEVq+gfSPOOXMTC7KN6hDJc
+/zUTFOEcgyiGNiQlHuEO5SkcqRqarglrQx9MnrFfRtfcqNKpo6s1fw6nAuS5+W1r
+Oo+E29aTeS+/dwRVLS8Y/5cAgVRmLBTZi1gJeX1v2+BkZ4uh+c5r4IDu+x9EBJkX
+lOpGTRx1Eb9+4ZV6aPXJpWQ1H7uD5V5/KNWkAhrCiIn5tV9J/vGkbTle1HkPHXb2
+ECpnZKSrQ5RnqIm3HshpG5dXwd+BDsuh8wGvz3ClEo2N7aUhxVA1FlUn80Cak5Ob
+CWh2eeAPqlHDPgvz4mgfbvg4d8RizyXUfFzzMi8N/mbl/BcF7r0gmWVlrnpOgOQF
+8ZJFTYRye9ACbscrG6wiMSsqI9sBCQoIBNQF/S66G+/LEsmPw66bBA9UqdGw8Foy
+NaUecFLQXtErGARS0FF3P8XHX1WTDwvoiJGRwhdUjjTFS6nPHmGIJ3D8XUS8TFqW
+jWM9dCi3wppZgUtMNm6k+S1sQKn6s4n6I15vUTiMjjeFLqbkou2DIMjq65KHAgMB
+AAGjUzBRMB0GA1UdDgQWBBS0ddvReI+PLewZdn4PcdU+AczRBjAfBgNVHSMEGDAW
+gBS0ddvReI+PLewZdn4PcdU+AczRBjAPBgNVHRMBAf8EBTADAQH/MA0GCSqGSIb3
+DQEBCwUAA4ICAQB26Ify6qfbn59V7bHFQ2Jgqvoat61adVWyMXcZJxghoiWmP5TX
+1Zx39hZ2osRZLQwvgZC54vs7e1XbLECHPEgzCWyN23842+uwJXc4c+py3UC2jxRA
+uGmFmGPvs3mjgmVpRpsFE2PGFRCaf2miZKX2OoH4yeeYtPud4yeMZjUeuxWgstzL
+SR5UQgeBhfb2JTZOm9UA8S5k6tkclMRwTZ8ZDG3fqTvxCDQtPRLK34oSrPG+pn7t
+ZkWEvmuqVP09Pb4bfFs/o2PLsvyZ3KxKeoLP1qm0OChlYCQq/1oOKPdprIEJsggJ
++bfb5mrEQq3zE6l/9GNQYOUPgJqAZ7T0UYHF8feDIdkOT4uwWBrEVx3b2/lZFLyj
+oX/FCavO1/YTsfYwVw9VfYDOaMFGT4ZmCt0xu35rR5M0Za1Z4aRAp5sAoUTDptht
+5NjSA9nSpv+e99ZDyCBZg/TSzzHIywpnVFxGazq8JYxq7uMLmIhfL/6zf5oKCrF8
+XcnCkJ7aLoeCK80t+pRhEpIbFL9j8UUE23EBL0YzeHKOHTODe8QETyX48JlNPJXV
+wZUGUsCpUp/5Pz6CDn4htpL6zkSbdNt/z9AeynLTcQGPgb/mVIpxu9xe5Rt+9umk
+JNHNS6HRzvXaAccEmEXBNOdBJ0OvknJdSTSko5ZQCOeoy1B4VemwyC2HOg==
+-----END CERTIFICATE-----
+`)
+
+func testExtendedTestdataSecurityandcomplianceCaCrtBytes() ([]byte, error) {
+	return _testExtendedTestdataSecurityandcomplianceCaCrt, nil
+}
+
+func testExtendedTestdataSecurityandcomplianceCaCrt() (*asset, error) {
+	bytes, err := testExtendedTestdataSecurityandcomplianceCaCrtBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/securityandcompliance/ca.crt", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataSecurityandcomplianceCaKey = []byte(`-----BEGIN PRIVATE KEY-----
+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
+b85kACWTcS/plS/KbqsocgOyn8nlWG3W
+-----END PRIVATE KEY-----
+`)
+
+func testExtendedTestdataSecurityandcomplianceCaKeyBytes() ([]byte, error) {
+	return _testExtendedTestdataSecurityandcomplianceCaKey, nil
+}
+
+func testExtendedTestdataSecurityandcomplianceCaKey() (*asset, error) {
+	bytes, err := testExtendedTestdataSecurityandcomplianceCaKeyBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/securityandcompliance/ca.key", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
 var _testExtendedTestdataSecurityandcomplianceCatalogsourceImageYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
@@ -22990,6 +23177,272 @@ func testExtendedTestdataSecurityandcomplianceFileintegrityYaml() (*asset, error
 	}
 
 	info := bindataFileInfo{name: "test/extended/testdata/securityandcompliance/fileintegrity.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataSecurityandcomplianceFluentdconfigmapYaml = []byte(`apiVersion: v1
+data:
+  fluent.conf: |
+    <source>
+      @type forward
+      port  24224
+      <transport tls>
+        cert_path /etc/fluentd/secrets/tls.crt
+        private_key_path /etc/fluentd/secrets/tls.key
+        ca_path /etc/fluentd/secrets/ca-bundle.crt
+        client_cert_auth true
+      </transport>
+    </source>
+
+    <match *_default_** **_kube-*_** **_openshift-*_** **_openshift_**>
+      @type file
+      append true
+      path /fluentd/log/infra-container.*.log
+      symlink_path /fluentd/log/infra-container.log
+      time_slice_format %Y%m%d
+      time_slice_wait   1m
+      time_format       %Y%m%dT%H%M%S%z
+    </match>
+    <match journal.** system.var.log**>
+      @type file
+      append true
+      path /fluentd/log/infra.*.log
+      symlink_path /fluentd/log/infra.log
+      time_slice_format %Y%m%d
+      time_slice_wait   1m
+      time_format       %Y%m%dT%H%M%S%z
+    </match>
+    <match kubernetes.**>
+      @type file
+      append true
+      path /fluentd/log/app.*.log
+      symlink_path /fluentd/log/app.log
+      time_slice_format %Y%m%d
+      time_slice_wait   1m
+      time_format       %Y%m%dT%H%M%S%z
+    </match>
+    <match linux-audit.log** k8s-audit.log** openshift-audit.log**>
+      @type file
+      append true
+      path /fluentd/log/audit.*.log
+      symlink_path /fluentd/log/audit.log
+      time_slice_format %Y%m%d
+      time_slice_wait   1m
+      time_format       %Y%m%dT%H%M%S%z
+    </match>
+    <match **>
+      @type stdout
+    </match>
+kind: ConfigMap
+metadata:
+  name: fluentdserver
+`)
+
+func testExtendedTestdataSecurityandcomplianceFluentdconfigmapYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataSecurityandcomplianceFluentdconfigmapYaml, nil
+}
+
+func testExtendedTestdataSecurityandcomplianceFluentdconfigmapYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataSecurityandcomplianceFluentdconfigmapYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/securityandcompliance/fluentdConfigMap.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataSecurityandcomplianceFluentddeploymentYaml = []byte(`apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "fluentdserver"
+  labels:
+    provider: aosqe
+    component: "fluentdserver"
+    logging-infra: "fluentdserver"
+spec:
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      provider: aosqe
+      component: "fluentdserver"
+      logging-infra: "fluentdserver"
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        logging-infra: "fluentdserver"
+        provider: aosqe
+        component: "fluentdserver"
+    spec:
+      containers:
+      - name: "fluentdserver"
+        image: "quay.io/openshifttest/fluentd@sha256:7eece00d1bc784ac1e9722b2580911cd3ead5afd740dad6594be945b3b1dd884"
+        imagePullPolicy: "IfNotPresent"
+        args:
+        - "fluentd"
+        - "-c"
+        - "/fluentd/etc/fluent.conf"
+        ports:
+        - containerPort: 24224
+          name: fluentdserver
+        securityContext:
+          privileged: true
+          procMount: Default
+        volumeMounts:
+        - mountPath: /fluentd/etc
+          name: config
+          readOnly: true
+        - mountPath: /etc/fluentd/secrets
+          name: certs
+          readOnly: true
+      serviceAccount: fluentdserver
+      serviceAccountName: fluentdserver
+      volumes:
+      - configMap:
+          defaultMode: 420
+          name: fluentdserver
+        name: config
+      - name: certs
+        secret:
+          defaultMode: 420
+          secretName: fluentdserver
+`)
+
+func testExtendedTestdataSecurityandcomplianceFluentddeploymentYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataSecurityandcomplianceFluentddeploymentYaml, nil
+}
+
+func testExtendedTestdataSecurityandcomplianceFluentddeploymentYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataSecurityandcomplianceFluentddeploymentYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/securityandcompliance/fluentdDeployment.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataSecurityandcomplianceLoggingEsCrt = []byte(`-----BEGIN CERTIFICATE-----
+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
+-----END CERTIFICATE-----
+`)
+
+func testExtendedTestdataSecurityandcomplianceLoggingEsCrtBytes() ([]byte, error) {
+	return _testExtendedTestdataSecurityandcomplianceLoggingEsCrt, nil
+}
+
+func testExtendedTestdataSecurityandcomplianceLoggingEsCrt() (*asset, error) {
+	bytes, err := testExtendedTestdataSecurityandcomplianceLoggingEsCrtBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/securityandcompliance/logging-es.crt", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataSecurityandcomplianceLoggingEsKey = []byte(`-----BEGIN PRIVATE KEY-----
+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
+5q6NPIkyJhmWeQqhQM8zsqpWIGSONQ==
+-----END PRIVATE KEY-----
+`)
+
+func testExtendedTestdataSecurityandcomplianceLoggingEsKeyBytes() ([]byte, error) {
+	return _testExtendedTestdataSecurityandcomplianceLoggingEsKey, nil
+}
+
+func testExtendedTestdataSecurityandcomplianceLoggingEsKey() (*asset, error) {
+	bytes, err := testExtendedTestdataSecurityandcomplianceLoggingEsKeyBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/securityandcompliance/logging-es.key", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -25491,9 +25944,13 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/router/ingresscontroller-np.yaml":                                                  testExtendedTestdataRouterIngresscontrollerNpYaml,
 	"test/extended/testdata/router/ipfailover.yaml":                                                            testExtendedTestdataRouterIpfailoverYaml,
 	"test/extended/testdata/router/web-server-rc.yaml":                                                         testExtendedTestdataRouterWebServerRcYaml,
+	"test/extended/testdata/securityandcompliance/ClusterLogForwarder.yaml":                                    testExtendedTestdataSecurityandcomplianceClusterlogforwarderYaml,
+	"test/extended/testdata/securityandcompliance/ClusterLogging.yaml":                                         testExtendedTestdataSecurityandcomplianceClusterloggingYaml,
 	"test/extended/testdata/securityandcompliance/aide.conf.rhel8":                                             testExtendedTestdataSecurityandcomplianceAideConfRhel8,
 	"test/extended/testdata/securityandcompliance/aide.conf.rhel8.1":                                           testExtendedTestdataSecurityandcomplianceAideConfRhel81,
 	"test/extended/testdata/securityandcompliance/aide.conf.rhel8.err":                                         testExtendedTestdataSecurityandcomplianceAideConfRhel8Err,
+	"test/extended/testdata/securityandcompliance/ca.crt":                                                      testExtendedTestdataSecurityandcomplianceCaCrt,
+	"test/extended/testdata/securityandcompliance/ca.key":                                                      testExtendedTestdataSecurityandcomplianceCaKey,
 	"test/extended/testdata/securityandcompliance/catalogsource-image.yaml":                                    testExtendedTestdataSecurityandcomplianceCatalogsourceImageYaml,
 	"test/extended/testdata/securityandcompliance/compliancescan.yaml":                                         testExtendedTestdataSecurityandcomplianceCompliancescanYaml,
 	"test/extended/testdata/securityandcompliance/compliancescanStorageClass.yaml":                             testExtendedTestdataSecurityandcomplianceCompliancescanstorageclassYaml,
@@ -25505,6 +25962,10 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/securityandcompliance/compliancesuitetaint.yaml":                                   testExtendedTestdataSecurityandcomplianceCompliancesuitetaintYaml,
 	"test/extended/testdata/securityandcompliance/compliancesuitetpconfmap.yaml":                               testExtendedTestdataSecurityandcomplianceCompliancesuitetpconfmapYaml,
 	"test/extended/testdata/securityandcompliance/fileintegrity.yaml":                                          testExtendedTestdataSecurityandcomplianceFileintegrityYaml,
+	"test/extended/testdata/securityandcompliance/fluentdConfigMap.yaml":                                       testExtendedTestdataSecurityandcomplianceFluentdconfigmapYaml,
+	"test/extended/testdata/securityandcompliance/fluentdDeployment.yaml":                                      testExtendedTestdataSecurityandcomplianceFluentddeploymentYaml,
+	"test/extended/testdata/securityandcompliance/logging-es.crt":                                              testExtendedTestdataSecurityandcomplianceLoggingEsCrt,
+	"test/extended/testdata/securityandcompliance/logging-es.key":                                              testExtendedTestdataSecurityandcomplianceLoggingEsKey,
 	"test/extended/testdata/securityandcompliance/oc-compliance-scansetting.yaml":                              testExtendedTestdataSecurityandcomplianceOcComplianceScansettingYaml,
 	"test/extended/testdata/securityandcompliance/oc-compliance-scansettingbinding.yaml":                       testExtendedTestdataSecurityandcomplianceOcComplianceScansettingbindingYaml,
 	"test/extended/testdata/securityandcompliance/operator-group.yaml":                                         testExtendedTestdataSecurityandcomplianceOperatorGroupYaml,
@@ -25862,9 +26323,13 @@ var _bintree = &bintree{nil, map[string]*bintree{
 					"web-server-rc.yaml":              {testExtendedTestdataRouterWebServerRcYaml, map[string]*bintree{}},
 				}},
 				"securityandcompliance": {nil, map[string]*bintree{
+					"ClusterLogForwarder.yaml":              {testExtendedTestdataSecurityandcomplianceClusterlogforwarderYaml, map[string]*bintree{}},
+					"ClusterLogging.yaml":                   {testExtendedTestdataSecurityandcomplianceClusterloggingYaml, map[string]*bintree{}},
 					"aide.conf.rhel8":                       {testExtendedTestdataSecurityandcomplianceAideConfRhel8, map[string]*bintree{}},
 					"aide.conf.rhel8.1":                     {testExtendedTestdataSecurityandcomplianceAideConfRhel81, map[string]*bintree{}},
 					"aide.conf.rhel8.err":                   {testExtendedTestdataSecurityandcomplianceAideConfRhel8Err, map[string]*bintree{}},
+					"ca.crt":                                {testExtendedTestdataSecurityandcomplianceCaCrt, map[string]*bintree{}},
+					"ca.key":                                {testExtendedTestdataSecurityandcomplianceCaKey, map[string]*bintree{}},
 					"catalogsource-image.yaml":              {testExtendedTestdataSecurityandcomplianceCatalogsourceImageYaml, map[string]*bintree{}},
 					"compliancescan.yaml":                   {testExtendedTestdataSecurityandcomplianceCompliancescanYaml, map[string]*bintree{}},
 					"compliancescanStorageClass.yaml":       {testExtendedTestdataSecurityandcomplianceCompliancescanstorageclassYaml, map[string]*bintree{}},
@@ -25876,6 +26341,10 @@ var _bintree = &bintree{nil, map[string]*bintree{
 					"compliancesuitetaint.yaml":             {testExtendedTestdataSecurityandcomplianceCompliancesuitetaintYaml, map[string]*bintree{}},
 					"compliancesuitetpconfmap.yaml":         {testExtendedTestdataSecurityandcomplianceCompliancesuitetpconfmapYaml, map[string]*bintree{}},
 					"fileintegrity.yaml":                    {testExtendedTestdataSecurityandcomplianceFileintegrityYaml, map[string]*bintree{}},
+					"fluentdConfigMap.yaml":                 {testExtendedTestdataSecurityandcomplianceFluentdconfigmapYaml, map[string]*bintree{}},
+					"fluentdDeployment.yaml":                {testExtendedTestdataSecurityandcomplianceFluentddeploymentYaml, map[string]*bintree{}},
+					"logging-es.crt":                        {testExtendedTestdataSecurityandcomplianceLoggingEsCrt, map[string]*bintree{}},
+					"logging-es.key":                        {testExtendedTestdataSecurityandcomplianceLoggingEsKey, map[string]*bintree{}},
 					"oc-compliance-scansetting.yaml":        {testExtendedTestdataSecurityandcomplianceOcComplianceScansettingYaml, map[string]*bintree{}},
 					"oc-compliance-scansettingbinding.yaml": {testExtendedTestdataSecurityandcomplianceOcComplianceScansettingbindingYaml, map[string]*bintree{}},
 					"operator-group.yaml":                   {testExtendedTestdataSecurityandcomplianceOperatorGroupYaml, map[string]*bintree{}},
