@@ -141,11 +141,49 @@ func (sub *subscriptionDescription) createWithoutCheck(oc *exutil.CLI, itName st
 
 	// for most operator subscription failure, the reason is that there is a left cluster-scoped CSV.
 	// I'd like to print all CSV before create it.
-	allCSVs, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", "--all-namespaces").Output()
+	// It prints many lines which descrease the exact match for RP, and increase log size.
+	// So, change it to one line with neccessary information csv name and namespace.
+	allCSVs, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", "--all-namespaces", "-o=jsonpath={range .items[*]}{@.metadata.name}{\",\"}{@.metadata.namespace}{\":\"}{end}").Output()
 	if err != nil {
 		e2e.Failf("!!! Couldn't get all CSVs:%v\n", err)
 	}
-	e2e.Logf("!!! Get all CSVs in this cluster:\n%s\n", allCSVs)
+	csvMap := make(map[string][]string)
+	csvList := strings.Split(allCSVs, ":")
+	for _, csv := range csvList {
+		if strings.Compare(csv, "") == 0 {
+			continue
+		}
+		name := strings.Split(csv, ",")[0]
+		ns := strings.Split(csv, ",")[1]
+		val, ok := csvMap[name]
+		if ok {
+			if strings.HasPrefix(ns, "openshift-") {
+				alreadyOpenshiftDefaultNS := false
+				for _, v := range val {
+					if strings.Contains(v, "openshift-") {
+						alreadyOpenshiftDefaultNS = true // normally one default operator exists in all openshift- ns, like elasticsearch-operator
+						// only add one openshift- ns to indicate. to save log size and line size. Or else one line
+						// will be greater than 3k
+						break
+					}
+				}
+				if !alreadyOpenshiftDefaultNS {
+					val = append(val, ns)
+					csvMap[name] = val
+				}
+			} else {
+				val = append(val, ns)
+				csvMap[name] = val
+			}
+		} else {
+			nsSlice := make([]string, 20)
+			nsSlice[1] = ns
+			csvMap[name] = nsSlice
+		}
+	}
+	for name, ns := range csvMap {
+		e2e.Logf("getting csv is %v, the related NS is %v", name, ns)
+	}
 
 	e2e.Logf("create sub %s", sub.subName)
 	err = applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", sub.template, "-p", "SUBNAME="+sub.subName, "SUBNAMESPACE="+sub.namespace, "CHANNEL="+sub.channel,
