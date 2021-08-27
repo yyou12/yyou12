@@ -31,6 +31,84 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	var oc = exutil.NewCLI("default-"+getRandomString(), exutil.KubeConfigPath())
 
 	// author: jiazha@redhat.com
+	g.It("Author:jiazha-High-43135-PackageServer respects single-node configuration [Disruptive]", func() {
+		g.By("1) get the cluster infrastructure")
+		infra, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("infrastructures", "cluster", "-o=jsonpath={.status.infrastructureTopology}").Output()
+		if err != nil {
+			e2e.Failf("Fail to get the cluster infra")
+		}
+		num, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("deployment", "packageserver", "-o=jsonpath={.status.replicas}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		if infra == "SingleReplica" {
+			e2e.Logf("This is a SNO cluster")
+			g.By("2) check if only have one packageserver pod")
+			if num != "1" {
+				e2e.Failf("!!!Fail, should only have 1 packageserver pod, but get %s!", num)
+			}
+			// make sure the CVO recover if any error in the follow steps
+			defer func() {
+				_, err = oc.AsAdmin().WithoutNamespace().Run("scale").Args("--replicas", "1", "deployment/cluster-version-operator", "-n", "openshift-cluster-version").Output()
+				if err != nil {
+					e2e.Failf("Defer: fail to enable CVO")
+				}
+			}()
+			g.By("3) stop CVO")
+			_, err := oc.AsAdmin().WithoutNamespace().Run("scale").Args("--replicas", "0", "deployment/cluster-version-operator", "-n", "openshift-cluster-version").Output()
+			if err != nil {
+				e2e.Failf("Fail to stop CVO")
+			}
+			g.By("4) stop the PSM")
+			_, err = oc.AsAdmin().WithoutNamespace().Run("scale").Args("--replicas", "0", "deployment/package-server-manager", "-n", "openshift-operator-lifecycle-manager").Output()
+			if err != nil {
+				e2e.Failf("Fail to stop the PSM")
+			}
+			g.By("5) patch the replica to 3")
+			// oc get csv packageserver -o=jsonpath={.spec.install.spec.deployments[?(@.name==\"packageserver\")].spec.replicas}
+			// oc patch csv/packageserver -p '{"spec":{"install":{"spec":{"deployments":[{"name":"packageserver", "spec":{"replicas":3, "template":{}, "selector":{"matchLabels":{"app":"packageserver"}}}}]}}}}' --type=merge
+			// oc patch deploy/packageserver -p '{"spec":{"replicas":3}}' --type=merge
+			patchResource(oc, asAdmin, withoutNamespace, "-n", "openshift-operator-lifecycle-manager", "deployment", "packageserver", "-p", "{\"spec\":{\"replicas\":3}}", "--type=merge")
+			err = wait.Poll(3*time.Second, 60*time.Second, func() (bool, error) {
+				num, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("deployment", "packageserver", "-n", "openshift-operator-lifecycle-manager", "-o=jsonpath={.status.availableReplicas}").Output()
+				if num != "3" {
+					return false, nil
+				}
+				return true, nil
+			})
+			o.Expect(err).NotTo(o.HaveOccurred())
+			g.By("6) enable CVO")
+			_, err = oc.AsAdmin().WithoutNamespace().Run("scale").Args("--replicas", "1", "deployment/cluster-version-operator", "-n", "openshift-cluster-version").Output()
+			if err != nil {
+				e2e.Failf("Fail to enable CVO")
+			}
+			g.By("7) check if the PSM back")
+			err = wait.Poll(3*time.Second, 60*time.Second, func() (bool, error) {
+				num, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("deployment", "package-server-manager", "-n", "openshift-operator-lifecycle-manager", "-o=jsonpath={.status.replicas}").Output()
+				if num != "1" {
+					return false, nil
+				}
+				return true, nil
+			})
+			o.Expect(err).NotTo(o.HaveOccurred())
+			g.By("8) check if the packageserver pods number back to 1")
+			err = wait.Poll(3*time.Second, 60*time.Second, func() (bool, error) {
+				num, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("deployment", "packageserver", "-n", "openshift-operator-lifecycle-manager", "-o=jsonpath={.status.availableReplicas}").Output()
+				if num != "1" {
+					return false, nil
+				}
+				return true, nil
+			})
+			o.Expect(err).NotTo(o.HaveOccurred())
+		} else {
+			// HighlyAvailable
+			e2e.Logf("This is HA cluster, not SNO")
+			g.By("2) check if only have two packageserver pods")
+			if num != "2" {
+				e2e.Failf("!!!Fail, should only have 2 packageserver pods, but get %s!", num)
+			}
+		}
+	})
+
+	// author: jiazha@redhat.com
 	// add `Serial` label since this etcd-operator are subscribed for cluster-scoped,
 	// that means may leads to other etcd-opertor subscription fail if in Parallel
 	g.It("ConnectedOnly-Author:jiazha-High-37826-use an PullSecret for the private Catalog Source image [Serial]", func() {
