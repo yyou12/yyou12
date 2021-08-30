@@ -1610,17 +1610,19 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 
 	// author: bandrade@redhat.com
 	g.It("Author:bandrade-Low-24057-Have terminationMessagePolicy defined as FallbackToLogsOnError", func() {
-		msg, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-o=jsonpath={range .items[*].spec}{.containers[*].name}{\"\t\"}", "-n", "openshift-operator-lifecycle-manager").Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		amountOfContainers := len(strings.Split(msg, "\t"))
-
-		msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-o=jsonpath={range .items[*].spec}{.containers[*].terminationMessagePolicy}{\"t\"}", "-n", "openshift-operator-lifecycle-manager").Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		regexp := regexp.MustCompile("FallbackToLogsOnError")
-		amountOfContainersWithFallbackToLogsOnError := len(regexp.FindAllStringIndex(msg, -1))
-		o.Expect(amountOfContainers).To(o.Equal(amountOfContainersWithFallbackToLogsOnError))
-		if amountOfContainers != amountOfContainersWithFallbackToLogsOnError {
-			e2e.Failf("OLM does not have all containers definied with FallbackToLogsOnError terminationMessagePolicy")
+		labels := [...]string{"app=packageserver", "app=catalog-operator", "app=olm-operator"}
+		for _, l := range labels {
+			msg, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-o=jsonpath={range .items[*].spec}{.containers[*].name}{\"\t\"}", "-n", "openshift-operator-lifecycle-manager", "-l", l).Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			amountOfContainers := len(strings.Split(msg, "\t"))
+			msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-o=jsonpath={range .items[*].spec}{.containers[*].terminationMessagePolicy}{\"\t\"}", "-n", "openshift-operator-lifecycle-manager", "-l", l).Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			regexp := regexp.MustCompile("FallbackToLogsOnError")
+			amountOfContainersWithFallbackToLogsOnError := len(regexp.FindAllStringIndex(msg, -1))
+			o.Expect(amountOfContainers).To(o.Equal(amountOfContainersWithFallbackToLogsOnError))
+			if amountOfContainers != amountOfContainersWithFallbackToLogsOnError {
+				e2e.Failf("OLM does not have all containers definied with FallbackToLogsOnError terminationMessagePolicy")
+			}
 		}
 	})
 
