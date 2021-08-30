@@ -25,6 +25,7 @@
 // test/extended/testdata/logging/subscription/singlenamespace-og.yaml
 // test/extended/testdata/logging/subscription/sub-template.yaml
 // test/extended/testdata/mco/bz1866117-add-dummy-files.yaml
+// test/extended/testdata/mco/change-worker-kernel-argument.yaml
 // test/extended/testdata/mco/change-workers-chrony-configuration.yaml
 // test/extended/testdata/mco/custom-machine-config-pool.yaml
 // test/extended/testdata/monitoring/cluster-monitoring-cm.yaml
@@ -2888,6 +2889,39 @@ func testExtendedTestdataMcoBz1866117AddDummyFilesYaml() (*asset, error) {
 	}
 
 	info := bindataFileInfo{name: "test/extended/testdata/mco/bz1866117-add-dummy-files.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataMcoChangeWorkerKernelArgumentYaml = []byte(`apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: kernel-argument
+objects:
+  - kind: MachineConfig
+    apiVersion: machineconfiguration.openshift.io/v1
+    metadata:
+      labels:
+        machineconfiguration.openshift.io/role: "${POOL}"
+      name: "${NAME}"
+    spec:
+      kernelType: realtime
+parameters:
+  - name: NAME
+  - name: POOL
+`)
+
+func testExtendedTestdataMcoChangeWorkerKernelArgumentYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataMcoChangeWorkerKernelArgumentYaml, nil
+}
+
+func testExtendedTestdataMcoChangeWorkerKernelArgumentYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataMcoChangeWorkerKernelArgumentYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/mco/change-worker-kernel-argument.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -25795,6 +25829,7 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/logging/subscription/singlenamespace-og.yaml":                                                                     testExtendedTestdataLoggingSubscriptionSinglenamespaceOgYaml,
 	"test/extended/testdata/logging/subscription/sub-template.yaml":                                                                           testExtendedTestdataLoggingSubscriptionSubTemplateYaml,
 	"test/extended/testdata/mco/bz1866117-add-dummy-files.yaml":                                                                               testExtendedTestdataMcoBz1866117AddDummyFilesYaml,
+	"test/extended/testdata/mco/change-worker-kernel-argument.yaml":                                                                           testExtendedTestdataMcoChangeWorkerKernelArgumentYaml,
 	"test/extended/testdata/mco/change-workers-chrony-configuration.yaml":                                                                     testExtendedTestdataMcoChangeWorkersChronyConfigurationYaml,
 	"test/extended/testdata/mco/custom-machine-config-pool.yaml":                                                                              testExtendedTestdataMcoCustomMachineConfigPoolYaml,
 	"test/extended/testdata/monitoring/cluster-monitoring-cm.yaml":                                                                            testExtendedTestdataMonitoringClusterMonitoringCmYaml,
@@ -26098,6 +26133,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 				}},
 				"mco": {nil, map[string]*bintree{
 					"bz1866117-add-dummy-files.yaml":           {testExtendedTestdataMcoBz1866117AddDummyFilesYaml, map[string]*bintree{}},
+					"change-worker-kernel-argument.yaml":       {testExtendedTestdataMcoChangeWorkerKernelArgumentYaml, map[string]*bintree{}},
 					"change-workers-chrony-configuration.yaml": {testExtendedTestdataMcoChangeWorkersChronyConfigurationYaml, map[string]*bintree{}},
 					"custom-machine-config-pool.yaml":          {testExtendedTestdataMcoCustomMachineConfigPoolYaml, map[string]*bintree{}},
 				}},

@@ -144,4 +144,28 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		o.Expect(mcpOut).Should(o.ContainSubstring("NotFound"))
 		e2e.Logf("Custom mcp is deleted successfully!")
 	})
+
+	g.It("Author:mhanss-Longduration-CPaasrunOnly-Critical-42365-add real time kernel argument [Disruptive]", func() {
+		g.By("Create new MC to change the kernel argument")
+		mcName := "change-worker-kernel-argument"
+		mcTemplate := generateTemplateAbsolutePath("change-worker-kernel-argument.yaml")
+		mc := machineConfig{name: mcName, template: mcTemplate, pool: "worker"}
+		defer mc.delete(oc)
+		mc.create(oc)
+		e2e.Logf("Machine config is created successfully!")
+
+		g.By("Check kernel argument in the created machine config")
+		mcOut, err := getMachineConfigDetails(oc, mc.name)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(mcOut).Should(o.ContainSubstring("realtime"))
+		e2e.Logf("Kernel argument is verified in the created machine config!")
+
+		g.By("Check kernel argument in the machine config daemon")
+		workerNode, err := getFirstWorkerNode(oc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		podOut, err := remoteShPod(oc, "openshift-machine-config-operator", getMachineConfigDaemon(oc, workerNode), false, "uname -a")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(podOut).Should(o.ContainSubstring("PREEMPT_RT"))
+		e2e.Logf("Kernel argument is verified in the machine config daemon!")
+	})
 })
