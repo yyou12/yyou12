@@ -31,6 +31,97 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	var oc = exutil.NewCLI("default-"+getRandomString(), exutil.KubeConfigPath())
 
 	// author: jiazha@redhat.com
+	g.It("Author:jiazha-Medium-43978-Catalog pods don't report termination logs to catalog-operator", func() {
+		catalogs, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("catalogsource", "-n", "openshift-marketplace").Output()
+		if err != nil {
+			e2e.Failf("Fail to get the CatalogSource in openshift-marketplace project")
+		}
+		defaultCatalogs := []string{"certified-operators", "community-operators", "redhat-marketplace", "redhat-operators"}
+		for i, catalog := range defaultCatalogs {
+			g.By(fmt.Sprintf("%d) check CatalogSource: %s", i+1, catalog))
+			if strings.Contains(catalogs, catalog) {
+				policy, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-l", fmt.Sprintf("olm.catalogSource=%s", catalog), "-n", "openshift-marketplace", "-o=jsonpath={.items[0].spec.containers[0].terminationMessagePolicy}").Output()
+				if err != nil {
+					e2e.Failf("Fail to get the policy of the CatalogSource's pod")
+				}
+				if policy != "FallbackToLogsOnError" {
+					e2e.Failf("CatalogSource:%s uses the %s policy, not the FallbackToLogsOnError!", catalog, policy)
+				}
+			} else {
+				e2e.Logf("CatalogSource:%s doesn't install on this cluster", catalog)
+			}
+		}
+	})
+
+	// author: jiazha@redhat.com
+	g.It("Author:jiazha-Medium-43803-Only one of multiple subscriptions to the same package is honored", func() {
+		g.By("1) create the OperatorGroup in a random project")
+		dr := make(describerResrouce)
+		itName := g.CurrentGinkgoTestDescription().TestText
+		dr.addIr(itName)
+
+		oc.SetupProject()
+		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
+		ogSingleTemplate := filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+		og := operatorGroupDescription{
+			name:      "og-43803",
+			namespace: oc.Namespace(),
+			template:  ogSingleTemplate,
+		}
+		og.createwithCheck(oc, itName, dr)
+
+		g.By("2) subscribe to the etcdoperator v0.9.4 with Automatic approval")
+		subTemplate := filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+		sub := subscriptionDescription{
+			subName:                "sub-43803",
+			namespace:              oc.Namespace(),
+			catalogSourceName:      "community-operators",
+			catalogSourceNamespace: "openshift-marketplace",
+			channel:                "singlenamespace-alpha",
+			ipApproval:             "Automatic",
+			operatorPackage:        "etcd",
+			startingCSV:            "etcdoperator.v0.9.4",
+			singleNamespace:        true,
+			template:               subTemplate,
+		}
+		defer sub.delete(itName, dr)
+		sub.create(oc, itName, dr)
+		defer sub.deleteCSV(itName, dr)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", "etcdoperator.v0.9.4", "-n", oc.Namespace(), "-o=jsonpath={.status.phase}"}).check(oc)
+
+		g.By("3) re-subscribe to this etcd operator with another subscription name")
+		sub2 := subscriptionDescription{
+			subName:                "sub2-43803",
+			namespace:              oc.Namespace(),
+			catalogSourceName:      "community-operators",
+			catalogSourceNamespace: "openshift-marketplace",
+			channel:                "singlenamespace-alpha",
+			ipApproval:             "Automatic",
+			operatorPackage:        "etcd",
+			startingCSV:            "etcdoperator.v0.9.4",
+			singleNamespace:        true,
+			template:               subTemplate,
+		}
+		defer sub2.delete(itName, dr)
+		sub2.createWithoutCheck(oc, itName, dr)
+
+		g.By("4) Check OLM logs")
+		err := wait.Poll(3*time.Second, 60*time.Second, func() (bool, error) {
+			logs, err := oc.AsAdmin().WithoutNamespace().Run("logs").Args("deploy/catalog-operator", "-n", "openshift-operator-lifecycle-manager").Output()
+			if err != nil {
+				e2e.Failf("Fail to get the OLM logs")
+			}
+			res, _ := regexp.MatchString(".*constraints not satisfiable.*subscription sub2-43803", logs)
+			if res {
+				return true, nil
+			}
+			return false, nil
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+	})
+
+	// author: jiazha@redhat.com
 	g.It("Author:jiazha-High-43135-PackageServer respects single-node configuration [Disruptive]", func() {
 		g.By("1) get the cluster infrastructure")
 		infra, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("infrastructures", "cluster", "-o=jsonpath={.status.infrastructureTopology}").Output()
