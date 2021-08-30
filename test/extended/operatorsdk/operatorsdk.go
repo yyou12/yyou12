@@ -793,10 +793,10 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
         o.Expect(result).To(o.ContainSubstring("--metrics-bind-address"))	
     })
     // author: chuo@redhat.com
-    g.It("Author:chuo-High-37914-Bump k8s in SDK to v1.20 and controller-runtime to 0.7.0", func() {
+    g.It("Author:chuo-High-43654-Sync 1.21 to downstream", func() {
         operatorsdkCLI.showInfo = true
         output, _ := operatorsdkCLI.Run("version").Args().Output()
-        o.Expect(output).To(o.ContainSubstring("v1.20"))
+        o.Expect(output).To(o.ContainSubstring("v1.21"))
     })
     // author: chuo@redhat.com
     g.It("ConnectedOnly-Author:chuo-Medium-34366-change ansible operator flags from maxWorkers using env MAXCONCURRENTRECONCILES ", func() {
@@ -858,7 +858,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
     })
     
     // author: chuo@redhat.com
-    g.It("Author:chuo-Medium-31314-Medium-31273-scorecard basic test migration and migrate OLM tests", func() {
+    g.It("ConnectedOnly-Author:chuo-Medium-31314-Medium-31273-scorecard basic test migration and migrate OLM tests", func() {
         operatorsdkCLI.showInfo = true
         oc.SetupProject()
 
@@ -914,7 +914,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
         o.Expect(output).To(o.ContainSubstring("memcacheds.cache.example.com does not have a status descriptor"))
     })
     // author: chuo@redhat.com
-    g.It("Author:chuo-High-31219-scorecard bundle is mandatory ", func() {
+    g.It("ConnectedOnly-Author:chuo-High-31219-scorecard bundle is mandatory ", func() {
         operatorsdkCLI.showInfo = true
         exec.Command("bash", "-c", "mkdir -p /tmp/ocp-31219/memcached-operator && cd /tmp/ocp-31219/memcached-operator && operator-sdk init --plugins=ansible --domain example.com").Output()
         defer exec.Command("bash", "-c", "rm -rf /tmp/ocp-31219").Output()
@@ -926,7 +926,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
     })
 
     // author: chuo@redhat.com
-    g.It("Author:chuo-High-34426-Ensure that Helm Based Operators creation is working ", func() {
+    g.It("ConnectedOnly-Author:chuo-High-34426-Ensure that Helm Based Operators creation is working ", func() {
         operatorsdkCLI.showInfo = true
         exec.Command("bash", "-c", "mkdir -p /tmp/ocp-34426/nginx-operator && cd /tmp/ocp-34426/nginx-operator && operator-sdk init --plugins=helm").Output()
         defer exec.Command("bash", "-c", "cd /tmp/ocp-34426/nginx-operator && make undeploy").Output()
