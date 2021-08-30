@@ -1,11 +1,11 @@
 package container_engine_tools
 
 import (
+	"fmt"
 	"math/rand"
+	"os/exec"
 	"strings"
 	"time"
-	"fmt"
-	"os/exec"
 
 	o "github.com/onsi/gomega"
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
@@ -14,32 +14,36 @@ import (
 )
 
 type podModifyDescription struct {
-	name               string
-	namespace          string
-	mountpath          string
-	command            string
-	args               string
-	restartPolicy      string
-	user		   string
-	role               string
-	level              string
-	template           string
+	name          string
+	namespace     string
+	mountpath     string
+	command       string
+	args          string
+	restartPolicy string
+	user          string
+	role          string
+	level         string
+	template      string
 }
 
 type ctrcfgDescription struct {
-	namespace          string
-	pidlimit	   int
-	loglevel           string
-	overlay            string
-	logsizemax         string
-	command            string
-	configFile         string
-	template           string
+	namespace  string
+	pidlimit   int
+	loglevel   string
+	overlay    string
+	logsizemax string
+	command    string
+	configFile string
+	template   string
+}
+
+type newappDescription struct {
+	appname  string
 }
 
 type objectTableRefcscope struct {
-	kind              string
-	name              string
+	kind string
+	name string
 }
 
 func getRandomString() string {
@@ -78,7 +82,7 @@ func createResourceFromTemplate(oc *exutil.CLI, parameters ...string) error {
 	return oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", jsonCfg).Execute()
 }
 
-func podStatusReason(oc *exutil.CLI ) error {
+func podStatusReason(oc *exutil.CLI) error {
 	e2e.Logf("check if pod is available")
 	return wait.Poll(5*time.Second, 3*time.Minute, func() (bool, error) {
 		status, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-o=jsonpath={.items[*].status.initContainerStatuses[*].state.waiting.reason}", "-n", oc.Namespace()).Output()
@@ -95,7 +99,7 @@ func podStatusReason(oc *exutil.CLI ) error {
 	})
 }
 
-func podStatusterminatedReason(oc *exutil.CLI ) error {
+func podStatusterminatedReason(oc *exutil.CLI) error {
 	e2e.Logf("check if pod is available")
 	return wait.Poll(5*time.Second, 3*time.Minute, func() (bool, error) {
 		status, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-o=jsonpath={.items[*].status.initContainerStatuses[*].state.terminated.reason}", "-n", oc.Namespace()).Output()
@@ -112,7 +116,7 @@ func podStatusterminatedReason(oc *exutil.CLI ) error {
 	})
 }
 
-func podStatus(oc *exutil.CLI ) error {
+func podStatus(oc *exutil.CLI) error {
 	e2e.Logf("check if pod is available")
 	return wait.Poll(5*time.Second, 3*time.Minute, func() (bool, error) {
 		status, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-o=jsonpath={.items[*].status.phase}", "-n", oc.Namespace()).Output()
@@ -128,7 +132,7 @@ func podStatus(oc *exutil.CLI ) error {
 	})
 }
 
-func volStatus(oc *exutil.CLI ) error {
+func volStatus(oc *exutil.CLI) error {
 	e2e.Logf("check content of volume")
 	return wait.Poll(1*time.Second, 1*time.Minute, func() (bool, error) {
 		status, err := oc.AsAdmin().WithoutNamespace().Run("exec").Args("init-volume", "-c", "hello-pod", "cat", "/init-test/volume-test", "-n", oc.Namespace()).Output()
@@ -141,11 +145,11 @@ func volStatus(oc *exutil.CLI ) error {
 			e2e.Logf(" Init containers with volume work fine \n")
 			return true, nil
 		}
-		return false,nil
+		return false, nil
 	})
 }
 
-func ContainerSccStatus(oc *exutil.CLI ) error {
+func ContainerSccStatus(oc *exutil.CLI) error {
 	return wait.Poll(1*time.Second, 1*time.Second, func() (bool, error) {
 		status, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "hello-pod", "-o=jsonpath={.spec.securityContext.seLinuxOptions.*}", "-n", oc.Namespace()).Output()
 		e2e.Logf("The Container SCC Content is %v", status)
@@ -157,12 +161,12 @@ func ContainerSccStatus(oc *exutil.CLI ) error {
 			e2e.Logf("SeLinuxOptions in pod applied to container Sucessfully \n")
 			return true, nil
 		}
-		return false,nil
+		return false, nil
 	})
 }
 
 func (ctrcfg *ctrcfgDescription) create(oc *exutil.CLI) {
-	err := createResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", ctrcfg.template, "-p", "LOGLEVEL="+ctrcfg.loglevel, "OVERLAY="+ctrcfg.overlay, "LOGSIZEMAX="+ctrcfg.logsizemax )
+	err := createResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", ctrcfg.template, "-p", "LOGLEVEL="+ctrcfg.loglevel, "OVERLAY="+ctrcfg.overlay, "LOGSIZEMAX="+ctrcfg.logsizemax)
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
@@ -182,33 +186,108 @@ func (ctrcfg *ctrcfgDescription) checkCtrcfgParameters(oc *exutil.CLI) error {
 		node := strings.Fields(nodeName)
 
 		for _, v := range node {
-		nodeStatus,err := oc.AsAdmin().WithoutNamespace().Run("get").Args("nodes", fmt.Sprintf("%s", v), "-o=jsonpath={.status.conditions[3].type}").Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		e2e.Logf("\nNode %s Status is %s\n", v,nodeStatus)
-
-			if nodeStatus == "Ready"{
-			criostatus,err := oc.AsAdmin().WithoutNamespace().Run("debug").Args(`node/`+fmt.Sprintf("%s", v), "--", "chroot", "/host", "crio", "config").OutputToFile("crio.conf")
+			nodeStatus, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("nodes", fmt.Sprintf("%s", v), "-o=jsonpath={.status.conditions[3].type}").Output()
 			o.Expect(err).NotTo(o.HaveOccurred())
-			e2e.Logf(`\nCRI-O PARAMETER ON THE WORKER NODE :`+fmt.Sprintf("%s", v))
-			e2e.Logf("\ncrio config file path is  %v", criostatus)
+			e2e.Logf("\nNode %s Status is %s\n", v, nodeStatus)
 
-				wait.Poll(2*time.Second, 1*time.Minute, func() (bool,error) {
+			if nodeStatus == "Ready" {
+				criostatus, err := oc.AsAdmin().WithoutNamespace().Run("debug").Args(`node/`+fmt.Sprintf("%s", v), "--", "chroot", "/host", "crio", "config").OutputToFile("crio.conf")
+				o.Expect(err).NotTo(o.HaveOccurred())
+				e2e.Logf(`\nCRI-O PARAMETER ON THE WORKER NODE :` + fmt.Sprintf("%s", v))
+				e2e.Logf("\ncrio config file path is  %v", criostatus)
+
+				wait.Poll(5*time.Second, 1*time.Minute, func() (bool, error) {
 					result, err1 := exec.Command("bash", "-c", "cat "+criostatus+" | egrep 'pids_limit|log_level'").Output()
-						if err != nil {
-							e2e.Failf("the result of ReadFile:%v", err1)
-							return false, nil
-						}
-						e2e.Logf("\nCtrcfg Parameters is %s", result)
-						if strings.Contains(string(result), "debug") && strings.Contains(string(result), "2048"){
-							e2e.Logf("\nCtrcfg parameter pod limit and log_level configured successfully")
-							return true, nil
-						}
+					if err != nil {
+						e2e.Failf("the result of ReadFile:%v", err1)
 						return false, nil
-					})
+					}
+					e2e.Logf("\nCtrcfg Parameters is %s", result)
+					if strings.Contains(string(result), "debug") && strings.Contains(string(result), "2048") {
+						e2e.Logf("\nCtrcfg parameter pod limit and log_level configured successfully")
+						return true, nil
+					}
+					return false, nil
+				})
 			} else {
 				e2e.Logf("\n NODES ARE NOT READY\n ")
 			}
 		}
 		return true, nil
 	})
+}
+
+func buildLog(oc *exutil.CLI, buildconfig string) error {
+	return wait.Poll(30*time.Second, 5*time.Minute, func() (bool, error) {
+		status, err := oc.AsAdmin().WithoutNamespace().Run("logs").Args("buildconfig.build.openshift.io/"+buildconfig, "-n", oc.Namespace()).Output()
+		e2e.Logf("Here is the build log %v\n", status)
+		if err != nil {
+			e2e.Logf("the result of ReadFile:%v", err)
+			return false, nil
+		}
+		if strings.Contains(status, "error reading blob from source image") {
+			e2e.Logf(" This is Error, File Bug. \n")
+			return false, nil
+		}
+		return true, nil
+	})
+}
+
+func checkPodmanInfo(oc *exutil.CLI) error {
+	return wait.Poll(10*time.Second, 1*time.Minute, func() (bool, error) {
+		nodeName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("nodes", "-o=jsonpath={.items[*].metadata.name}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf("\nNode Names are %v", nodeName)
+		node := strings.Fields(nodeName)
+
+		for _, v := range node {
+			nodeStatus, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("nodes", fmt.Sprintf("%s", v), "-o=jsonpath={.status.conditions[3].type}").Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			e2e.Logf("\nNode %s Status is %s\n", v, nodeStatus)
+
+			if nodeStatus == "Ready" {
+				podmaninfo, err := oc.AsAdmin().WithoutNamespace().Run("debug").Args(`node/`+fmt.Sprintf("%s", v), "--", "chroot", "/host", "podman", "info").OutputToFile("crio.conf")
+				o.Expect(err).NotTo(o.HaveOccurred())
+				e2e.Logf(`\nNODE NAME IS :` + fmt.Sprintf("%s", v))
+				e2e.Logf("\npodman info is  %v", podmaninfo)
+
+				wait.Poll(5*time.Second, 1*time.Minute, func() (bool, error) {
+					result, err1 := exec.Command("bash", "-c", "cat "+podmaninfo+" | egrep ' arch:|os:'").Output()
+					if err != nil {
+						e2e.Logf("the result of ReadFile:%v", err1)
+						return false, nil
+					}
+					e2e.Logf("\npodman info Parameters are %s", result)
+					if strings.Contains(string(result), "arch") && strings.Contains(string(result), "os") {
+						e2e.Logf("\nPodman info parameter arch and os configured successfully")
+						return true, nil
+					}
+					return false, nil
+				})
+			} else {
+				e2e.Logf("\n NODES ARE NOT READY\n ")
+			}
+		}
+		return true, nil
+	})
+}
+
+func (newapp *newappDescription) createNewApp(oc *exutil.CLI) error {
+	return wait.Poll(30*time.Second, 1*time.Minute, func() (bool, error) {
+		status, err := oc.AsAdmin().WithoutNamespace().Run("new-app").Args(newapp.appname, "-n", oc.Namespace()).Output()
+		e2e.Logf("Here is the newapp log %v\n", status)
+		if err != nil {
+			e2e.Logf("the result of ReadFile:%v", err)
+			return false, nil
+		}
+			return true, nil
+	})
+}
+
+func buildConfigStatus(oc *exutil.CLI) string {
+	var buildConfigStatus string
+	buildConfigStatus, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("buildconfig", "-o=jsonpath={.items[0].metadata.name}", "-n", oc.Namespace()).Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	e2e.Logf("The buildconfig Name is: %v", buildConfigStatus)
+	return buildConfigStatus
 }
