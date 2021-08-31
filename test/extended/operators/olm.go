@@ -4871,7 +4871,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		o.Expect(olmPodname).NotTo(o.BeEmpty())
 
 		g.By("check metrics")
-		metrics, err := oc.AsAdmin().WithoutNamespace().Run("exec").Args(olmPodname, "-n", "openshift-operator-lifecycle-manager", "-i", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", olmToken), "https://localhost:8081/metrics").Output()
+		metrics, err := oc.AsAdmin().WithoutNamespace().Run("exec").Args(olmPodname, "-n", "openshift-operator-lifecycle-manager", "-i", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", olmToken), "https://localhost:8443/metrics").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(metrics).NotTo(o.BeEmpty())
 
@@ -4924,7 +4924,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		next = false
 		metricsVar = ""
 		metricsVal = ""
-		metrics, err = oc.AsAdmin().WithoutNamespace().Run("exec").Args(olmPodname, "-n", "openshift-operator-lifecycle-manager", "-i", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", olmToken), "https://localhost:8081/metrics").Output()
+		metrics, err = oc.AsAdmin().WithoutNamespace().Run("exec").Args(olmPodname, "-n", "openshift-operator-lifecycle-manager", "-i", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", olmToken), "https://localhost:8443/metrics").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(metrics).NotTo(o.BeEmpty())
 		for _, s := range strings.Fields(metrics) {
