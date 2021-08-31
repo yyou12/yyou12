@@ -128,7 +128,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		if err != nil {
 			e2e.Failf("Fail to get the cluster infra")
 		}
-		num, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("deployment", "packageserver", "-o=jsonpath={.status.replicas}").Output()
+		num, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", "openshift-operator-lifecycle-manager", "deployment", "packageserver", "-o=jsonpath={.status.replicas}").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		if infra == "SingleReplica" {
 			e2e.Logf("This is a SNO cluster")
