@@ -31,6 +31,63 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	var oc = exutil.NewCLI("default-"+getRandomString(), exutil.KubeConfigPath())
 
 	// author: jiazha@redhat.com
+	g.It("Author:jiazha-Medium-43977-OPENSHIFT_VERSIONS in assisted operator subscription does not propagate", func() {
+		// this operator must be installed in the default project since the env variable: MY_POD_NAMESPACE = default
+		g.By("1) create the OperatorGroup in the default project")
+		dr := make(describerResrouce)
+		itName := g.CurrentGinkgoTestDescription().TestText
+		dr.addIr(itName)
+
+		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
+		ogSingleTemplate := filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+		og := operatorGroupDescription{
+			name:      "og-43977",
+			namespace: "default",
+			template:  ogSingleTemplate,
+		}
+		defer og.delete(itName, dr)
+		og.createwithCheck(oc, itName, dr)
+
+		g.By("2) subscribe to the etcdoperator v0.9.4 with ENV variables")
+		subTemplate := filepath.Join(buildPruningBaseDir, "env-subscription.yaml")
+
+		sub := subscriptionDescription{
+			subName:                "sub-43977",
+			namespace:              "default",
+			catalogSourceName:      "community-operators",
+			catalogSourceNamespace: "openshift-marketplace",
+			channel:                "singlenamespace-alpha",
+			ipApproval:             "Automatic",
+			operatorPackage:        "etcd",
+			startingCSV:            "etcdoperator.v0.9.4",
+			singleNamespace:        true,
+			template:               subTemplate,
+		}
+		defer sub.delete(itName, dr)
+		sub.create(oc, itName, dr)
+		defer sub.deleteCSV(itName, dr)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", "etcdoperator.v0.9.4", "-n", "default", "-o=jsonpath={.status.phase}"}).check(oc)
+
+		g.By("3) check those env variables")
+		envVars := map[string]string{
+			"MY_POD_NAMESPACE":        "default",
+			"OPERATOR_CONDITION_NAME": "etcdoperator.v0.9.4",
+			"OPENSHIFT_VERSIONS":      "4.8",
+		}
+		// oc get deployment etcd-operator -o=jsonpath={.spec.template.spec.containers[0].env[?(@.name==\"MY_POD_NAMESPACE\")].value}
+		// oc get deployment etcd-operator -o=jsonpath={.spec.template.spec.containers[0].env[?(@.name==\"OPERATOR_CONDITION_NAME\")].value}
+		// oc get deployment etcd-operator -o=jsonpath={.spec.template.spec.containers[0].env[?(@.name==\"OPENSHIFT_VERSIONS\")].value}
+		for k, v := range envVars {
+			jsonpath := fmt.Sprintf("-o=jsonpath={.spec.template.spec.containers[0].env[?(@.name==\"%s\")].value}", k)
+			envVar, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("deployment", "etcd-operator", "-n", "default", jsonpath).Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			if !strings.Contains(envVar, v) {
+				e2e.Failf("The value of the %s should be %s, but get %s!", k, v, envVar)
+			}
+		}
+	})
+
+	// author: jiazha@redhat.com
 	g.It("Author:jiazha-Medium-43978-Catalog pods don't report termination logs to catalog-operator", func() {
 		catalogs, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("catalogsource", "-n", "openshift-marketplace").Output()
 		if err != nil {

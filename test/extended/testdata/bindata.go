@@ -62,8 +62,8 @@
 // test/extended/testdata/olm/cs-without-image.yaml
 // test/extended/testdata/olm/csc.yaml
 // test/extended/testdata/olm/dockerconfig.json
+// test/extended/testdata/olm/env-subscription.yaml
 // test/extended/testdata/olm/etcd-cluster.yaml
-// test/extended/testdata/olm/etcd-custom-csc.yaml
 // test/extended/testdata/olm/etcd-subscription-manual.yaml
 // test/extended/testdata/olm/etcd-subscription.yaml
 // test/extended/testdata/olm/mutatingwebhook-csv.yaml
@@ -9485,6 +9485,62 @@ func testExtendedTestdataOlmDockerconfigJson() (*asset, error) {
 	return a, nil
 }
 
+var _testExtendedTestdataOlmEnvSubscriptionYaml = []byte(`apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: sub-template
+objects:
+- apiVersion: operators.coreos.com/v1alpha1
+  kind: Subscription
+  metadata:
+    name: "${SUBNAME}"
+    namespace: "${SUBNAMESPACE}"
+  spec:
+    channel: "${CHANNEL}"
+    installPlanApproval: "${APPROVAL}"
+    name: "${OPERATORNAME}"
+    source: "${SOURCENAME}"
+    sourceNamespace: "${SOURCENAMESPACE}"
+    startingCSV: "${STARTINGCSV}"
+    config:
+      env:
+      - name: ISO_IMAGE_TYPE
+        value: "minimal-iso"
+      - name: OPENSHIFT_VERSIONS
+        value: '{"4.6":{"display_name":"4.6.16","release_image":"quay.io/openshift-release-dev/ocp-release:4.6.16-x86_64","rhcos_image":"https://mirror.openshift.com/pub/openshift-v4/dependencies/rhcos/4.6/4.6.8/rhcos-4.6.8-x86_64-live.x86_64.iso","rhcos_version":"46.82.202012051820-0","support_level":"production"},"4.7":{"display_name":"4.7.2","release_image":"quay.io/openshift-release-dev/ocp-release:4.7.2-x86_64","rhcos_image":"https://mirror.openshift.com/pub/openshift-v4/dependencies/rhcos/4.7/4.7.0/rhcos-4.7.0-x86_64-live.x86_64.iso","rhcos_version":"47.83.202102090044-0","support_level":"production"},"4.8":{"display_name":"4.8","release_image":"registry.ci.openshift.org/ocp/release:4.8.0-0.nightly-2021-04-09-140229","rhcos_image":"https://mirror.openshift.com/pub/openshift-v4/dependencies/rhcos/4.7/4.7.0/rhcos-4.7.0-x86_64-live.x86_64.iso","rhcos_version":"47.83.202102090044-0","support_level":"production"}}'
+      - name: OPERATOR_CONDITION_NAME
+        value: etcdoperator.v0.9.5
+      - name: MY_POD_NAMESPACE
+        value: default
+parameters:
+- name: SUBNAME
+- name: SUBNAMESPACE
+- name: CHANNEL
+- name: APPROVAL
+  value: "Automatic"
+- name: OPERATORNAME
+- name: SOURCENAME
+- name: SOURCENAMESPACE
+  value: "openshift-marketplace"
+- name: STARTINGCSV
+  value: ""
+`)
+
+func testExtendedTestdataOlmEnvSubscriptionYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataOlmEnvSubscriptionYaml, nil
+}
+
+func testExtendedTestdataOlmEnvSubscriptionYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataOlmEnvSubscriptionYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/olm/env-subscription.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
 var _testExtendedTestdataOlmEtcdClusterYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
@@ -9514,32 +9570,6 @@ func testExtendedTestdataOlmEtcdClusterYaml() (*asset, error) {
 	}
 
 	info := bindataFileInfo{name: "test/extended/testdata/olm/etcd-cluster.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
-	a := &asset{bytes: bytes, info: info}
-	return a, nil
-}
-
-var _testExtendedTestdataOlmEtcdCustomCscYaml = []byte(`apiVersion: operators.coreos.com/v1
-kind: CatalogSourceConfig
-metadata:
-  name: etcd-custom-csc
-  namespace: openshift-marketplace
-spec:
-  targetNamespace: openshift-operators
-  packages: etcd
-  source: community-operators
-`)
-
-func testExtendedTestdataOlmEtcdCustomCscYamlBytes() ([]byte, error) {
-	return _testExtendedTestdataOlmEtcdCustomCscYaml, nil
-}
-
-func testExtendedTestdataOlmEtcdCustomCscYaml() (*asset, error) {
-	bytes, err := testExtendedTestdataOlmEtcdCustomCscYamlBytes()
-	if err != nil {
-		return nil, err
-	}
-
-	info := bindataFileInfo{name: "test/extended/testdata/olm/etcd-custom-csc.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -25866,8 +25896,8 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/olm/cs-without-image.yaml":                                                                                        testExtendedTestdataOlmCsWithoutImageYaml,
 	"test/extended/testdata/olm/csc.yaml":                                                                                                     testExtendedTestdataOlmCscYaml,
 	"test/extended/testdata/olm/dockerconfig.json":                                                                                            testExtendedTestdataOlmDockerconfigJson,
+	"test/extended/testdata/olm/env-subscription.yaml":                                                                                        testExtendedTestdataOlmEnvSubscriptionYaml,
 	"test/extended/testdata/olm/etcd-cluster.yaml":                                                                                            testExtendedTestdataOlmEtcdClusterYaml,
-	"test/extended/testdata/olm/etcd-custom-csc.yaml":                                                                                         testExtendedTestdataOlmEtcdCustomCscYaml,
 	"test/extended/testdata/olm/etcd-subscription-manual.yaml":                                                                                testExtendedTestdataOlmEtcdSubscriptionManualYaml,
 	"test/extended/testdata/olm/etcd-subscription.yaml":                                                                                       testExtendedTestdataOlmEtcdSubscriptionYaml,
 	"test/extended/testdata/olm/mutatingwebhook-csv.yaml":                                                                                     testExtendedTestdataOlmMutatingwebhookCsvYaml,
@@ -26180,8 +26210,8 @@ var _bintree = &bintree{nil, map[string]*bintree{
 					"cs-without-image.yaml":                 {testExtendedTestdataOlmCsWithoutImageYaml, map[string]*bintree{}},
 					"csc.yaml":                              {testExtendedTestdataOlmCscYaml, map[string]*bintree{}},
 					"dockerconfig.json":                     {testExtendedTestdataOlmDockerconfigJson, map[string]*bintree{}},
+					"env-subscription.yaml":                 {testExtendedTestdataOlmEnvSubscriptionYaml, map[string]*bintree{}},
 					"etcd-cluster.yaml":                     {testExtendedTestdataOlmEtcdClusterYaml, map[string]*bintree{}},
-					"etcd-custom-csc.yaml":                  {testExtendedTestdataOlmEtcdCustomCscYaml, map[string]*bintree{}},
 					"etcd-subscription-manual.yaml":         {testExtendedTestdataOlmEtcdSubscriptionManualYaml, map[string]*bintree{}},
 					"etcd-subscription.yaml":                {testExtendedTestdataOlmEtcdSubscriptionYaml, map[string]*bintree{}},
 					"mutatingwebhook-csv.yaml":              {testExtendedTestdataOlmMutatingwebhookCsvYaml, map[string]*bintree{}},
