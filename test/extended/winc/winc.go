@@ -177,7 +177,7 @@ var _ = g.Describe("[sig-windows] Windows_Containers", func() {
 	})
 
 	// author: sgao@redhat.com
-	g.It("Author:sgao-Low-32554-WMCO run in a pod with HostNetwork", func() {
+	g.It("Author:sgao-Low-32554-wmco run in a pod with HostNetwork", func() {
 		winInternalIP := getWindowsInternalIPs(oc)[0]
 		curlDest := winInternalIP + ":22"
 		command := []string{"exec", "-n", "openshift-windows-machine-config-operator", "deployment.apps/windows-machine-config-operator", "--", "curl", curlDest}
@@ -188,7 +188,7 @@ var _ = g.Describe("[sig-windows] Windows_Containers", func() {
 	})
 
 	// author: sgao@redhat.com
-	g.It("Author:sgao-Critical-32856-WMCO watch machineset with Windows label", func() {
+	g.It("Author:sgao-Critical-32856-wmco watch machineset with Windows label", func() {
 		// Note: Create machineset with Windows label covered in Flexy post action
 		g.By("Check create machineset without Windows label")
 		windowsMachineSetName := ""
@@ -612,7 +612,7 @@ var _ = g.Describe("[sig-windows] Windows_Containers", func() {
 	})
 
 	// author: rrasouli@redhat.com
-	g.It("Author:rrasouli-Medium-37362-[wmco] WMCO using correct golang version", func() {
+	g.It("Author:rrasouli-Medium-37362-[wmco] wmco using correct golang version", func() {
 		g.By("Fetch the correct golang version")
 		// get the golang version
 		getCMD := "oc version -ojson | jq '.serverVersion.goVersion'"
