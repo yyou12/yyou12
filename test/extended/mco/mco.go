@@ -1,6 +1,7 @@
 package mco
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -146,26 +147,45 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 	})
 
 	g.It("Author:mhanss-Longduration-CPaasrunOnly-Critical-42365-add real time kernel argument [Disruptive]", func() {
-		g.By("Create new MC to change the kernel argument")
-		mcName := "change-worker-kernel-argument"
-		mcTemplate := generateTemplateAbsolutePath("change-worker-kernel-argument.yaml")
-		mc := machineConfig{name: mcName, template: mcTemplate, pool: "worker"}
-		defer mc.delete(oc)
-		mc.create(oc)
-		e2e.Logf("Machine config is created successfully!")
+		createMcAndVerifyMCValue(oc, "Kernel argument", "change-worker-kernel-argument", "PREEMPT_RT", "uname -a")
+	})
 
-		g.By("Check kernel argument in the created machine config")
-		mcOut, err := getMachineConfigDetails(oc, mc.name)
-		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(mcOut).Should(o.ContainSubstring("realtime"))
-		e2e.Logf("Kernel argument is verified in the created machine config!")
+	g.It("Author:mhanss-Longduration-CPaasrunOnly-Critical-42364-add selinux kernel argument [Disruptive]", func() {
+		createMcAndVerifyMCValue(oc, "Kernel argument", "change-worker-kernel-selinux", "enforcing=0", "cat", "/rootfs/proc/cmdline")
+	})
 
-		g.By("Check kernel argument in the machine config daemon")
-		workerNode, err := getFirstWorkerNode(oc)
-		o.Expect(err).NotTo(o.HaveOccurred())
-		podOut, err := remoteShPod(oc, "openshift-machine-config-operator", getMachineConfigDaemon(oc, workerNode), false, "uname -a")
-		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(podOut).Should(o.ContainSubstring("PREEMPT_RT"))
-		e2e.Logf("Kernel argument is verified in the machine config daemon!")
+	g.It("Author:mhanss-Longduration-CPaasrunOnly-Critical-42367-add extension to RHCOS [Disruptive]", func() {
+		createMcAndVerifyMCValue(oc, "Usb Extension", "change-worker-extension-usbguard", "usbguard", "rpm", "-q", "usbguard")
 	})
 })
+
+func createMcAndVerifyMCValue(oc *exutil.CLI, stepText string, mcName string, textToVerify string, cmd ...string) {
+	g.By(fmt.Sprintf("Create new MC to add the %s", stepText))
+	mcTemplate := generateTemplateAbsolutePath(mcName + ".yaml")
+	mc := machineConfig{name: mcName, template: mcTemplate, pool: "worker"}
+	defer mc.delete(oc)
+	mc.create(oc)
+	e2e.Logf("Machine config is created successfully!")
+
+	g.By(fmt.Sprintf("Check %s in the created machine config", stepText))
+	mcOut, err := getMachineConfigDetails(oc, mc.name)
+	o.Expect(err).NotTo(o.HaveOccurred())
+	o.Expect(mcOut).Should(o.ContainSubstring(textToVerify))
+	e2e.Logf("%s is verified in the created machine config!", stepText)
+
+	g.By(fmt.Sprintf("Check %s in the machine config daemon", stepText))
+	workerNode, err := getFirstWorkerNode(oc)
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	var podOut string
+	if strings.Contains(textToVerify, "PREEMPT_RT") {
+		podOut, err = exutil.RemoteShPodWithBash(oc, "openshift-machine-config-operator", getMachineConfigDaemon(oc, workerNode), cmd...)
+	} else if strings.Contains(textToVerify, "enforcing") {
+		podOut, err = exutil.RemoteShPod(oc, "openshift-machine-config-operator", getMachineConfigDaemon(oc, workerNode), cmd...)
+	} else {
+		podOut, err = exutil.RemoteShPodWithChroot(oc, "openshift-machine-config-operator", getMachineConfigDaemon(oc, workerNode), cmd...)
+	}
+	o.Expect(err).NotTo(o.HaveOccurred())
+	o.Expect(podOut).Should(o.ContainSubstring(textToVerify))
+	e2e.Logf("%s is verified in the machine config daemon!", stepText)
+}

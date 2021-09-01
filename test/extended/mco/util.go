@@ -135,17 +135,6 @@ func getMachineConfigDaemon(oc *exutil.CLI, node string) string {
 	return strings.ReplaceAll(daemonPod, "'", "")
 }
 
-func remoteShPod(oc *exutil.CLI, namespace string, podName string, needChroot bool, cmd ...string) (string, error) {
-	var cargs []string
-	if needChroot {
-		cargs = []string{"-n", namespace, podName, "bash", "-c", "chroot", "/host"}
-	} else {
-		cargs = []string{"-n", namespace, podName, "bash", "-c"}
-	}
-	cargs = append(cargs, cmd...)
-	return oc.AsAdmin().WithoutNamespace().Run("rsh").Args(cargs...).Output()
-}
-
 func debugNode(oc *exutil.CLI, nodeName string, needChroot bool, cmd ...string) (string, error) {
 	var cargs []string
 	if needChroot {
