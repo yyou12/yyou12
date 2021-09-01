@@ -31,6 +31,82 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	var oc = exutil.NewCLI("default-"+getRandomString(), exutil.KubeConfigPath())
 
 	// author: jiazha@redhat.com
+	g.It("ConnectedOnly-Author:jiazha-High-43101-OLM blocks minor OpenShift upgrades when incompatible optional operators are installed", func() {
+		// consumes this index imaage: quay.io/olmqe/etcd-index:upgrade-auto, it contains the etcdoperator v0.9.2, v0.9.4, v0.9.5
+		g.By("1) Create a CatalogSource in the openshift-marketplace project")
+		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
+		csImageTemplate := filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
+		cs := catalogSourceDescription{
+			name:        "cs-43101",
+			namespace:   "openshift-marketplace",
+			displayName: "OLM QE Operators",
+			publisher:   "Jian",
+			sourceType:  "grpc",
+			address:     "quay.io/olmqe/etcd-index:upgrade-auto",
+			template:    csImageTemplate,
+		}
+		dr := make(describerResrouce)
+		itName := g.CurrentGinkgoTestDescription().TestText
+		dr.addIr(itName)
+
+		defer cs.delete(itName, dr)
+		cs.create(oc, itName, dr)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "READY", ok, []string{"catsrc", cs.name, "-n", "openshift-marketplace", "-o=jsonpath={.status..lastObservedState}"}).check(oc)
+
+		g.By("2) Install the OperatorGroup in a random project")
+		oc.SetupProject()
+		ogSingleTemplate := filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+		og := operatorGroupDescription{
+			name:      "og-43101",
+			namespace: oc.Namespace(),
+			template:  ogSingleTemplate,
+		}
+		defer og.delete(itName, dr)
+		og.createwithCheck(oc, itName, dr)
+
+		g.By("3) Install the etcdoperator v0.9.2 with Manual approval")
+		subTemplate := filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+		sub := subscriptionDescription{
+			subName:                "sub-43101",
+			namespace:              oc.Namespace(),
+			catalogSourceName:      "community-operators",
+			catalogSourceNamespace: "openshift-marketplace",
+			channel:                "singlenamespace-alpha",
+			ipApproval:             "Manual",
+			operatorPackage:        "etcd",
+			startingCSV:            "etcdoperator.v0.9.2",
+			singleNamespace:        true,
+			template:               subTemplate,
+		}
+		defer sub.delete(itName, dr)
+		defer sub.deleteCSV(itName, dr)
+		defer sub.update(oc, itName, dr)
+		sub.create(oc, itName, dr)
+
+		g.By("4) Apprrove this etcdoperator.v0.9.2, it should be in Complete state")
+		sub.approveSpecificIP(oc, itName, dr, "etcdoperator.v0.9.2", "Complete")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", "etcdoperator.v0.9.2", "-n", oc.Namespace(), "-o=jsonpath={.status.phase}"}).check(oc)
+
+		// olm.properties: '[{"type": "olm.maxOpenShiftVersion", "value": " "}]'
+		g.By("5) This operator's olm.maxOpenShiftVersion is empty, so it should block the upgrade")
+		CheckUpgradeStatus(oc, "False")
+
+		g.By("6) Apprrove this etcdoperator.v0.9.4, it should be in Complete state")
+		sub.approveSpecificIP(oc, itName, dr, "etcdoperator.v0.9.4", "Complete")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", "etcdoperator.v0.9.4", "-n", oc.Namespace(), "-o=jsonpath={.status.phase}"}).check(oc)
+		// olm.properties: '[{"type": "olm.maxOpenShiftVersion", "value": "4.9"}]'
+		g.By("7) 4.9.0-xxx upgraded to 4.10.0-xxx < 4.10.0, or 4.9.1 upgraded to 4.9.x < 4.10.0, so it should NOT block the 4.9 upgrade.")
+		CheckUpgradeStatus(oc, "True")
+
+		g.By("8) Apprrove this etcdoperator.v0.9.5, it should be in Complete state")
+		sub.approveSpecificIP(oc, itName, dr, "etcdoperator.v0.9.5", "Complete")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", "etcdoperator.v0.9.5", "-n", oc.Namespace(), "-o=jsonpath={.status.phase}"}).check(oc)
+		// olm.properties: '[{"type": "olm.maxOpenShiftVersion", "value": "4.10.0"}]'
+		g.By("9) 4.9.0-xxx upgraded to 4.10.0-xxx < 4.10.0, or 4.9.1 upgraded to 4.9.x < 4.11.0, so it should NOT block the 4.9 upgrade.")
+		CheckUpgradeStatus(oc, "True")
+	})
+
+	// author: jiazha@redhat.com
 	g.It("Author:jiazha-Medium-43977-OPENSHIFT_VERSIONS in assisted operator subscription does not propagate", func() {
 		// this operator must be installed in the default project since the env variable: MY_POD_NAMESPACE = default
 		g.By("1) create the OperatorGroup in the default project")

@@ -1283,3 +1283,19 @@ func DeleteDir(filePathStr string, filePre string) bool {
 		return true
 	}
 }
+
+func CheckUpgradeStatus(oc *exutil.CLI, expectedStatus string) {
+	e2e.Logf("Check the Upgradeable status of the OLM, expected: %s", expectedStatus)
+	err := wait.Poll(3*time.Second, 60*time.Second, func() (bool, error) {
+		upgradeable, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("co", "operator-lifecycle-manager", "-o=jsonpath={.status.conditions[?(@.type==\"Upgradeable\")].status}").Output()
+		if err != nil {
+			e2e.Failf("Fail to get the Upgradeable status of the OLM: %v", err)
+		}
+		if upgradeable != expectedStatus {
+			return false, nil
+		}
+		e2e.Logf("The Upgraableable status should be %s, and get %s", expectedStatus, upgradeable)
+		return true, nil
+	})
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
