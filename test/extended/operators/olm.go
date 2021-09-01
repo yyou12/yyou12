@@ -1494,7 +1494,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 			displayName: "OLM QE",
 			publisher:   "OLM QE",
 			sourceType:  "grpc",
-			address:     "quay.io/olmqe/etcd-prometheus-dependency-index:8.0",
+			address:     "quay.io/olmqe/etcd-prometheus-dependency-index:11.0",
 			template:    csImageTemplate,
 		}
 		dr := make(describerResrouce)
@@ -1523,7 +1523,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 			catalogSourceNamespace: "openshift-marketplace",
 			channel:                "singlenamespace-alpha",
 			ipApproval:             "Automatic",
-			operatorPackage:        "etcd-prometheus",
+			operatorPackage:        "etcd-service-monitor",
 			startingCSV:            "etcdoperator.v0.9.4",
 			singleNamespace:        true,
 			template:               subTemplate,
@@ -1551,7 +1551,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 			displayName: "OLM QE",
 			publisher:   "OLM QE",
 			sourceType:  "grpc",
-			address:     "quay.io/olmqe/etcd-prometheus-dependency-index:9.0",
+			address:     "quay.io/olmqe/etcd-prometheus-dependency-index:11.0",
 			template:    csImageTemplate,
 		}
 		dr := make(describerResrouce)
