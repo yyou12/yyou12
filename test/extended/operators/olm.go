@@ -1691,27 +1691,36 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		dr := make(describerResrouce)
 		itName := g.CurrentGinkgoTestDescription().TestText
 		dr.addIr(itName)
-		g.By("Start to subscribe the AMQ-Streams operator")
+		g.By("Start to subscribe the NFD operator")
 		sub := subscriptionDescription{
-			subName:                "jaeger-product",
+			subName:                "nfd",
 			namespace:              "openshift-operators",
 			catalogSourceName:      "redhat-operators",
 			catalogSourceNamespace: "openshift-marketplace",
-			channel:                "stable",
+			channel:                "4.8",
 			ipApproval:             "Automatic",
-			operatorPackage:        "jaeger-product",
+			operatorPackage:        "nfd",
 			singleNamespace:        false,
+			startingCSV:            "", //get it from package based on currentCSV if ipApproval is Automatic
+			currentCSV:             "",
+			installedCSV:           "",
 			template:               subTemplate,
 		}
 
 		defer sub.delete(itName, dr)
-
-		sub.create(oc, itName, dr)
 		defer sub.deleteCSV(itName, dr)
-		newCheck("expect", asAdmin, withNamespace, compare, "Succeeded", ok, []string{"csv", sub.installedCSV, "-o=jsonpath={.status.phase}"}).check(oc)
-		msg, err := oc.AsAdmin().WithoutNamespace().Run("policy").Args("who-can", "list", "namespaces").Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(msg).To(o.ContainSubstring("system:serviceaccount:openshift-operators:jaeger-operator"))
+		sub.createWithoutCheck(oc, itName, dr)
+
+		g.By("check if nfd is already installed")
+		csvList := getResource(oc, asAdmin, withNamespace, "csv", "-o=jsonpath={.items[*].metadata.name}")
+		e2e.Logf("CSV list %s ", csvList)
+		if !strings.Contains("node-feature-discovery-operator", csvList) {
+			msg, err := oc.AsAdmin().WithoutNamespace().Run("policy").Args("who-can", "list", "namespaces").Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			o.Expect(msg).To(o.ContainSubstring("system:serviceaccount:openshift-operators:nfd-operator"))
+		} else {
+			e2e.Failf("Not able to install NFD Operator")
+		}
 	})
 	// author: jiazha@redhat.com
 	g.It("Author:jiazha-High-32559-catalog operator crashed", func() {
