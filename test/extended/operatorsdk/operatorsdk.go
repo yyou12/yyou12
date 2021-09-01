@@ -961,4 +961,43 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
         o.Expect(podstatus).To(o.ContainSubstring("Running"))
     })
 
+
+    // author: chuo@redhat.com
+     g.It("ConnectedOnly-Author:chuo-High-40341-Ansible operator needs a way to pass vars as unsafe ", func() {
+        operatorsdkCLI.showInfo = true
+        exec.Command("bash", "-c", "mkdir -p /tmp/ocp-40341/memcached-operator && cd /tmp/ocp-40341/memcached-operator && operator-sdk init --plugins=ansible --domain example.com").Output()
+        defer exec.Command("bash", "-c", "cd /tmp/ocp-40341/memcached-operator && make undeploy").Output()
+        defer exec.Command("bash", "-c", "rm -rf /tmp/ocp-40341").Output()
+        exec.Command("bash", "-c", "cd /tmp/ocp-40341/memcached-operator && operator-sdk create api --group cache --version v1alpha1 --kind Memcached --generate-role").Output()
+        exec.Command("bash", "-c", "sed -i '$d' /tmp/ocp-40341/memcached-operator/config/samples/cache_v1alpha1_memcached.yaml").Output()
+        exec.Command("bash", "-c", "sed -i '$a\\  size: 3' /tmp/ocp-40341/memcached-operator/config/samples/cache_v1alpha1_memcached.yaml").Output()
+        exec.Command("bash", "-c", "sed -i '$a\\  testKey: testVal' /tmp/ocp-40341/memcached-operator/config/samples/cache_v1alpha1_memcached.yaml").Output()
+        
+        // to replace namespace memcached-operator-system with memcached-operator-system-ocp40341
+        exec.Command("bash", "-c", "sed -i 's/name: system/name: system-ocp40341/g' `grep -rl \"name: system\" /tmp/ocp-40341/memcached-operator`").Output()
+        exec.Command("bash", "-c", "sed -i 's/namespace: system/namespace: system-ocp40341/g'  `grep -rl \"namespace: system\" /tmp/ocp-40341/memcached-operator`").Output()
+        exec.Command("bash", "-c", "sed -i 's/namespace: memcached-operator-system/namespace: memcached-operator-system-ocp40341/g'  `grep -rl \"namespace: memcached-operator-system\" /tmp/ocp-40341/memcached-operator`").Output()
+        
+        exec.Command("bash", "-c", "cd /tmp/ocp-40341/memcached-operator && make install").Output()
+        exec.Command("bash", "-c", "cd /tmp/ocp-40341/memcached-operator && make deploy IMG=quay.io/olmqe/memcached-operator-pass-unsafe:v4.8").Output()
+        
+    
+        waitErr := wait.Poll(5*time.Second, 120*time.Second, func() (bool, error) {
+			msg, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-n", "memcached-operator-system-ocp40341").Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			if strings.Contains(msg, "Running")  {
+				return true, nil
+			}
+			return false, nil
+        })
+        o.Expect(waitErr).NotTo(o.HaveOccurred())
+        
+        _, err := oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", "/tmp/ocp-40341/memcached-operator/config/samples/cache_v1alpha1_memcached.yaml","-n","memcached-operator-system-ocp40341").Output()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        
+        output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("memcached.cache.example.com/memcached-sample", "-n", "memcached-operator-system-ocp40341","-o","yaml").Output()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        o.Expect(output).To(o.ContainSubstring("size: 3"))	
+        o.Expect(output).To(o.ContainSubstring("testKey: testVal"))
+    })
 })
