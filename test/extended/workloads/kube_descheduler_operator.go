@@ -498,5 +498,235 @@ var _ = g.Describe("[sig-scheduling] Workloads The Descheduler Operator automate
 
       })
 
+      // author: knarra@redhat.com
+      g.It("Longduration-Author:knarra-High-43287-High-43283-Descheduler-Descheduler operator should verify config does not conflict with scheduler and SoftTopologyAndDuplicates profile [Disruptive][Slow]", func() {
+              deploysptT := filepath.Join(buildPruningBaseDir, "deploy_softPodTopologySpread.yaml")
+              deploysdT   := filepath.Join(buildPruningBaseDir, "deploy_softdemopod.yaml")
+
+              nodeList, err := e2enode.GetReadySchedulableNodes(oc.KubeFramework().ClientSet)
+
+              deschu = kubedescheduler{
+                        namespace:         kubeNamespace,
+                        interSeconds:      60,
+                        imageInfo:         "registry.redhat.io/openshift4/ose-descheduler:v4.9.0",
+                        logLevel:          "Normal",
+                        operatorLogLevel:  "Normal",
+                        profile1:          "DoNotEvictPodsWithPVC",
+                        profile2:          "SoftTopologyAndDuplicates",
+                        profile3:          "LifecycleAndUtilization",
+                        template:          deschedulerT,
+              }
+
+              g.By("Create the descheduler namespace")
+              defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("ns", kubeNamespace).Execute()
+              err = oc.AsAdmin().WithoutNamespace().Run("create").Args("ns", kubeNamespace).Execute()
+              o.Expect(err).NotTo(o.HaveOccurred())
+
+              patch := `[{"op":"add", "path":"/metadata/labels/openshift.io~1cluster-monitoring", "value":"true"}]`
+              err = oc.AsAdmin().WithoutNamespace().Run("patch").Args("ns", kubeNamespace, "--type=json", "-p", patch).Execute()
+              o.Expect(err).NotTo(o.HaveOccurred())
+
+              g.By("Create the operatorgroup")
+              og.createOperatorGroup(oc)
+              o.Expect(err).NotTo(o.HaveOccurred())
+              defer og.deleteOperatorGroup(oc)
+
+              g.By("Create the subscription")
+              sub.createSubscription(oc)
+              o.Expect(err).NotTo(o.HaveOccurred())
+              defer sub.deleteSubscription(oc)
+
+              g.By("Wait for the descheduler operator pod running")
+              if ok := waitForAvailableRsRunning(oc, "deploy", "descheduler-operator", kubeNamespace, "1"); ok {
+                  e2e.Logf("Kubedescheduler operator runnnig now\n")
+              }
+
+              g.By("Create descheduler cluster")
+              deschu.createKubeDescheduler(oc)
+              o.Expect(err).NotTo(o.HaveOccurred())
+              defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("KubeDescheduler", "--all", "-n", kubeNamespace).Execute()
+
+              g.By("Check the kubedescheduler run well")
+              checkAvailable(oc, "deploy", "cluster", kubeNamespace, "1")
+
+              g.By("Get descheduler cluster pod name")
+              podName, err := oc.AsAdmin().Run("get").Args("pods", "-l", "app=descheduler", "-n", kubeNamespace, "-o=jsonpath={.items..metadata.name}").Output()
+              o.Expect(err).NotTo(o.HaveOccurred())
+
+              // Test for SoftTopologyAndDuplicates
+              // Create test project
+              g.By("Create test project")
+              oc.SetupProject()
+
+              testspt := deploypodtopologyspread{
+                        dName:          "d432831",
+                        namespace:      oc.Namespace(),
+                        template:       deploysptT,
+              }
+
+              testspt1 := deploypodtopologyspread{
+                        dName:          "d432832",
+                        namespace:      oc.Namespace(),
+                        template:       deploysdT,
+              }
+
+              testspt2 := deploypodtopologyspread{
+                        dName:          "d432833",
+                        namespace:      oc.Namespace(),
+                        template:       deploysdT,
+              }
+
+              testspt3 := deploypodtopologyspread{
+                        dName:          "d432834",
+                        namespace:      oc.Namespace(),
+                        template:       deploysdT,
+              }
+
+              g.By("Cordon all nodes in the cluster")
+              nodeName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("nodes", "--selector=node-role.kubernetes.io/worker=", "-o=jsonpath={.items[*].metadata.name}").Output()
+              o.Expect(err).NotTo(o.HaveOccurred())
+              e2e.Logf("\nNode Names are %v", nodeName)
+              node := strings.Fields(nodeName)
+
+              defer func() {
+                 for _, v := range node {
+                   oc.AsAdmin().WithoutNamespace().Run("adm").Args("uncordon", fmt.Sprintf("%s", v)).Execute()
+                   }
+              }()
+
+              for _, v := range node {
+                 err = oc.AsAdmin().WithoutNamespace().Run("adm").Args("cordon", fmt.Sprintf("%s", v)).Execute()
+                 o.Expect(err).NotTo(o.HaveOccurred())
+              }
+
+
+              g.By("Label Node1 & Node2")
+              e2e.AddOrUpdateLabelOnNode(oc.KubeFramework().ClientSet, nodeList.Items[0].Name, "ocp43283-zone", "ocp43283zoneA")
+              defer e2e.RemoveLabelOffNode(oc.KubeFramework().ClientSet, nodeList.Items[0].Name, "ocp43283-zone")
+              e2e.AddOrUpdateLabelOnNode(oc.KubeFramework().ClientSet, nodeList.Items[1].Name, "ocp43283-zone", "ocp43283zoneB")
+              defer e2e.RemoveLabelOffNode(oc.KubeFramework().ClientSet, nodeList.Items[1].Name, "ocp43283-zone")
+
+              g.By("Uncordon Node1")
+              err = oc.AsAdmin().Run("adm").Args("uncordon", nodeList.Items[0].Name).Execute()
+              o.Expect(err).NotTo(o.HaveOccurred())
+
+              g.By("Create three pods on node1")
+              testspt.createPodTopologySpread(oc)
+              o.Expect(err).NotTo(o.HaveOccurred())
+
+              g.By("Creating first demo pod")
+              testspt1.createPodTopologySpread(oc)
+              o.Expect(err).NotTo(o.HaveOccurred())
+
+              g.By("Creating second demo pod")
+              testspt2.createPodTopologySpread(oc)
+              o.Expect(err).NotTo(o.HaveOccurred())
+
+              g.By("cordon Node1, uncordon Node2")
+              err = oc.AsAdmin().Run("adm").Args("cordon", nodeList.Items[0].Name).Execute()
+              o.Expect(err).NotTo(o.HaveOccurred())
+              err = oc.AsAdmin().Run("adm").Args("uncordon", nodeList.Items[1].Name).Execute()
+              o.Expect(err).NotTo(o.HaveOccurred())
+
+              g.By("create one pod on node2")
+              testspt3.createPodTopologySpread(oc)
+
+              g.By("uncordon Node1")
+              err = oc.AsAdmin().Run("adm").Args("uncordon", nodeList.Items[0].Name).Execute()
+              o.Expect(err).NotTo(o.HaveOccurred())
+
+              g.By("Check the descheduler deploy logs, should see evict logs")
+              checkLogsFromRs(oc, kubeNamespace, "pod", podName, regexp.QuoteMeta(`"Evicted pod"`)+".*"+regexp.QuoteMeta(`reason="PodTopologySpread"`))
+
+              // Test for config does not conflict with scheduler
+              patch = `[{"op":"add", "path":"/spec/profile", "value":"HighNodeUtilization"}]`
+              err = oc.AsAdmin().WithoutNamespace().Run("patch").Args("Scheduler", "cluster", "--type=json", "-p", patch).Execute()
+              o.Expect(err).NotTo(o.HaveOccurred())
+
+              defer func() {
+		patch = `[{"op":"add", "path":"/spec/profile"}]`
+                oc.AsAdmin().WithoutNamespace().Run("patch").Args("Scheduler", "cluster", "--type=json", "-p", patch).Execute()
+                g.By("Check the kube-scheduler operator should be in Progressing")
+                err = wait.Poll(5*time.Second, 60*time.Second, func() (bool, error) {
+                        output, err := oc.AsAdmin().Run("get").Args("co", "kube-scheduler").Output()
+                        if err != nil {
+                                e2e.Logf("clusteroperator kube-scheduler not start new progress, error: %s. Trying again", err)
+                                return false, nil
+                        }
+                        if matched, _ := regexp.MatchString("True.*True.*False", output); matched {
+                                e2e.Logf("clusteroperator kube-scheduler is Progressing:\n%s", output)
+                                return true, nil
+                        }
+                        return false, nil
+                })
+                o.Expect(err).NotTo(o.HaveOccurred())
+
+                g.By("Wait for the KubeScheduler operator to recover")
+                err = wait.Poll(30*time.Second, 300*time.Second, func() (bool, error) {
+                        output, err := oc.AsAdmin().Run("get").Args("co", "kube-scheduler").Output()
+                        if err != nil {
+                                e2e.Logf("Fail to get clusteroperator kube-scheduler, error: %s. Trying again", err)
+                                return false, nil
+                        }
+                        if matched, _ := regexp.MatchString("True.*False.*False", output); matched {
+                                e2e.Logf("clusteroperator kube-scheduler is recover to normal:\n%s", output)
+                                return true, nil
+                        }
+                        return false, nil
+                })
+                o.Expect(err).NotTo(o.HaveOccurred())
+
+              }()
+
+              g.By("Check the kube-scheduler operator should be in Progressing")
+              err = wait.Poll(5*time.Second, 60*time.Second, func() (bool, error) {
+                        output, err := oc.AsAdmin().Run("get").Args("co", "kube-scheduler").Output()
+                        if err != nil {
+                                e2e.Logf("clusteroperator kube-scheduler not start new progress, error: %s. Trying again", err)
+                                return false, nil
+                        }
+                        if matched, _ := regexp.MatchString("True.*True.*False", output); matched {
+                                e2e.Logf("clusteroperator kube-scheduler is Progressing:\n%s", output)
+                                return true, nil
+                        }
+                        return false, nil
+              })
+              o.Expect(err).NotTo(o.HaveOccurred())
+
+              g.By("Wait for the KubeScheduler operator to recover")
+              err = wait.Poll(30*time.Second, 300*time.Second, func() (bool, error) {
+                        output, err := oc.AsAdmin().Run("get").Args("co", "kube-scheduler").Output()
+                        if err != nil {
+                                e2e.Logf("Fail to get clusteroperator kube-scheduler, error: %s. Trying again", err)
+                                return false, nil
+                        }
+                        if matched, _ := regexp.MatchString("True.*False.*False", output); matched {
+                                e2e.Logf("clusteroperator kube-scheduler is recover to normal:\n%s", output)
+                                return true, nil
+                        }
+                        return false, nil
+              })
+              o.Expect(err).NotTo(o.HaveOccurred())
+
+              g.By("Get descheduler operator pod name")
+              operator_podName, err := oc.AsAdmin().Run("get").Args("pods", "-l", "name=descheduler-operator", "-n", kubeNamespace, "-o=jsonpath={.items..metadata.name}").Output()
+              o.Expect(err).NotTo(o.HaveOccurred())
+
+              g.By("Check the descheduler deploy logs, should see config error logs")
+              checkLogsFromRs(oc, kubeNamespace, "pod", operator_podName, regexp.QuoteMeta(`"enabling Descheduler LowNodeUtilization with Scheduler HighNodeUtilization may cause an eviction/scheduling hot loop"`))
+
+              g.By("Verify descheduler cluster pod does not run well")
+              err = wait.Poll(5*time.Second, 30*time.Second, func() (bool, error) {
+			output, err := oc.AsAdmin().Run("get").Args("pods", "-l", "app=descheduler", "-n", kubeNamespace).Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			if matched, _ := regexp.MatchString("No resources found", output); !matched {
+				e2e.Logf("Descheduler pod no more present, which is expected :\n%s, try again ", output)
+				return false, nil
+			}
+			return true, nil
+	      })
+	      o.Expect(err).NotTo(o.HaveOccurred())
+
+      })
 
 })

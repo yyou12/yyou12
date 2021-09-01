@@ -223,6 +223,8 @@
 // test/extended/testdata/workloads/deploy_nodetaint.yaml
 // test/extended/testdata/workloads/deploy_podTopologySpread.yaml
 // test/extended/testdata/workloads/deploy_single_pts.yaml
+// test/extended/testdata/workloads/deploy_softPodTopologySpread.yaml
+// test/extended/testdata/workloads/deploy_softdemopod.yaml
 // test/extended/testdata/workloads/init.ldif
 // test/extended/testdata/workloads/kubedescheduler.yaml
 // test/extended/testdata/workloads/operatorgroup.yaml
@@ -24804,6 +24806,93 @@ func testExtendedTestdataWorkloadsDeploy_single_ptsYaml() (*asset, error) {
 	return a, nil
 }
 
+var _testExtendedTestdataWorkloadsDeploy_softpodtopologyspreadYaml = []byte(`apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: deploy-softpodtopologyspread-template
+objects:
+- kind: Pod
+  apiVersion: v1
+  metadata:
+    name: "${DNAME}"
+    namespace: "${NAMESPACE}"
+    labels:
+      ocp432831: ocp432831
+    annotations:
+      "descheduler.alpha.kubernetes.io/evict": ""
+  spec:
+    topologySpreadConstraints:
+    - maxSkew: 1
+      topologyKey: ocp43283-zone
+      whenUnsatisfiable: ScheduleAnyway
+      labelSelector:
+        matchLabels:
+          ocp432831: ocp432831
+    containers:
+    - name: pause
+      image: quay.io/openshifttest/pause@sha256:b31bfb4d0213f254d361e0079deaaebefa4f82ba7aa76ef82e90b4935ad5b105
+
+
+parameters:
+- name: DNAME
+- name: NAMESPACE
+`)
+
+func testExtendedTestdataWorkloadsDeploy_softpodtopologyspreadYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataWorkloadsDeploy_softpodtopologyspreadYaml, nil
+}
+
+func testExtendedTestdataWorkloadsDeploy_softpodtopologyspreadYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataWorkloadsDeploy_softpodtopologyspreadYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/workloads/deploy_softPodTopologySpread.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataWorkloadsDeploy_softdemopodYaml = []byte(`apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: deploy-softdemotopologyspread-template
+objects:
+- kind: Pod
+  apiVersion: v1
+  metadata:
+    name: "${DNAME}"
+    namespace: "${NAMESPACE}"
+    labels:
+      ocp432831: ocp432831
+    annotations:
+      "descheduler.alpha.kubernetes.io/evict": ""
+  spec:
+    containers:
+    - name: pause
+      image: quay.io/openshifttest/pause@sha256:b31bfb4d0213f254d361e0079deaaebefa4f82ba7aa76ef82e90b4935ad5b105
+
+
+parameters:
+- name: DNAME
+- name: NAMESPACE
+`)
+
+func testExtendedTestdataWorkloadsDeploy_softdemopodYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataWorkloadsDeploy_softdemopodYaml, nil
+}
+
+func testExtendedTestdataWorkloadsDeploy_softdemopodYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataWorkloadsDeploy_softdemopodYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/workloads/deploy_softdemopod.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
 var _testExtendedTestdataWorkloadsInitLdif = []byte(`dn: ou=rfc2307,dc=example,dc=com
 objectClass: organizationalUnit
 ou: rfc2307
@@ -26057,6 +26146,8 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/workloads/deploy_nodetaint.yaml":                                                   testExtendedTestdataWorkloadsDeploy_nodetaintYaml,
 	"test/extended/testdata/workloads/deploy_podTopologySpread.yaml":                                           testExtendedTestdataWorkloadsDeploy_podtopologyspreadYaml,
 	"test/extended/testdata/workloads/deploy_single_pts.yaml":                                                  testExtendedTestdataWorkloadsDeploy_single_ptsYaml,
+	"test/extended/testdata/workloads/deploy_softPodTopologySpread.yaml":                                       testExtendedTestdataWorkloadsDeploy_softpodtopologyspreadYaml,
+	"test/extended/testdata/workloads/deploy_softdemopod.yaml":                                                 testExtendedTestdataWorkloadsDeploy_softdemopodYaml,
 	"test/extended/testdata/workloads/init.ldif":                                                               testExtendedTestdataWorkloadsInitLdif,
 	"test/extended/testdata/workloads/kubedescheduler.yaml":                                                    testExtendedTestdataWorkloadsKubedeschedulerYaml,
 	"test/extended/testdata/workloads/operatorgroup.yaml":                                                      testExtendedTestdataWorkloadsOperatorgroupYaml,
@@ -26441,6 +26532,8 @@ var _bintree = &bintree{nil, map[string]*bintree{
 					"deploy_nodetaint.yaml":                 {testExtendedTestdataWorkloadsDeploy_nodetaintYaml, map[string]*bintree{}},
 					"deploy_podTopologySpread.yaml":         {testExtendedTestdataWorkloadsDeploy_podtopologyspreadYaml, map[string]*bintree{}},
 					"deploy_single_pts.yaml":                {testExtendedTestdataWorkloadsDeploy_single_ptsYaml, map[string]*bintree{}},
+					"deploy_softPodTopologySpread.yaml":     {testExtendedTestdataWorkloadsDeploy_softpodtopologyspreadYaml, map[string]*bintree{}},
+					"deploy_softdemopod.yaml":               {testExtendedTestdataWorkloadsDeploy_softdemopodYaml, map[string]*bintree{}},
 					"init.ldif":                             {testExtendedTestdataWorkloadsInitLdif, map[string]*bintree{}},
 					"kubedescheduler.yaml":                  {testExtendedTestdataWorkloadsKubedeschedulerYaml, map[string]*bintree{}},
 					"operatorgroup.yaml":                    {testExtendedTestdataWorkloadsOperatorgroupYaml, map[string]*bintree{}},
