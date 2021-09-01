@@ -38,7 +38,7 @@ type ctrcfgDescription struct {
 }
 
 type newappDescription struct {
-	appname  string
+	appname string
 }
 
 type objectTableRefcscope struct {
@@ -170,16 +170,25 @@ func (ctrcfg *ctrcfgDescription) create(oc *exutil.CLI) {
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
-func cleanupObjectsClusterScope(oc *exutil.CLI, objs ...objectTableRefcscope) {
-	for _, v := range objs {
-		e2e.Logf("\n Start to remove: %v", v)
-		_, err := oc.AsAdmin().WithoutNamespace().Run("delete").Args(v.kind, v.name).Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-	}
+func cleanupObjectsClusterScope(oc *exutil.CLI, objs ...objectTableRefcscope) error {
+	return wait.Poll(1*time.Second, 1*time.Second, func() (bool, error) {
+		for _, v := range objs {
+			e2e.Logf("\n Start to remove: %v", v)
+			status, err := oc.AsAdmin().WithoutNamespace().Run("get").Args(v.kind, v.name).Output()
+			if strings.Contains(status, "Error") {
+				e2e.Logf("Error getting resources... Seems resources objects are already deleted. \n")
+				return true, nil
+			} else {
+				_, err = oc.AsAdmin().WithoutNamespace().Run("delete").Args(v.kind, v.name).Output()
+				o.Expect(err).NotTo(o.HaveOccurred())
+			}
+		}
+		return true, nil
+	})
 }
 
 func (ctrcfg *ctrcfgDescription) checkCtrcfgParameters(oc *exutil.CLI) error {
-	return wait.Poll(10*time.Minute, 11*time.Minute, func() (bool, error) {
+	return wait.Poll(3*time.Minute, 11*time.Minute, func() (bool, error) {
 		nodeName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("nodes", "--selector=node-role.kubernetes.io/worker=", "-o=jsonpath={.items[*].metadata.name}").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		e2e.Logf("\nNode Names are %v", nodeName)
@@ -196,9 +205,9 @@ func (ctrcfg *ctrcfgDescription) checkCtrcfgParameters(oc *exutil.CLI) error {
 				e2e.Logf(`\nCRI-O PARAMETER ON THE WORKER NODE :` + fmt.Sprintf("%s", v))
 				e2e.Logf("\ncrio config file path is  %v", criostatus)
 
-				wait.Poll(5*time.Second, 1*time.Minute, func() (bool, error) {
+				wait.Poll(3*time.Minute, 4*time.Minute, func() (bool, error) {
 					result, err1 := exec.Command("bash", "-c", "cat "+criostatus+" | egrep 'pids_limit|log_level'").Output()
-					if err != nil {
+					if err1 != nil {
 						e2e.Failf("the result of ReadFile:%v", err1)
 						return false, nil
 					}
@@ -253,7 +262,7 @@ func checkPodmanInfo(oc *exutil.CLI) error {
 
 				wait.Poll(5*time.Second, 1*time.Minute, func() (bool, error) {
 					result, err1 := exec.Command("bash", "-c", "cat "+podmaninfo+" | egrep ' arch:|os:'").Output()
-					if err != nil {
+					if err1 != nil {
 						e2e.Logf("the result of ReadFile:%v", err1)
 						return false, nil
 					}
@@ -280,7 +289,7 @@ func (newapp *newappDescription) createNewApp(oc *exutil.CLI) error {
 			e2e.Logf("the result of ReadFile:%v", err)
 			return false, nil
 		}
-			return true, nil
+		return true, nil
 	})
 }
 
@@ -290,4 +299,40 @@ func buildConfigStatus(oc *exutil.CLI) string {
 	o.Expect(err).NotTo(o.HaveOccurred())
 	e2e.Logf("The buildconfig Name is: %v", buildConfigStatus)
 	return buildConfigStatus
+}
+
+func checkNodeStatus(oc *exutil.CLI) error {
+	return wait.Poll(10*time.Second, 1*time.Minute, func() (bool, error) {
+		nodeName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("nodes", "-o=jsonpath={.items[*].metadata.name}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf("\nNode Names are %v", nodeName)
+		node := strings.Fields(nodeName)
+		for _, v := range node {
+			nodeStatus, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("nodes", fmt.Sprintf("%s", v), "-o=jsonpath={.status.conditions[3].type}").Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			e2e.Logf("\nNode %s Status is %s\n", v, nodeStatus)
+			if nodeStatus == "Ready" {
+				e2e.Logf("\n NODES ARE READY\n ")
+			} else {
+				e2e.Logf("\n NODES ARE NOT READY\n ")
+			}
+		}
+		return true, nil
+	})
+}
+
+func machineconfigStatus(oc *exutil.CLI) error {
+	return wait.Poll(30*time.Second, 5*time.Minute, func() (bool, error) {
+		status, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("machineconfig", "-o=jsonpath={.items[*].metadata.name}").Output()
+		e2e.Logf("Here is the machineconfig %v\n", status)
+		if err != nil {
+			e2e.Logf("the result of ReadFile:%v", err)
+			return false, nil
+		}
+		if strings.Contains(status, "containerruntime") {
+			e2e.Logf(" This is Error, File Bug. \n")
+			return false, nil
+		}
+		return true, nil
+	})
 }

@@ -72,7 +72,7 @@ var _ = g.Describe("[sig-node] Container_Engine_Tools crio,scc", func() {
 	})
 
 	// author: pmali@redhat.com
-	g.It("Longduration-Author:pmali-Medium-22093-CRIO configuration can be modified via containerruntimeconfig CRD[Disruptive][Slow]", func() {
+	g.It("Longduration-Author:pmali-Medium-22093-Medium-22094-CRIO configuration can be modified via containerruntimeconfig CRD[Disruptive][Slow]", func() {
 
 		oc.SetupProject()
 		ctrcfg.loglevel = "debug"
@@ -84,6 +84,14 @@ var _ = g.Describe("[sig-node] Container_Engine_Tools crio,scc", func() {
 		defer cleanupObjectsClusterScope(oc, objectTableRefcscope{"ContainerRuntimeConfig", "parameter-testing"})
 		g.By("Verify that the settings were applied in CRI-O\n")
 		err := ctrcfg.checkCtrcfgParameters(oc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		g.By("Delete Container Runtime Config \n")
+		cleanupObjectsClusterScope(oc, objectTableRefcscope{"ContainerRuntimeConfig", "parameter-testing"})
+		g.By("Make sure machineconfig containerruntime is deleted \n")
+		err = machineconfigStatus(oc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		g.By("Make sure All the Nodes are in the Ready State \n")
+		err = checkNodeStatus(oc)
 		o.Expect(err).NotTo(o.HaveOccurred())
 	})
 
