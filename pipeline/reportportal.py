@@ -19,7 +19,7 @@ class ReportPortalClient:
                 "Multi-Cluster","Cluster_Operator","Azure","Network_Edge","Etcd","Installer","Portfolio_Integration",
                 "Service_Development_A","OLM","Operator_SDK","App_Migration","Windows_Containers","Security_and_Compliance",
                 "KNI","Openshift_Jenkins","RHV","ISV_Operators","PSAP","Multi-Cluster-Networking","OTA","Kata","Build_API",
-                "Image_Registry"
+                "Image_Registry","Container_Engine_Tools","MCO"
             ]
     def __init__(self, args):
         urllib3.disable_warnings(category=InsecureRequestWarning)
@@ -828,7 +828,7 @@ class ReportPortalClient:
 
 
     def getProfileAttr(self):
-        filename = self.args.profilepath + self.args.version + "/" + self.args.profilename + ".test_run.yaml"
+        filename = self.args.profilepath + self.args.profilename + ".test_run.yaml"
         # print(filename)
         try:
             with open(filename) as f:
@@ -916,7 +916,7 @@ class ReportPortalClient:
             return None
 
     def putProfileLaunch(self):
-        pathToProfile = self.args.profilepath + self.args.version + "/"
+        pathToProfile = self.args.profilepath
 
         #get current profile list
         profileList = []

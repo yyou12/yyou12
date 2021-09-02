@@ -19,10 +19,11 @@ import (
 var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 	defer g.GinkgoRecover()
 	var (
-		oc        = exutil.NewCLI("default-image-registry", exutil.KubeConfigPath())
-		bcName    = "rails-postgresql-example"
-		bcNameOne = fmt.Sprintf("%s-1", bcName)
-		logInfo   = `Unsupported value: "abc": supported values: "", "Normal", "Debug", "Trace", "TraceAll"`
+		oc           = exutil.NewCLI("default-image-registry", exutil.KubeConfigPath())
+		bcName       = "rails-postgresql-example"
+		bcNameOne    = fmt.Sprintf("%s-1", bcName)
+		logInfo      = `Unsupported value: "abc": supported values: "", "Normal", "Debug", "Trace", "TraceAll"`
+		updatePolicy = `"maxSurge":0,"maxUnavailable":"10%"`
 	)
 	// author: wewang@redhat.com
 	g.It("Author:wewang-High-39027-Check AWS secret and access key with an OpenShift installed in a regular way", func() {
@@ -171,5 +172,139 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 		errInfo := fmt.Sprintf("Error initializing source docker://image-registry.openshift-image-registry.svc:5000/%s/inputimage", oc.Namespace())
 		o.Expect(buildLog).To(o.ContainSubstring(errInfo))
+	})
+
+	// author: wewang@redhat.com
+	g.It("Author:wewang-Critial-22893-PodAntiAffinity should work for image registry pod", func() {
+		var numi, numj int
+		g.By("Add podAntiAffinity in image registry config")
+		err := oc.WithoutNamespace().AsAdmin().Run("patch").Args("configs.imageregistry/cluster", "-p", `{"spec":{"affinity":{"podAntiAffinity":{"preferredDuringSchedulingIgnoredDuringExecution":[{"podAffinityTerm":{"topologyKey":"kubernetes.io/hostname"},"weight":100}]}}}}`, "--type=merge").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		defer oc.WithoutNamespace().AsAdmin().Run("patch").Args("configs.imageregistry/cluster", "-p", `{"spec":{"affinity":null}}`, "--type=merge").Execute()
+
+		g.By("Set image registry replica to 3")
+		err = oc.WithoutNamespace().AsAdmin().Run("patch").Args("configs.imageregistry/cluster", "-p", `{"spec":{"replicas":3}}`, "--type=merge").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		defer func() {
+			g.By("Set image registry replica to 2")
+			err = oc.WithoutNamespace().AsAdmin().Run("patch").Args("configs.imageregistry/cluster", "-p", `{"spec":{"replicas":2}}`, "--type=merge").Execute()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			err = wait.Poll(50*time.Second, 2*time.Minute, func() (bool, error) {
+				podList, _ := oc.AdminKubeClient().CoreV1().Pods("openshift-image-registry").List(metav1.ListOptions{LabelSelector: "docker-registry=default"})
+				if len(podList.Items) != 2 {
+					e2e.Logf("Continue to next round")
+					return false, nil
+				} else {
+					for _, pod := range podList.Items {
+						if pod.Status.Phase != corev1.PodRunning {
+							e2e.Logf("Continue to next round")
+							return false, nil
+						}
+					}
+					return true, nil
+				}
+			})
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}()
+
+		g.By("Confirm 3 pods scaled up")
+		err = wait.Poll(1*time.Minute, 2*time.Minute, func() (bool, error) {
+			podList, _ := oc.AdminKubeClient().CoreV1().Pods("openshift-image-registry").List(metav1.ListOptions{LabelSelector: "docker-registry=default"})
+			if len(podList.Items) != 3 {
+				e2e.Logf("Continue to next round")
+				return false, nil
+			} else {
+				for _, pod := range podList.Items {
+					if pod.Status.Phase != corev1.PodRunning {
+						e2e.Logf("Continue to next round")
+						return false, nil
+					}
+				}
+				return true, nil
+			}
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("At least 2 pods in different nodes")
+		_, numj = comparePodHostIp(oc)
+		o.Expect(numj >= 2).To(o.BeTrue())
+
+		g.By("Set image registry replica to 4")
+		err = oc.WithoutNamespace().AsAdmin().Run("patch").Args("configs.imageregistry/cluster", "-p", `{"spec":{"replicas":4}}`, "--type=merge").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		defer func() {
+			g.By("Set image registry replica to 2")
+			err = oc.WithoutNamespace().AsAdmin().Run("patch").Args("configs.imageregistry/cluster", "-p", `{"spec":{"replicas":2}}`, "--type=merge").Execute()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			err = wait.Poll(50*time.Second, 2*time.Minute, func() (bool, error) {
+				podList, _ := oc.AdminKubeClient().CoreV1().Pods("openshift-image-registry").List(metav1.ListOptions{LabelSelector: "docker-registry=default"})
+				if len(podList.Items) != 2 {
+					e2e.Logf("Continue to next round")
+					return false, nil
+				} else {
+					for _, pod := range podList.Items {
+						if pod.Status.Phase != corev1.PodRunning {
+							e2e.Logf("Continue to next round")
+							return false, nil
+						}
+					}
+					return true, nil
+				}
+			})
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}()
+
+		g.By("Confirm 4 pods scaled up")
+		err = wait.Poll(50*time.Second, 2*time.Minute, func() (bool, error) {
+			podList, _ := oc.AdminKubeClient().CoreV1().Pods("openshift-image-registry").List(metav1.ListOptions{LabelSelector: "docker-registry=default"})
+			if len(podList.Items) != 4 {
+				e2e.Logf("Continue to next round")
+				return false, nil
+			} else {
+				for _, pod := range podList.Items {
+					if pod.Status.Phase != corev1.PodRunning {
+						e2e.Logf("Continue to next round")
+						return false, nil
+					}
+				}
+				return true, nil
+			}
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Check 2 pods in the same node")
+		numi, _ = comparePodHostIp(oc)
+		o.Expect(numi >= 1).To(o.BeTrue())
+	})
+
+	// author: xiuwang@redhat.com
+	g.It("Author:xiuwang-Low-43669-Update openshift-image-registry/node-ca DaemonSet using maxUnavailable", func() {
+		g.By("Check node-ca updatepolicy")
+		out := getResource(oc, asAdmin, withoutNamespace, "daemonset/node-ca", "-n", "openshift-image-registry", "-o=jsonpath={.spec.updateStrategy.rollingUpdate}")
+		o.Expect(out).To(o.ContainSubstring(updatePolicy))
+	})
+
+	// author: xiuwang@redhat.com
+	g.It("DisconnectedOnly-Author:xiuwang-High-43715-Image registry pullthough should support pull image from the mirror registry with auth via imagecontentsourcepolicy", func() {
+		g.By("Check the imagestream imported with digest id using pullthrough policy")
+		out := getResource(oc, asAdmin, withoutNamespace, "is/jenkins", "-n", "openshift", "-o=jsonpath={.spec.tags[0]['from.name', 'referencePolicy.type']}")
+		o.Expect(out).To(o.ContainSubstring("Local"))
+		o.Expect(out).To(o.ContainSubstring("@sha256"))
+
+		g.By("Create a pod using the imagestream")
+		oc.SetupProject()
+		err := oc.Run("new-app").Args("jenkins-ephemeral").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		err = wait.Poll(25*time.Second, 1*time.Minute, func() (bool, error) {
+			podList, err := oc.KubeClient().CoreV1().Pods(oc.Namespace()).List(metav1.ListOptions{LabelSelector: "deploymentconfig=jenkins"})
+			o.Expect(err).NotTo(o.HaveOccurred())
+			if len(podList.Items) == 1 {
+				return true, nil
+			}
+			return false, nil
+
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
 	})
 })

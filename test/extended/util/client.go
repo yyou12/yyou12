@@ -305,6 +305,7 @@ func (c *CLI) CreateProject() string {
 
 // TeardownProject removes projects created by this test.
 func (c *CLI) TeardownProject() {
+	e2e.TestContext.DumpLogsOnFailure = os.Getenv("DUMP_EVENTS_ON_FAILURE") != "false"
 	if len(c.Namespace()) > 0 && g.CurrentGinkgoTestDescription().Failed && e2e.TestContext.DumpLogsOnFailure {
 		e2e.DumpAllNamespaceInfo(c.kubeFramework.ClientSet, c.Namespace())
 	}

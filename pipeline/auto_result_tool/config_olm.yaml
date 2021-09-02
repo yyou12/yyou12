@@ -1,0 +1,38 @@
+ginkgo-test:
+  end_num: 13418
+  force: ture
+  sheets:
+  - v4.3
+  - v4.4
+  - v4.5
+  - v4.6
+  - v4.7
+  - v4.8
+  - v4.9
+  tmp_end_num: 12898
+ginkgo-test-vm:
+  end_num: 3447
+  force: ture
+  sheets:
+  - v4.3_vm
+  - v4.4_vm
+  - v4.5_vm
+  - v4.6_vm
+  - v4.7_vm
+  - v4.8_vm
+  - v4.9_vm
+google:
+  key_file: /Users/jitli/PycharmProjects/pythonProject/write_google/openshift-qe-buildcorp.json
+  sheet_file: https://docs.google.com/spreadsheets/d/19Qx40eDZasP0L98XnNS0g21JAj9Oc1gy_YxDLb5Klrs/edit#gid=2072830300
+jenkins:
+  password: xxxx
+  ssl_verify: false
+  timeout: 120
+  url: https://mastern-jenkins-csb-openshift-qe.apps.ocp4.prod.psi.redhat.com
+  username: jitli
+storage:
+  dir: /Users/redhat/work/ci-logs
+  report_dir: /Users/redhat/work/buildcorp
+  report_url: http://virt-openshift-05.lab.eng.nay.redhat.com/buildcorp
+  url: http://virt-openshift-05.lab.eng.nay.redhat.com/ci-logs
+

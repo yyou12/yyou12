@@ -3,8 +3,7 @@ This repository holds the non-kubernetes, end-to-end tests that need to pass on 
 cluster before PRs merge and/or before we ship a release.
 These tests are based on [ginkgo](https://github.com/onsi/ginkgo) and the [kubernetes](https://github.com/kubernetes/kubernetes) e2e test framework.
 
-Prerequisites
--------------
+## Prerequisites
 * Git installed. See [Installing Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git).
 * Golang installed. See [Installing Golang](https://golang.org/doc/install), the newer the better.
 	* Ensure you install Golang from a binary release [found here](https://golang.org/dl/), not with a package manager such as `dnf`.
@@ -148,3 +147,8 @@ Here are the procedures:
 > - TIERN_REPO_OWNER: exampleaccount  
 > - TIERN_REPO_BRANCH: examplebranch  
 > - JENKINS_SLAVE: goc47  
+
+## Additional References
+For more details on writing tests for the extended test suite, see [the extended test suite README](test/extended/README.md)
+
+For more details on writing tests for the Console, see [the Console tests README](frontend/README.md)

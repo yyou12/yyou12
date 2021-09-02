@@ -32,6 +32,14 @@ type egressFirewall1 struct {
 	template  string
 }
 
+type egressFirewall2 struct {
+	name      string
+	namespace string
+	ruletype  string
+	cidr      string
+	template  string
+}
+
 func (pod *pingPodResource) createPingPod(oc *exutil.CLI) {
 	err := wait.Poll(5*time.Second, 20*time.Second, func() (bool, error) {
 		err1 := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", pod.template, "-p", "NAME="+pod.name, "NAMESPACE="+pod.namespace)
@@ -90,6 +98,22 @@ func (egressFirewall *egressFirewall1) createEgressFWObject1(oc *exutil.CLI) {
 }
 
 func (egressFirewall *egressFirewall1) deleteEgressFWObject1(oc *exutil.CLI) {
+	removeResource(oc, true, true, "egressfirewall", egressFirewall.name, "-n", egressFirewall.namespace)
+}
+
+func (egressFirewall *egressFirewall2) createEgressFW2Object(oc *exutil.CLI) {
+	err := wait.Poll(5*time.Second, 20*time.Second, func() (bool, error) {
+		err1 := applyResourceFromTemplateByAdmin(oc, "--ignore-unknown-parameters=true", "-f", egressFirewall.template, "-p", "NAME="+egressFirewall.name, "NAMESPACE="+egressFirewall.namespace, "RULETYPE="+egressFirewall.ruletype, "CIDR="+egressFirewall.cidr)
+		if err1 != nil {
+			e2e.Logf("the err:%v, and try next round", err1)
+			return false, nil
+		}
+		return true, nil
+	})
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+func (egressFirewall *egressFirewall2) deleteEgressFW2Object(oc *exutil.CLI) {
 	removeResource(oc, true, true, "egressfirewall", egressFirewall.name, "-n", egressFirewall.namespace)
 }
 
@@ -183,7 +207,7 @@ func contains(s []string, str string) bool {
 }
 
 func waitPodReady(oc *exutil.CLI, namespace string, podName string) {
-	err := wait.Poll(10*time.Second, 40*time.Second, func() (bool, error) {
+	err := wait.Poll(10*time.Second, 100*time.Second, func() (bool, error) {
 		status, err1 := checkPodReady(oc, namespace, podName)
 		if err1 != nil {
 			e2e.Logf("the err:%v, wait for pod %v to become ready.", err1, podName)
@@ -321,4 +345,68 @@ func checkPlatform(oc *exutil.CLI) string {
 func checkNetworkType(oc *exutil.CLI) string {
 	output, _ := oc.WithoutNamespace().AsAdmin().Run("get").Args("network.operator", "cluster", "-o=jsonpath={.spec.defaultNetwork.type}").Output()
 	return strings.ToLower(output)
+}
+
+func getDefaultIPv6Subnet(oc *exutil.CLI) (string, error) {
+	int1, _ := getDefaultInterface(oc)
+	getDefaultSubnetCmd := "/usr/sbin/ip -6 -brief a show " + int1
+	subnet1, err := execCommandInOVNPod(oc, getDefaultSubnetCmd)
+	if err != nil {
+		e2e.Logf("Cannot get default ipv6 subnet, errors: %v", err)
+		return "", err
+	}
+	defSubnet := strings.Fields(subnet1)[2]
+	e2e.Logf("Get the default ipv6 subnet: %s", defSubnet)
+	return defSubnet, nil
+}
+
+func findUnUsedIPv6(oc *exutil.CLI, cidr string, number int) ([]string, error) {
+	ip, ipnet, err := net.ParseCIDR(cidr)
+	if err != nil {
+		return nil, err
+	}
+
+	number += 2
+	var ips []string
+	var i = 0
+	for ip := ip.Mask(ipnet.Mask); ipnet.Contains(ip); inc(ip) {
+		//Not use the first two IPv6 addresses , such as 2620:52:0:4e::  , 2620:52:0:4e::1
+		if i == 0 || i == 1 {
+			i++
+			continue
+		}
+		//Start to detect the IPv6 adress is used or not
+		pingCmd := "ping -c4 -t1 -6 " + ip.String()
+		_, err := execCommandInOVNPod(oc, pingCmd)
+		if err != nil && i < number {
+			e2e.Logf("%s is not used!\n", ip)
+			ips = append(ips, ip.String())
+		} else if i >= number {
+			break
+		}
+		i++
+	}
+
+	return ips, nil
+}
+
+func ipv6EchoServer(isIPv6 bool) string {
+	if isIPv6 {
+		return "[2620:52:0:4974:def4:1ff:fee7:8144]:8085"
+	} else {
+		return "10.73.116.56:8085"
+	}
+}
+
+func checkIpStackType(oc *exutil.CLI) string {
+	svcNetwork, err := oc.WithoutNamespace().AsAdmin().Run("get").Args("network.operator", "cluster", "-o=jsonpath={.spec.serviceNetwork}").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	if strings.Count(svcNetwork, ":") >= 2 && strings.Count(svcNetwork, ".") >= 2 {
+		return "dualstack"
+	} else if strings.Count(svcNetwork, ":") >= 2 {
+		return "ipv6single"
+	} else if strings.Count(svcNetwork, ".") >= 2 {
+		return "ipv4single"
+	}
+	return ""
 }

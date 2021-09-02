@@ -42,6 +42,14 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		podModifyTemplate                string
 		storageClassTemplate             string
 		fioTemplate                      string
+		loggingCrt                       string
+		loggingKey                       string
+		loggingCaCrt                     string
+		loggingCaKey                     string
+		fluentdCmYAML                    string
+		fluentdDmYAML                    string
+		clusterLogForYAML                string
+		clusterLoggingYAML               string
 		catSrc                           catalogSourceDescription
 		ogD                              operatorGroupDescription
 		subD                             subscriptionDescription
@@ -73,6 +81,14 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		podModifyTemplate = filepath.Join(buildPruningBaseDir, "pod_modify.yaml")
 		storageClassTemplate = filepath.Join(buildPruningBaseDir, "storage_class.yaml")
 		fioTemplate = filepath.Join(buildPruningBaseDir, "fileintegrity.yaml")
+		loggingCrt = filepath.Join(buildPruningBaseDir, "logging-es.crt")
+		loggingKey = filepath.Join(buildPruningBaseDir, "logging-es.key")
+		loggingCaCrt = filepath.Join(buildPruningBaseDir, "ca.crt")
+		loggingCaKey = filepath.Join(buildPruningBaseDir, "ca.key")
+		fluentdCmYAML = filepath.Join(buildPruningBaseDir, "fluentdConfigMap.yaml")
+		fluentdDmYAML = filepath.Join(buildPruningBaseDir, "fluentdDeployment.yaml")
+		clusterLogForYAML = filepath.Join(buildPruningBaseDir, "ClusterLogForwarder.yaml")
+		clusterLoggingYAML = filepath.Join(buildPruningBaseDir, "ClusterLogging.yaml")
 
 		catSrc = catalogSourceDescription{
 			name:        "compliance-operator",
@@ -2881,6 +2897,161 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 
 				g.By("The ocp-42685 verified the File-integrity object exist and operator is installed successfully... !!!!\n ")
 			}
+		})
+
+		// author: pdhamdhe@redhat.com
+		g.It("Author:pdhamdhe-CPaasrunOnly-Medium-40660-Low-42874-Check whether the audit logs are getting forwarded using TLS protocol [Disruptive][Slow]", func() {
+			var (
+				ogL = operatorGroupDescription{
+					name:      "openshift-logging",
+					namespace: "openshift-logging",
+					template:  ogCoTemplate,
+				}
+				subL = subscriptionDescription{
+					subName:                "cluster-logging",
+					namespace:              "openshift-logging",
+					channel:                "stable",
+					ipApproval:             "Automatic",
+					operatorPackage:        "cluster-logging",
+					catalogSourceName:      "redhat-operators",
+					catalogSourceNamespace: "openshift-marketplace",
+					startingCSV:            "",
+					currentCSV:             "",
+					installedCSV:           "",
+					template:               subCoTemplate,
+					singleNamespace:        true,
+				}
+				ssb = scanSettingBindingDescription{
+					name:            "moderate-test",
+					namespace:       "",
+					profilekind1:    "Profile",
+					profilename1:    "ocp4-cis",
+					profilename2:    "ocp4-moderate",
+					scansettingname: "default",
+					template:        scansettingbindingTemplate,
+				}
+				itName = g.CurrentGinkgoTestDescription().TestText
+			)
+
+			defer cleanupObjects(oc,
+				objectTableRef{"scansettingbinding", subD.namespace, ssb.name},
+				objectTableRef{"ClusterLogForwarder", subL.namespace, "instance"},
+				objectTableRef{"ClusterLogging", subL.namespace, "instance"},
+				objectTableRef{"configmap", subL.namespace, "fluentdserver"},
+				objectTableRef{"deployment", subL.namespace, "fluentdserver"},
+				objectTableRef{"service", subL.namespace, "fluentdserver"},
+				objectTableRef{"serviceaccount", subL.namespace, "fluentdserver"},
+				objectTableRef{"secret", subL.namespace, "fluentdserver"},
+				objectTableRef{"project", subL.namespace, subL.namespace})
+
+			g.By("Check default profiles are available 'ocp4-cis' and 'ocp4-moderate' .. !!!\n")
+			subD.getProfileName(oc, "ocp4-cis")
+			subD.getProfileName(oc, "ocp4-moderate")
+			g.By("Create scansettingbinding !!!\n")
+			ssb.namespace = subD.namespace
+			ssb.create(oc, itName, dr)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "moderate-test", ok, []string{"scansettingbinding", "-n", subD.namespace,
+				"-o=jsonpath={.items[0].metadata.name}"}).check(oc)
+			g.By("Check ComplianceSuite status and result.. !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", ssb.name, "-n", subD.namespace,
+				"-o=jsonpath={.status.phase}"}).check(oc)
+			subD.complianceSuiteResult(oc, ssb.name, "NON-COMPLIANT")
+
+			g.By("Verify audit rules status through compliancecheck result.. !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "FAIL", ok, []string{"compliancecheckresult",
+				"ocp4-moderate-audit-log-forwarding-uses-tls", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "FAIL", ok, []string{"compliancecheckresult",
+				"ocp4-cis-audit-log-forwarding-enabled", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
+
+			g.By("Check if the openshift-logging namespace is already available.. !!!\n")
+			namespace, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("ns", "-ojsonpath={.items[*].metadata.name}").Output()
+			if !strings.Contains(namespace, "openshift-logging") {
+				_, err := oc.AsAdmin().WithoutNamespace().Run("create").Args("ns", "openshift-logging").Output()
+				o.Expect(err).NotTo(o.HaveOccurred())
+				g.By("Installing cluster-logging operator in openshift-logging namespace.. !!!\n")
+				ogL.namespace = "openshift-logging"
+				subL.namespace = ogL.namespace
+				ogL.create(oc, itName, dr)
+				subL.create(oc, itName, dr)
+				newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", subL.installedCSV, "-n", subL.namespace,
+					"-o=jsonpath={.status.phase}"}).check(oc)
+				newCheck("expect", asAdmin, withoutNamespace, contain, "Running", ok, []string{"pods", "-l name=cluster-logging-operator", "-n", subL.namespace,
+					"-o=jsonpath={.items[0].status.phase}"}).check(oc)
+			} else {
+				g.By("The openshift-logging namespace is already available.. !!!\n")
+				pod_stat := checkOperatorPodStatus(oc, "openshift-logging")
+				if !strings.Contains(pod_stat, "Running") {
+					ogL.namespace = "openshift-logging"
+					subL.namespace = ogL.namespace
+					ogL.create(oc, itName, dr)
+					subL.create(oc, itName, dr)
+					newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", subL.installedCSV, "-n", subL.namespace,
+						"-o=jsonpath={.status.phase}"}).check(oc)
+					newCheck("expect", asAdmin, withoutNamespace, contain, "Running", ok, []string{"pods", "-l name=cluster-logging-operator", "-n", subL.namespace,
+						"-o=jsonpath={.items[0].status.phase}"}).check(oc)
+				} else {
+					g.By("The cluster-logging operator is installed in openshift-logging namespace and pod is running.. !!!\n")
+				}
+			}
+
+			g.By("Generate the secret key for fluentdserver.. !!!\n")
+			loggingK := fmt.Sprintf("--from-file=tls.key=%s", loggingKey)
+			loggingC := fmt.Sprintf("--from-file=tls.crt=%s", loggingCrt)
+			loggingCC := fmt.Sprintf("--from-file=ca-bundle.crt=%s", loggingCaCrt)
+			loggingCK := fmt.Sprintf("--from-file=ca.key=%s", loggingCaKey)
+			_, err1 := oc.AsAdmin().WithoutNamespace().Run("create").Args("secret", "generic", "fluentdserver", loggingK, loggingC, loggingCC, loggingCK, "-n", subL.namespace).Output()
+			o.Expect(err1).NotTo(o.HaveOccurred())
+			newCheck("expect", asAdmin, withoutNamespace, contain, "fluentdserver", ok, []string{"secret", "-n", subL.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
+
+			g.By("Create service accound for fluentd receiver.. !!!\n")
+			_, err2 := oc.AsAdmin().WithoutNamespace().Run("create").Args("sa", "fluentdserver", "-n", subL.namespace).Output()
+			o.Expect(err2).NotTo(o.HaveOccurred())
+			newCheck("expect", asAdmin, withoutNamespace, contain, "fluentdserver", ok, []string{"sa", "-n", subL.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
+			_, err3 := oc.AsAdmin().WithoutNamespace().Run("adm").Args("policy", "add-scc-to-user", "privileged", "system:serviceaccount:openshift-logging:fluentdserver", "-n", subL.namespace).Output()
+			o.Expect(err3).NotTo(o.HaveOccurred())
+			g.By("Create Fluentd ConfigMap .. !!!\n")
+			_, err4 := oc.AsAdmin().WithoutNamespace().Run("create").Args("-n", subL.namespace, "-f", fluentdCmYAML).Output()
+			o.Expect(err4).NotTo(o.HaveOccurred())
+			newCheck("expect", asAdmin, withoutNamespace, contain, "fluentdserver", ok, []string{"cm", "-n", subL.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
+			g.By("Create Fluentd Deployment .. !!!\n")
+			_, err5 := oc.AsAdmin().WithoutNamespace().Run("create").Args("-n", subL.namespace, "-f", fluentdDmYAML).Output()
+			o.Expect(err5).NotTo(o.HaveOccurred())
+			newCheck("expect", asAdmin, withoutNamespace, contain, "fluentdserver", ok, []string{"deployment", "-n", subL.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
+			g.By("Expose Fluentd Deployment .. !!!\n")
+			_, err6 := oc.AsAdmin().WithoutNamespace().Run("expose").Args("deployment", "fluentdserver", "-n", subL.namespace).Output()
+			o.Expect(err6).NotTo(o.HaveOccurred())
+			newCheck("expect", asAdmin, withoutNamespace, contain, "fluentdserver", ok, []string{"deployment", "-n", subL.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
+
+			g.By("Create ClusterForward & ClusterLogging instances.. !!!\n")
+			_, err7 := oc.AsAdmin().WithoutNamespace().Run("create").Args("-n", subL.namespace, "-f", clusterLogForYAML).Output()
+			o.Expect(err7).NotTo(o.HaveOccurred())
+			newCheck("expect", asAdmin, withoutNamespace, contain, "instance", ok, []string{"ClusterLogForwarder", "-n", subL.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
+			_, err8 := oc.AsAdmin().WithoutNamespace().Run("create").Args("-n", subL.namespace, "-f", clusterLoggingYAML).Output()
+			o.Expect(err8).NotTo(o.HaveOccurred())
+			newCheck("expect", asAdmin, withoutNamespace, contain, "instance", ok, []string{"ClusterLogging", "-n", subL.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
+
+			g.By("Check fluentdserver is running state.. !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "Running", ok, []string{"pod", "-l logging-infra=fluentdserver", "-n",
+				subL.namespace, "-o=jsonpath={.items[0].status.phase}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "Running", ok, []string{"pod", "-l logging-infra=fluentd", "-n",
+				subL.namespace, "-o=jsonpath={.items[0].status.phase}"}).check(oc)
+
+			g.By("Rerun scan and check ComplianceSuite status & result.. !!!\n")
+			_, err9 := OcComplianceCLI().Run("rerun-now").Args("compliancesuite", ssb.name, "-n", subD.namespace).Output()
+			o.Expect(err9).NotTo(o.HaveOccurred())
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", ssb.name, "-n", subD.namespace,
+				"-o=jsonpath={.status.phase}"}).check(oc)
+			subD.complianceSuiteResult(oc, ssb.name, "NON-COMPLIANT")
+
+			g.By("Verify audit rules status again through compliancecheck result.. !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "PASS", ok, []string{"compliancecheckresult",
+				"ocp4-moderate-audit-log-forwarding-uses-tls", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "PASS", ok, []string{"compliancecheckresult",
+				"ocp4-cis-audit-log-forwarding-enabled", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
+			csvname, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", "-n", subD.namespace, "-o=jsonpath={.items[0].metadata.name}").Output()
+			assertCheckAuditLogsForword(oc, subL.namespace, csvname)
+
+			g.By("ocp-40660 and ocp-42874 the audit logs are getting forwarded using TLS protocol successfully... !!!!\n ")
 		})
 	})
 })

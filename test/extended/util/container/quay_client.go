@@ -78,8 +78,8 @@ func NewQuayCLI() *QuayCLI {
 	return newclient
 }
 
-// DeleteTag will delete the image
-func (c *QuayCLI) DeleteTag(imageIndex string) (bool, error) {
+// TryDeleteTag will delete the image
+func (c *QuayCLI) TryDeleteTag(imageIndex string) (bool, error) {
 	if strings.Contains(imageIndex, ":") {
 		imageIndex = strings.Replace(imageIndex, ":", "/tag/", 1)
 	}
@@ -105,6 +105,19 @@ func (c *QuayCLI) DeleteTag(imageIndex string) (bool, error) {
 		return false, nil
 	}
 	return true, nil
+}
+
+// DeleteTag will delete the image
+func (c *QuayCLI) DeleteTag(imageIndex string) (bool, error) {
+	rc, error := c.TryDeleteTag(imageIndex)
+	if rc != true {
+		e2e.Logf("try to delete %s again", imageIndex)
+		rc, error = c.TryDeleteTag(imageIndex)
+		if rc != true {
+			e2e.Failf("delete tag failed on quay.io")
+		}
+	}
+	return rc, error
 }
 
 func (c *QuayCLI) CheckTagNotExist(imageIndex string) (bool, error) {

@@ -1,4 +1,4 @@
-OpenShift Console tests
+# OpenShift Console tests
 
 ## Directory Structure
 ```bash

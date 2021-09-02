@@ -159,6 +159,18 @@ else
   profiletype="ci"
 fi
 
+buildversiontype=`python3 handleattribution.py -a get -y "${ATTRIBUTIONOPTION}" -p build_version || true `
+if [ "${buildversiontype}" != "None" ] && [ "${buildversiontype}" != "failtogetvalue" ] && [ "${buildversiontype}" != "" ]; then
+  if [[ "${buildversiontype}" == *"arm64"* ]]; then
+    buildversiontype="arm64"
+  else
+    buildversiontype="nonarm"
+  fi
+else
+  echo "can not get build_version, treat it as non-arm"
+  buildversiontype="nonarm"
+fi
+
 cd ${WORKBUILDDIR}
 resultfile=`ls -rt -1 junit_e2e_* 2>&1 || true`
 echo $resultfile
@@ -180,7 +192,13 @@ if [ "X${LAUNCHID}X" != "XX" ]; then
     LAUNCHIDVALID=false
   fi
   if [ "X${profiletype}X" == "XciX" ]; then
-    existing=`ls ${WORKSPACE}"/cip/"${VERSION}"/"|grep "${PROFILENAME}"".test"|grep "test_run.yaml"|wc -l|xargs`
+    if [ "X${buildversiontype}X" == "Xarm64X" ]; then
+      existing=`ls ${WORKSPACE}"/cip/"${VERSION}"/arm/"|grep "${PROFILENAME}"".test"|grep "test_run.yaml"|wc -l|xargs`
+    else
+      existing=`ls ${WORKSPACE}"/cip/"${VERSION}"/"|grep "${PROFILENAME}"".test"|grep "test_run.yaml"|wc -l|xargs`
+    fi
+  elif [ "X${profiletype}X" == "XstageX" ]; then
+    existing=`ls ${WORKSPACE}"/cip/"${profiletype}"/"${VERSION}"/"|grep "${PROFILENAME}"".test"|grep "test_run.yaml"|wc -l|xargs`
   else
     existing=`ls ${WORKSPACE}"/misc/jenkins/"${profiletype}"/"${VERSION}"/"|grep "${PROFILENAME}"".test"|grep "test_run.yaml"|wc -l|xargs`
   fi
@@ -210,9 +228,15 @@ if [ "X${LAUNCHID}X" != "XX" ]; then
     subteam=${subteamfile:7:-4}
     eval zip -r "${LAUNCHID}.zip" "${subteamfile}"
     if [ "X${profiletype}X" == "XciX" ]; then
-      ppath="../cip/"
+      if [ "X${buildversiontype}X" == "Xarm64X" ]; then
+        ppath="../cip/"${VERSION}"/arm/"
+      else
+        ppath="../cip/"${VERSION}"/"
+      fi
+    elif [ "X${profiletype}X" == "XstageX" ]; then
+      ppath="../cip/"${profiletype}"/"${VERSION}"/"
     else
-      ppath="../misc/jenkins/"${profiletype}"/"
+      ppath="../misc/jenkins/"${profiletype}"/"${VERSION}"/"
     fi
     ret=`python3 reportportal.py -a import -f "${LAUNCHID}.zip" -s "${subteam}" -v "${VERSION}" -ao "${ATTRIBUTIONOPTION}" -bn "${BUILDNUM}""${buildtype}""_${JOB_BASE_NAME}" -pn "${PROFILENAME}" -pp "${ppath}" -t "${rpmmtoken}" -ta "${rppmtoken}" -trial "${LAUNCHTRIAL}" 2>&1 || true`
     eval rm -fr  "${LAUNCHID}.zip"

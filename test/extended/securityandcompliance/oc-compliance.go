@@ -158,7 +158,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The OC Compliance plugin m
 					namespace:       "",
 					profilekind1:    "Profile",
 					profilename1:    "ocp4-cis-node",
-					scansettingname: "default",
+					scansettingname: "master-scansetting",
 					template:        scansettingbindingTemplate,
 				}
 				itName = g.CurrentGinkgoTestDescription().TestText
@@ -277,7 +277,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The OC Compliance plugin m
 					namespace:       "",
 					profilekind1:    "Profile",
 					profilename1:    "ocp4-cis",
-					scansettingname: "default",
+					scansettingname: "master-scansetting",
 					template:        scansettingbindingTemplate,
 				}
 				itName = g.CurrentGinkgoTestDescription().TestText
@@ -431,7 +431,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The OC Compliance plugin m
 					namespace:       "",
 					profilekind1:    "Profile",
 					profilename1:    "ocp4-cis",
-					scansettingname: "default",
+					scansettingname: "master-scansetting",
 					template:        scansettingbindingTemplate,
 				}
 				itName = g.CurrentGinkgoTestDescription().TestText
@@ -485,7 +485,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The OC Compliance plugin m
 					namespace:       "",
 					profilekind1:    "Profile",
 					profilename1:    "ocp4-cis",
-					scansettingname: "default",
+					scansettingname: "master-scansetting",
 					template:        scansettingbindingTemplate,
 				}
 				itName = g.CurrentGinkgoTestDescription().TestText

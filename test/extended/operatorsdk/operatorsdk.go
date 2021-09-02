@@ -10,6 +10,7 @@ import (
 
     exutil "github.com/openshift/openshift-tests-private/test/extended/util"
     e2e "k8s.io/kubernetes/test/e2e/framework"
+    container "github.com/openshift/openshift-tests-private/test/extended/util/container"
     "k8s.io/apimachinery/pkg/util/wait"
     "path/filepath"
 )
@@ -715,6 +716,60 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
         o.Expect(msg).To(o.ContainSubstring("csv.Annotations not specified olm.maxOpenShiftVersion for an OCP version"))
         o.Expect(msg).To(o.ContainSubstring("error"))
     })
+
+    // author: jfan@redhat.com
+    g.It("VMonly-ConnectedOnly-Author:jfan-High-34462-SDK playbook ansible operator generate the catalog [Slow]", func() {
+        buildPruningBaseDir := exutil.FixturePath("testdata", "operatorsdk")
+        var catalogofcatalog = filepath.Join(buildPruningBaseDir, "catalogsource.yaml")
+        var ogofcatalog = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+        var subofcatalog = filepath.Join(buildPruningBaseDir, "sub.yaml")
+        oc.SetupProject()
+        namespace := oc.Namespace()
+        containerCLI := container.NewPodmanCLI()
+        g.By("Create the playbook ansible operator")
+        _, err := exec.Command("bash", "-c", "mkdir -p /tmp/ocp-34462/catalogtest && cd /tmp/ocp-34462/catalogtest && operator-sdk init --plugins=ansible --domain catalogtest.com").Output()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        defer exec.Command("bash", "-c", "rm -rf /tmp/ocp-34462").Output()
+        _, err = exec.Command("bash", "-c", "cd /tmp/ocp-34462/catalogtest && operator-sdk create api --group cache --version v1 --kind Catalogtest --generate-playbook").Output()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        exec.Command("bash", "-c", "cp -rf test/extended/util/operatorsdk/ocp-34462-data/Dockerfile /tmp/ocp-34462/catalogtest/Dockerfile").Output()
+        exec.Command("bash", "-c", "cp -rf test/extended/util/operatorsdk/ocp-34462-data/config/default/manager_auth_proxy_patch.yaml /tmp/ocp-34462/catalogtest/config/default/manager_auth_proxy_patch.yaml").Output()
+        _, err = exec.Command("bash", "-c", "cd /tmp/ocp-34462/catalogtest && make docker-build docker-push IMG=quay.io/olmqe/catalogtest-operator:v4.9").Output()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        defer containerCLI.RemoveImage("quay.io/olmqe/catalogtest-operator:v4.9")
+
+        // ocp-40219
+        g.By("Generate the bundle image and catalog index image")
+        _, err = exec.Command("bash", "-c", "cd /tmp/ocp-34462/catalogtest && sed -i 's#controller:latest#quay.io/olmqe/catalogtest-operator:v4.9#g' /tmp/ocp-34462/catalogtest/Makefile").Output()
+        _, err = exec.Command("bash", "-c", "cp -rf test/extended/util/operatorsdk/ocp-34462-data/manifests/bases/ /tmp/ocp-34462/catalogtest/config/manifests/").Output()
+        _, err = exec.Command("bash", "-c", "cd /tmp/ocp-34462/catalogtest && make bundle").Output()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        _, err = exec.Command("bash", "-c", "cd /tmp/ocp-34462/catalogtest && sed -i 's/--container-tool docker //g' Makefile").Output()
+        _, err = exec.Command("bash", "-c", "cd /tmp/ocp-34462/catalogtest && make bundle-build bundle-push catalog-build catalog-push BUNDLE_IMG=quay.io/olmqe/catalogtest-bundle:v4.9 CATALOG_IMG=quay.io/olmqe/catalogtest-index:v4.9").Output()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        defer containerCLI.RemoveImage("quay.io/olmqe/catalogtest-bundle:v4.9")
+        defer containerCLI.RemoveImage("quay.io/olmqe/catalogtest-index:v4.9")
+
+        g.By("Install the operator through olm")
+        createCatalog, _ := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", catalogofcatalog, "-p", "NAME=cs-catalog", "NAMESPACE=" + namespace, "ADDRESS=quay.io/olmqe/catalogtest-index:v4.9", "DISPLAYNAME=CatalogTest").OutputToFile("catalogsource-34462.json")
+        err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", createCatalog, "-n", namespace).Execute()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        createOg, _ := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", ogofcatalog, "-p", "NAME=catalogtest-single", "NAMESPACE=" + namespace, "KAKA=" + namespace).OutputToFile("createog-34462.json")
+        err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", createOg, "-n", namespace).Execute()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        createSub, _ := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", subofcatalog, "-p", "NAME=cataloginstall", "NAMESPACE=" + namespace, "SOURCENAME=cs-catalog", "OPERATORNAME=catalogtest", "SOURCENAMESPACE=" + namespace, "STARTINGCSV=catalogtest.v0.0.1").OutputToFile("createsub-34462.json")
+        err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", createSub, "-n", namespace).Execute()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        waitErr := wait.Poll(15*time.Second, 360*time.Second, func() (bool, error) {
+            msg, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", "catalogtest.v0.0.1", "-o=jsonpath={.status.phase}", "-n", namespace).Output()
+            if strings.Contains(msg, "Succeeded") {
+                e2e.Logf("catalogtest installed successfully")
+                return true, nil
+            }
+            return false, nil
+        })
+        o.Expect(waitErr).NotTo(o.HaveOccurred())
+    })
    
     // author: chuo@redhat.com
     g.It("Author:chuo-Medium-27718-scorecard remove version flag", func() {
@@ -738,10 +793,10 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
         o.Expect(result).To(o.ContainSubstring("--metrics-bind-address"))	
     })
     // author: chuo@redhat.com
-    g.It("Author:chuo-High-37914-Bump k8s in SDK to v1.20 and controller-runtime to 0.7.0", func() {
+    g.It("Author:chuo-High-43654-Sync 1.21 to downstream", func() {
         operatorsdkCLI.showInfo = true
         output, _ := operatorsdkCLI.Run("version").Args().Output()
-        o.Expect(output).To(o.ContainSubstring("v1.20"))
+        o.Expect(output).To(o.ContainSubstring("v1.21"))
     })
     // author: chuo@redhat.com
     g.It("ConnectedOnly-Author:chuo-Medium-34366-change ansible operator flags from maxWorkers using env MAXCONCURRENTRECONCILES ", func() {
@@ -803,7 +858,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
     })
     
     // author: chuo@redhat.com
-    g.It("Author:chuo-Medium-31314-Medium-31273-scorecard basic test migration and migrate OLM tests", func() {
+    g.It("ConnectedOnly-Author:chuo-Medium-31314-Medium-31273-scorecard basic test migration and migrate OLM tests", func() {
         operatorsdkCLI.showInfo = true
         oc.SetupProject()
 
@@ -859,7 +914,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
         o.Expect(output).To(o.ContainSubstring("memcacheds.cache.example.com does not have a status descriptor"))
     })
     // author: chuo@redhat.com
-    g.It("Author:chuo-High-31219-scorecard bundle is mandatory ", func() {
+    g.It("ConnectedOnly-Author:chuo-High-31219-scorecard bundle is mandatory ", func() {
         operatorsdkCLI.showInfo = true
         exec.Command("bash", "-c", "mkdir -p /tmp/ocp-31219/memcached-operator && cd /tmp/ocp-31219/memcached-operator && operator-sdk init --plugins=ansible --domain example.com").Output()
         defer exec.Command("bash", "-c", "rm -rf /tmp/ocp-31219").Output()
@@ -870,4 +925,79 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
         o.Expect(output).To(o.ContainSubstring("tests selected"))
     })
 
+    // author: chuo@redhat.com
+    g.It("ConnectedOnly-Author:chuo-High-34426-Ensure that Helm Based Operators creation is working ", func() {
+        operatorsdkCLI.showInfo = true
+        exec.Command("bash", "-c", "mkdir -p /tmp/ocp-34426/nginx-operator && cd /tmp/ocp-34426/nginx-operator && operator-sdk init --plugins=helm").Output()
+        defer exec.Command("bash", "-c", "cd /tmp/ocp-34426/nginx-operator && make undeploy").Output()
+        defer exec.Command("bash", "-c", "rm -rf /tmp/ocp-34426").Output()
+        exec.Command("bash", "-c", "cd /tmp/ocp-34426/nginx-operator && operator-sdk create api --group demo --version v1 --kind Nginx").Output()
+
+        // to replace namespace memcached-operator-system with nginx-operator-system-34426
+        exec.Command("bash", "-c", "sed -i 's/name: system/name: system-ocp34426/g' `grep -rl \"name: system\" /tmp/ocp-34426/nginx-operator`").Output()
+        exec.Command("bash", "-c", "sed -i 's/namespace: system/namespace: system-ocp34426/g'  `grep -rl \"namespace: system\" /tmp/ocp-34426/nginx-operator`").Output()
+        exec.Command("bash", "-c", "sed -i 's/namespace: nginx-operator-system/namespace: nginx-operator-system-ocp34426/g'  `grep -rl \"namespace: nginx-operator-system\" /tmp/ocp-34426/nginx-operator`").Output()
+
+        exec.Command("bash", "-c", "cd /tmp/ocp-34426/nginx-operator && make install").Output()
+        exec.Command("bash", "-c", "cd /tmp/ocp-34426/nginx-operator && make deploy IMG=quay.io/olmqe/nginx-operator-base:v4.8").Output()
+
+        _, err := oc.AsAdmin().WithoutNamespace().Run("adm").Args( "policy", "add-scc-to-user", "anyuid", "system:serviceaccount:nginx-operator-system-ocp34426:nginx-sample").Output()
+        o.Expect(err).NotTo(o.HaveOccurred())
+
+        _, err = oc.AsAdmin().WithoutNamespace().Run("apply").Args( "-f", "/tmp/ocp-34426/nginx-operator/config/samples/demo_v1_nginx.yaml","-n","nginx-operator-system-ocp34426").Output()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        
+        waitErr := wait.Poll(15*time.Second, 360*time.Second, func() (bool, error) {
+            msg, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-n", "nginx-operator-system-ocp34426").Output()
+            if strings.Contains(msg, "nginx-sample") {
+                return true, nil
+            }
+            return false, nil
+        })
+        o.Expect(waitErr).NotTo(o.HaveOccurred())
+        
+        podstatus, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-n", "nginx-operator-system-ocp34426","-o=jsonpath={.items[1].status.phase}").Output()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        o.Expect(podstatus).To(o.ContainSubstring("Running"))
+    })
+
+
+    // author: chuo@redhat.com
+     g.It("ConnectedOnly-Author:chuo-High-40341-Ansible operator needs a way to pass vars as unsafe ", func() {
+        operatorsdkCLI.showInfo = true
+        exec.Command("bash", "-c", "mkdir -p /tmp/ocp-40341/memcached-operator && cd /tmp/ocp-40341/memcached-operator && operator-sdk init --plugins=ansible --domain example.com").Output()
+        defer exec.Command("bash", "-c", "cd /tmp/ocp-40341/memcached-operator && make undeploy").Output()
+        defer exec.Command("bash", "-c", "rm -rf /tmp/ocp-40341").Output()
+        exec.Command("bash", "-c", "cd /tmp/ocp-40341/memcached-operator && operator-sdk create api --group cache --version v1alpha1 --kind Memcached --generate-role").Output()
+        exec.Command("bash", "-c", "sed -i '$d' /tmp/ocp-40341/memcached-operator/config/samples/cache_v1alpha1_memcached.yaml").Output()
+        exec.Command("bash", "-c", "sed -i '$a\\  size: 3' /tmp/ocp-40341/memcached-operator/config/samples/cache_v1alpha1_memcached.yaml").Output()
+        exec.Command("bash", "-c", "sed -i '$a\\  testKey: testVal' /tmp/ocp-40341/memcached-operator/config/samples/cache_v1alpha1_memcached.yaml").Output()
+        
+        // to replace namespace memcached-operator-system with memcached-operator-system-ocp40341
+        exec.Command("bash", "-c", "sed -i 's/name: system/name: system-ocp40341/g' `grep -rl \"name: system\" /tmp/ocp-40341/memcached-operator`").Output()
+        exec.Command("bash", "-c", "sed -i 's/namespace: system/namespace: system-ocp40341/g'  `grep -rl \"namespace: system\" /tmp/ocp-40341/memcached-operator`").Output()
+        exec.Command("bash", "-c", "sed -i 's/namespace: memcached-operator-system/namespace: memcached-operator-system-ocp40341/g'  `grep -rl \"namespace: memcached-operator-system\" /tmp/ocp-40341/memcached-operator`").Output()
+        
+        exec.Command("bash", "-c", "cd /tmp/ocp-40341/memcached-operator && make install").Output()
+        exec.Command("bash", "-c", "cd /tmp/ocp-40341/memcached-operator && make deploy IMG=quay.io/olmqe/memcached-operator-pass-unsafe:v4.8").Output()
+        
+    
+        waitErr := wait.Poll(5*time.Second, 120*time.Second, func() (bool, error) {
+			msg, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-n", "memcached-operator-system-ocp40341").Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			if strings.Contains(msg, "Running")  {
+				return true, nil
+			}
+			return false, nil
+        })
+        o.Expect(waitErr).NotTo(o.HaveOccurred())
+        
+        _, err := oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", "/tmp/ocp-40341/memcached-operator/config/samples/cache_v1alpha1_memcached.yaml","-n","memcached-operator-system-ocp40341").Output()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        
+        output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("memcached.cache.example.com/memcached-sample", "-n", "memcached-operator-system-ocp40341","-o","yaml").Output()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        o.Expect(output).To(o.ContainSubstring("size: 3"))	
+        o.Expect(output).To(o.ContainSubstring("testKey: testVal"))
+    })
 })

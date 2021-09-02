@@ -23,9 +23,11 @@ function run {
   fi
   make clean
   if [ "${repo_owner}" == "openshift" ]; then
+    export DUMP_EVENTS_ON_FAILURE=false
     echo "make all"
     make all
   else
+    unset DUMP_EVENTS_ON_FAILURE
     echo "make build"
     make build
   fi

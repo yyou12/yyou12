@@ -17,10 +17,16 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 	var (
 		oc                 = exutil.NewCLI("default-image-prune", exutil.KubeConfigPath())
 		logInfo            = "Only API objects will be removed.  No modifications to the image registry will be made"
+		warnInfo           = "batch/v1beta1 CronJob is deprecated in v1.21+, unavailable in v1.25+; use batch/v1 CronJob"
 		monitoringns       = "openshift-monitoring"
 		promPod            = "prometheus-k8s-0"
 		queryImagePruner   = "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query=image_registry_operator_image_pruner_install_status"
 		queryImageRegistry = "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query=image_registry_operator_storage_reconfigured_total"
+		priorityClassName  = "system-cluster-critical"
+		normalInfo         = "Creating image pruner with keepYoungerThan"
+		debugInfo          = "Examining ImageStream"
+		traceInfo          = "keeping because it is used by imagestreams"
+		traceAllInfo       = "Content-Type: application/json"
 	)
 	// author: wewang@redhat.com
 	g.It("Author:wewang-Medium-35906-Only API objects will be removed in image pruner pod when image registry is set to Removed [Disruptive]", func() {
@@ -63,7 +69,11 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 		foundImagePruneLog := false
 		foundImagePruneLog = DePodLogs(podsOfImagePrune, oc, logInfo)
 		o.Expect(foundImagePruneLog).To(o.BeTrue())
+		foundWarnPruneLog := true
+		foundWarnPruneLog = DePodLogs(podsOfImagePrune, oc, warnInfo)
+		o.Expect(!foundWarnPruneLog).To(o.BeTrue())
 	})
+
 	// author: wewang@redhat.com
 	g.It("Author:wewang-High-27613-registry operator can publish metrics reporting the status of image-pruner [Disruptive]", func() {
 		g.By("granting the cluster-admin role to user")
@@ -102,5 +112,51 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 		})
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(foundValue).To(o.BeTrue())
+	})
+
+	// author: xiuwang@redhat.com
+	g.It("Author:xiuwang-Low-43717-Add necessary priority class to pruner", func() {
+		g.By("Check priority class of pruner")
+		out := getResource(oc, asAdmin, withoutNamespace, "cronjob.batch", "-n", "openshift-image-registry", "-o=jsonpath={.items[0].spec.jobTemplate.spec.template.spec.priorityClassName}")
+		o.Expect(out).To(o.ContainSubstring(priorityClassName))
+	})
+
+	// author: wewang@redhat.com
+	g.It("Author:wewang-Medium-35292-LogLevel setting for the pruner", func() {
+		g.By("Set imagepruner cronjob started every 1 minutes")
+		err := oc.AsAdmin().Run("patch").Args("imagepruner/cluster", "-p", `{"spec":{"schedule":"*/1 * * * *"}}`, "--type=merge").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		defer oc.AsAdmin().Run("patch").Args("imagepruner/cluster", "-p", `{"spec":{"schedule":""}}`, "--type=merge").Execute()
+
+		g.By("Check log when imagerpruner loglevel is Normal")
+		time.Sleep(1 * time.Minute)
+		foundPruneLog := false
+		foundPruneLog = imagePruneLog(oc, normalInfo)
+		o.Expect(foundPruneLog).To(o.BeTrue())
+
+		g.By("Check log when imagerpruner loglevel is Debug")
+		err = oc.AsAdmin().Run("patch").Args("imagepruner/cluster", "-p", `{"spec":{"logLevel":"Debug"}}`, "--type=merge").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		defer oc.AsAdmin().Run("patch").Args("imagepruner/cluster", "-p", `{"spec":{"logLevel":"Normal"}}`, "--type=merge").Execute()
+		time.Sleep(1 * time.Minute)
+		foundPruneLog = false
+		foundPruneLog = imagePruneLog(oc, debugInfo)
+		o.Expect(foundPruneLog).To(o.BeTrue())
+
+		g.By("Check log when imagerpruner loglevel is Trace")
+		err = oc.AsAdmin().Run("patch").Args("imagepruner/cluster", "-p", `{"spec":{"logLevel":"Trace"}}`, "--type=merge").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		time.Sleep(1 * time.Minute)
+		foundPruneLog = false
+		foundPruneLog = imagePruneLog(oc, traceInfo)
+		o.Expect(foundPruneLog).To(o.BeTrue())
+
+		g.By("Check log when imagerpruner loglevel is TraceAll")
+		err = oc.AsAdmin().Run("patch").Args("imagepruner/cluster", "-p", `{"spec":{"logLevel":"TraceAll"}}`, "--type=merge").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		time.Sleep(1 * time.Minute)
+		foundPruneLog = false
+		foundPruneLog = imagePruneLog(oc, traceAllInfo)
+		o.Expect(foundPruneLog).To(o.BeTrue())
 	})
 })

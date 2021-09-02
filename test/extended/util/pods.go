@@ -64,3 +64,31 @@ func CreateCentosExecPodOrFail(client kubernetes.Interface, ns, generateName str
 		}
 	})
 }
+
+func remoteShPod(oc *CLI, namespace string, podName string, needBash bool, needChroot bool, cmd ...string) (string, error) {
+	var cargs []string
+	if needBash {
+		cargs = []string{"-n", namespace, podName, "bash", "-c"}
+	} else if needChroot {
+		cargs = []string{"-n", namespace, podName, "chroot", "/rootfs"}
+	} else {
+		cargs = []string{"-n", namespace, podName}
+	}
+	cargs = append(cargs, cmd...)
+	return oc.AsAdmin().WithoutNamespace().Run("rsh").Args(cargs...).Output()
+}
+
+// RemoteShPod creates a remote shell of the pod
+func RemoteShPod(oc *CLI, namespace string, podName string, cmd ...string) (string, error) {
+	return remoteShPod(oc, namespace, podName, false, false, cmd...)
+}
+
+// RemoteShPodWithChroot creates a remote shell of the pod with chroot
+func RemoteShPodWithChroot(oc *CLI, namespace string, podName string, cmd ...string) (string, error) {
+	return remoteShPod(oc, namespace, podName, false, true, cmd...)
+}
+
+// RemoteShPodWithBash creates a remote shell of the pod with bash
+func RemoteShPodWithBash(oc *CLI, namespace string, podName string, cmd ...string) (string, error) {
+	return remoteShPod(oc, namespace, podName, true, false, cmd...)
+}

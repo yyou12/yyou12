@@ -634,3 +634,66 @@ func checkOauthPodsStatus(oc *exutil.CLI) {
 	}
 
 }
+
+func checkComplianceSuiteResult(oc *exutil.CLI, namespace string, csuiteNmae string, expected string) {
+	csuiteResult, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", namespace, "compliancesuite", csuiteNmae, "-o=jsonpath={.status.result}").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	e2e.Logf("the result of csuiteResult:%v", csuiteResult)
+	expectedStrings := strings.Fields(expected)
+	lenExpectedStrings := len(strings.Fields(expected))
+	switch {
+	case lenExpectedStrings == 1, strings.Compare(expected, csuiteResult) == 0:
+		e2e.Logf("Case 1: the expected string %v equals csuiteResult %v", expected, expectedStrings)
+		return
+	case lenExpectedStrings == 2, strings.Compare(expectedStrings[0], csuiteResult) == 0 || strings.Compare(expectedStrings[1], csuiteResult) == 0:
+		e2e.Logf("Case 2: csuiteResult %v equals expected string %v or %v", csuiteResult, expectedStrings[0], expectedStrings[1])
+		return
+	default:
+		e2e.Failf("Default: The expected string %v doesn't contain csuiteResult %v", expected, csuiteResult)
+	}
+}
+
+func getResourceNameWithKeywordForNamespace(oc *exutil.CLI, rs string, keyword string, namespace string) string {
+	var resourceName string
+	rsList, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args(rs, "-n", namespace, "-o=jsonpath={.items[*].metadata.name}").Output()
+	rsl := strings.Fields(rsList)
+	for _, v := range rsl {
+		resourceName = fmt.Sprintf("%s", v)
+		e2e.Logf("the result of resourceName:%v", resourceName)
+		if strings.Contains(resourceName, keyword) {
+			break
+		}
+	}
+	if resourceName == "" {
+		e2e.Failf("Failed to get resource name!")
+	}
+	return resourceName
+}
+
+func checkOperatorPodStatus(oc *exutil.CLI, namespace string) string {
+	var podname string
+	podnames, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-n", namespace).Output()
+	podname = fmt.Sprintf("%s", podnames)
+	if strings.Contains(podname, "cluster-logging-operator") {
+		podStat, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-n", namespace, "-o=jsonpath={.items[0].status.phase}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		return podStat
+	} else {
+		return podname
+	}
+}
+
+func assertCheckAuditLogsForword(oc *exutil.CLI, namespace string, csvname string) {
+	var auditlogs string
+	podnames, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-l logging-infra=fluentdserver", "-n", namespace, "-o=jsonpath={.items[0].metadata.name}").Output()
+	auditlog, err := oc.AsAdmin().WithoutNamespace().Run("rsh").Args("-n", namespace, podnames, "cat", "/fluentd/log/audit.log").OutputToFile(getRandomString() + "isc-audit.json")
+	o.Expect(err).NotTo(o.HaveOccurred())
+	result, err1 := exec.Command("bash", "-c", "cat "+auditlog+" | grep "+csvname+" |tail -n5; rm -rf "+auditlog).Output()
+	o.Expect(err1).NotTo(o.HaveOccurred())
+	auditlogs = fmt.Sprintf("%s", result)
+	if strings.Contains(auditlogs, csvname) {
+		e2e.Logf("The keyword does match with auditlogs: %v", csvname)
+	} else {
+		e2e.Failf("The keyword does not match with auditlogs: %v", csvname)
+	}
+}

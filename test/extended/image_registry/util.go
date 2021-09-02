@@ -16,6 +16,11 @@ import (
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 )
 
+const (
+	asAdmin          = true
+	withoutNamespace = true
+)
+
 type PrometheusResponse struct {
 	Status string                 `json:"status"`
 	Error  string                 `json:"error"`
@@ -121,4 +126,71 @@ func getRandomString() string {
 		buffer[index] = chars[seed.Intn(len(chars))]
 	}
 	return string(buffer)
+}
+
+//the method is to get something from resource. it is "oc get xxx" actaully
+func getResource(oc *exutil.CLI, asAdmin bool, withoutNamespace bool, parameters ...string) string {
+	var result string
+	var err error
+	err = wait.Poll(3*time.Second, 150*time.Second, func() (bool, error) {
+		result, err = doAction(oc, "get", asAdmin, withoutNamespace, parameters...)
+		if err != nil {
+			e2e.Logf("output is %v, error is %v, and try next", result, err)
+			return false, nil
+		}
+		return true, nil
+	})
+	o.Expect(err).NotTo(o.HaveOccurred())
+	e2e.Logf("$oc get %v, the returned resource:%v", parameters, result)
+	return result
+}
+
+//the method is to do something with oc.
+func doAction(oc *exutil.CLI, action string, asAdmin bool, withoutNamespace bool, parameters ...string) (string, error) {
+	if asAdmin && withoutNamespace {
+		return oc.AsAdmin().WithoutNamespace().Run(action).Args(parameters...).Output()
+	}
+	if asAdmin && !withoutNamespace {
+		return oc.AsAdmin().Run(action).Args(parameters...).Output()
+	}
+	if !asAdmin && withoutNamespace {
+		return oc.WithoutNamespace().Run(action).Args(parameters...).Output()
+	}
+	if !asAdmin && !withoutNamespace {
+		return oc.Run(action).Args(parameters...).Output()
+	}
+	return "", nil
+}
+
+func comparePodHostIp(oc *exutil.CLI) (int, int) {
+	var hostsIp = []string{}
+	var numi, numj int
+	podList, _ := oc.AdminKubeClient().CoreV1().Pods("openshift-image-registry").List(metav1.ListOptions{LabelSelector: "docker-registry=default"})
+	for _, pod := range podList.Items {
+		hostsIp = append(hostsIp, pod.Status.HostIP)
+	}
+	for i := 0; i < len(hostsIp)-1; i++ {
+		for j := i + 1; j < len(hostsIp); j++ {
+			if hostsIp[i] == hostsIp[j] {
+				numi++
+			} else {
+				numj++
+			}
+		}
+	}
+	return numi, numj
+}
+
+func imagePruneLog(oc *exutil.CLI, matchlogs string) bool {
+	podsOfImagePrune := []corev1.Pod{}
+	podsOfImagePrune = ListPodStartingWith("image-pruner", oc, "openshift-image-registry")
+	for _, pod := range podsOfImagePrune {
+		depOutput, err := oc.AsAdmin().Run("logs").WithoutNamespace().Args("pod/"+pod.Name, "-n", pod.Namespace).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		if strings.Contains(depOutput, matchlogs) {
+			return true
+			break
+		}
+	}
+	return false
 }
