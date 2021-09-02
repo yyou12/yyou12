@@ -31,6 +31,62 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	var oc = exutil.NewCLI("default-"+getRandomString(), exutil.KubeConfigPath())
 
 	// author: jiazha@redhat.com
+	g.It("Author:jiazha-Medium-43191-Bundle Content Compression", func() {
+		g.By("1) Subscribe to etcdoperator v0.9.4 in a random project")
+		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
+		dr := make(describerResrouce)
+		itName := g.CurrentGinkgoTestDescription().TestText
+		dr.addIr(itName)
+
+		oc.SetupProject()
+		ogSingleTemplate := filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+		og := operatorGroupDescription{
+			name:      "og-43191",
+			namespace: oc.Namespace(),
+			template:  ogSingleTemplate,
+		}
+		defer og.delete(itName, dr)
+		og.createwithCheck(oc, itName, dr)
+
+		subTemplate := filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+		sub := subscriptionDescription{
+			subName:                "sub-43191",
+			namespace:              oc.Namespace(),
+			catalogSourceName:      "community-operators",
+			catalogSourceNamespace: "openshift-marketplace",
+			channel:                "singlenamespace-alpha",
+			ipApproval:             "Automatic",
+			operatorPackage:        "etcd",
+			startingCSV:            "etcdoperator.v0.9.4",
+			singleNamespace:        true,
+			template:               subTemplate,
+		}
+		defer sub.delete(itName, dr)
+		sub.create(oc, itName, dr)
+		defer sub.deleteCSV(itName, dr)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", "etcdoperator.v0.9.4", "-n", oc.Namespace(), "-o=jsonpath={.status.phase}"}).check(oc)
+
+		g.By("2) check if the extract job uses the zip flag")
+		// ["opm","alpha","bundle","extract","-m","/bundle/","-n","openshift-marketplace","-c","9b59f03f8e8ea2f818061847881908aae51cf41836e4a3b822dcc6d3a01481c","-z"]
+		extractCommand, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("job", "-n", "openshift-marketplace", "-o=jsonpath={.items[0].spec.template.spec.containers[0].command}").Output()
+		if err != nil {
+			e2e.Failf("Fail to get the jobs in the openshift-marketplace project: %v", err)
+		}
+		if !strings.Contains(extractCommand, "-z") {
+			e2e.Failf("This bundle extract job doesn't use the opm compression feature!")
+		}
+
+		g.By("3) check if the compression content is empty")
+		bData, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("cm", "-n", "openshift-marketplace", "-o=jsonpath={.items[0].binaryData}").Output()
+		if err != nil {
+			e2e.Failf("Fail to get ConfigMap's binaryData: %v", err)
+		}
+		if bData == "" {
+			e2e.Failf("The compression content is empty!")
+		}
+	})
+
+	// author: jiazha@redhat.com
 	g.It("ConnectedOnly-Author:jiazha-High-43101-OLM blocks minor OpenShift upgrades when incompatible optional operators are installed", func() {
 		// consumes this index imaage: quay.io/olmqe/etcd-index:upgrade-auto, it contains the etcdoperator v0.9.2, v0.9.4, v0.9.5
 		g.By("1) Create a CatalogSource in the openshift-marketplace project")
