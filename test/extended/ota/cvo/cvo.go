@@ -1,10 +1,10 @@
 package cvo
 
 import (
-	"time"
-	"fmt"
 	"encoding/json"
+	"fmt"
 	"regexp"
+	"time"
 
 	g "github.com/onsi/ginkgo"
 	o "github.com/onsi/gomega"
@@ -24,7 +24,7 @@ var _ = g.Describe("[sig-updates] OTA cvo should", func() {
 		g.By("Check cvo delopyment config file...")
 		cvo_deployment_yaml, err := GetDeploymentsYaml(oc, "cluster-version-operator", project_name)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		var keywords = []string {"--listen=0.0.0.0:9099", "--serving-cert-file=/etc/tls/serving-cert/tls.crt", "--serving-key-file=/etc/tls/serving-cert/tls.key"}
+		var keywords = []string{"--listen=0.0.0.0:9099", "--serving-cert-file=/etc/tls/serving-cert/tls.crt", "--serving-key-file=/etc/tls/serving-cert/tls.key"}
 		for _, v := range keywords {
 			o.Expect(cvo_deployment_yaml).Should(o.ContainSubstring(v))
 		}
@@ -36,7 +36,7 @@ var _ = g.Describe("[sig-updates] OTA cvo should", func() {
 		output, err := PodExec(oc, "/usr/bin/cluster-version-operator start --help", project_name, cvo_pods_list[0])
 		o.Expect(err).NotTo(o.HaveOccurred())
 		e2e.Logf(output)
-		keywords = []string {"You must set both --serving-cert-file and --serving-key-file unless you set --listen empty"}
+		keywords = []string{"You must set both --serving-cert-file and --serving-key-file unless you set --listen empty"}
 		for _, v := range keywords {
 			o.Expect(output).Should(o.ContainSubstring(v))
 		}
@@ -72,7 +72,7 @@ var _ = g.Describe("[sig-updates] OTA cvo should", func() {
 		output, err = PodExec(oc, cmd, project_name, cvo_pods_list[0])
 		o.Expect(err).NotTo(o.HaveOccurred())
 		e2e.Logf(output)
-		keywords = []string {"Client sent an HTTP request to an HTTPS server"}
+		keywords = []string{"Client sent an HTTP request to an HTTPS server"}
 		for _, v := range keywords {
 			o.Expect(output).Should(o.ContainSubstring(v))
 		}
@@ -82,9 +82,31 @@ var _ = g.Describe("[sig-updates] OTA cvo should", func() {
 		output, err = PodExec(oc, cmd, project_name, cvo_pods_list[0])
 		o.Expect(err).NotTo(o.HaveOccurred())
 		e2e.Logf(output)
-		keywords = []string {"HTTP/1.1 200 OK"}
+		keywords = []string{"HTTP/1.1 200 OK"}
 		for _, v := range keywords {
 			o.Expect(output).Should(o.ContainSubstring(v))
 		}
+	})
+
+	//author: yanyang@redhat.com
+	g.It("Author:yanyang-Medium-32138-cvo alert should not be fired when RetrievedUpdates failed due to nochannel", func() {
+		g.By("Enable alert by clearing channel")
+		err := oc.AsAdmin().WithoutNamespace().Run("adm").Args("upgrade", "channel").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Check RetrievedUpdates condition")
+		reason, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("clusterversion", "-ojson", "-o=jsonpath={.items[].status.conditions[?(.type=='\"RetrievedUpdates\"')].reason}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(reason).To(o.Equal("NoChannel"))
+
+		g.By("Alert CannotRetrieveUpdates is not appeared within 60m")
+		appeared, _, err := waitForAlert(oc, "CannotRetrieveUpdates", 600, 3600, "")
+		o.Expect(appeared).NotTo(o.BeTrue())
+		o.Expect(err).To(o.Equal("timed out waiting for the condition"))
+
+		g.By("Alert CannotRetrieveUpdates is not appeared after 60m")
+		appeared, _, err = waitForAlert(oc, "CannotRetrieveUpdates", 600, 600, "")
+		o.Expect(appeared).NotTo(o.BeTrue())
+		o.Expect(err).To(o.Equal("timed out waiting for the condition"))
 	})
 })
