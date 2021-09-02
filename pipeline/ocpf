@@ -17,7 +17,7 @@ rppmtoken=`cat ${WORKSPACE}"/private/secrets/rp/openshift-qe-reportportal.json" 
 subteam="OLM"
 eval cp -fr 00000000-00.zip "00000000-00${LAUNCHVERSION}.zip"
 # only handle ci profiles
-python3 reportportal.py -a putprofile -f "00000000-00${LAUNCHVERSION}.zip" -s "${subteam}" -v "${VERSION}"  -pp "../cip/" -t "${rpmmtoken}" -ta "${rppmtoken}" 2>&1
+python3 reportportal.py -a putprofile -f "00000000-00${LAUNCHVERSION}.zip" -s "${subteam}" -v "${VERSION}"  -pp "../cip/"${VERSION}"/" -t "${rpmmtoken}" -ta "${rppmtoken}" 2>&1
 # ret=`python3 reportportal.py -a putprofile -f "00000000-00${LAUNCHVERSION}.zip" -s "${subteam}" -v "${VERSION}"  -pp "../cip/" -t "${rpmmtoken}" -ta "${rppmtoken}" 2>&1 || true`
 # echo -E ${ret}
 eval rm -fr  "00000000-00${LAUNCHVERSION}.zip"

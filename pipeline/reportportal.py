@@ -828,7 +828,7 @@ class ReportPortalClient:
 
 
     def getProfileAttr(self):
-        filename = self.args.profilepath + self.args.version + "/" + self.args.profilename + ".test_run.yaml"
+        filename = self.args.profilepath + self.args.profilename + ".test_run.yaml"
         # print(filename)
         try:
             with open(filename) as f:
@@ -916,7 +916,7 @@ class ReportPortalClient:
             return None
 
     def putProfileLaunch(self):
-        pathToProfile = self.args.profilepath + self.args.version + "/"
+        pathToProfile = self.args.profilepath
 
         #get current profile list
         profileList = []
