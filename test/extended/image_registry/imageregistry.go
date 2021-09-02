@@ -283,4 +283,28 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 		out := getResource(oc, asAdmin, withoutNamespace, "daemonset/node-ca", "-n", "openshift-image-registry", "-o=jsonpath={.spec.updateStrategy.rollingUpdate}")
 		o.Expect(out).To(o.ContainSubstring(updatePolicy))
 	})
+
+	// author: xiuwang@redhat.com
+	g.It("DisconnectedOnly-Author:xiuwang-High-43715-Image registry pullthough should support pull image from the mirror registry with auth via imagecontentsourcepolicy", func() {
+		g.By("Check the imagestream imported with digest id using pullthrough policy")
+		out := getResource(oc, asAdmin, withoutNamespace, "is/jenkins", "-n", "openshift", "-o=jsonpath={.spec.tags[0]['from.name', 'referencePolicy.type']}")
+		o.Expect(out).To(o.ContainSubstring("Local"))
+		o.Expect(out).To(o.ContainSubstring("@sha256"))
+
+		g.By("Create a pod using the imagestream")
+		oc.SetupProject()
+		err := oc.Run("new-app").Args("jenkins-ephemeral").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		err = wait.Poll(25*time.Second, 1*time.Minute, func() (bool, error) {
+			podList, err := oc.KubeClient().CoreV1().Pods(oc.Namespace()).List(metav1.ListOptions{LabelSelector: "deploymentconfig=jenkins"})
+			o.Expect(err).NotTo(o.HaveOccurred())
+			if len(podList.Items) == 1 {
+				return true, nil
+			}
+			return false, nil
+
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
+	})
 })
