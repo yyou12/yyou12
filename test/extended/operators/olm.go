@@ -1747,35 +1747,33 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		dr := make(describerResrouce)
 		itName := g.CurrentGinkgoTestDescription().TestText
 		dr.addIr(itName)
-		g.By("Start to subscribe the NFD operator")
+		g.By("Start to subscribe the Camel-k operator")
 		sub := subscriptionDescription{
-			subName:                "nfd",
+			subName:                "camel-k",
 			namespace:              "openshift-operators",
-			catalogSourceName:      "redhat-operators",
+			catalogSourceName:      "community-operators",
 			catalogSourceNamespace: "openshift-marketplace",
-			channel:                "4.8",
+			channel:                "stable-1.5",
 			ipApproval:             "Automatic",
-			operatorPackage:        "nfd",
+			operatorPackage:        "camel-k",
 			singleNamespace:        false,
-			startingCSV:            "", //get it from package based on currentCSV if ipApproval is Automatic
-			currentCSV:             "",
-			installedCSV:           "",
+			startingCSV:            "camel-k-operator.v1.5.0",
 			template:               subTemplate,
 		}
 
 		defer sub.delete(itName, dr)
 		defer sub.deleteCSV(itName, dr)
-		sub.createWithoutCheck(oc, itName, dr)
+		sub.create(oc, itName, dr)
 
-		g.By("check if nfd is already installed")
+		g.By("check if camel-k is already installed")
 		csvList := getResource(oc, asAdmin, withNamespace, "csv", "-o=jsonpath={.items[*].metadata.name}")
 		e2e.Logf("CSV list %s ", csvList)
-		if !strings.Contains("node-feature-discovery-operator", csvList) {
+		if !strings.Contains("camel-k", csvList) {
 			msg, err := oc.AsAdmin().WithoutNamespace().Run("policy").Args("who-can", "list", "namespaces").Output()
 			o.Expect(err).NotTo(o.HaveOccurred())
-			o.Expect(msg).To(o.ContainSubstring("system:serviceaccount:openshift-operators:nfd-operator"))
+			o.Expect(msg).To(o.ContainSubstring("system:serviceaccount:openshift-operators:camel-k-operator"))
 		} else {
-			e2e.Failf("Not able to install NFD Operator")
+			e2e.Failf("Not able to install Camel-K Operator")
 		}
 	})
 	// author: jiazha@redhat.com
