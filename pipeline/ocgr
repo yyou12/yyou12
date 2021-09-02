@@ -181,6 +181,8 @@ if [ "X${LAUNCHID}X" != "XX" ]; then
   fi
   if [ "X${profiletype}X" == "XciX" ]; then
     existing=`ls ${WORKSPACE}"/cip/"${VERSION}"/"|grep "${PROFILENAME}"".test"|grep "test_run.yaml"|wc -l|xargs`
+  elif [ "X${profiletype}X" == "XstageX" ]; then
+    existing=`ls ${WORKSPACE}"/cip/"${profiletype}"/"${VERSION}"/"|grep "${PROFILENAME}"".test"|grep "test_run.yaml"|wc -l|xargs`
   else
     existing=`ls ${WORKSPACE}"/misc/jenkins/"${profiletype}"/"${VERSION}"/"|grep "${PROFILENAME}"".test"|grep "test_run.yaml"|wc -l|xargs`
   fi
@@ -211,6 +213,8 @@ if [ "X${LAUNCHID}X" != "XX" ]; then
     eval zip -r "${LAUNCHID}.zip" "${subteamfile}"
     if [ "X${profiletype}X" == "XciX" ]; then
       ppath="../cip/"
+    elif [ "X${profiletype}X" == "XstageX" ]; then
+      ppath="../cip/"${profiletype}"/"
     else
       ppath="../misc/jenkins/"${profiletype}"/"
     fi
