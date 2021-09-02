@@ -6040,6 +6040,83 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		g.By("4) SUCCESS")
 	})
 
+	// author: xzha@redhat.com, test case OCP-43639
+	g.It("ConnectedOnly-Author:xzha-High-43639-OLM must explicitly alert on deprecated APIs in use", func() {
+		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
+		ogSingleTemplate := filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+		subTemplate := filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+		catsrcImageTemplate := filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
+		oc.SetupProject()
+		namespaceName := oc.Namespace()
+		var (
+			catsrc = catalogSourceDescription{
+				name:        "catsrc-ditto-43639",
+				namespace:   namespaceName,
+				displayName: "Test Catsrc ditto Operators",
+				publisher:   "Red Hat",
+				sourceType:  "grpc",
+				address:     "quay.io/olmqe/ditto-index:v1beta1",
+				template:    catsrcImageTemplate,
+			}
+			og = operatorGroupDescription{
+				name:      "og-43639",
+				namespace: namespaceName,
+				template:  ogSingleTemplate,
+			}
+			sub = subscriptionDescription{
+				subName:                "sub-43639",
+				namespace:              namespaceName,
+				catalogSourceName:      "catsrc-ditto-43639",
+				catalogSourceNamespace: namespaceName,
+				channel:                "alpha",
+				ipApproval:             "Automatic",
+				operatorPackage:        "ditto-operator",
+				singleNamespace:        true,
+				template:               subTemplate,
+				startingCSV:            "",
+			}
+		)
+		itName := g.CurrentGinkgoTestDescription().TestText
+		g.By("1) create the catalog source and OperatorGroup")
+		defer catsrc.delete(itName, dr)
+		catsrc.create(oc, itName, dr)
+		og.createwithCheck(oc, itName, dr)
+
+		g.By("2) install sub")
+		defer sub.delete(itName, dr)
+		sub.createWithoutCheck(oc, itName, dr)
+		installPlan := sub.getIP(oc)
+		o.Expect(installPlan).NotTo(o.BeEmpty())
+		err := wait.Poll(20*time.Second, 120*time.Second, func() (bool, error) {
+			ipPhase := getResource(oc, asAdmin, withoutNamespace, "ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.phase}")
+			if strings.Contains(ipPhase, "Complete") {
+				e2e.Logf("sub is installed")
+				return true, nil
+			}
+			return false, nil
+		})
+		if err == nil {
+			g.By("3) check events")
+			err2 := wait.Poll(20*time.Second, 240*time.Second, func() (bool, error) {
+				eventOutput, err1 := oc.AsAdmin().WithoutNamespace().Run("get").Args("event", "-n", namespaceName).Output()
+				o.Expect(err1).NotTo(o.HaveOccurred())
+				lines := strings.Split(eventOutput, "\n")
+				for _, line := range lines {
+					if strings.Contains(line, "CustomResourceDefinition is deprecated") && strings.Contains(line, "piextensions.k8s.io") && strings.Contains(line, "ditto-operator") {
+						return true, nil
+					}
+				}
+				return false, nil
+			})
+			o.Expect(err2).NotTo(o.HaveOccurred())
+
+		} else {
+			g.By("3) the opeartor cannot be installed, skip test case")
+		}
+
+		g.By("4) SUCCESS")
+	})
+
 	// It will cover test case: OCP-40958, author: kuiwang@redhat.com
 	g.It("ConnectedOnly-Author:kuiwang-Medium-40958-Indicate invalid OperatorGroup on InstallPlan status", func() {
 		var (
