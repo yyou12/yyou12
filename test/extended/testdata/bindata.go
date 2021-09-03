@@ -213,6 +213,9 @@
 // test/extended/testdata/securityandcompliance/subscription.yaml
 // test/extended/testdata/securityandcompliance/tailoredprofile-withoutvariable.yaml
 // test/extended/testdata/securityandcompliance/tailoredprofile.yaml
+// test/extended/testdata/storage/pod-template.yaml
+// test/extended/testdata/storage/pvc-template.yaml
+// test/extended/testdata/storage/storageclass-template.yaml
 // test/extended/testdata/winc/aws_windows_machineset_no_label.yaml
 // test/extended/testdata/winc/azure_windows_machineset_no_label.yaml
 // test/extended/testdata/winc/linux_web_server.yaml
@@ -2993,6 +2996,7 @@ objects:
 parameters:
   - name: NAME
   - name: POOL
+
 `)
 
 func testExtendedTestdataMcoChangeWorkerExtensionUsbguardYamlBytes() ([]byte, error) {
@@ -24195,6 +24199,129 @@ func testExtendedTestdataSecurityandcomplianceTailoredprofileYaml() (*asset, err
 	return a, nil
 }
 
+var _testExtendedTestdataStoragePodTemplateYaml = []byte(`apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: storage-pod-template
+objects:
+  # Pod
+- kind: Pod
+  apiVersion: v1
+  metadata:
+    name: ${PODNAME}
+    namespace: ${PODNAMESPACE}
+  spec:
+    containers:
+    - image: ${PODIMAGE} # default: quay.io/openshifttest/storage@sha256:a05b96d373be86f46e76817487027a7f5b8b5f87c0ac18a246b018df11529b40
+      name: ${PODNAME}
+      volumeMounts:
+      - name: data
+        mountPath: /mnt/storage
+    volumes:
+    - name: data
+      persistentVolumeClaim:
+        claimName: ${PVCNAME}
+parameters:
+- name: PVCNAME
+- name: PODNAME
+- name: PODNAMESPACE
+- name: PODIMAGE`)
+
+func testExtendedTestdataStoragePodTemplateYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataStoragePodTemplateYaml, nil
+}
+
+func testExtendedTestdataStoragePodTemplateYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataStoragePodTemplateYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/storage/pod-template.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataStoragePvcTemplateYaml = []byte(`apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: storage-pvc-template
+objects:
+  # PVC
+- kind: PersistentVolumeClaim
+  apiVersion: v1
+  metadata:
+    name: ${PVCNAME}
+    namespace: ${PVCNAMESPACE}
+  spec:
+    accessModes:
+    - ${ACCESSMODE} # ReadWriteOnce, ReadOnlyMany or ReadWriteMany
+    resources:
+      requests:
+        storage: ${PVCCAPACITY}  # default 10Gi
+    storageClassName: ${SCNAME}  # gp2 gp2-csi etc.
+    volumeMode: ${VOLUMEMODE}   # Filesystem, Block
+parameters:
+- name: SCNAME
+- name: PVCNAME
+- name: PVCNAMESPACE
+- name: ACCESSMODE
+- name: VOLUMEMODE
+- name: PVCCAPACITY`)
+
+func testExtendedTestdataStoragePvcTemplateYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataStoragePvcTemplateYaml, nil
+}
+
+func testExtendedTestdataStoragePvcTemplateYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataStoragePvcTemplateYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/storage/pvc-template.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataStorageStorageclassTemplateYaml = []byte(`apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: storage-sc-template
+objects:
+  # SC
+- kind: StorageClass
+  apiVersion: storage.k8s.io/v1
+  metadata:
+    name: "${SCNAME}"
+  # parameters:
+  #   type: gp2
+  #   encrypted: 'false'
+  #   fsType: ext4
+  provisioner: ${PROVISIONER} # default: ebs.csi.aws.com
+  reclaimPolicy: ${RECLAIMPOLICY} # Retain, Delete
+  volumeBindingMode: ${VOLUMEBINDINGMODE} # WaitForFirstConsumer, Immediate
+parameters:
+- name: SCNAME
+- name: RECLAIMPOLICY
+- name: PROVISIONER
+- name: VOLUMEBINDINGMODE`)
+
+func testExtendedTestdataStorageStorageclassTemplateYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataStorageStorageclassTemplateYaml, nil
+}
+
+func testExtendedTestdataStorageStorageclassTemplateYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataStorageStorageclassTemplateYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/storage/storageclass-template.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
 var _testExtendedTestdataWincAws_windows_machineset_no_labelYaml = []byte(`apiVersion: machine.openshift.io/v1beta1
 kind: MachineSet
 metadata:
@@ -26288,6 +26415,9 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/securityandcompliance/subscription.yaml":                                           testExtendedTestdataSecurityandcomplianceSubscriptionYaml,
 	"test/extended/testdata/securityandcompliance/tailoredprofile-withoutvariable.yaml":                        testExtendedTestdataSecurityandcomplianceTailoredprofileWithoutvariableYaml,
 	"test/extended/testdata/securityandcompliance/tailoredprofile.yaml":                                        testExtendedTestdataSecurityandcomplianceTailoredprofileYaml,
+	"test/extended/testdata/storage/pod-template.yaml":                                                         testExtendedTestdataStoragePodTemplateYaml,
+	"test/extended/testdata/storage/pvc-template.yaml":                                                         testExtendedTestdataStoragePvcTemplateYaml,
+	"test/extended/testdata/storage/storageclass-template.yaml":                                                testExtendedTestdataStorageStorageclassTemplateYaml,
 	"test/extended/testdata/winc/aws_windows_machineset_no_label.yaml":                                         testExtendedTestdataWincAws_windows_machineset_no_labelYaml,
 	"test/extended/testdata/winc/azure_windows_machineset_no_label.yaml":                                       testExtendedTestdataWincAzure_windows_machineset_no_labelYaml,
 	"test/extended/testdata/winc/linux_web_server.yaml":                                                        testExtendedTestdataWincLinux_web_serverYaml,
@@ -26674,6 +26804,11 @@ var _bintree = &bintree{nil, map[string]*bintree{
 					"subscription.yaml":                     {testExtendedTestdataSecurityandcomplianceSubscriptionYaml, map[string]*bintree{}},
 					"tailoredprofile-withoutvariable.yaml":  {testExtendedTestdataSecurityandcomplianceTailoredprofileWithoutvariableYaml, map[string]*bintree{}},
 					"tailoredprofile.yaml":                  {testExtendedTestdataSecurityandcomplianceTailoredprofileYaml, map[string]*bintree{}},
+				}},
+				"storage": {nil, map[string]*bintree{
+					"pod-template.yaml":          {testExtendedTestdataStoragePodTemplateYaml, map[string]*bintree{}},
+					"pvc-template.yaml":          {testExtendedTestdataStoragePvcTemplateYaml, map[string]*bintree{}},
+					"storageclass-template.yaml": {testExtendedTestdataStorageStorageclassTemplateYaml, map[string]*bintree{}},
 				}},
 				"winc": {nil, map[string]*bintree{
 					"aws_windows_machineset_no_label.yaml":   {testExtendedTestdataWincAws_windows_machineset_no_labelYaml, map[string]*bintree{}},
