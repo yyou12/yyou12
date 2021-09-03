@@ -25,6 +25,7 @@
 // test/extended/testdata/logging/subscription/singlenamespace-og.yaml
 // test/extended/testdata/logging/subscription/sub-template.yaml
 // test/extended/testdata/mco/bz1866117-add-dummy-files.yaml
+// test/extended/testdata/mco/change-maxpods-kubelet-config.yaml
 // test/extended/testdata/mco/change-worker-extension-usbguard.yaml
 // test/extended/testdata/mco/change-worker-kernel-argument.yaml
 // test/extended/testdata/mco/change-worker-kernel-selinux.yaml
@@ -2893,6 +2894,40 @@ func testExtendedTestdataMcoBz1866117AddDummyFilesYaml() (*asset, error) {
 	}
 
 	info := bindataFileInfo{name: "test/extended/testdata/mco/bz1866117-add-dummy-files.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataMcoChangeMaxpodsKubeletConfigYaml = []byte(`apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: kubelet-config
+objects:
+  - kind: KubeletConfig
+    apiVersion: machineconfiguration.openshift.io/v1
+    metadata:
+      name: "${NAME}"
+    spec:
+      machineConfigPoolSelector:
+        matchLabels:
+          "pools.operator.machineconfiguration.openshift.io/worker": ""
+      kubeletConfig:
+        maxPods: 500
+parameters:
+  - name: NAME
+`)
+
+func testExtendedTestdataMcoChangeMaxpodsKubeletConfigYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataMcoChangeMaxpodsKubeletConfigYaml, nil
+}
+
+func testExtendedTestdataMcoChangeMaxpodsKubeletConfigYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataMcoChangeMaxpodsKubeletConfigYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/mco/change-maxpods-kubelet-config.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -26024,6 +26059,7 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/logging/subscription/singlenamespace-og.yaml":                                                                     testExtendedTestdataLoggingSubscriptionSinglenamespaceOgYaml,
 	"test/extended/testdata/logging/subscription/sub-template.yaml":                                                                           testExtendedTestdataLoggingSubscriptionSubTemplateYaml,
 	"test/extended/testdata/mco/bz1866117-add-dummy-files.yaml":                                                                               testExtendedTestdataMcoBz1866117AddDummyFilesYaml,
+	"test/extended/testdata/mco/change-maxpods-kubelet-config.yaml":                                                                           testExtendedTestdataMcoChangeMaxpodsKubeletConfigYaml,
 	"test/extended/testdata/mco/change-worker-extension-usbguard.yaml":                                                                        testExtendedTestdataMcoChangeWorkerExtensionUsbguardYaml,
 	"test/extended/testdata/mco/change-worker-kernel-argument.yaml":                                                                           testExtendedTestdataMcoChangeWorkerKernelArgumentYaml,
 	"test/extended/testdata/mco/change-worker-kernel-selinux.yaml":                                                                            testExtendedTestdataMcoChangeWorkerKernelSelinuxYaml,
@@ -26332,6 +26368,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 				}},
 				"mco": {nil, map[string]*bintree{
 					"bz1866117-add-dummy-files.yaml":           {testExtendedTestdataMcoBz1866117AddDummyFilesYaml, map[string]*bintree{}},
+					"change-maxpods-kubelet-config.yaml":       {testExtendedTestdataMcoChangeMaxpodsKubeletConfigYaml, map[string]*bintree{}},
 					"change-worker-extension-usbguard.yaml":    {testExtendedTestdataMcoChangeWorkerExtensionUsbguardYaml, map[string]*bintree{}},
 					"change-worker-kernel-argument.yaml":       {testExtendedTestdataMcoChangeWorkerKernelArgumentYaml, map[string]*bintree{}},
 					"change-worker-kernel-selinux.yaml":        {testExtendedTestdataMcoChangeWorkerKernelSelinuxYaml, map[string]*bintree{}},

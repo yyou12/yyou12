@@ -53,7 +53,7 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 
 		mcName := "change-workers-chrony-configuration"
 		mcTemplate := generateTemplateAbsolutePath("change-workers-chrony-configuration.yaml")
-		mc := machineConfig{name: mcName, template: mcTemplate, pool: "worker"}
+		mc := MachineConfig{name: mcName, template: mcTemplate, pool: "worker"}
 		defer mc.delete(oc)
 		mc.create(oc)
 
@@ -78,7 +78,7 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 
 		mcName := "bz1866117-add-dummy-files"
 		mcTemplate := generateTemplateAbsolutePath("bz1866117-add-dummy-files.yaml")
-		mc := machineConfig{name: mcName, template: mcTemplate, pool: "worker"}
+		mc := MachineConfig{name: mcName, template: mcTemplate, pool: "worker"}
 		defer mc.delete(oc)
 		mc.create(oc)
 
@@ -120,7 +120,7 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		g.By("Create custom infra mcp")
 		mcpName := "infra"
 		mcpTemplate := generateTemplateAbsolutePath("custom-machine-config-pool.yaml")
-		mcp := machineConfigPool{name: mcpName, template: mcpTemplate}
+		mcp := MachineConfigPool{name: mcpName, template: mcpTemplate}
 		defer mcp.delete(oc)
 		defer waitForNodeDoesNotContain(oc, workerNode, mcpName)
 		defer deleteCustomLabelFromNode(oc, workerNode, mcpName)
@@ -147,22 +147,60 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 	})
 
 	g.It("Author:mhanss-Longduration-CPaasrunOnly-Critical-42365-add real time kernel argument [Disruptive]", func() {
-		createMcAndVerifyMCValue(oc, "Kernel argument", "change-worker-kernel-argument", "PREEMPT_RT", "uname -a")
+		textToVerify := TextToVerify{
+			textToVerifyForMC:   "realtime",
+			textToVerifyForNode: "PREEMPT_RT",
+			needBash:            true,
+		}
+		createMcAndVerifyMCValue(oc, "Kernel argument", "change-worker-kernel-argument", textToVerify, "uname -a")
 	})
 
 	g.It("Author:mhanss-Longduration-CPaasrunOnly-Critical-42364-add selinux kernel argument [Disruptive]", func() {
-		createMcAndVerifyMCValue(oc, "Kernel argument", "change-worker-kernel-selinux", "enforcing=0", "cat", "/rootfs/proc/cmdline")
+		textToVerify := TextToVerify{
+			textToVerifyForMC:   "enforcing=0",
+			textToVerifyForNode: "enforcing=0",
+		}
+		createMcAndVerifyMCValue(oc, "Kernel argument", "change-worker-kernel-selinux", textToVerify, "cat", "/rootfs/proc/cmdline")
 	})
 
 	g.It("Author:mhanss-Longduration-CPaasrunOnly-Critical-42367-add extension to RHCOS [Disruptive]", func() {
-		createMcAndVerifyMCValue(oc, "Usb Extension", "change-worker-extension-usbguard", "usbguard", "rpm", "-q", "usbguard")
+		textToVerify := TextToVerify{
+			textToVerifyForMC:   "usbguard",
+			textToVerifyForNode: "usbguard",
+			needChroot:          true,
+		}
+		createMcAndVerifyMCValue(oc, "Usb Extension", "change-worker-extension-usbguard", textToVerify, "rpm", "-q", "usbguard")
+	})
+
+	g.It("Author:mhanss-Longduration-CPaasrunOnly-Critical-42368-add max pods to the kubelet config [Disruptive]", func() {
+		g.By("create kubelet config to add 500 max pods")
+		kcName := "change-maxpods-kubelet-config"
+		kcTemplate := generateTemplateAbsolutePath(kcName + ".yaml")
+		kc := KubeletConfig{name: kcName, template: kcTemplate}
+		defer kc.delete(oc)
+		kc.create(oc)
+		e2e.Logf("Kubelet config is created successfully!")
+
+		g.By(fmt.Sprintf("Check max pods in the created kubelet config"))
+		kcOut, err := getKubeletConfigDetails(oc, kc.name)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(kcOut).Should(o.ContainSubstring("maxPods: 500"))
+		e2e.Logf("Max pods are verified in the created kubelet config!")
+
+		g.By("Check kubelet config in the worker node")
+		workerNode, err := getFirstWorkerNode(oc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		maxPods, err := debugNodeWithChroot(oc, workerNode, "cat", "/etc/kubernetes/kubelet.conf")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(maxPods).Should(o.ContainSubstring("\"maxPods\": 500"))
+		e2e.Logf("Max pods are verified in the worker node!")
 	})
 })
 
-func createMcAndVerifyMCValue(oc *exutil.CLI, stepText string, mcName string, textToVerify string, cmd ...string) {
+func createMcAndVerifyMCValue(oc *exutil.CLI, stepText string, mcName string, textToVerify TextToVerify, cmd ...string) {
 	g.By(fmt.Sprintf("Create new MC to add the %s", stepText))
 	mcTemplate := generateTemplateAbsolutePath(mcName + ".yaml")
-	mc := machineConfig{name: mcName, template: mcTemplate, pool: "worker"}
+	mc := MachineConfig{name: mcName, template: mcTemplate, pool: "worker"}
 	defer mc.delete(oc)
 	mc.create(oc)
 	e2e.Logf("Machine config is created successfully!")
@@ -170,7 +208,7 @@ func createMcAndVerifyMCValue(oc *exutil.CLI, stepText string, mcName string, te
 	g.By(fmt.Sprintf("Check %s in the created machine config", stepText))
 	mcOut, err := getMachineConfigDetails(oc, mc.name)
 	o.Expect(err).NotTo(o.HaveOccurred())
-	o.Expect(mcOut).Should(o.ContainSubstring(textToVerify))
+	o.Expect(mcOut).Should(o.ContainSubstring(textToVerify.textToVerifyForMC))
 	e2e.Logf("%s is verified in the created machine config!", stepText)
 
 	g.By(fmt.Sprintf("Check %s in the machine config daemon", stepText))
@@ -178,14 +216,14 @@ func createMcAndVerifyMCValue(oc *exutil.CLI, stepText string, mcName string, te
 	o.Expect(err).NotTo(o.HaveOccurred())
 
 	var podOut string
-	if strings.Contains(textToVerify, "PREEMPT_RT") {
+	if textToVerify.needBash {
 		podOut, err = exutil.RemoteShPodWithBash(oc, "openshift-machine-config-operator", getMachineConfigDaemon(oc, workerNode), cmd...)
-	} else if strings.Contains(textToVerify, "enforcing") {
-		podOut, err = exutil.RemoteShPod(oc, "openshift-machine-config-operator", getMachineConfigDaemon(oc, workerNode), cmd...)
-	} else {
+	} else if textToVerify.needChroot {
 		podOut, err = exutil.RemoteShPodWithChroot(oc, "openshift-machine-config-operator", getMachineConfigDaemon(oc, workerNode), cmd...)
+	} else {
+		podOut, err = exutil.RemoteShPod(oc, "openshift-machine-config-operator", getMachineConfigDaemon(oc, workerNode), cmd...)
 	}
 	o.Expect(err).NotTo(o.HaveOccurred())
-	o.Expect(podOut).Should(o.ContainSubstring(textToVerify))
+	o.Expect(podOut).Should(o.ContainSubstring(textToVerify.textToVerifyForNode))
 	e2e.Logf("%s is verified in the machine config daemon!", stepText)
 }

@@ -13,18 +13,30 @@ import (
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 )
 
-type machineConfig struct {
+type MachineConfig struct {
 	name     string
 	template string
 	pool     string
 }
 
-type machineConfigPool struct {
+type MachineConfigPool struct {
 	name     string
 	template string
 }
 
-func (mc *machineConfig) create(oc *exutil.CLI) {
+type KubeletConfig struct {
+	name     string
+	template string
+}
+
+type TextToVerify struct {
+	textToVerifyForMC   string
+	textToVerifyForNode string
+	needBash            bool
+	needChroot          bool
+}
+
+func (mc *MachineConfig) create(oc *exutil.CLI) {
 	mc.name = mc.name + "-" + getRandomString()
 	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", mc.template, "-p", "NAME="+mc.name, "POOL="+mc.pool)
 	o.Expect(err).NotTo(o.HaveOccurred())
@@ -42,28 +54,42 @@ func (mc *machineConfig) create(oc *exutil.CLI) {
 		return false, nil
 	})
 
-	mcp := machineConfigPool{name: mc.pool}
+	mcp := MachineConfigPool{name: mc.pool}
 	mcp.waitForComplete(oc)
 }
 
-func (mc *machineConfig) delete(oc *exutil.CLI) {
+func (mc *MachineConfig) delete(oc *exutil.CLI) {
 	oc.AsAdmin().WithoutNamespace().Run("delete").Args("mc", mc.name).Execute()
-	mcp := machineConfigPool{name: mc.pool}
+	mcp := MachineConfigPool{name: mc.pool}
 	mcp.waitForComplete(oc)
 }
 
-func (mcp *machineConfigPool) create(oc *exutil.CLI) {
+func (kc *KubeletConfig) create(oc *exutil.CLI) {
+	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", kc.template, "-p", "NAME="+kc.name)
+	o.Expect(err).NotTo(o.HaveOccurred())
+	mcp := MachineConfigPool{name: "worker"}
+	mcp.waitForComplete(oc)
+}
+
+func (kc *KubeletConfig) delete(oc *exutil.CLI) {
+	e2e.Logf("deleting kubelet config: %s", kc.name)
+	oc.AsAdmin().WithoutNamespace().Run("delete").Args("kubeletconfig", kc.name).Execute()
+	mcp := MachineConfigPool{name: "worker"}
+	mcp.waitForComplete(oc)
+}
+
+func (mcp *MachineConfigPool) create(oc *exutil.CLI) {
 	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", mcp.template, "-p", "NAME="+mcp.name)
 	o.Expect(err).NotTo(o.HaveOccurred())
 	mcp.waitForComplete(oc)
 }
 
-func (mcp *machineConfigPool) delete(oc *exutil.CLI) {
+func (mcp *MachineConfigPool) delete(oc *exutil.CLI) {
 	e2e.Logf("deleting custom mcp: %s", mcp.name)
 	oc.AsAdmin().WithoutNamespace().Run("delete").Args("mcp", mcp.name).Execute()
 }
 
-func (mcp *machineConfigPool) waitForComplete(oc *exutil.CLI) {
+func (mcp *MachineConfigPool) waitForComplete(oc *exutil.CLI) {
 	err := wait.Poll(1*time.Minute, 25*time.Minute, func() (bool, error) {
 		stdout, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("mcp/"+mcp.name, "-o", "jsonpath='{.status.conditions[?(@.type==\"Updated\")].status}'").Output()
 		if err != nil {
@@ -125,6 +151,10 @@ func debugNodeWithChroot(oc *exutil.CLI, nodeName string, cmd ...string) (string
 
 func getMachineConfigDetails(oc *exutil.CLI, mcName string) (string, error) {
 	return oc.AsAdmin().WithoutNamespace().Run("get").Args("mc", mcName, "-o", "yaml").Output()
+}
+
+func getKubeletConfigDetails(oc *exutil.CLI, kcName string) (string, error) {
+	return oc.AsAdmin().WithoutNamespace().Run("get").Args("kubeletconfig", kcName, "-o", "yaml").Output()
 }
 
 func getMachineConfigDaemon(oc *exutil.CLI, node string) string {
