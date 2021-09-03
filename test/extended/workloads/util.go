@@ -439,7 +439,7 @@ func getLeaderKCM(oc *exutil.CLI) string {
 	}
 	o.Expect(err).NotTo(o.HaveOccurred())
 	leaderIp := strings.Split(contronplanInfo.HolderIdentity, "_")[0]
-        
+
 	out, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("node", "-l", "node-role.kubernetes.io/master=", "-o=jsonpath={.items[*].metadata.name}").Output()
 	o.Expect(err).NotTo(o.HaveOccurred())
 	masterList := strings.Fields(out)
@@ -451,4 +451,16 @@ func getLeaderKCM(oc *exutil.CLI) string {
                 }
 	}
 	return leaderKCM
+}
+
+func removeDuplicateElement(elements []string) []string {
+    result := make([]string, 0, len(elements))
+    temp := map[string]struct{}{}
+    for _, item := range elements {
+        if _, ok := temp[item]; !ok { //if can't find the item，ok=false，!ok is true，then append item。
+            temp[item] = struct{}{}
+            result = append(result, item)
+        }
+    }
+    return result
 }

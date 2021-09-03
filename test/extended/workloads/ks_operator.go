@@ -2,6 +2,8 @@ package workloads
 
 import (
 	"regexp"
+        "reflect"
+        "sort"
 	"time"
 
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -11,6 +13,7 @@ import (
 
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
+        e2enode "k8s.io/kubernetes/test/e2e/framework/node"
 )
 
 var _ = g.Describe("[sig-apps] Workloads", func() {
@@ -183,5 +186,74 @@ var _ = g.Describe("[sig-apps] Workloads", func() {
 		if matched, _ := regexp.MatchString("-v=4", output); matched {
 			e2e.Logf("clusteroperator kube-scheduler is running with logLevel 4\n")
 		}
+	})
+
+        g.It("Author:knarra-High-44049-DefaultPodTopologySpread doesn't work in non-CloudProvider env in OpenShift 4.7", func() {
+                nodeList, err := e2enode.GetReadySchedulableNodes(oc.KubeFramework().ClientSet)
+                // Create test project
+                g.By("Create test project")
+                oc.SetupProject()
+
+                // Label nodes
+                g.By("Label Node1 & Node2")
+                defer e2e.RemoveLabelOffNode(oc.KubeFramework().ClientSet, nodeList.Items[0].Name, "topology.kubernetes.io/zone")
+                e2e.AddOrUpdateLabelOnNode(oc.KubeFramework().ClientSet, nodeList.Items[0].Name, "topology.kubernetes.io/zone", "ocp44049zoneA")
+                defer e2e.RemoveLabelOffNode(oc.KubeFramework().ClientSet, nodeList.Items[1].Name, "topology.kubernetes.io/zone")
+                e2e.AddOrUpdateLabelOnNode(oc.KubeFramework().ClientSet, nodeList.Items[1].Name, "topology.kubernetes.io/zone", "ocp44049zoneB")
+
+                // Test starts here
+                // Test for Large pods
+		err = oc.Run("create").Args("deployment", "ocp44049large", "--image", "gcr.io/google-samples/node-hello:1.0", "--replicas", "0").Execute()
+                o.Expect(err).NotTo(o.HaveOccurred())
+                err = oc.Run("set").Args("resources", "deployment/ocp44049large", "--limits=cpu=2,memory=4Gi").Execute()
+                o.Expect(err).NotTo(o.HaveOccurred())
+                err = oc.Run("scale").Args("deployment/ocp44049large", "--replicas", "2").Execute()
+                o.Expect(err).NotTo(o.HaveOccurred())
+
+                g.By("Check all the pods should running")
+                if ok := waitForAvailableRsRunning(oc, "deployment", "ocp44049large", oc.Namespace(), "2"); ok {
+                    e2e.Logf("All pods are runnnig now\n")
+                }
+
+                expectNodeList := []string{nodeList.Items[0].Name, nodeList.Items[1].Name}
+                g.By("Geting the node list where pods running")
+                lpodNodeList := getPodNodeListByLabel(oc, oc.Namespace(), "app=ocp44049large")
+                sort.Strings(lpodNodeList)
+
+
+                if reflect.DeepEqual(lpodNodeList, expectNodeList) {
+                        e2e.Logf("All large pods have spread properly, which is expected")
+                } else {
+                        e2e.Failf("Large pods have not been spread properly")
+                }
+
+
+                // Create test project
+                g.By("Create test project")
+                oc.SetupProject()
+
+                // Test for small pods
+                err = oc.Run("create").Args("deployment", "ocp44049small", "--image", "gcr.io/google-samples/node-hello:1.0", "--replicas", "0").Execute()
+                o.Expect(err).NotTo(o.HaveOccurred())
+                err = oc.Run("set").Args("resources", "deployment/ocp44049small", "--limits=cpu=0.1,memory=128Mi").Execute()
+                o.Expect(err).NotTo(o.HaveOccurred())
+                err = oc.Run("scale").Args("deployment/ocp44049small", "--replicas", "6").Execute()
+                o.Expect(err).NotTo(o.HaveOccurred())
+                g.By("Check all the pods should running")
+                if ok := waitForAvailableRsRunning(oc, "deployment", "ocp44049small", oc.Namespace(), "2"); ok {
+                    e2e.Logf("All pods are runnnig now\n")
+                }
+
+                spodNodeList := getPodNodeListByLabel(oc, oc.Namespace(), "app=ocp44049small")
+                spodNodeList = removeDuplicateElement(spodNodeList)
+                sort.Strings(spodNodeList)
+
+                if reflect.DeepEqual(spodNodeList, expectNodeList) {
+			e2e.Logf("All small pods have spread properly, which is expected")
+                } else {
+                        e2e.Failf("small pods have not been spread properly")
+                }
+
+
 	})
 })
