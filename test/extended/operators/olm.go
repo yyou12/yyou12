@@ -31,6 +31,82 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	var oc = exutil.NewCLI("default-"+getRandomString(), exutil.KubeConfigPath())
 
 	// author: jiazha@redhat.com
+	g.It("Author:jiazha-High-43487-3rd party Operator Catalog references change during an OCP Upgrade", func() {
+		g.By("1) get the Kubernetes version")
+		version, err := oc.AsAdmin().WithoutNamespace().Run("version").Args("--short").Output()
+		if err != nil {
+			e2e.Failf("Fail to get the Kubernetes version")
+		}
+		reg := regexp.MustCompile(`.*v((\d+).(\d+).(\d+))-`)
+		if reg == nil {
+			e2e.Failf("version regexp err!")
+		}
+		result := reg.FindAllStringSubmatch(version, -1)
+		// fullVersion := result[0][1]
+		majorVersion := result[0][2]
+		minorVersion := result[0][3]
+		patchVersion := result[0][4]
+
+		dr := make(describerResrouce)
+		itName := g.CurrentGinkgoTestDescription().TestText
+		dr.addIr(itName)
+
+		imageTemplates := map[string]string{
+			"quay.io/kube-release-v{kube_major_version}/catalog:v{kube_major_version}":                                       majorVersion,
+			"quay.io/kube-release-v{kube_major_version}/catalog:v{kube_major_version}.{kube_minor_version}":                  fmt.Sprintf("%s.%s", majorVersion, minorVersion),
+			"quay.io/olmqe-v{kube_major_version}/etcd-index:v{kube_major_version}.{kube_minor_version}.{kube_patch_version}": fmt.Sprintf("%s.%s.%s", majorVersion, minorVersion, patchVersion),
+		}
+
+		oc.SetupProject()
+		for k, fullV := range imageTemplates {
+			g.By(fmt.Sprintf("create a CatalogSource with imageTemplate:%s", k))
+			buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
+			csImageTemplate := filepath.Join(buildPruningBaseDir, "cs-image-template.yaml")
+			cs := catalogSourceDescription{
+				name:          fmt.Sprintf("cs-43487-%s", fullV),
+				namespace:     oc.Namespace(),
+				displayName:   "OLM QE Operators",
+				publisher:     "Jian",
+				sourceType:    "grpc",
+				address:       "quay.io/olmqe-v1/etcd-index:v1.21",
+				imageTemplate: k,
+				template:      csImageTemplate,
+			}
+
+			defer cs.delete(itName, dr)
+			cs.create(oc, itName, dr)
+			// It will fail due to "ImagePullBackOff" since no this CatalogSource image in fact, so remove the status checking
+			// newCheck("expect", asAdmin, withoutNamespace, compare, "READY", ok, []string{"catsrc", cs.name, "-n", oc.Namespace(), "-o=jsonpath={.status..lastObservedState}"}).check(oc)
+
+			g.By("3) get the real CatalogSource image version")
+			err := wait.Poll(3*time.Second, 60*time.Second, func() (bool, error) {
+				// oc get catalogsource cs-43487 -o=jsonpath={.spec.image}
+				image, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("catalogsource", cs.name, "-n", oc.Namespace(), "-o=jsonpath={.spec.image}").Output()
+				if err != nil {
+					e2e.Failf("Fail to get the CatalogSource(%s)'s image, error: %v", cs.name, err)
+				}
+				if image == "" {
+					return false, nil
+				}
+
+				reg1 := regexp.MustCompile(`.*-v(\d+).*:v(\d+(.\d+)?(.\d+)?)`)
+				if reg1 == nil {
+					e2e.Failf("image regexp err!")
+				}
+				result1 := reg1.FindAllStringSubmatch(image, -1)
+				imageMajorVersion := result1[0][1]
+				imageFullVersion := result1[0][2]
+				e2e.Logf("fullVersion:%s, majorVersion:%s, imageFullVersion:%s, imageMajorVersion:%s", fullV, majorVersion, imageFullVersion, imageMajorVersion)
+				if imageMajorVersion != majorVersion || imageFullVersion != fullV {
+					e2e.Failf("This CatalogSource(%s) image version(%s) doesn't follow the image template(%s)!", cs.name, image, k)
+				}
+				return true, nil
+			})
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}
+	})
+
+	// author: jiazha@redhat.com
 	g.It("Author:jiazha-Medium-43191-Bundle Content Compression", func() {
 		g.By("1) Subscribe to etcdoperator v0.9.4 in a random project")
 		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")

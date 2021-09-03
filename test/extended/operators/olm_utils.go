@@ -429,16 +429,17 @@ func (cm *configMapDescription) delete(itName string, dr describerResrouce) {
 }
 
 type catalogSourceDescription struct {
-	name        string
-	namespace   string
-	displayName string
-	publisher   string
-	sourceType  string
-	address     string
-	template    string
-	priority    int
-	secret      string
-	interval    string
+	name          string
+	namespace     string
+	displayName   string
+	publisher     string
+	sourceType    string
+	address       string
+	template      string
+	priority      int
+	secret        string
+	interval      string
+	imageTemplate string
 }
 
 //the method is to create catalogsource with template, and save it to dr.
@@ -450,7 +451,7 @@ func (catsrc *catalogSourceDescription) create(oc *exutil.CLI, itName string, dr
 	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", catsrc.template,
 		"-p", "NAME="+catsrc.name, "NAMESPACE="+catsrc.namespace, "ADDRESS="+catsrc.address, "SECRET="+catsrc.secret,
 		"DISPLAYNAME="+"\""+catsrc.displayName+"\"", "PUBLISHER="+"\""+catsrc.publisher+"\"", "SOURCETYPE="+catsrc.sourceType,
-		"INTERVAL="+catsrc.interval)
+		"INTERVAL="+catsrc.interval, "IMAGETEMPLATE="+catsrc.imageTemplate)
 	o.Expect(err).NotTo(o.HaveOccurred())
 	dr.getIr(itName).add(newResource(oc, "catsrc", catsrc.name, requireNS, catsrc.namespace))
 	e2e.Logf("create catsrc %s SUCCESS", catsrc.name)
