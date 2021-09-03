@@ -195,6 +195,41 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		o.Expect(maxPods).Should(o.ContainSubstring("\"maxPods\": 500"))
 		e2e.Logf("Max pods are verified in the worker node!")
 	})
+
+	g.It("Author:mhanss-Longduration-CPaasrunOnly-Critical-42369-add container runtime config [Disruptive]", func() {
+		g.By("Create container runtime config")
+		crName := "change-ctr-cr-config"
+		crTemplate := generateTemplateAbsolutePath(crName + ".yaml")
+		cr := ContainerRuntimeConfig{name: crName, template: crTemplate}
+		defer cr.delete(oc)
+		cr.create(oc)
+		e2e.Logf("Container runtime config is created successfully!")
+
+		g.By("Check container runtime config values in the created config")
+		crOut, err := getContainerRuntimeConfigDetails(oc, cr.name)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(crOut).Should(
+			o.And(
+				o.ContainSubstring("logLevel: debug"),
+				o.ContainSubstring("logSizeMax: \"-1\""),
+				o.ContainSubstring("pidsLimit: 2048"),
+				o.ContainSubstring("overlaySize: 8G")))
+		e2e.Logf("Container runtime config values are verified in the created config!")
+
+		g.By("Check container runtime config values in the worker node")
+		workerNode, err := getFirstWorkerNode(oc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		crStorageOut, err := debugNodeWithChroot(oc, workerNode, "head", "-n", "7", "/etc/containers/storage.conf")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(crStorageOut).Should(o.ContainSubstring("size = \"8G\""))
+		crConfigOut, err := debugNodeWithChroot(oc, workerNode, "crio", "config")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(crConfigOut).Should(
+			o.And(
+				o.ContainSubstring("log_level = \"debug\""),
+				o.ContainSubstring("pids_limit = 2048")))
+		e2e.Logf("Container runtime config values are verified in the worker node!")
+	})
 })
 
 func createMcAndVerifyMCValue(oc *exutil.CLI, stepText string, mcName string, textToVerify TextToVerify, cmd ...string) {

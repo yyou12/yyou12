@@ -26,6 +26,7 @@
 // test/extended/testdata/logging/subscription/singlenamespace-og.yaml
 // test/extended/testdata/logging/subscription/sub-template.yaml
 // test/extended/testdata/mco/bz1866117-add-dummy-files.yaml
+// test/extended/testdata/mco/change-ctr-cr-config.yaml
 // test/extended/testdata/mco/change-maxpods-kubelet-config.yaml
 // test/extended/testdata/mco/change-worker-extension-usbguard.yaml
 // test/extended/testdata/mco/change-worker-kernel-argument.yaml
@@ -2938,6 +2939,43 @@ func testExtendedTestdataMcoBz1866117AddDummyFilesYaml() (*asset, error) {
 	}
 
 	info := bindataFileInfo{name: "test/extended/testdata/mco/bz1866117-add-dummy-files.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataMcoChangeCtrCrConfigYaml = []byte(`apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: container-runtime-config
+objects:
+  - kind: ContainerRuntimeConfig
+    apiVersion: machineconfiguration.openshift.io/v1
+    metadata:
+      name: "${NAME}"
+    spec:
+      machineConfigPoolSelector:
+        matchLabels:
+          pools.operator.machineconfiguration.openshift.io/worker: ''
+      containerRuntimeConfig:
+        pidsLimit: 2048
+        logLevel: debug
+        overlaySize: 8G
+        logSizeMax: "-1"
+parameters:
+  - name: NAME
+`)
+
+func testExtendedTestdataMcoChangeCtrCrConfigYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataMcoChangeCtrCrConfigYaml, nil
+}
+
+func testExtendedTestdataMcoChangeCtrCrConfigYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataMcoChangeCtrCrConfigYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/mco/change-ctr-cr-config.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -26228,6 +26266,7 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/logging/subscription/singlenamespace-og.yaml":                                                                     testExtendedTestdataLoggingSubscriptionSinglenamespaceOgYaml,
 	"test/extended/testdata/logging/subscription/sub-template.yaml":                                                                           testExtendedTestdataLoggingSubscriptionSubTemplateYaml,
 	"test/extended/testdata/mco/bz1866117-add-dummy-files.yaml":                                                                               testExtendedTestdataMcoBz1866117AddDummyFilesYaml,
+	"test/extended/testdata/mco/change-ctr-cr-config.yaml":                                                                                    testExtendedTestdataMcoChangeCtrCrConfigYaml,
 	"test/extended/testdata/mco/change-maxpods-kubelet-config.yaml":                                                                           testExtendedTestdataMcoChangeMaxpodsKubeletConfigYaml,
 	"test/extended/testdata/mco/change-worker-extension-usbguard.yaml":                                                                        testExtendedTestdataMcoChangeWorkerExtensionUsbguardYaml,
 	"test/extended/testdata/mco/change-worker-kernel-argument.yaml":                                                                           testExtendedTestdataMcoChangeWorkerKernelArgumentYaml,
@@ -26541,6 +26580,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 				}},
 				"mco": {nil, map[string]*bintree{
 					"bz1866117-add-dummy-files.yaml":           {testExtendedTestdataMcoBz1866117AddDummyFilesYaml, map[string]*bintree{}},
+					"change-ctr-cr-config.yaml":                {testExtendedTestdataMcoChangeCtrCrConfigYaml, map[string]*bintree{}},
 					"change-maxpods-kubelet-config.yaml":       {testExtendedTestdataMcoChangeMaxpodsKubeletConfigYaml, map[string]*bintree{}},
 					"change-worker-extension-usbguard.yaml":    {testExtendedTestdataMcoChangeWorkerExtensionUsbguardYaml, map[string]*bintree{}},
 					"change-worker-kernel-argument.yaml":       {testExtendedTestdataMcoChangeWorkerKernelArgumentYaml, map[string]*bintree{}},

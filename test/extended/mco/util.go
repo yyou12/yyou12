@@ -29,6 +29,11 @@ type KubeletConfig struct {
 	template string
 }
 
+type ContainerRuntimeConfig struct {
+	name     string
+	template string
+}
+
 type TextToVerify struct {
 	textToVerifyForMC   string
 	textToVerifyForNode string
@@ -74,6 +79,20 @@ func (kc *KubeletConfig) create(oc *exutil.CLI) {
 func (kc *KubeletConfig) delete(oc *exutil.CLI) {
 	e2e.Logf("deleting kubelet config: %s", kc.name)
 	oc.AsAdmin().WithoutNamespace().Run("delete").Args("kubeletconfig", kc.name).Execute()
+	mcp := MachineConfigPool{name: "worker"}
+	mcp.waitForComplete(oc)
+}
+
+func (cr *ContainerRuntimeConfig) create(oc *exutil.CLI) {
+	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", cr.template, "-p", "NAME="+cr.name)
+	o.Expect(err).NotTo(o.HaveOccurred())
+	mcp := MachineConfigPool{name: "worker"}
+	mcp.waitForComplete(oc)
+}
+
+func (cr *ContainerRuntimeConfig) delete(oc *exutil.CLI) {
+	e2e.Logf("deleting container runtime config: %s", cr.name)
+	oc.AsAdmin().WithoutNamespace().Run("delete").Args("ctrcfg", cr.name).Execute()
 	mcp := MachineConfigPool{name: "worker"}
 	mcp.waitForComplete(oc)
 }
@@ -163,6 +182,10 @@ func getMachineConfigDaemon(oc *exutil.CLI, node string) string {
 	daemonPod, err := oc.AsAdmin().WithoutNamespace().Run("get").Args(args...).Output()
 	o.Expect(err).NotTo(o.HaveOccurred())
 	return strings.ReplaceAll(daemonPod, "'", "")
+}
+
+func getContainerRuntimeConfigDetails(oc *exutil.CLI, crName string) (string, error) {
+	return oc.AsAdmin().WithoutNamespace().Run("get").Args("ctrcfg", crName, "-o", "yaml").Output()
 }
 
 func debugNode(oc *exutil.CLI, nodeName string, needChroot bool, cmd ...string) (string, error) {
