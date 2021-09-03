@@ -161,7 +161,7 @@ fi
 
 buildversiontype=`python3 handleattribution.py -a get -y "${ATTRIBUTIONOPTION}" -p build_version || true `
 if [ "${buildversiontype}" != "None" ] && [ "${buildversiontype}" != "failtogetvalue" ] && [ "${buildversiontype}" != "" ]; then
-  if [[ "${buildversiontype}" == *"arm64"* ]]; then
+  if [[ "${buildversiontype}" == *"arm64"* ]] || [[ "${buildversiontype}" == *"aarch64"* ]]; then
     buildversiontype="arm64"
   else
     buildversiontype="nonarm"
