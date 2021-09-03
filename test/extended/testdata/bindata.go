@@ -970,7 +970,7 @@ objects:
     annotations:
       openshift.io/description: "A user who thinks they can tag an image."
       openshift.io/reconcile-protect: "false"
-    name: tag-bug-role
+    name: "${ROLE_NAME}"
     namespace: "${NAMESPACE}"
   rules:
   - apiGroups:
@@ -982,6 +982,7 @@ objects:
     - update
 parameters:
   - name: NAMESPACE
+  - name: ROLE_NAME
 `)
 
 func testExtendedTestdataImage_registryRoleYamlBytes() ([]byte, error) {
@@ -24263,7 +24264,8 @@ parameters:
 - name: PVCNAME
 - name: PODNAME
 - name: PODNAMESPACE
-- name: PODIMAGE`)
+- name: PODIMAGE
+`)
 
 func testExtendedTestdataStoragePodTemplateYamlBytes() ([]byte, error) {
 	return _testExtendedTestdataStoragePodTemplateYaml, nil
@@ -24305,7 +24307,8 @@ parameters:
 - name: PVCNAMESPACE
 - name: ACCESSMODE
 - name: VOLUMEMODE
-- name: PVCCAPACITY`)
+- name: PVCCAPACITY
+`)
 
 func testExtendedTestdataStoragePvcTemplateYamlBytes() ([]byte, error) {
 	return _testExtendedTestdataStoragePvcTemplateYaml, nil
@@ -24343,7 +24346,8 @@ parameters:
 - name: SCNAME
 - name: RECLAIMPOLICY
 - name: PROVISIONER
-- name: VOLUMEBINDINGMODE`)
+- name: VOLUMEBINDINGMODE
+`)
 
 func testExtendedTestdataStorageStorageclassTemplateYamlBytes() ([]byte, error) {
 	return _testExtendedTestdataStorageStorageclassTemplateYaml, nil

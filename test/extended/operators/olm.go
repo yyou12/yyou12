@@ -8382,9 +8382,11 @@ var _ = g.Describe("[sig-operators] OLM on VM for an end user handle within a na
 			if strings.Contains(pod, olmPodName) {
 				x = strings.Fields(pod)
 				olmPodFullName = x[0]
-				olmNodeName = x[6]
+				// olmNodeName = x[6]
+				olmNodeName, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-n", olmNamespace, olmPodFullName, "-o=jsonpath={.spec.nodeName}").Output()
+				o.Expect(err).NotTo(o.HaveOccurred())
 				olmErrs = false
-				e2e.Logf("Found pod is %v", pod)
+				// e2e.Logf("Found pod is %v", pod)
 				break
 			}
 		}
@@ -8395,18 +8397,13 @@ var _ = g.Describe("[sig-operators] OLM on VM for an end user handle within a na
 		g.By("Query node label value")
 		// Look at the setting for the node to be on the master
 		olmErrs = true
-		olmJpath = fmt.Sprintf("-o=go-template=$'{{index .metadata.labels \"%v\"}}'", nodeRole)
+		olmJpath = fmt.Sprintf("-o=jsonpath={.metadata.labels}")
 		nodes, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("nodes", "-n", olmNamespace, olmNodeName, olmJpath).Output()
 		if err != nil {
 			e2e.Failf("Unable to query nodes -n %v %v %v.", olmNamespace, err, nodes)
 		}
 		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(nodes).NotTo(o.ContainSubstring("No resources found"))
-		// if nodes has no value, the variable was not set, so fail
-		if nodes == "$'<no value>'" {
-			e2e.Failf("The %v node of pod %v does not have %v set", olmNodeName, olmPodFullName, nodeRole)
-		}
-		e2e.Logf("node %v label for %v == %v", olmNodeName, nodeRole, nodes)
+		o.Expect(nodes).To(o.ContainSubstring("node-role.kubernetes.io/master"))
 
 		g.By("look at oc get nodes")
 		// Found the setting, verify that it's really on the master node
