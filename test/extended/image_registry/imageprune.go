@@ -27,6 +27,7 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 		debugInfo          = "Examining ImageStream"
 		traceInfo          = "keeping because it is used by imagestreams"
 		traceAllInfo       = "Content-Type: application/json"
+		tolerationsInfo    = `[{"effect":"NoSchedule","key":"key","operator":"Equal","value":"value"}]`
 	)
 	// author: wewang@redhat.com
 	g.It("Author:wewang-Medium-35906-Only API objects will be removed in image pruner pod when image registry is set to Removed [Disruptive]", func() {
@@ -158,5 +159,15 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 		foundPruneLog = false
 		foundPruneLog = imagePruneLog(oc, traceAllInfo)
 		o.Expect(foundPruneLog).To(o.BeTrue())
+	})
+	// author: wewang@redhat.com
+	g.It("Author:wewang-Medium-44113-Image pruner should use custom tolerations", func() {
+		g.By("Set tolerations for imagepruner cluster")
+		err := oc.AsAdmin().Run("patch").Args("imagepruner/cluster", "-p", `{"spec":{"tolerations":[{"effect":"NoSchedule","key":"key","operator":"Equal","value":"value"}]}}`, "--type=merge").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		defer oc.AsAdmin().Run("patch").Args("imagepruner/cluster", "-p", `{"spec":{"tolerations":null}}`, "--type=merge").Execute()
+		g.By("Check image pruner cron job uses these tolerations")
+		out := getResource(oc, asAdmin, withoutNamespace, "cronjob/image-pruner", "-n", "openshift-image-registry", "-o=jsonpath={.spec.jobTemplate.spec.template.spec.tolerations}")
+		o.Expect(out).Should(o.Equal(tolerationsInfo))
 	})
 })

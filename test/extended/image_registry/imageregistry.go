@@ -307,4 +307,52 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 		})
 		o.Expect(err).NotTo(o.HaveOccurred())
 	})
+
+	// author: wewang@redhat.com
+	g.It("Author:wewang-Medium-27961-Create imagestreamtag with insufficient permissions [Disruptive]", func() {
+		var (
+			imageRegistryBaseDir = exutil.FixturePath("testdata", "image_registry")
+			roleFile             = filepath.Join(imageRegistryBaseDir, "role.yaml")
+			rolesrc              = authRole{
+				namespace: "",
+				rolename:  "tag-bug-role",
+				template:  roleFile,
+			}
+		)
+		g.By("Import an image")
+		oc.SetupProject()
+		err := oc.Run("import-image").Args("test-img", "--from", "registry.access.redhat.com/rhel7", "--confirm").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Create role with insufficient permissions")
+		rolesrc.namespace = oc.Namespace()
+		rolesrc.create(oc)
+		err = oc.Run("create").Args("sa", "tag-bug-sa").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = oc.AsAdmin().Run("policy").Args("add-role-to-user", "view", "-z", "tag-bug-sa", "--role-namespace", oc.Namespace()).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		defer oc.AsAdmin().Run("policy").Args("remove-role-from-user", "view", "tag-bug-sa", "--role-namespace", oc.Namespace()).Execute()
+		out, _ := oc.Run("get").Args("sa", "tag-bug-sa", "-o=jsonpath={.secrets[0].name}", "-n", oc.Namespace()).Output()
+		token, _ := oc.Run("get").Args("secret/"+out, "-o", `jsonpath={.data.\.dockercfg}`).Output()
+		sDec, err := base64.StdEncoding.DecodeString(token)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = oc.Run("config").Args("set-credentials", "tag-bug-sa", fmt.Sprintf("--token=%s", sDec)).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		defuser, err := oc.Run("config").Args("get-users").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		out, err = oc.Run("config").Args("current-context").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = oc.Run("config").Args("set-context", out, "--user=tag-bug-sa").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		defer oc.Run("config").Args("set-context", out, "--user="+defuser).Execute()
+
+		g.By("Create imagestreamtag with insufficient permissions")
+		err = oc.AsAdmin().Run("tag").Args("test-img:latest", "test-img:v1").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Check if new imagestreamtag created")
+		out = getResource(oc, true, withoutNamespace, "istag", "-n", oc.Namespace())
+		o.Expect(out).To(o.ContainSubstring("test-img:latest"))
+		o.Expect(out).To(o.ContainSubstring("test-img:v1"))
+	})
 })

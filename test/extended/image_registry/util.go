@@ -98,10 +98,22 @@ type bcSource struct {
 	template  string
 }
 
+type authRole struct {
+	namespace string
+	rolename string
+	template  string
+}
+
 func (bcsrc *bcSource) create(oc *exutil.CLI) {
 	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", bcsrc.template, "-p", "OUTNAME="+bcsrc.outname, "NAME="+bcsrc.name, "NAMESPACE="+bcsrc.namespace)
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
+
+func (authrole *authRole) create(oc *exutil.CLI) {
+	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", authrole.template, "-p", "NAMESPACE="+authrole.namespace, "ROLE_NAME="+authrole.rolename)
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
 func applyResourceFromTemplate(oc *exutil.CLI, parameters ...string) error {
 	var configFile string
 	err := wait.Poll(3*time.Second, 15*time.Second, func() (bool, error) {

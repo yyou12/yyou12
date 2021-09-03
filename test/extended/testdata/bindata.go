@@ -10,6 +10,7 @@
 // test/extended/testdata/container_engine_tools/containerRuntimeConfig.yaml
 // test/extended/testdata/container_engine_tools/pod-modify.yaml
 // test/extended/testdata/image_registry/inputimage.yaml
+// test/extended/testdata/image_registry/role.yaml
 // test/extended/testdata/ldap/groupsync.sh
 // test/extended/testdata/ldap/ldapserver-config-cm.yaml
 // test/extended/testdata/ldap/ldapserver-deployment.yaml
@@ -950,6 +951,46 @@ func testExtendedTestdataImage_registryInputimageYaml() (*asset, error) {
 	}
 
 	info := bindataFileInfo{name: "test/extended/testdata/image_registry/inputimage.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataImage_registryRoleYaml = []byte(`kind: Template
+apiVersion: template.openshift.io/v1
+metadata:
+  name: role-template
+objects:
+- apiVersion: authorization.openshift.io/v1
+  kind: Role
+  metadata:
+    annotations:
+      openshift.io/description: "A user who thinks they can tag an image."
+      openshift.io/reconcile-protect: "false"
+    name: tag-bug-role
+    namespace: "${NAMESPACE}"
+  rules:
+  - apiGroups:
+    - image.openshift.io
+    attributeRestrictions: null
+    resources:
+    - imagestreams
+    verbs:
+    - update
+parameters:
+  - name: NAMESPACE
+`)
+
+func testExtendedTestdataImage_registryRoleYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataImage_registryRoleYaml, nil
+}
+
+func testExtendedTestdataImage_registryRoleYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataImage_registryRoleYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/image_registry/role.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -26044,6 +26085,7 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/container_engine_tools/containerRuntimeConfig.yaml":                                                               testExtendedTestdataContainer_engine_toolsContainerruntimeconfigYaml,
 	"test/extended/testdata/container_engine_tools/pod-modify.yaml":                                                                           testExtendedTestdataContainer_engine_toolsPodModifyYaml,
 	"test/extended/testdata/image_registry/inputimage.yaml":                                                                                   testExtendedTestdataImage_registryInputimageYaml,
+	"test/extended/testdata/image_registry/role.yaml":                                                                                         testExtendedTestdataImage_registryRoleYaml,
 	"test/extended/testdata/ldap/groupsync.sh":                                                                                                testExtendedTestdataLdapGroupsyncSh,
 	"test/extended/testdata/ldap/ldapserver-config-cm.yaml":                                                                                   testExtendedTestdataLdapLdapserverConfigCmYaml,
 	"test/extended/testdata/ldap/ldapserver-deployment.yaml":                                                                                  testExtendedTestdataLdapLdapserverDeploymentYaml,
@@ -26339,6 +26381,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 				}},
 				"image_registry": {nil, map[string]*bintree{
 					"inputimage.yaml": {testExtendedTestdataImage_registryInputimageYaml, map[string]*bintree{}},
+					"role.yaml":       {testExtendedTestdataImage_registryRoleYaml, map[string]*bintree{}},
 				}},
 				"ldap": {nil, map[string]*bintree{
 					"groupsync.sh":               {testExtendedTestdataLdapGroupsyncSh, map[string]*bintree{}},
