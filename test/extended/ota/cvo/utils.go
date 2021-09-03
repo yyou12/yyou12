@@ -48,6 +48,11 @@ func getSAToken(oc *exutil.CLI) (string, error) {
 // Return value: map: annotation map which contains reason and message information
 // Retrun value: error: any error
 func waitForAlert(oc *exutil.CLI, alertString string, interval time.Duration, timeout time.Duration, state string) (bool, map[string]string, error) {
+	if len(state) > 0 {
+		if state != "pending" && state != "firing" {
+			return false, nil, fmt.Errorf("state %s is not supported", state)
+		}
+	}
 	e2e.Logf("Waiting for alert %s pending or firing...", alertString)
 	url, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("route", "prometheus-k8s", "-n", "openshift-monitoring", "-o=jsonpath={.spec.host}").Output()
 	if err != nil || len(url) == 0 {
@@ -74,11 +79,11 @@ func waitForAlert(oc *exutil.CLI, alertString string, interval time.Duration, ti
 			e2e.Logf("Error retrieving prometheus alert metrics: %v, retry %d...", err, count)
 			return false, nil
 		}
-		if metrics == nil {
+		if len(string(metrics)) == 0 {
 			e2e.Logf("Prometheus alert metrics nil, retry %d...", count)
 			return false, nil
 		}
-		if alertString == "firing" && int(interval)*count < int(timeout) {
+		if state == "firing" && int(interval)*count < int(timeout) {
 			return true, fmt.Errorf("error alert firing but timeout is not reached")
 		}
 		return true, nil
@@ -87,7 +92,7 @@ func waitForAlert(oc *exutil.CLI, alertString string, interval time.Duration, ti
 	}
 	e2e.Logf("Alert %s found", alertString)
 	annotation, err := exec.Command("bash", "-c", alertAnnoCMD).Output()
-	if err != nil || annotation == nil {
+	if err != nil || len(string(annotation)) == 0 {
 		return true, nil, fmt.Errorf("error getting annotation for alert %s", alertString)
 	}
 	var annoMap map[string]string

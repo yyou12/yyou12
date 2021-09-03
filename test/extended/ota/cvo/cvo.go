@@ -89,24 +89,28 @@ var _ = g.Describe("[sig-updates] OTA cvo should", func() {
 	})
 
 	//author: yanyang@redhat.com
-	g.It("Author:yanyang-Medium-32138-cvo alert should not be fired when RetrievedUpdates failed due to nochannel", func() {
+	g.It("Longduration-Author:yanyang-Medium-32138-cvo alert should not be fired when RetrievedUpdates failed due to nochannel [Serial][Slow]", func() {
+		orgChannel, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("clusterversion", "-o=jsonpath={.items[].spec.channel}").Output()
+
+		defer oc.AsAdmin().WithoutNamespace().Run("adm").Args("upgrade", "channel", orgChannel).Execute()
+
 		g.By("Enable alert by clearing channel")
 		err := oc.AsAdmin().WithoutNamespace().Run("adm").Args("upgrade", "channel").Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		g.By("Check RetrievedUpdates condition")
-		reason, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("clusterversion", "-ojson", "-o=jsonpath={.items[].status.conditions[?(.type=='\"RetrievedUpdates\"')].reason}").Output()
+		reason, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("clusterversion", "-o=jsonpath={.items[].status.conditions[?(.type=='RetrievedUpdates')].reason}").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(reason).To(o.Equal("NoChannel"))
 
-		g.By("Alert CannotRetrieveUpdates is not appeared within 60m")
+		g.By("Alert CannotRetrieveUpdates does not appear within 60m")
 		appeared, _, err := waitForAlert(oc, "CannotRetrieveUpdates", 600, 3600, "")
 		o.Expect(appeared).NotTo(o.BeTrue())
-		o.Expect(err).To(o.Equal("timed out waiting for the condition"))
+		o.Expect(err.Error()).To(o.ContainSubstring("timed out waiting for the condition"))
 
-		g.By("Alert CannotRetrieveUpdates is not appeared after 60m")
-		appeared, _, err = waitForAlert(oc, "CannotRetrieveUpdates", 600, 600, "")
+		g.By("Alert CannotRetrieveUpdates does not appear after 60m")
+		appeared, _, err = waitForAlert(oc, "CannotRetrieveUpdates", 300, 600, "")
 		o.Expect(appeared).NotTo(o.BeTrue())
-		o.Expect(err).To(o.Equal("timed out waiting for the condition"))
+		o.Expect(err.Error()).To(o.ContainSubstring("timed out waiting for the condition"))
 	})
 })
