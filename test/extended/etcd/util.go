@@ -30,6 +30,13 @@ func getNodeListByLabel(oc *exutil.CLI, labelKey string) []string {
         return nodeNameList
 }
 
+func getPodListByLabel(oc *exutil.CLI, labelKey string) []string {
+	output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-n", "openshift-etcd", "-l", labelKey, "-o=jsonpath={.items[*].metadata.name}").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	podNameList := strings.Fields(output)
+	return podNameList
+}
+
 func runDRBackup(oc *exutil.CLI, nodeNameList []string) (nodeName string, etcddb string) {
 	var nodeN,etcdDb string
 	for nodeindex, node := range nodeNameList {
