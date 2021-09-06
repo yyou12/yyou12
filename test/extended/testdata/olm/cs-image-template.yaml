@@ -32,3 +32,4 @@ parameters:
 - name: SECRET
 - name: INTERVAL
   value: "10m0s"
+

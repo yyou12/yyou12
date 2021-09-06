@@ -201,7 +201,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		sub := subscriptionDescription{
 			subName:                "sub-43101",
 			namespace:              oc.Namespace(),
-			catalogSourceName:      "community-operators",
+			catalogSourceName:      "cs-43101",
 			catalogSourceNamespace: "openshift-marketplace",
 			channel:                "singlenamespace-alpha",
 			ipApproval:             "Manual",

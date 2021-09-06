@@ -9529,7 +9529,9 @@ parameters:
 - name: SOURCETYPE
 - name: SECRET
 - name: INTERVAL
-  value: "10m0s"`)
+  value: "10m0s"
+
+`)
 
 func testExtendedTestdataOlmCsImageTemplateYamlBytes() ([]byte, error) {
 	return _testExtendedTestdataOlmCsImageTemplateYaml, nil
