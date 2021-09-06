@@ -9,7 +9,7 @@ import (
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
 )
 
-var _ = g.Describe("[sig-storage] Storage", func() {
+var _ = g.Describe("[sig-storage] STORAGE", func() {
 	defer g.GinkgoRecover()
 
 	var oc = exutil.NewCLI("storage-aws-csi", exutil.KubeConfigPath())
