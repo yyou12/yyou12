@@ -48,7 +48,7 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 
 	})
 
-	g.It("Author:rioliu-Longduration-CPaasrunOnly-Critical-42361-add chrony systemd config [Disruptive]", func() {
+	g.It("Author:rioliu-Longduration-Critical-42361-add chrony systemd config [Disruptive]", func() {
 		g.By("create new mc to apply chrony config on worker nodes")
 
 		mcName := "change-workers-chrony-configuration"
