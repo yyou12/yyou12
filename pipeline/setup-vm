@@ -56,7 +56,7 @@ if echo $INSTALL_TOOLS | grep -i 'operatorSDK' > /dev/null; then
     fi
     mkdir ${WORKSPACE}/osdk
     BUILD_CMD="sudo make build"
-    if [ "${JENKINS_AGENT}" == 'goc49' ]; then
+    if [ "${JENKINS_AGENT}" == 'goc410' ]; then
         sudo git clone --depth=1 git@github.com:operator-framework/operator-sdk.git ${WORKSPACE}/osdk --branch master
     else
         BRANCH="release-${NIGHTLYFLAG:0:1}.${NIGHTLYFLAG:1}"
@@ -72,7 +72,7 @@ if echo $INSTALL_TOOLS | grep -i 'operatorSDK' > /dev/null; then
         export https_proxy=${https_proxy_tmp}
     fi
     ls -lrt build/
-    sudo mv build/* $WORKDIR
+    sudo mv -f build/* $WORKDIR
     sudo rm -fr ../osdk
     operator-sdk version
     cd $WORKDIR
