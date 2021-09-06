@@ -64,6 +64,7 @@
 // test/extended/testdata/olm/configmap-with-defaultchannel.yaml
 // test/extended/testdata/olm/configmap-without-defaultchannel.yaml
 // test/extended/testdata/olm/cr-webhookTest.yaml
+// test/extended/testdata/olm/cs-image-template.yaml
 // test/extended/testdata/olm/cs-without-image.yaml
 // test/extended/testdata/olm/csc.yaml
 // test/extended/testdata/olm/dockerconfig.json
@@ -9574,6 +9575,58 @@ func testExtendedTestdataOlmCrWebhooktestYaml() (*asset, error) {
 	}
 
 	info := bindataFileInfo{name: "test/extended/testdata/olm/cr-webhookTest.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataOlmCsImageTemplateYaml = []byte(`apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: cs-image-template
+objects:
+- apiVersion: operators.coreos.com/v1alpha1
+  kind: CatalogSource
+  metadata:
+    annotations:
+      olm.catalogImageTemplate: "${IMAGETEMPLATE}"
+    name: "${NAME}"
+    namespace: "${NAMESPACE}"
+  spec:
+    image: "${ADDRESS}"
+    secrets:
+    - "${SECRET}"  
+    displayName: "${DISPLAYNAME}"
+    publisher: "${PUBLISHER}"
+    sourceType: "${SOURCETYPE}"
+    updateStrategy:
+      registryPoll:
+        interval: "${INTERVAL}"
+parameters:
+- name: IMAGETEMPLATE
+  value: "quay.io/kube-release-v{kube_major_version}/catalog:v{kube_major_version}"
+- name: NAME
+- name: NAMESPACE
+- name: ADDRESS
+- name: DISPLAYNAME
+- name: PUBLISHER
+- name: SOURCETYPE
+- name: SECRET
+- name: INTERVAL
+  value: "10m0s"
+
+`)
+
+func testExtendedTestdataOlmCsImageTemplateYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataOlmCsImageTemplateYaml, nil
+}
+
+func testExtendedTestdataOlmCsImageTemplateYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataOlmCsImageTemplateYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/olm/cs-image-template.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -26308,6 +26361,7 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/olm/configmap-with-defaultchannel.yaml":                                                                           testExtendedTestdataOlmConfigmapWithDefaultchannelYaml,
 	"test/extended/testdata/olm/configmap-without-defaultchannel.yaml":                                                                        testExtendedTestdataOlmConfigmapWithoutDefaultchannelYaml,
 	"test/extended/testdata/olm/cr-webhookTest.yaml":                                                                                          testExtendedTestdataOlmCrWebhooktestYaml,
+	"test/extended/testdata/olm/cs-image-template.yaml":                                                                                       testExtendedTestdataOlmCsImageTemplateYaml,
 	"test/extended/testdata/olm/cs-without-image.yaml":                                                                                        testExtendedTestdataOlmCsWithoutImageYaml,
 	"test/extended/testdata/olm/csc.yaml":                                                                                                     testExtendedTestdataOlmCscYaml,
 	"test/extended/testdata/olm/dockerconfig.json":                                                                                            testExtendedTestdataOlmDockerconfigJson,
@@ -26632,6 +26686,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 					"configmap-with-defaultchannel.yaml":    {testExtendedTestdataOlmConfigmapWithDefaultchannelYaml, map[string]*bintree{}},
 					"configmap-without-defaultchannel.yaml": {testExtendedTestdataOlmConfigmapWithoutDefaultchannelYaml, map[string]*bintree{}},
 					"cr-webhookTest.yaml":                   {testExtendedTestdataOlmCrWebhooktestYaml, map[string]*bintree{}},
+					"cs-image-template.yaml":                {testExtendedTestdataOlmCsImageTemplateYaml, map[string]*bintree{}},
 					"cs-without-image.yaml":                 {testExtendedTestdataOlmCsWithoutImageYaml, map[string]*bintree{}},
 					"csc.yaml":                              {testExtendedTestdataOlmCscYaml, map[string]*bintree{}},
 					"dockerconfig.json":                     {testExtendedTestdataOlmDockerconfigJson, map[string]*bintree{}},
