@@ -7,7 +7,7 @@ function run {
     echo "please input value for SCENARIO"
     exit 1
   fi
-  if ! echo ${JENKINS_AGENT} | grep -E '^goc([0-9]{2})$'; then
+  if ! echo ${JENKINS_AGENT} | grep -E '^goc([0-9]{3})$'; then
     echo "wrong agent node ${JENKINS_AGENT}"
     exit 1
   fi
