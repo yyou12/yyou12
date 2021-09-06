@@ -1923,7 +1923,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 			publisher:   "OLM QE",
 			sourceType:  "grpc",
 			// use the quay.io/openshifttest/etcd-index:auto as index image
-			address:  "quay.io/openshifttest/etcd-index@sha256:6cd5cb26dd37c25d432c5b2fe7334f695f680a1810b9dfb0ac5de6be5619fcda",
+			address:  "quay.io/openshifttest/etcd-index@sha256:026e78179e1d790b465569f3630677d5698457131b1dfbba110b3d2a912f537c",
 			template: csTemplate,
 		}
 
