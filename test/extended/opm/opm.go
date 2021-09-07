@@ -1139,6 +1139,87 @@ var _ = g.Describe("[sig-operators] OLM opm with podman", func() {
 		g.By("test case 43562 SUCCESS")
 	})
 
+	g.It("Author:xzha-ConnectedOnly-Medium-43785-Medium-43486-Differential Operator catalog updates for continuous mirroring", func() {
+		g.By("no filter")
+		imagetag1 := "quay.io/olmqe/community-operator-index:43486-mirror"
+		imagetag2 := "quay.io/olmqe/community-operator-index:43486-2"
+		imagetag3 := "quay.io/olmqe/community-operator-index:43486-3"
+
+		g.By("opm alpha diff images1 and image2")
+		output, err := opmCLI.Run("alpha").Args("diff", imagetag1, imagetag2, "-o", "yaml").Output()
+		if err != nil {
+			e2e.Logf(output)
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(string(output)).NotTo(o.ContainSubstring("name: ditto-operator.v0.1.0"))
+		o.Expect(string(output)).NotTo(o.ContainSubstring("name: ditto-operator.v0.1.1"))
+		o.Expect(string(output)).To(o.ContainSubstring("name: ditto-operator.v0.2.0"))
+
+		g.By("opm alpha diff images1 image3")
+		output, err = opmCLI.Run("alpha").Args("diff", imagetag1, imagetag3, "-o", "yaml").Output()
+		if err != nil {
+			e2e.Logf(output)
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(string(output)).NotTo(o.ContainSubstring("name: ditto-operator.v0.1.0"))
+		o.Expect(string(output)).NotTo(o.ContainSubstring("name: ditto-operator.v0.1.1"))
+		o.Expect(string(output)).To(o.ContainSubstring("name: ditto-operator.v0.2.0"))
+		o.Expect(string(output)).To(o.ContainSubstring("name: ditto-operator.v0.2.1"))
+		o.Expect(string(output)).To(o.ContainSubstring("name: ditto-operator.v0.2.2"))
+		o.Expect(string(output)).To(o.ContainSubstring("name: planetscale-operator.v0.1.7"))
+		o.Expect(string(output)).To(o.ContainSubstring("name: planetscale-operator.v0.1.8"))
+
+		g.By("heads only")
+		imagetag1 = "quay.io/olmqe/community-operator-index:43785-1-headsonly"
+		imagetag2 = "quay.io/olmqe/community-operator-index:43785-2-headsonly"
+		imagetag3 = "quay.io/olmqe/community-operator-index:43785-3-headsonly"
+
+		g.By("opm alpha diff images1 and image2")
+		output, err = opmCLI.Run("alpha").Args("diff", imagetag1, imagetag2, "-o", "yaml").Output()
+		if err != nil {
+			e2e.Logf(output)
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(string(output)).NotTo(o.ContainSubstring("name: ditto-operator.v0.1.0"))
+		o.Expect(string(output)).NotTo(o.ContainSubstring("name: ditto-operator.v0.1.1"))
+		o.Expect(string(output)).To(o.ContainSubstring("name: ditto-operator.v0.2.0"))
+
+		g.By("opm alpha diff images1 image3")
+		output, err = opmCLI.Run("alpha").Args("diff", imagetag1, imagetag3, "-o", "yaml").Output()
+		if err != nil {
+			e2e.Logf(output)
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(string(output)).NotTo(o.ContainSubstring("name: ditto-operator.v0.1.0"))
+		o.Expect(string(output)).NotTo(o.ContainSubstring("name: ditto-operator.v0.1.1"))
+		o.Expect(string(output)).NotTo(o.ContainSubstring("name: ditto-operator.v0.2.1"))
+		o.Expect(string(output)).To(o.ContainSubstring("name: ditto-operator.v0.2.0"))
+		o.Expect(string(output)).To(o.ContainSubstring("name: ditto-operator.v0.2.2"))
+		o.Expect(string(output)).NotTo(o.ContainSubstring("name: planetscale-operator.v0.1.7"))
+		o.Expect(string(output)).To(o.ContainSubstring("name: planetscale-operator.v0.1.8"))
+
+		g.By("opm alpha diff images2 image3")
+		output, err = opmCLI.Run("alpha").Args("diff", imagetag2, imagetag3, "-o", "yaml").Output()
+		if err != nil {
+			e2e.Logf(output)
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(string(output)).NotTo(o.ContainSubstring("name: ditto-operator.v0.1.0"))
+		o.Expect(string(output)).NotTo(o.ContainSubstring("name: ditto-operator.v0.1.1"))
+		o.Expect(string(output)).NotTo(o.ContainSubstring("name: ditto-operator.v0.2.1"))
+		o.Expect(string(output)).NotTo(o.ContainSubstring("name: ditto-operator.v0.2.0"))
+		o.Expect(string(output)).To(o.ContainSubstring("name: ditto-operator.v0.2.2"))
+		o.Expect(string(output)).NotTo(o.ContainSubstring("name: planetscale-operator.v0.1.7"))
+		o.Expect(string(output)).To(o.ContainSubstring("name: planetscale-operator.v0.1.8"))
+
+		g.By("SUCCESS")
+	})
+
 	// author: tbuskey@redhat.com
 	g.It("Author:tbuskey-VMonly-High-30786-Bundle addition commutativity", func() {
 		opmBaseDir := exutil.FixturePath("testdata", "opm")
