@@ -729,4 +729,74 @@ var _ = g.Describe("[sig-scheduling] Workloads The Descheduler Operator automate
 
       })
 
+      // author: knarra@redhat.com
+      g.It("Author:knarra-Medium-43277-Descheduler-Descheduler operator should allow configuration of PodLifeTime Seconds", func() {
+              deschedulerpT := filepath.Join(buildPruningBaseDir, "kubedescheduler_podlifetime.yaml")
+
+              _, err := e2enode.GetReadySchedulableNodes(oc.KubeFramework().ClientSet)
+
+              deschu = kubedescheduler{
+                        namespace:         kubeNamespace,
+                        interSeconds:      60,
+                        imageInfo:         "registry.redhat.io/openshift4/ose-descheduler:v4.9.0",
+                        logLevel:          "Normal",
+                        operatorLogLevel:  "Normal",
+                        profile1:          "EvictPodsWithPVC",
+                        profile2:          "SoftTopologyAndDuplicates",
+                        profile3:          "LifecycleAndUtilization",
+                        template:          deschedulerpT,
+              }
+
+              g.By("Create the descheduler namespace")
+              defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("ns", kubeNamespace).Execute()
+              err = oc.AsAdmin().WithoutNamespace().Run("create").Args("ns", kubeNamespace).Execute()
+              o.Expect(err).NotTo(o.HaveOccurred())
+
+              patch := `[{"op":"add", "path":"/metadata/labels/openshift.io~1cluster-monitoring", "value":"true"}]`
+              err = oc.AsAdmin().WithoutNamespace().Run("patch").Args("ns", kubeNamespace, "--type=json", "-p", patch).Execute()
+              o.Expect(err).NotTo(o.HaveOccurred())
+
+              g.By("Create the operatorgroup")
+              og.createOperatorGroup(oc)
+              o.Expect(err).NotTo(o.HaveOccurred())
+              defer og.deleteOperatorGroup(oc)
+
+              g.By("Create the subscription")
+              sub.createSubscription(oc)
+              o.Expect(err).NotTo(o.HaveOccurred())
+              defer sub.deleteSubscription(oc)
+
+              g.By("Wait for the descheduler operator pod running")
+              if ok := waitForAvailableRsRunning(oc, "deploy", "descheduler-operator", kubeNamespace, "1"); ok {
+                  e2e.Logf("Kubedescheduler operator runnnig now\n")
+              }
+
+              g.By("Create descheduler cluster")
+              deschu.createKubeDescheduler(oc)
+              o.Expect(err).NotTo(o.HaveOccurred())
+              defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("KubeDescheduler", "--all", "-n", kubeNamespace).Execute()
+
+              g.By("Check the kubedescheduler run well")
+              checkAvailable(oc, "deploy", "cluster", kubeNamespace, "1")
+
+              g.By("Get descheduler cluster pod name")
+              podName, err := oc.AsAdmin().Run("get").Args("pods", "-l", "app=descheduler", "-n", kubeNamespace, "-o=jsonpath={.items..metadata.name}").Output()
+              o.Expect(err).NotTo(o.HaveOccurred())
+
+              // Test for podLifetime
+              // Create test project
+              g.By("Create test project")
+              oc.SetupProject()
+
+             err = oc.Run("create").Args("deployment", "ocp43277", "--image", "quay.io/openshifttest/hello-openshift@sha256:aaea76ff622d2f8bcb32e538e7b3cd0ef6d291953f3e7c9f556c1ba5baf47e2e").Execute()
+             o.Expect(err).NotTo(o.HaveOccurred())
+
+             g.By("Check all the pods should running")
+             if ok := waitForAvailableRsRunning(oc, "deployment", "ocp43277", oc.Namespace(), "1"); ok {
+                    e2e.Logf("All pods are runnnig now\n")
+             }
+
+             g.By("Check the descheduler deploy logs, should see config error logs")
+             checkLogsFromRs(oc, kubeNamespace, "pod", podName, regexp.QuoteMeta(`"Evicted pod"`)+".*"+regexp.QuoteMeta(oc.Namespace())+".*"+regexp.QuoteMeta(`reason="PodLifeTime"`))
+      })
 })
