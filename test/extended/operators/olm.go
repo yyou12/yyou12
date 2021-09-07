@@ -7635,6 +7635,29 @@ var _ = g.Describe("[sig-operators] OLM on VM for an end user handle within a na
 		sub_manual.getCSV().delete(itName, dr)
 	})
 
+	// OCP-43641 author: jitli@redhat.com
+	g.It("Author:jitli-ConnectedOnly-VMonly-Medium-43641-opm index add fails during image extraction", func() {
+		containerCLI := container.NewPodmanCLI()
+		bundleImage := "quay.io/olmqe/etcd:0.9.4"
+		indexImage := "quay.io/olmqe/etcd-index:v1-4.8"
+		defer containerCLI.RemoveImage(bundleImage)
+		defer containerCLI.RemoveImage(indexImage)
+
+		g.By("step: checking user account is no-root")
+		user, err := exec.Command("bash", "-c", "whoami").Output()
+		e2e.Logf("User:%s", user)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		if strings.Compare(string(user), "root") == -1 {
+			g.By("step: opm index add")
+			output1, err := opm.NewOpmCLI().Run("index").Args("add", "--generate", "--bundles", bundleImage, "--from-index", indexImage, "--overwrite-latest").Output()
+			e2e.Logf(output1)
+			o.Expect(err).NotTo(o.HaveOccurred())
+			g.By("test case 43641 SUCCESS")
+		} else {
+			e2e.Logf("User is %s. the case should login as no-root account", user)
+		}
+	})
+
 	// author: xzha@redhat.com
 	g.It("Author:xzha-ConnectedOnly-VMonly-Medium-25920-Expose bundle data from bundle image container", func() {
 		var (
