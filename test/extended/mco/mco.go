@@ -2,6 +2,7 @@ package mco
 
 import (
 	"fmt"
+	"os/exec"
 	"strconv"
 	"strings"
 
@@ -229,6 +230,38 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 				o.ContainSubstring("log_level = \"debug\""),
 				o.ContainSubstring("pids_limit = 2048")))
 		e2e.Logf("Container runtime config values are verified in the worker node!")
+	})
+
+	g.It("Author:mhanss-Longduration-CPaasrunOnly-Critical-42438-add journald systemd config [Disruptive]", func() {
+		g.By("Create journald systemd config")
+		encodedConf, err := exec.Command("bash", "-c", "cat "+generateTemplateAbsolutePath("journald.conf")+" | base64 | tr -d '\n'").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		conf := string(encodedConf)
+		jcName := "change-worker-jrnl-configuration"
+		jcTemplate := generateTemplateAbsolutePath(jcName + ".yaml")
+		journaldConf := []string{"CONFIGURATION=" + conf}
+		jc := MachineConfig{name: jcName, template: jcTemplate, pool: "worker", parameters: journaldConf}
+		defer jc.delete(oc)
+		jc.create(oc)
+		e2e.Logf("Journald systemd config is created successfully!")
+		g.By("Check journald config value in the created machine config!")
+		jcOut, err := getMachineConfigDetails(oc, jc.name)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(jcOut).Should(o.ContainSubstring(conf))
+		e2e.Logf("Journald config is verified in the created machine config!")
+		g.By("Check journald config values in the worker node")
+		workerNode, err := getFirstWorkerNode(oc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		journaldConfOut, err := debugNodeWithChroot(oc, workerNode, "cat", "/etc/systemd/journald.conf")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(journaldConfOut).Should(
+			o.And(
+				o.ContainSubstring("RateLimitInterval=1s"),
+				o.ContainSubstring("RateLimitBurst=10000"),
+				o.ContainSubstring("Storage=volatile"),
+				o.ContainSubstring("Compress=no"),
+				o.ContainSubstring("MaxRetentionSec=30s")))
+		e2e.Logf("Journald config values are verified in the worker node!")
 	})
 })
 

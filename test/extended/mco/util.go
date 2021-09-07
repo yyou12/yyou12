@@ -14,9 +14,10 @@ import (
 )
 
 type MachineConfig struct {
-	name     string
-	template string
-	pool     string
+	name       string
+	template   string
+	pool       string
+	parameters []string
 }
 
 type MachineConfigPool struct {
@@ -43,7 +44,9 @@ type TextToVerify struct {
 
 func (mc *MachineConfig) create(oc *exutil.CLI) {
 	mc.name = mc.name + "-" + getRandomString()
-	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", mc.template, "-p", "NAME="+mc.name, "POOL="+mc.pool)
+	params := []string{"--ignore-unknown-parameters=true", "-f", mc.template, "-p", "NAME=" + mc.name, "POOL=" + mc.pool}
+	params = append(params, mc.parameters...)
+	err := applyResourceFromTemplate(oc, params...)
 	o.Expect(err).NotTo(o.HaveOccurred())
 
 	wait.Poll(5*time.Second, 1*time.Minute, func() (bool, error) {
