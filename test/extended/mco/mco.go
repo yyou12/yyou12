@@ -136,6 +136,7 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 
 		g.By("Check custom infra label is removed from the node")
 		nodeOut, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("nodes", "-l", "node-role.kubernetes.io/infra").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(nodeOut).Should(o.ContainSubstring("No resources found"))
 
 		g.By("Remove custom infra mcp")
@@ -143,6 +144,7 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 
 		g.By("Check custom infra mcp is deleted")
 		mcpOut, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("mcp/" + mcpName).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(mcpOut).Should(o.ContainSubstring("NotFound"))
 		e2e.Logf("Custom mcp is deleted successfully!")
 	})
@@ -182,7 +184,7 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		kc.create(oc)
 		e2e.Logf("Kubelet config is created successfully!")
 
-		g.By(fmt.Sprintf("Check max pods in the created kubelet config"))
+		g.By("Check max pods in the created kubelet config")
 		kcOut, err := getKubeletConfigDetails(oc, kc.name)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(kcOut).Should(o.ContainSubstring("maxPods: 500"))
