@@ -70,12 +70,12 @@ class BugzillaClient:
                 raise Exception("get bug error in removeNotifyWhiteBoard: {0}".format(r.text))
             cf_qa_whiteboard = r.json()["bugs"][0]["cf_qa_whiteboard"]
 
-            if not self.isAlreadyNotify(cf_qa_whiteboard):
+            if not self.isAlreadyNotify(cf_qa_whiteboard, str(bid)):
                 return r.status_code
 
             newContent = ""
             for line in cf_qa_whiteboard.split("\r\n"):
-                notifyTime = re.findall(r'Already notify QA to pre-verify it at UTC', line)
+                notifyTime = re.findall(r'Already notify QA to pre-verify it {0} at UTC'.format(str(bid)), line)
                 if len(notifyTime) == 0:
                     newContent = newContent + "\r\n" + line
 
@@ -183,13 +183,13 @@ class BugzillaClient:
             return True
         return False
 
-    def isAlreadyNotify(self, cf_qa_whiteboard):
-        if "Already notify QA to pre-verify" in cf_qa_whiteboard:
+    def isAlreadyNotify(self, cf_qa_whiteboard, id):
+        if "Already notify QA to pre-verify it {0}".format(id) in cf_qa_whiteboard:
             return True
         return False
 
-    def isAlreadyQueryDev(self, cf_qa_whiteboard):
-        if "Already notify QA to contact with Dev for PR" in cf_qa_whiteboard:
+    def isAlreadyQueryDev(self, cf_qa_whiteboard, id):
+        if "Already notify QA to contact with Dev for PR of bug {0}".format(id) in cf_qa_whiteboard:
             return True
         return False
 
@@ -238,18 +238,18 @@ class BugzillaClient:
         timedelta1 = currentTime + timedelta(minutes=10) - notifyTime
         return divmod(timedelta1.days * 24 * 60 * 60 + timedelta1.seconds, 1800)[0]
 
-    def getNotifyTime(self, cf_qa_whiteboard):
+    def getNotifyTime(self, cf_qa_whiteboard, id):
         notifyTimeList = []
         for line in cf_qa_whiteboard.split("\r\n"):
-            notifyTime = re.findall(r'Already notify QA to pre-verify it at UTC (.*)', line)
+            notifyTime = re.findall(r'Already notify QA to pre-verify it {0} at UTC (.*)'.format(id), line)
             if len(notifyTime) != 0:
                 notifyTimeList.append(notifyTime[0])
         if len(notifyTimeList) == 0:
             return None
         return notifyTimeList[0]
 
-    def isSendTrackEmail(self, cf_qa_whiteboard, interval, offset):
-        notifyTime = self.getNotifyTime(cf_qa_whiteboard)
+    def isSendTrackEmail(self, id, cf_qa_whiteboard, interval, offset):
+        notifyTime = self.getNotifyTime(cf_qa_whiteboard, id)
         if notifyTime == None:
             return False
 
@@ -269,7 +269,7 @@ class BugzillaClient:
         if len(comments_info) == 0:
             return False
 
-        notifyTime = self.getNotifyTime(cf_qa_whiteboard)
+        notifyTime = self.getNotifyTime(cf_qa_whiteboard, str(id))
         if notifyTime == None:
             return True
 
@@ -290,11 +290,11 @@ class BugzillaClient:
                 print("bug {0} has no PR yet, so we do not verify it currently".format(str(id)))
                 return None
 
-            if self.isAlreadyQueryDev(bug_info[str(id)]["cf_qa_whiteboard"]):
+            if self.isAlreadyQueryDev(bug_info[str(id)]["cf_qa_whiteboard"], str(id)):
                 print("bug {0} has no PR yet, but it is in POST or later status. already notify QA to contact Dev for PR.".format(str(id)))
                 return None
 
-            if self.updateQaWhiteBoard(id, "Already notify QA to contact with Dev for PR at UTC {0}".format(self.getUtctimestamp())) is None:
+            if self.updateQaWhiteBoard(id, "Already notify QA to contact with Dev for PR of bug {0} at UTC {1}".format(str(id), self.getUtctimestamp())) is None:
                 print("fail to update bug {0} with notify QA to contact with Dev for PR, and will notify qa next time ".format(str(id)))
                 return None
             print("bug {0} has no PR yet, but it is in POST or later status. Notify QA to contact Dev for PR.".format(str(id)))
@@ -305,20 +305,20 @@ class BugzillaClient:
             print("bug {0} is already pre-verified".format(str(id)))
             return None
 
-        if self.isAlreadyNotify(bug_info[str(id)]["cf_qa_whiteboard"]):
+        if self.isAlreadyNotify(bug_info[str(id)]["cf_qa_whiteboard"], str(id)):
             print("already notify qa to pre-verify bug {0} with slack".format(str(id)))
-            if self.isSendTrackEmail(bug_info[str(id)]["cf_qa_whiteboard"], 96, 48) and not self.isCommented(id, bug_info[str(id)]["qa_contact_detail"]["email"], bug_info[str(id)]["cf_qa_whiteboard"]):
+            if self.isSendTrackEmail(str(id), bug_info[str(id)]["cf_qa_whiteboard"], 96, 48) and not self.isCommented(id, bug_info[str(id)]["qa_contact_detail"]["email"], bug_info[str(id)]["cf_qa_whiteboard"]):
                 print("no comment on bug {0} from qa contactor within 24 hours after notification".format(str(id)))
                 return {"id": str(id), "qa":bug_info[str(id)]["qa_contact_detail"]["email"],
                         "notify":"escalatetrack", "assignee":bug_info[str(id)]["assigned_to_detail"]["email"]}
 
-            if self.isSendTrackEmail(bug_info[str(id)]["cf_qa_whiteboard"], 20, 0):
+            if self.isSendTrackEmail(str(id), bug_info[str(id)]["cf_qa_whiteboard"], 20, 0):
                 print("notify qa to pre-verify bug {0} with email becuse it is not first time notification".format(str(id)))
                 return {"id": str(id), "qa":bug_info[str(id)]["qa_contact_detail"]["email"],
                         "notify":"continoustrack", "assignee":bug_info[str(id)]["assigned_to_detail"]["email"]}
             return None
 
-        if self.updateQaWhiteBoard(id, "Already notify QA to pre-verify it at UTC {0}".format(self.getUtctimestamp())) is None:
+        if self.updateQaWhiteBoard(id, "Already notify QA to pre-verify it {0} at UTC {1}".format(str(id), self.getUtctimestamp())) is None:
             print("fail to update bug {0}, and will notify qa next time ".format(str(id)))
             return None
 
