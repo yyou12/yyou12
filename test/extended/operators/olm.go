@@ -107,7 +107,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	})
 
 	// author: jiazha@redhat.com
-	g.It("Author:jiazha-Medium-43191-Bundle Content Compression", func() {
+	g.It("Author:jiazha-Medium-43191-Medium-43271-Bundle Content Compression", func() {
 		g.By("1) Subscribe to etcdoperator v0.9.4 in a random project")
 		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
 		dr := make(describerResrouce)
