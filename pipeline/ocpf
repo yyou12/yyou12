@@ -6,7 +6,10 @@ WORKBUILDDIR=$1
 WORKSPACE=$2
 VERSION=$(echo $3 | tr -dc '0-9')
 LAUNCHVERSION=${VERSION}
-VERSION=${VERSION: 0:1}"."${VERSION: 1:1}
+if [ "${#VERSION}" -eq "2" ]; then
+  LAUNCHVERSION="0"${VERSION}
+fi
+VERSION=${VERSION: 0:1}"."${VERSION: 1}
 
 cd ${WORKBUILDDIR}
 rm -fr reportportal.py && eval cp -fr ${WORKSPACE}"/private/pipeline/reportportal.py" .
@@ -15,11 +18,11 @@ rm -fr 00000000-00.zip && eval cp -fr ${WORKSPACE}"/private/pipeline/00000000-00
 rpmmtoken=`cat ${WORKSPACE}"/private/secrets/rp/openshift-qe-reportportal.json" | jq  -r ".ginkgo_rp_mmtoken"`
 rppmtoken=`cat ${WORKSPACE}"/private/secrets/rp/openshift-qe-reportportal.json" | jq  -r ".ginkgo_rp_pmtoken"`
 subteam="OLM"
-eval cp -fr 00000000-00.zip "00000000-00${LAUNCHVERSION}.zip"
+eval cp -fr 00000000-00.zip "00000000-0${LAUNCHVERSION}.zip"
 # only handle ci profiles
-python3 reportportal.py -a putprofile -f "00000000-00${LAUNCHVERSION}.zip" -s "${subteam}" -v "${VERSION}"  -pp "../cip/"${VERSION}"/" -t "${rpmmtoken}" -ta "${rppmtoken}" 2>&1
-# ret=`python3 reportportal.py -a putprofile -f "00000000-00${LAUNCHVERSION}.zip" -s "${subteam}" -v "${VERSION}"  -pp "../cip/" -t "${rpmmtoken}" -ta "${rppmtoken}" 2>&1 || true`
+python3 reportportal.py -a putprofile -f "00000000-0${LAUNCHVERSION}.zip" -s "${subteam}" -v "${VERSION}"  -pp "../cip/"${VERSION}"/" -t "${rpmmtoken}" -ta "${rppmtoken}" 2>&1
+# ret=`python3 reportportal.py -a putprofile -f "00000000-0${LAUNCHVERSION}.zip" -s "${subteam}" -v "${VERSION}"  -pp "../cip/" -t "${rpmmtoken}" -ta "${rppmtoken}" 2>&1 || true`
 # echo -E ${ret}
-eval rm -fr  "00000000-00${LAUNCHVERSION}.zip"
+eval rm -fr  "00000000-0${LAUNCHVERSION}.zip"
 
 set -x
