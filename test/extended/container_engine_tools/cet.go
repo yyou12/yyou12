@@ -119,4 +119,12 @@ var _ = g.Describe("[sig-node] Container_Engine_Tools crio,scc", func() {
 		err := checkPodmanInfo(oc)
 		o.Expect(err).NotTo(o.HaveOccurred())
 	})
+
+	// author: pmali@redhat.com
+	g.It("Author:pmali-High-43789-Check podman version should be greater than 3.x", func() {
+
+		g.By("Check podman version\n")
+		err := checkPodmanVersion(oc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+	})
 })

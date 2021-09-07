@@ -336,3 +336,34 @@ func machineconfigStatus(oc *exutil.CLI) error {
 		return true, nil
 	})
 }
+
+func checkPodmanVersion(oc *exutil.CLI) error {
+	return wait.Poll(1*time.Second, 1*time.Minute, func() (bool, error) {
+		nodeName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("nodes", "-o=jsonpath={.items[*].metadata.name}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf("\nNode Names are %v", nodeName)
+		node := strings.Fields(nodeName)
+
+		for _, v := range node {
+			nodeStatus, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("nodes", fmt.Sprintf("%s", v), "-o=jsonpath={.status.conditions[3].type}").Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			e2e.Logf("\nNode %s Status is %s\n", v, nodeStatus)
+
+			if nodeStatus == "Ready" {
+				podmanver, err := oc.AsAdmin().WithoutNamespace().Run("debug").Args(`node/`+fmt.Sprintf("%s", v), "--", "chroot", "/host", "podman", "--version").Output()
+				o.Expect(err).NotTo(o.HaveOccurred())
+				e2e.Logf(`NODE NAME IS :` + fmt.Sprintf("%s", v))
+
+				if strings.Contains(string(podmanver), "podman version 3.") {
+					e2e.Logf("\nPodman version is greater than 3.x")
+					} else {
+						e2e.Logf("\nPodman version is NOT greater than 3.x")
+						return false, nil
+					}
+				} else {
+				e2e.Logf("\n NODES ARE NOT READY\n ")
+			}
+		}
+		return true, nil
+	})
+}
