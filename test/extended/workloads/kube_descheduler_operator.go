@@ -511,7 +511,7 @@ var _ = g.Describe("[sig-scheduling] Workloads The Descheduler Operator automate
                         imageInfo:         "registry.redhat.io/openshift4/ose-descheduler:v4.9.0",
                         logLevel:          "Normal",
                         operatorLogLevel:  "Normal",
-                        profile1:          "DoNotEvictPodsWithPVC",
+                        profile1:          "EvictPodsWithPVC",
                         profile2:          "SoftTopologyAndDuplicates",
                         profile3:          "LifecycleAndUtilization",
                         template:          deschedulerT,
