@@ -1423,48 +1423,6 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 
 	})
 
-	// author: jiazha@redhat.com
-	g.It("ConnectedOnly-Author:jiazha-Medium-32560-Unpacking bundle in InstallPlan fails", func() {
-		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
-		csImageTemplate := filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
-		subTemplate := filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
-		g.By("Start to create the CatalogSource CR")
-		cs := catalogSourceDescription{
-			name:        "bug-1798645-cs",
-			namespace:   "openshift-marketplace",
-			displayName: "OLM QE",
-			publisher:   "OLM QE",
-			sourceType:  "grpc",
-			address:     "quay.io/olmtest/single-bundle-index:1.0.0",
-			template:    csImageTemplate,
-		}
-		dr := make(describerResrouce)
-		itName := g.CurrentGinkgoTestDescription().TestText
-		dr.addIr(itName)
-		cs.create(oc, itName, dr)
-		newCheck("expect", asAdmin, withoutNamespace, compare, "READY", ok, []string{"catsrc", cs.name, "-n", cs.namespace, "-o=jsonpath={.status..lastObservedState}"}).check(oc)
-
-		g.By("Start to subscribe the Kiali operator")
-		sub := subscriptionDescription{
-			subName:                "bug-1798645-sub",
-			namespace:              "openshift-operators",
-			catalogSourceName:      "bug-1798645-cs",
-			catalogSourceNamespace: "openshift-marketplace",
-			channel:                "stable",
-			ipApproval:             "Automatic",
-			operatorPackage:        "kiali",
-			singleNamespace:        false,
-			template:               subTemplate,
-		}
-		sub.create(oc, itName, dr)
-		newCheck("expect", asAdmin, withNamespace, compare, "Succeeded", ok, []string{"csv", sub.installedCSV, "-o=jsonpath={.status.phase}"}).check(oc)
-
-		g.By("Remove catalog and sub")
-		sub.delete(itName, dr)
-		sub.deleteCSV(itName, dr)
-		cs.delete(itName, dr)
-	})
-
 	// author: bandrade@redhat.com
 	g.It("Author:bandrade-Medium-24771-OLM should support for user defined ServiceAccount for OperatorGroup", func() {
 		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
