@@ -837,7 +837,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 			publisher:   "Jian",
 			sourceType:  "grpc",
 			// use the digest in case wrong updates. quay.io/openshifttest/etcd-index:0.9.4-sa
-			address:  "quay.io/openshifttest/etcd-index@sha256:f804adfbae165834acdfc83aaf94e1b7ff53246dca607459cdadd4653228cac6",
+			address:  "quay.io/openshifttest/etcd-index@sha256:ba18c1d454c45ae470ed1e21b92b979ce85af845e95a0bf4390ee03017fb5768",
 			template: csImageTemplate,
 		}
 		dr := make(describerResrouce)
