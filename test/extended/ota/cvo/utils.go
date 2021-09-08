@@ -65,10 +65,7 @@ func waitForAlert(oc *exutil.CLI, alertString string, interval time.Duration, ti
 
 	alertCMD := fmt.Sprintf("curl -s -k -H \"Authorization: Bearer %s\" https://%s/api/v1/alerts | jq -r '.data.alerts[] | select (.labels.alertname == \"%s\")'", token, url, alertString)
 	alertAnnoCMD := fmt.Sprintf("curl -s -k -H \"Authorization: Bearer %s\" https://%s/api/v1/alerts | jq -r '.data.alerts[] | select (.labels.alertname == \"%s\").annotations'", token, url, alertString)
-	if len(state) > 0 {
-		alertCMD = fmt.Sprintf("curl -s -k -H \"Authorization: Bearer %s\" https://%s/api/v1/alerts | jq -r '.data.alerts[] | select (.labels.alertname == \"%s\" and .state == \"%s\")'", token, url, alertString, state)
-		alertAnnoCMD = fmt.Sprintf("curl -s -k -H \"Authorization: Bearer %s\" https://%s/api/v1/alerts | jq -r '.data.alerts[] | select (.labels.alertname == \"%s\" and .state == \"%s\").annotations'", token, url, alertString, state)
-	}
+	alertStateCMD := fmt.Sprintf("curl -s -k -H \"Authorization: Bearer %s\" https://%s/api/v1/alerts | jq -r '.data.alerts[] | select (.labels.alertname == \"%s\").state'", token, url, alertString)
 
 	// Poll returns timed out waiting for the condition when timeout is reached
 	count := 0
@@ -83,8 +80,30 @@ func waitForAlert(oc *exutil.CLI, alertString string, interval time.Duration, ti
 			e2e.Logf("Prometheus alert metrics nil, retry %d...", count)
 			return false, nil
 		}
-		if state == "firing" && int(interval)*count < int(timeout) {
-			return true, fmt.Errorf("error alert firing but timeout is not reached")
+
+		if len(state) > 0 {
+			alertState, err := exec.Command("bash", "-c", alertStateCMD).Output()
+			if err != nil {
+				return false, fmt.Errorf("error getting alert state")
+			}
+			if state == "pending" && string(alertState) != "pending" {
+				return false, fmt.Errorf("alert state is not expected, expected pending but actual is %s", string(alertState))
+			}
+			if state == "firing" {
+				if int(interval)*count < int(timeout) {
+					if string(alertState) == "pending" {
+						e2e.Logf("Prometheus alert state is pending, waiting for firing, retry %d...", count)
+						return false, nil
+					} else {
+						return false, fmt.Errorf("alert state is not expected, expected pending in the waiting time window but actual is %s", string(alertState))
+					}
+				} else if string(alertState) == "firing" {
+					return true, nil
+				} else {
+					return false, fmt.Errorf("alert state is not expected, expected firing when the waiting time is reached but actual is %s", string(alertState))
+				}
+			}
+			return true, nil
 		}
 		return true, nil
 	}); pollErr != nil {
