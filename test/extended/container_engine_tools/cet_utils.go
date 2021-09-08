@@ -200,7 +200,7 @@ func (ctrcfg *ctrcfgDescription) checkCtrcfgParameters(oc *exutil.CLI) error {
 			e2e.Logf("\nNode %s Status is %s\n", v, nodeStatus)
 
 			if nodeStatus == "Ready" {
-				criostatus, err := oc.AsAdmin().WithoutNamespace().Run("debug").Args(`node/`+fmt.Sprintf("%s", v), "--", "chroot", "/host", "crio", "config").OutputToFile("crio.conf")
+				criostatus, err := oc.AsAdmin().Run("debug").Args(`node/`+fmt.Sprintf("%s", v), "--", "chroot", "/host", "crio", "config").OutputToFile("crio.conf")
 				o.Expect(err).NotTo(o.HaveOccurred())
 				e2e.Logf(`\nCRI-O PARAMETER ON THE WORKER NODE :` + fmt.Sprintf("%s", v))
 				e2e.Logf("\ncrio config file path is  %v", criostatus)
@@ -255,7 +255,7 @@ func checkPodmanInfo(oc *exutil.CLI) error {
 			e2e.Logf("\nNode %s Status is %s\n", v, nodeStatus)
 
 			if nodeStatus == "Ready" {
-				podmaninfo, err := oc.AsAdmin().WithoutNamespace().Run("debug").Args(`node/`+fmt.Sprintf("%s", v), "--", "chroot", "/host", "podman", "info").OutputToFile("crio.conf")
+				podmaninfo, err := oc.AsAdmin().Run("debug").Args(`node/`+fmt.Sprintf("%s", v), "--", "chroot", "/host", "podman", "info").OutputToFile("crio.conf")
 				o.Expect(err).NotTo(o.HaveOccurred())
 				e2e.Logf(`\nNODE NAME IS :` + fmt.Sprintf("%s", v))
 				e2e.Logf("\npodman info is  %v", podmaninfo)
@@ -350,7 +350,7 @@ func checkPodmanVersion(oc *exutil.CLI) error {
 			e2e.Logf("\nNode %s Status is %s\n", v, nodeStatus)
 
 			if nodeStatus == "Ready" {
-				podmanver, err := oc.AsAdmin().WithoutNamespace().Run("debug").Args(`node/`+fmt.Sprintf("%s", v), "--", "chroot", "/host", "podman", "--version").Output()
+				podmanver, err := oc.AsAdmin().Run("debug").Args(`node/`+fmt.Sprintf("%s", v), "--", "chroot", "/host", "podman", "--version").Output()
 				o.Expect(err).NotTo(o.HaveOccurred())
 				e2e.Logf(`NODE NAME IS :` + fmt.Sprintf("%s", v))
 

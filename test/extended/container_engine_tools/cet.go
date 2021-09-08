@@ -47,7 +47,7 @@ var _ = g.Describe("[sig-node] Container_Engine_Tools crio,scc", func() {
 
 	// author: pmali@redhat.com
 	g.It("Author:pmali-Medium-13117-SeLinuxOptions in pod should apply to container correctly", func() {
-
+		
 		oc.SetupProject()
 		podModify.name = "hello-pod"
 		podModify.namespace = oc.Namespace()
@@ -73,7 +73,7 @@ var _ = g.Describe("[sig-node] Container_Engine_Tools crio,scc", func() {
 
 	// author: pmali@redhat.com
 	g.It("Longduration-Author:pmali-Medium-22093-Medium-22094-CRIO configuration can be modified via containerruntimeconfig CRD[Disruptive][Slow]", func() {
-
+		
 		oc.SetupProject()
 		ctrcfg.loglevel = "debug"
 		ctrcfg.overlay = "2G"
@@ -97,10 +97,9 @@ var _ = g.Describe("[sig-node] Container_Engine_Tools crio,scc", func() {
 
 	// author: pmali@redhat.com
 	g.It("Author:pmali-High-43086-nodejs s2i build failure: 'error reading blob from source image' should not occur.", func() {
-
+		
 		oc.SetupProject()
 		newapp.appname = "https://github.com/sclorg/nodejs-ex"
-
 		g.By("Create New Node-js Application \n")
 		newapp.createNewApp(oc)
 		g.By("Check pod status\n")
