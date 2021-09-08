@@ -50,6 +50,9 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		fluentdDmYAML                    string
 		clusterLogForYAML                string
 		clusterLoggingYAML               string
+		ldapConfigMapYAML                string
+		motdConfigMapYAML                string
+		consoleNotificationYAML          string
 		catSrc                           catalogSourceDescription
 		ogD                              operatorGroupDescription
 		subD                             subscriptionDescription
@@ -89,6 +92,9 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		fluentdDmYAML = filepath.Join(buildPruningBaseDir, "fluentdDeployment.yaml")
 		clusterLogForYAML = filepath.Join(buildPruningBaseDir, "ClusterLogForwarder.yaml")
 		clusterLoggingYAML = filepath.Join(buildPruningBaseDir, "ClusterLogging.yaml")
+		ldapConfigMapYAML = filepath.Join(buildPruningBaseDir, "ldap_configmap.yaml")
+		motdConfigMapYAML = filepath.Join(buildPruningBaseDir, "motd_configmap.yaml")
+		consoleNotificationYAML = filepath.Join(buildPruningBaseDir, "consolenotification.yaml")
 
 		catSrc = catalogSourceDescription{
 			name:        "compliance-operator",
@@ -2625,7 +2631,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		})
 
 		// author: pdhamdhe@redhat.com
-		g.It("Author:pdhamdhe-Low-42719-Low-42810-Check that TokenMaxAge and TokenInactivityTimeout are configurable for oauth cluster object [Disruptive][Slow]", func() {
+		g.It("Author:pdhamdhe-Longduration-CPaasrunOnly-Low-42719-Low-42810-Low-42834-Check manual remediation works for TokenMaxAge TokenInactivityTimeout and no-ldap-insecure rules for oauth cluster object [Disruptive][Slow]", func() {
 
 			var (
 				ssb = scanSettingBindingDescription{
@@ -2640,16 +2646,18 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			)
 
 			defer func() {
-				g.By("Remove TokenMaxAge and TokenInactivityTimeout parameters by patching.. !!!\n")
+				g.By("Remove TokenMaxAge, TokenInactivityTimeout parameters and ldap configuration by patching.. !!!\n")
 				patch1 := fmt.Sprintf("[{\"op\": \"remove\", \"path\": \"/spec/tokenConfig/accessTokenMaxAgeSeconds\"}]")
 				patch2 := fmt.Sprintf("[{\"op\": \"remove\", \"path\": \"/spec/tokenConfig/accessTokenInactivityTimeout\"}]")
+				patch3 := fmt.Sprintf("[{\"op\":\"remove\",\"path\":\"/spec/identityProviders/1\",\"value\":{\"ldap\":{\"attributes\":{\"id\":[\"dn\"],\"name\":[\"cn\"],\"preferredUsername\":[\"uid\"]},\"bindDN\":\"\",\"bindPassword\":{\"name\":\"\"},\"ca\":{\"name\":\"ad-ldap\"},\"insecure\":false,\"url\":\"ldaps://10.66.147.179/cn=users,dc=ad-example,dc=com?uid\"},\"mappingMethod\":\"claim\",\"name\":\"AD_ldaps_provider\",\"type\":\"LDAP\"}}]")
 				patchResource(oc, asAdmin, withoutNamespace, "oauth", "cluster", "--type", "json", "-p", patch1)
 				patchResource(oc, asAdmin, withoutNamespace, "oauth", "cluster", "--type", "json", "-p", patch2)
-				newCheck("present", asAdmin, withoutNamespace, notPresent, "", ok, []string{"oauth", "cluster",
-					"-o=jsonpath={.spec.tokenConfig.accessTokenMaxAgeSeconds}"}).check(oc)
-				newCheck("present", asAdmin, withoutNamespace, notPresent, "", ok, []string{"oauth", "cluster",
-					"-o=jsonpath={.spec.tokenConfig.accessTokenInactivityTimeout}"}).check(oc)
+				patchResource(oc, asAdmin, withoutNamespace, "oauth", "cluster", "--type=json", "-p", patch3)
+				newCheck("present", asAdmin, withoutNamespace, notPresent, "", ok, []string{"oauth", "cluster", "-o=jsonpath={.spec.tokenConfig.accessTokenMaxAgeSeconds}"}).check(oc)
+				newCheck("present", asAdmin, withoutNamespace, notPresent, "", ok, []string{"oauth", "cluster", "-o=jsonpath={.spec.tokenConfig.accessTokenInactivityTimeout}"}).check(oc)
+				newCheck("expect", asAdmin, withoutNamespace, contain, "ldap", nok, []string{"oauth", "cluster", "-o=jsonpath={.spec.identityProviders}"}).check(oc)
 				checkOauthPodsStatus(oc)
+				cleanupObjects(oc, objectTableRef{"configmap", "openshift-config", "ca.crt"})
 				cleanupObjects(oc, objectTableRef{"scansettingbinding", subD.namespace, ssb.name})
 			}()
 
@@ -2667,13 +2675,17 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 				"-o=jsonpath={.status.phase}"}).check(oc)
 			subD.complianceSuiteResult(oc, ssb.name, "NON-COMPLIANT")
 
-			g.By("Verify TokenMaxAge and TokenInactivityTimeout rules status through compliancecheck result.. !!!\n")
+			g.By("Verify TokenMaxAge, TokenInactivityTimeout and no-ldap-insecure rules status through compliancecheck result.. !!!\n")
 			newCheck("expect", asAdmin, withoutNamespace, contain, "FAIL", ok, []string{"compliancecheckresult",
 				"ocp4-moderate-oauth-or-oauthclient-token-maxage", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
 			newCheck("expect", asAdmin, withoutNamespace, contain, "FAIL", ok, []string{"compliancecheckresult",
 				"ocp4-moderate-oauth-or-oauthclient-inactivity-timeout", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "PASS", ok, []string{"compliancecheckresult",
+				"ocp4-moderate-ocp-no-ldap-insecure", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
 
-			g.By("Set TokenMaxAge and TokenInactivityTimeout parameter by patching.. !!!\n")
+			g.By("Set TokenMaxAge, TokenInactivityTimeout parameters and ldap configuration by patching.. !!!\n")
+			patch1 := fmt.Sprintf("[{\"op\":\"add\",\"path\":\"/spec/identityProviders/-\",\"value\":{\"ldap\":{\"attributes\":{\"email\":[\"mail\"],\"id\":[\"dn\"],\"name\":[\"uid\"],\"preferredUsername\":[\"uid\"]},\"insecure\":true,\"url\":\"ldap://10.66.147.104:389/ou=People,dc=my-domain,dc=com?uid\"},\"mappingMethod\":\"add\",\"name\":\"openldapidp\",\"type\":\"LDAP\"}}]")
+			patch2 := fmt.Sprintf("[{\"op\":\"remove\",\"path\":\"/spec/identityProviders/1\",\"value\":{\"ldap\":{\"attributes\":{\"email\":[\"mail\"],\"id\":[\"dn\"],\"name\":[\"uid\"],\"preferredUsername\":[\"uid\"]},\"insecure\":true,\"url\":\"ldap://10.66.147.104:389/ou=People,dc=my-domain,dc=com?uid\"},\"mappingMethod\":\"add\",\"name\":\"openldapidp\",\"type\":\"LDAP\"}}]")
 			patchResource(oc, asAdmin, withoutNamespace, "oauth", "cluster", "--type", "merge", "-p",
 				"{\"spec\":{\"tokenConfig\":{\"accessTokenMaxAgeSeconds\":28800}}}")
 			newCheck("expect", asAdmin, withoutNamespace, contain, "28800", ok, []string{"oauth", "cluster",
@@ -2682,6 +2694,8 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 				"{\"spec\":{\"tokenConfig\":{\"accessTokenInactivityTimeout\":\"10m0s\"}}}")
 			newCheck("expect", asAdmin, withoutNamespace, contain, "10m0s", ok, []string{"oauth", "cluster",
 				"-o=jsonpath={.spec.tokenConfig.accessTokenInactivityTimeout}"}).check(oc)
+			patchResource(oc, asAdmin, withoutNamespace, "oauth", "cluster", "--type=json", "-p", patch1)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "ldap", ok, []string{"oauth", "cluster", "-o=jsonpath={.spec.identityProviders}"}).check(oc)
 
 			g.By("Check pod status from 'openshift-authentication' namespace during pod reboot.. !!!\n")
 			checkOauthPodsStatus(oc)
@@ -2689,14 +2703,38 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			g.By("Rerun scan using oc-compliance plugin.. !!")
 			_, err := OcComplianceCLI().Run("rerun-now").Args("scansettingbinding", ssb.name, "-n", subD.namespace).Output()
 			o.Expect(err).NotTo(o.HaveOccurred())
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", ssb.name, "-n", subD.namespace,
+				"-o=jsonpath={.status.phase}"}).check(oc)
 
-			g.By("Verify TokenMaxAge and TokenInactivityTimeout rules status through compliancecheck result after rescan.. !!!\n")
+			g.By("Verify TokenMaxAge, TokenInactivityTimeout and no-ldap-insecure rules status through compliancecheck result after rescan.. !!!\n")
 			newCheck("expect", asAdmin, withoutNamespace, contain, "PASS", ok, []string{"compliancecheckresult",
 				"ocp4-moderate-oauth-or-oauthclient-token-maxage", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
 			newCheck("expect", asAdmin, withoutNamespace, contain, "PASS", ok, []string{"compliancecheckresult",
 				"ocp4-moderate-oauth-or-oauthclient-inactivity-timeout", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "FAIL", ok, []string{"compliancecheckresult",
+				"ocp4-moderate-ocp-no-ldap-insecure", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
+			patchResource(oc, asAdmin, withoutNamespace, "oauth", "cluster", "--type=json", "-p", patch2)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "ldap", nok, []string{"oauth", "cluster", "-o=jsonpath={.spec.identityProviders}"}).check(oc)
 
-			g.By("ocp-42719-42810-The TokenMaxAge and TokenInactivityTimeout parameters are configured for oauth cluster object successfully... !!!!\n ")
+			g.By("Apply secure ldap to oauth cluster object by patching.. !!!\n")
+			patch3 := fmt.Sprintf("[{\"op\":\"add\",\"path\":\"/spec/identityProviders/-\",\"value\":{\"ldap\":{\"attributes\":{\"id\":[\"dn\"],\"name\":[\"cn\"],\"preferredUsername\":[\"uid\"]},\"bindDN\":\"\",\"bindPassword\":{\"name\":\"\"},\"ca\":{\"name\":\"ad-ldap\"},\"insecure\":false,\"url\":\"ldaps://10.66.147.179/cn=users,dc=ad-example,dc=com?uid\"},\"mappingMethod\":\"claim\",\"name\":\"AD_ldaps_provider\",\"type\":\"LDAP\"}}]")
+			patchResource(oc, asAdmin, withoutNamespace, "oauth", "cluster", "--type=json", "-p", patch3)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "ldap", ok, []string{"oauth", "cluster", "-o=jsonpath={.spec.identityProviders}"}).check(oc)
+			g.By("Configured ldap to oauth cluster object by patching.. !!!\n")
+			_, err2 := oc.AsAdmin().WithoutNamespace().Run("create").Args("-n", "openshift-config", "-f", ldapConfigMapYAML).Output()
+			o.Expect(err2).NotTo(o.HaveOccurred())
+			newCheck("expect", asAdmin, withoutNamespace, contain, "ca.crt", ok, []string{"configmap", "-n", "openshift-config", "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
+
+			g.By("Rerun scan using oc-compliance plugin.. !!")
+			_, err3 := OcComplianceCLI().Run("rerun-now").Args("scansettingbinding", ssb.name, "-n", subD.namespace).Output()
+			o.Expect(err3).NotTo(o.HaveOccurred())
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", ssb.name, "-n", subD.namespace,
+				"-o=jsonpath={.status.phase}"}).check(oc)
+			g.By("Verify 'ocp4-moderate-ocp-no-ldap-insecure' rule status again through compliancecheck result.. !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "PASS", ok, []string{"compliancecheckresult",
+				"ocp4-moderate-ocp-no-ldap-insecure", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
+
+			g.By("ocp-42719-42810-42834 The manual remediation successfully applied for TokenMaxAge, TokenInactivityTimeout and no-ldap-insecure rules... !!!!\n ")
 		})
 
 		// author: pdhamdhe@redhat.com
@@ -3052,6 +3090,91 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			assertCheckAuditLogsForword(oc, subL.namespace, csvname)
 
 			g.By("ocp-40660 and ocp-42874 the audit logs are getting forwarded using TLS protocol successfully... !!!!\n ")
+		})
+
+		// author: pdhamdhe@redhat.com
+		g.It("Author:pdhamdhe-CPaasrunOnly-Low-42700-Check that a login banner is configured and login screen customised [Disruptive][Slow]", func() {
+
+			var (
+				ssb = scanSettingBindingDescription{
+					name:            "moderate-test",
+					namespace:       "",
+					profilekind1:    "Profile",
+					profilename1:    "ocp4-moderate",
+					scansettingname: "default",
+					template:        scansettingbindingSingleTemplate,
+				}
+				itName = g.CurrentGinkgoTestDescription().TestText
+			)
+
+			defer func() {
+				g.By("Remove motd, ConsoleNotification and scansettingbinding objects.. !!!\n")
+				patch := fmt.Sprintf("[{\"op\": \"remove\", \"path\": \"/spec/templates/login\"}]")
+				patchResource(oc, asAdmin, withoutNamespace, "oauth", "cluster", "--type", "json", "-p", patch)
+				newCheck("expect", asAdmin, withoutNamespace, contain, "login-secret", nok, []string{"oauth", "cluster", "-o=jsonpath={.spec.templates.login}"}).check(oc)
+				cleanupObjects(oc, objectTableRef{"secret", "openshift-config", "login-secret"})
+				cleanupObjects(oc, objectTableRef{"configmap", "openshift", "motd"})
+				cleanupObjects(oc, objectTableRef{"scansettingbinding", subD.namespace, ssb.name})
+			}()
+
+			g.By("Check default profiles name ocp4-moderate .. !!!\n")
+			subD.getProfileName(oc, "ocp4-moderate")
+
+			g.By("Create scansettingbinding !!!\n")
+			ssb.namespace = subD.namespace
+			ssb.create(oc, itName, dr)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "moderate-test", ok, []string{"scansettingbinding", "-n", subD.namespace,
+				"-o=jsonpath={.items[0].metadata.name}"}).check(oc)
+			g.By("Check ComplianceSuite status and result.. !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", ssb.name, "-n", subD.namespace,
+				"-o=jsonpath={.status.phase}"}).check(oc)
+			subD.complianceSuiteResult(oc, ssb.name, "NON-COMPLIANT")
+
+			g.By("Verify motd and banner or login rules status through compliancecheck result.. !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "FAIL", ok, []string{"compliancecheckresult",
+				"ocp4-moderate-openshift-motd-exists", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "FAIL", ok, []string{"compliancecheckresult",
+				"ocp4-moderate-banner-or-login-template-set", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
+
+			g.By("Create motd configMap and consoleNotification objects.. !!!\n")
+			_, err := oc.AsAdmin().WithoutNamespace().Run("create").Args("-n", "openshift", "-f", motdConfigMapYAML).Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			newCheck("expect", asAdmin, withoutNamespace, contain, "motd", ok, []string{"configmap", "-n", "openshift", "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
+			_, err1 := oc.AsAdmin().WithoutNamespace().Run("create").Args("-n", subD.namespace, "-f", consoleNotificationYAML).Output()
+			o.Expect(err1).NotTo(o.HaveOccurred())
+			newCheck("expect", asAdmin, withoutNamespace, contain, "classification-banner", ok, []string{"ConsoleNotification", "-n", subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
+
+			g.By("Rerun scan using oc-compliance plugin.. !!")
+			_, err2 := OcComplianceCLI().Run("rerun-now").Args("scansettingbinding", ssb.name, "-n", subD.namespace).Output()
+			o.Expect(err2).NotTo(o.HaveOccurred())
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", ssb.name, "-n", subD.namespace,
+				"-o=jsonpath={.status.phase}"}).check(oc)
+
+			g.By("Verify motd and banner or login rules status again through compliancecheck result.. !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "PASS", ok, []string{"compliancecheckresult",
+				"ocp4-moderate-openshift-motd-exists", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "PASS", ok, []string{"compliancecheckresult",
+				"ocp4-moderate-banner-or-login-template-set", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
+
+			cleanupObjects(oc, objectTableRef{"ConsoleNotification", subD.namespace, "classification-banner"})
+			createLoginTemp(oc, "openshift-config")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "login-secret", ok, []string{"secret", "-n", "openshift-config", "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
+
+			g.By("Set login-secret template to oauth cluster object by patching.. !!!\n")
+			patchResource(oc, asAdmin, withoutNamespace, "oauth", "cluster", "--type", "merge", "-p", "{\"spec\":{\"templates\":{\"login\":{\"name\":\"login-secret\"}}}}")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "login-secret", ok, []string{"oauth", "cluster", "-o=jsonpath={.spec.templates.login}"}).check(oc)
+
+			g.By("Rerun scan using oc-compliance plugin.. !!")
+			_, err3 := OcComplianceCLI().Run("rerun-now").Args("scansettingbinding", ssb.name, "-n", subD.namespace).Output()
+			o.Expect(err3).NotTo(o.HaveOccurred())
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", ssb.name, "-n", subD.namespace,
+				"-o=jsonpath={.status.phase}"}).check(oc)
+
+			g.By("Verify ocp4-moderate-banner-or-login-template-set rule status through compliancecheck result.. !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "PASS", ok, []string{"compliancecheckresult",
+				"ocp4-moderate-banner-or-login-template-set", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
+
+			g.By("ocp-42700 The login banner is configured and login screen customised successfully... !!!!\n ")
 		})
 	})
 })

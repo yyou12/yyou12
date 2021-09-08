@@ -697,3 +697,12 @@ func assertCheckAuditLogsForword(oc *exutil.CLI, namespace string, csvname strin
 		e2e.Failf("The keyword does not match with auditlogs: %v", csvname)
 	}
 }
+
+func createLoginTemp(oc *exutil.CLI, namespace string) {
+	e2e.Logf("Create a login.html template.. !!")
+	_, err := oc.AsAdmin().WithoutNamespace().Run("adm").Args("create-login-template", "-n", namespace).OutputToFile(getRandomString() + "login.html")
+	o.Expect(err).NotTo(o.HaveOccurred())
+	e2e.Logf("Create a login-secret.. !!")
+	_, err1 := oc.AsAdmin().WithoutNamespace().Run("create").Args("secret", "generic", "login-secret", "--from-file=login.html=./login.html", "-n", namespace).Output()
+	o.Expect(err1).NotTo(o.HaveOccurred())
+}
