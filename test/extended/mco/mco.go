@@ -59,10 +59,10 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		mc.create(oc)
 
 		g.By("get one worker node to verify the config changes")
-		nodeName, err := getFirstWorkerNode(oc)
+		nodeName, err := exutil.GetFirstWorkerNode(oc)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		stdout, err := debugNodeWithChroot(oc, nodeName, "cat", "/etc/chrony.conf")
+		stdout, err := exutil.DebugNodeWithChroot(oc, nodeName, "cat", "/etc/chrony.conf")
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		e2e.Logf(stdout)
@@ -84,10 +84,10 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		mc.create(oc)
 
 		g.By("get one master node to do mc query")
-		masterNode, err := getFirstMasterNode(oc)
+		masterNode, err := exutil.GetFirstMasterNode(oc)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		stdout, err := debugNode(oc, masterNode, false, "curl", "-w", "'Total: %{time_total}'", "-k", "-s", "-o", "/dev/null", "https://localhost:22623/config/worker")
+		stdout, err := exutil.DebugNode(oc, masterNode, "curl", "-w", "'Total: %{time_total}'", "-k", "-s", "-o", "/dev/null", "https://localhost:22623/config/worker")
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		var timecost float64
@@ -106,12 +106,12 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 
 	g.It("Author:mhanss-CPaasrunOnly-Critical-43043-Critical-43064-create/delete custom machine config pool [Disruptive]", func() {
 		g.By("get worker node to change the label")
-		workerNode, err := getFirstWorkerNode(oc)
+		workerNode, err := exutil.GetFirstWorkerNode(oc)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		g.By("Add label as infra to the existing node")
-		labelOutput, err := addCustomLabelToNode(oc, workerNode, "infra=")
-		defer deleteCustomLabelFromNode(oc, workerNode, "infra")
+		labelOutput, err := exutil.AddCustomLabelToNode(oc, workerNode, "infra")
+		defer exutil.DeleteCustomLabelFromNode(oc, workerNode, "infra")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(labelOutput).Should(o.ContainSubstring(workerNode))
 		nodeLabel, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("nodes/" + workerNode).Output()
@@ -124,12 +124,12 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		mcp := MachineConfigPool{name: mcpName, template: mcpTemplate}
 		defer mcp.delete(oc)
 		defer waitForNodeDoesNotContain(oc, workerNode, mcpName)
-		defer deleteCustomLabelFromNode(oc, workerNode, mcpName)
+		defer exutil.DeleteCustomLabelFromNode(oc, workerNode, mcpName)
 		mcp.create(oc)
 		e2e.Logf("Custom mcp is created successfully!")
 
 		g.By("Remove custom label from the node")
-		unlabeledOutput, err := deleteCustomLabelFromNode(oc, workerNode, mcpName)
+		unlabeledOutput, err := exutil.DeleteCustomLabelFromNode(oc, workerNode, mcpName)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(unlabeledOutput).Should(o.ContainSubstring(workerNode))
 		waitForNodeDoesNotContain(oc, workerNode, mcpName)
@@ -191,9 +191,9 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		e2e.Logf("Max pods are verified in the created kubelet config!")
 
 		g.By("Check kubelet config in the worker node")
-		workerNode, err := getFirstWorkerNode(oc)
+		workerNode, err := exutil.GetFirstWorkerNode(oc)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		maxPods, err := debugNodeWithChroot(oc, workerNode, "cat", "/etc/kubernetes/kubelet.conf")
+		maxPods, err := exutil.DebugNodeWithChroot(oc, workerNode, "cat", "/etc/kubernetes/kubelet.conf")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(maxPods).Should(o.ContainSubstring("\"maxPods\": 500"))
 		e2e.Logf("Max pods are verified in the worker node!")
@@ -220,12 +220,12 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		e2e.Logf("Container runtime config values are verified in the created config!")
 
 		g.By("Check container runtime config values in the worker node")
-		workerNode, err := getFirstWorkerNode(oc)
+		workerNode, err := exutil.GetFirstWorkerNode(oc)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		crStorageOut, err := debugNodeWithChroot(oc, workerNode, "head", "-n", "7", "/etc/containers/storage.conf")
+		crStorageOut, err := exutil.DebugNodeWithChroot(oc, workerNode, "head", "-n", "7", "/etc/containers/storage.conf")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(crStorageOut).Should(o.ContainSubstring("size = \"8G\""))
-		crConfigOut, err := debugNodeWithChroot(oc, workerNode, "crio", "config")
+		crConfigOut, err := exutil.DebugNodeWithChroot(oc, workerNode, "crio", "config")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(crConfigOut).Should(
 			o.And(
@@ -252,9 +252,9 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		o.Expect(jcOut).Should(o.ContainSubstring(conf))
 		e2e.Logf("Journald config is verified in the created machine config!")
 		g.By("Check journald config values in the worker node")
-		workerNode, err := getFirstWorkerNode(oc)
+		workerNode, err := exutil.GetFirstWorkerNode(oc)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		journaldConfOut, err := debugNodeWithChroot(oc, workerNode, "cat", "/etc/systemd/journald.conf")
+		journaldConfOut, err := exutil.DebugNodeWithChroot(oc, workerNode, "cat", "/etc/systemd/journald.conf")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(journaldConfOut).Should(
 			o.And(
@@ -282,7 +282,7 @@ func createMcAndVerifyMCValue(oc *exutil.CLI, stepText string, mcName string, te
 	e2e.Logf("%s is verified in the created machine config!", stepText)
 
 	g.By(fmt.Sprintf("Check %s in the machine config daemon", stepText))
-	workerNode, err := getFirstWorkerNode(oc)
+	workerNode, err := exutil.GetFirstWorkerNode(oc)
 	o.Expect(err).NotTo(o.HaveOccurred())
 
 	var podOut string

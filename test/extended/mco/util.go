@@ -146,31 +146,6 @@ func waitForNodeDoesNotContain(oc *exutil.CLI, node string, value string) {
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
-func deleteCustomLabelFromNode(oc *exutil.CLI, node string, label string) (string, error) {
-	return oc.AsAdmin().WithoutNamespace().Run("label").Args("node", node, "node-role.kubernetes.io/"+label+"-").Output()
-}
-
-func addCustomLabelToNode(oc *exutil.CLI, node string, label string) (string, error) {
-	return oc.AsAdmin().WithoutNamespace().Run("label").Args("node", node, "node-role.kubernetes.io/"+label).Output()
-}
-
-func getFirstWorkerNode(oc *exutil.CLI) (string, error) {
-	return getClusterNodeBy(oc, "worker", "0")
-}
-
-func getFirstMasterNode(oc *exutil.CLI) (string, error) {
-	return getClusterNodeBy(oc, "master", "0")
-}
-
-func getClusterNodeBy(oc *exutil.CLI, role string, index string) (string, error) {
-	stdout, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("node", "-l", "node-role.kubernetes.io/"+role, "-o", "jsonpath='{.items["+index+"].metadata.name}'").Output()
-	return strings.Trim(stdout, "'"), err
-}
-
-func debugNodeWithChroot(oc *exutil.CLI, nodeName string, cmd ...string) (string, error) {
-	return debugNode(oc, nodeName, true, cmd...)
-}
-
 func getMachineConfigDetails(oc *exutil.CLI, mcName string) (string, error) {
 	return oc.AsAdmin().WithoutNamespace().Run("get").Args("mc", mcName, "-o", "yaml").Output()
 }
@@ -189,17 +164,6 @@ func getMachineConfigDaemon(oc *exutil.CLI, node string) string {
 
 func getContainerRuntimeConfigDetails(oc *exutil.CLI, crName string) (string, error) {
 	return oc.AsAdmin().WithoutNamespace().Run("get").Args("ctrcfg", crName, "-o", "yaml").Output()
-}
-
-func debugNode(oc *exutil.CLI, nodeName string, needChroot bool, cmd ...string) (string, error) {
-	var cargs []string
-	if needChroot {
-		cargs = []string{"node/" + nodeName, "--", "chroot", "/host"}
-	} else {
-		cargs = []string{"node/" + nodeName, "--"}
-	}
-	cargs = append(cargs, cmd...)
-	return oc.AsAdmin().Run("debug").Args(cargs...).Output()
 }
 
 func applyResourceFromTemplate(oc *exutil.CLI, parameters ...string) error {
