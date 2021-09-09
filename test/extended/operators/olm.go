@@ -2941,7 +2941,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		o.Expect(deteleIP).To(o.ContainSubstring("deleted"))
 
 		// the InstallPlan should InstallPlanMissing on sub
-		newCheck("expect", asAdmin, withoutNamespace, compare, "InstallPlanMissing", ok, []string{"sub", "-n", namespace, "-o=jsonpath={.items[*].status.conditions[1].type}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, contain, "InstallPlanMissing", ok, []string{"sub", "-n", namespace, "-o=jsonpath={.items[*].status.conditions[*].type}"}).check(oc)
 
 	})
 
