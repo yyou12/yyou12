@@ -5,6 +5,7 @@ import (
 
 	g "github.com/onsi/ginkgo"
 	o "github.com/onsi/gomega"
+	//e2e "k8s.io/kubernetes/test/e2e/framework"
 
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
 )
@@ -148,6 +149,131 @@ var _ = g.Describe("[sig-network-edge] Network_Edge should", func() {
 		searchOutput = readRouterPodData(oc, newrouterpod, "cat /var/lib/haproxy/conf/error_code_pages/error-page-404.http", "Not Found")
 		o.Expect(searchOutput).To(o.ContainSubstring(`HTTP/1.0 404 Not Found`))
 		o.Expect(searchOutput).To(o.ContainSubstring(`Custom:Not Found`))
+
+	})
+
+	// author: aiyengar@redhat.com
+	g.It("Author:aiyengar-Critical-43105-The tcp client/server fin and default timeout for the ingresscontroller can be modified via tuningOptions parameterss", func() {
+		buildPruningBaseDir := exutil.FixturePath("testdata", "router")
+		customTemp := filepath.Join(buildPruningBaseDir, "ingresscontroller-np.yaml")
+		var (
+			ingctrl = ingctrlNodePortDescription{
+				name:      "43105",
+				namespace: "openshift-ingress-operator",
+				domain:    "",
+				template:  customTemp,
+			}
+		)
+
+		g.By("Create a custom ingresscontroller, and get its router name")
+		baseDomain := getBaseDomain(oc)
+		ingctrl.domain = ingctrl.name + "." + baseDomain
+		ingctrl.create(oc)
+		defer ingctrl.delete(oc)
+		err := waitForCustomIngressControllerAvailable(oc, ingctrl.name)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		routerpod := getRouterPod(oc, ingctrl.name)
+
+		g.By("Verify the default server/client fin and default timeout values")
+		checkoutput, err := oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-ingress", routerpod, "--", "bash", "-c", `cat haproxy.config | grep -we "timeout client" -we "timeout client-fin" -we "timeout server" -we "timeout server-fin"`).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(checkoutput).To(o.ContainSubstring(`timeout client 30s`))
+		o.Expect(checkoutput).To(o.ContainSubstring(`timeout client-fin 1s`))
+		o.Expect(checkoutput).To(o.ContainSubstring(`timeout server 30s`))
+		o.Expect(checkoutput).To(o.ContainSubstring(`timeout server-fin 1s`))
+
+		g.By("Patch ingresscontroller with new timeout options")
+		ingctrlResource := "ingresscontrollers/" + ingctrl.name
+		patchResourceAsAdmin(oc, ingctrl.namespace, ingctrlResource, "{\"spec\":{\"tuningOptions\" :{\"clientFinTimeout\": \"3s\",\"clientTimeout\":\"33s\",\"serverFinTimeout\":\"3s\",\"serverTimeout\":\"33s\"}}}")
+		err = waitForResourceToDisappear(oc, "openshift-ingress", "pod/"+routerpod)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		newrouterpod := getRouterPod(oc, ingctrl.name)
+
+		g.By("verify the timeout variables from the new router pods")
+		checkenv := readRouterPodEnv(oc, newrouterpod, "TIMEOUT")
+		o.Expect(checkenv).To(o.ContainSubstring(`ROUTER_CLIENT_FIN_TIMEOUT=3s`))
+		o.Expect(checkenv).To(o.ContainSubstring(`ROUTER_DEFAULT_CLIENT_TIMEOUT=33s`))
+		o.Expect(checkenv).To(o.ContainSubstring(`ROUTER_DEFAULT_SERVER_TIMEOUT=33`))
+		o.Expect(checkenv).To(o.ContainSubstring(`ROUTER_DEFAULT_SERVER_FIN_TIMEOUT=3s`))
+	})
+
+	// author: aiyengar@redhat.com
+	g.It("Author:aiyengar-Critical-43113-Tcp inspect-delay for the haproxy pod can be modified via the TuningOptions parameters in the ingresscontroller", func() {
+		buildPruningBaseDir := exutil.FixturePath("testdata", "router")
+		customTemp := filepath.Join(buildPruningBaseDir, "ingresscontroller-np.yaml")
+		var (
+			ingctrl = ingctrlNodePortDescription{
+				name:      "43113",
+				namespace: "openshift-ingress-operator",
+				domain:    "",
+				template:  customTemp,
+			}
+		)
+
+		g.By("Create a custom ingresscontroller, and get its router name")
+		baseDomain := getBaseDomain(oc)
+		ingctrl.domain = ingctrl.name + "." + baseDomain
+		ingctrl.create(oc)
+		defer ingctrl.delete(oc)
+		err := waitForCustomIngressControllerAvailable(oc, ingctrl.name)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		routerpod := getRouterPod(oc, ingctrl.name)
+
+		g.By("Verify the default tls values")
+		checkoutput, err := oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-ingress", routerpod, "--", "bash", "-c", `cat haproxy.config | grep -w "inspect-delay"| uniq`).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(checkoutput).To(o.ContainSubstring(`tcp-request inspect-delay 5s`))
+
+		g.By("Patch ingresscontroller with a tls inspect timeout option")
+		ingctrlResource := "ingresscontrollers/" + ingctrl.name
+		patchResourceAsAdmin(oc, ingctrl.namespace, ingctrlResource, "{\"spec\":{\"tuningOptions\" :{\"tlsInspectDelay\": \"15s\"}}}")
+		err = waitForResourceToDisappear(oc, "openshift-ingress", "pod/"+routerpod)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		newrouterpod := getRouterPod(oc, ingctrl.name)
+
+		g.By("verify the new tls inspect timeout value in the router pod")
+		checkenv := readRouterPodEnv(oc, newrouterpod, "ROUTER_INSPECT_DELAY")
+		o.Expect(checkenv).To(o.ContainSubstring(`ROUTER_INSPECT_DELAY=15s`))
+
+	})
+
+	// author: aiyengar@redhat.com
+	g.It("Author:aiyengar-Critical-43112-timeout tunnel parameter for the haproxy pods an be modified with TuningOptions option in the ingresscontroller", func() {
+		buildPruningBaseDir := exutil.FixturePath("testdata", "router")
+		customTemp := filepath.Join(buildPruningBaseDir, "ingresscontroller-np.yaml")
+		var (
+			ingctrl = ingctrlNodePortDescription{
+				name:      "43112",
+				namespace: "openshift-ingress-operator",
+				domain:    "",
+				template:  customTemp,
+			}
+		)
+
+		g.By("Create a custom ingresscontroller, and get its router name")
+		baseDomain := getBaseDomain(oc)
+		ingctrl.domain = ingctrl.name + "." + baseDomain
+		ingctrl.create(oc)
+		defer ingctrl.delete(oc)
+		err := waitForCustomIngressControllerAvailable(oc, ingctrl.name)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		routerpod := getRouterPod(oc, ingctrl.name)
+
+		g.By("Verify the default tls values")
+		checkoutput, err := oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-ingress", routerpod, "--", "bash", "-c", `cat haproxy.config | grep -w "timeout tunnel"`).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(checkoutput).To(o.ContainSubstring(`timeout tunnel 1h`))
+
+		g.By("Patch ingresscontroller with a tunnel timeout option")
+		ingctrlResource := "ingresscontrollers/" + ingctrl.name
+		patchResourceAsAdmin(oc, ingctrl.namespace, ingctrlResource, "{\"spec\":{\"tuningOptions\" :{\"tunnelTimeout\": \"2h\"}}}")
+		err = waitForResourceToDisappear(oc, "openshift-ingress", "pod/"+routerpod)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		newrouterpod := getRouterPod(oc, ingctrl.name)
+
+		g.By("verify the new tls inspect timeout value in the router pod")
+		checkenv := readRouterPodEnv(oc, newrouterpod, "ROUTER_DEFAULT_TUNNEL_TIMEOUT")
+		o.Expect(checkenv).To(o.ContainSubstring(`ROUTER_DEFAULT_TUNNEL_TIMEOUT=2h`))
 
 	})
 
