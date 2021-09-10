@@ -1172,7 +1172,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 				displayName: "OLM QE Operators",
 				publisher:   "bandrade",
 				sourceType:  "grpc",
-				address:     "quay.io/olmqe/etcd-index-24387:4.0",
+				address:     "quay.io/olmqe/etcd-index-24387:5.0",
 				template:    csImageTemplate,
 			}
 
