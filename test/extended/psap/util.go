@@ -21,14 +21,12 @@ func isNFDInstalled(oc *exutil.CLI, machineNFDNamespace string) bool {
 }
 
 // createYAMLFromMachineSet creates a YAML file with a given filename from a given machineset name in a given API namespace, throws an error if creation fails
-func createYAMLFromMachineSet(oc *exutil.CLI, machineAPINamespace string, machineSetName string, filename string) string {
+func createYAMLFromMachineSet(oc *exutil.CLI, machineAPINamespace string, machineSetName string, filename string) (string, error) {
 	machineset_yaml, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("machineset", "-n", machineAPINamespace, machineSetName, "-o", "yaml").OutputToFile(filename)
-	o.Expect(err).NotTo(o.HaveOccurred())
-	return machineset_yaml
+	return machineset_yaml, err
 }
 
 // createMachineSetFromYAML creates a new machineset from the YAML configuration in a given filename, throws an error if creation fails
-func createMachineSetFromYAML(oc *exutil.CLI, filename string) {
-	err := oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", filename).Execute()
-	o.Expect(err).NotTo(o.HaveOccurred())
+func createMachineSetFromYAML(oc *exutil.CLI, filename string) error {
+	return oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", filename).Execute()
 }

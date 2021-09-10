@@ -65,7 +65,8 @@ var _ = g.Describe("[sig-node] PSAP should", func() {
 		}()
 
 		g.By("Create machineset-43461-old.yaml")
-		machineset_yaml_old := createYAMLFromMachineSet(oc, machineAPINamespace, first_machineset_name, "machineset-43461-old.yaml")
+		machineset_yaml_old, err := createYAMLFromMachineSet(oc, machineAPINamespace, first_machineset_name, "machineset-43461-old.yaml")
+		o.Expect(err).NotTo(o.HaveOccurred())
 
 		g.By("Print machineset-old.yaml")
 		raw_yaml_file, err := exec.Command("bash", "-c", "cat "+machineset_yaml_old+"").Output()
@@ -90,7 +91,8 @@ var _ = g.Describe("[sig-node] PSAP should", func() {
 		e2e.Logf("File:\n %v", stringified_yaml_file)
 
 		g.By("Create new machineset from machineset-new.yaml")
-		createMachineSetFromYAML(oc, "machineset-43461-new.yaml")
+		err = createMachineSetFromYAML(oc, "machineset-43461-new.yaml")
+		o.Expect(err).NotTo(o.HaveOccurred())
 
 		g.By("Verify new node was created")
 		ci.WaitForMachinesRunning(oc, 1, new_machineset_name)
