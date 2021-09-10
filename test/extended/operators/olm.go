@@ -6933,6 +6933,78 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle to support", func
 		newCheck("expect", asUser, withoutNamespace, compare, "Succeeded", ok, []string{"csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
 	})
 
+	// It will cover test case: OCP-43642, author: xzha@redhat.com
+	g.It("ConnectedOnly-Author:xzha-Medium-43642-Alerts should be raised if the catalogsources are missing [Disruptive]", func() {
+		output, _ := oc.WithoutNamespace().AsAdmin().Run("get").Args("infrastructure", "cluster", "-o=jsonpath={.status.platformStatus.type}").Output()
+		if !strings.Contains(output, "AWS") {
+			g.Skip("Skip for non-supported platform")
+		}
+		g.By("make all worker nodes as unschedulable")
+		nodeName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("nodes", "--selector=node-role.kubernetes.io/worker=", "-o=jsonpath={.items[*].metadata.name}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf("Node Names are %v", nodeName)
+		node := strings.Fields(nodeName)
+
+		defer func() {
+			for _, nodeIndex := range node {
+				oc.AsAdmin().WithoutNamespace().Run("adm").Args("uncordon", fmt.Sprintf("%s", nodeIndex)).Execute()
+			}
+			err = wait.Poll(10*time.Second, 60*time.Second, func() (bool, error) {
+				catalogstrings := []string{"Certified Operators", "Community Operators", "Red Hat Operators", "Red Hat Marketplace"}
+				output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("packagemanifests").Output()
+				o.Expect(err).NotTo(o.HaveOccurred())
+				for _, catalogstring := range catalogstrings {
+					if !strings.Contains(output, catalogstring) {
+						e2e.Logf("cannot get packagemanifests for %s", catalogstring)
+						return false, nil
+					}
+				}
+				e2e.Logf("get packagemanifests for %s success", strings.Join(catalogstrings, ", "))
+				return true, nil
+			})
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}()
+
+		for _, nodeIndex := range node {
+			err = oc.AsAdmin().WithoutNamespace().Run("adm").Args("cordon", fmt.Sprintf("%s", nodeIndex)).Execute()
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}
+
+		g.By("delete default catsrc certified-operators community-operators redhat-marketplace redhat-operators")
+		catalogs := []string{"certified-operators", "community-operators", "redhat-marketplace", "redhat-operators"}
+		for _, catalog := range catalogs {
+			err = oc.AsAdmin().WithoutNamespace().Run("delete").Args("catsrc", catalog, "-n", "openshift-marketplace").Execute()
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}
+
+		g.By("check alert has been raised")
+		alerts := []string{"CommunityOperatorsCatalogError", "CertifiedOperatorsCatalogError", "RedhatOperatorsCatalogError", "RedhatMarketplaceCatalogError"}
+		token, err := oc.AsAdmin().WithoutNamespace().Run("sa").Args("get-token", "prometheus-k8s", "-n", "openshift-monitoring").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		url, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("route", "prometheus-k8s", "-n", "openshift-monitoring", "-o=jsonpath={.spec.host}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = wait.Poll(60*time.Second, 600*time.Second, func() (bool, error) {
+			for _, alertString := range alerts {
+				alertCMD := fmt.Sprintf("curl -s -k -H \"Authorization: Bearer %s\" https://%s/api/v1/alerts | jq -r '.data.alerts[] | select (.labels.alertname == \"%s\")'", token, url, alertString)
+				output, err := exec.Command("bash", "-c", alertCMD).Output()
+				if err != nil {
+					e2e.Logf("Error retrieving prometheus alert metrics: %v, retry ...", err)
+					return false, nil
+				}
+				if len(string(output)) == 0 {
+					e2e.Logf("Prometheus alert is nil, retry ...")
+					return false, nil
+				}
+				if !strings.Contains(string(output), "firing") && !strings.Contains(string(output), "pending") {
+					e2e.Logf(string(output))
+					return false, fmt.Errorf("alert state is not firing or pending")
+				}
+			}
+			return true, nil
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
+	})
+
 })
 
 var _ = g.Describe("[sig-operators] OLM for an end user handle within all namespace", func() {
