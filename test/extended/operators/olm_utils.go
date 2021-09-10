@@ -841,7 +841,7 @@ func (ck checkDescription) check(oc *exutil.CLI) {
 		o.Expect(ok).To(o.BeTrue())
 	case "expect":
 		err := expectedResource(oc, ck.executor, ck.inlineNamespace, ck.expectAction, ck.expectContent, ck.expect, ck.resource...)
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("expected content %s not found by %v", ck.expectContent, ck.resource))
 	default:
 		err := fmt.Errorf("unknown method")
 		o.Expect(err).NotTo(o.HaveOccurred())
