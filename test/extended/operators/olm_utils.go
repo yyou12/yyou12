@@ -218,7 +218,7 @@ func (sub *subscriptionDescription) expectCSV(oc *exutil.CLI, itName string, dr 
 		}
 		return false, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("expected csv %s not found", cv))
 }
 
 //the method is to approve the install plan when you create sub with sub.ipApproval != Automatic
@@ -248,11 +248,11 @@ func (sub *subscriptionDescription) approve(oc *exutil.CLI, itName string, dr de
 				}
 				return true, nil
 			})
-			o.Expect(err).NotTo(o.HaveOccurred())
+			exutil.AssertWaitPollNoErr(err, fmt.Sprintf("installPlan %s is not Complete", installPlan))
 		}
 		return true, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("not found installed csv for %s", sub.subName))
 }
 
 // The user can approve the specific InstallPlan:
@@ -285,7 +285,7 @@ func (sub *subscriptionDescription) approveSpecificIP(oc *exutil.CLI, itName str
 				}
 				return true, nil
 			})
-			o.Expect(err).NotTo(o.HaveOccurred())
+			exutil.AssertWaitPollNoErr(err, fmt.Sprintf("installPlan %s is not %s", installPlan, phase))
 		} else {
 			e2e.Logf("--> Not found the specific InstallPlan, the current IP:%s", ipCsv)
 		}
@@ -312,7 +312,7 @@ func (sub *subscriptionDescription) getIP(oc *exutil.CLI) string {
 		}
 		return true, nil
 	})
-	o.Expect(waitErr).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("sub %s has no installplan", sub.subName))
 	o.Expect(installPlan).NotTo(o.BeEmpty())
 	return installPlan
 }
@@ -703,7 +703,7 @@ func (sa *serviceAccountDescription) checkAuth(oc *exutil.CLI, expected string, 
 		}
 		return false, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("sa %s expects %s permssion to create %s, but no", sa.name, expected, cr))
 }
 
 type roleDescription struct {
@@ -1043,7 +1043,7 @@ func applyResourceFromTemplate(oc *exutil.CLI, parameters ...string) error {
 		configFile = output
 		return true, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("cat not process %v", parameters))
 
 	e2e.Logf("the file of resource is %s", configFile)
 	return oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", configFile).Execute()
@@ -1097,7 +1097,7 @@ func execResource(oc *exutil.CLI, asAdmin bool, withoutNamespace bool, parameter
 		result = output
 		return true, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("cat not exec %v", parameters))
 	e2e.Logf("the result of exec resource:%v", result)
 	return result
 }
@@ -1116,7 +1116,7 @@ func getResource(oc *exutil.CLI, asAdmin bool, withoutNamespace bool, parameters
 		}
 		return true, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("cat not get %v", parameters))
 	e2e.Logf("$oc get %v, the returned resource:%v", parameters, result)
 	return result
 }
@@ -1132,7 +1132,7 @@ func getResourceNoEmpty(oc *exutil.CLI, asAdmin bool, withoutNamespace bool, par
 		}
 		return true, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("cat not get %v without empty", parameters))
 	e2e.Logf("$oc get %v, the returned resource:%v", parameters, result)
 	return result
 }
@@ -1208,7 +1208,7 @@ func removeResource(oc *exutil.CLI, asAdmin bool, withoutNamespace bool, paramet
 		}
 		return false, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("cat not remove %v", parameters))
 }
 
 //the method is to do something with oc.
@@ -1298,5 +1298,5 @@ func CheckUpgradeStatus(oc *exutil.CLI, expectedStatus string) {
 		e2e.Logf("The Upgraableable status should be %s, and get %s", expectedStatus, upgradeable)
 		return true, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("Upgradeable status of the OLM %s is not expected", expectedStatus))
 }
