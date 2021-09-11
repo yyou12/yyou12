@@ -102,7 +102,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 				}
 				return true, nil
 			})
-			o.Expect(err).NotTo(o.HaveOccurred())
+			exutil.AssertWaitPollNoErr(err, fmt.Sprintf("catsrc %s image version not expected", cs.name))
 		}
 	})
 
@@ -382,7 +382,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 			}
 			return false, nil
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, "subscription sub2-43803 constraints satisfiable")
 
 	})
 
@@ -430,7 +430,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 				}
 				return true, nil
 			})
-			o.Expect(err).NotTo(o.HaveOccurred())
+			exutil.AssertWaitPollNoErr(err, "packageserver replicas is 3")
 			g.By("6) enable CVO")
 			_, err = oc.AsAdmin().WithoutNamespace().Run("scale").Args("--replicas", "1", "deployment/cluster-version-operator", "-n", "openshift-cluster-version").Output()
 			if err != nil {
@@ -444,7 +444,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 				}
 				return true, nil
 			})
-			o.Expect(err).NotTo(o.HaveOccurred())
+			exutil.AssertWaitPollNoErr(err, "package-server-manager replicas is 1")
 			g.By("8) check if the packageserver pods number back to 1")
 			err = wait.Poll(3*time.Second, 60*time.Second, func() (bool, error) {
 				num, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("deployment", "packageserver", "-n", "openshift-operator-lifecycle-manager", "-o=jsonpath={.status.availableReplicas}").Output()
@@ -453,7 +453,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 				}
 				return true, nil
 			})
-			o.Expect(err).NotTo(o.HaveOccurred())
+			exutil.AssertWaitPollNoErr(err, "packageserver replicas is 1")
 		} else {
 			// HighlyAvailable
 			e2e.Logf("This is HA cluster, not SNO")
@@ -751,7 +751,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 			}
 			return true, nil
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, "etcdoperator.v0.9.4 operator is upgradeable")
 
 		g.By("7) Patch the spec.conditions[0].Upgradeable to True")
 		// $oc patch operatorcondition etcdoperator.v0.9.2 -p '{"spec":{"conditions":[{"type":"Upgradeable", "observedCondition":1,"status":"True","reason":"bug","message":"ready","lastUpdateTime":"2021-06-16T16:56:44Z","lastTransitionTime":"2021-06-16T16:56:44Z"}]}}' --type=merge
@@ -816,7 +816,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 			}
 			return true, nil
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, "etcdoperator.v0.9.4 operator is upgradeable")
 
 		g.By("7) Change the Upgradeable of the OperatorCondition to True")
 		patchResource(oc, asAdmin, withoutNamespace, "-n", oc.Namespace(), "operatorcondition", "etcdoperator.v0.9.2", "-p", "{\"spec\": {\"overrides\": [{\"type\": \"Upgradeable\", \"status\": \"True\", \"reason\": \"upgradeIsNotSafe\", \"message\": \"Disbale the upgrade\"}]}}", "--type=merge")
@@ -892,7 +892,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 			}
 			return true, nil
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, "sa etcd-operator owner is not etcdoperator.v0.9.2")
 
 	})
 
@@ -909,7 +909,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 			}
 			return false, nil
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, "redhat-operators found")
 
 		g.By("2) Create a CatalogSource with a default CatalogSource name")
 		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
@@ -937,7 +937,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 			}
 			return false, nil
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, "packagemanifest does not contain OLM QE")
 
 		g.By("3) Delete the Marketplace pods and check if the custome CatalogSource still works well")
 		g.By("3-1) get the marketplace-operator pod's name")
@@ -957,7 +957,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 			}
 			return false, nil
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, "marketplace-operator pod is not running")
 		g.By("3-3) check if the custom CatalogSource still there")
 		newCheck("expect", asAdmin, withoutNamespace, compare, "READY", ok, []string{"catsrc", cs.name, "-n", cs.namespace, "-o=jsonpath={.status..lastObservedState}"}).check(oc)
 		err = wait.Poll(10*time.Second, 60*time.Second, func() (bool, error) {
@@ -967,7 +967,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 			}
 			return false, nil
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, "packagemanifest does not contain OLM QE")
 
 		g.By("4) Enable the default OperatorHub")
 		patchResource(oc, true, true, "operatorhub", "cluster", "-p", "{\"spec\": {\"disableAllDefaultSources\": false}}", "--type=merge")
@@ -981,7 +981,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 			}
 			return false, nil
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, "packagemanifest does contain OLM QE or has no Red Hat Operators")
 	})
 
 	// author: jiazha@redhat.com
@@ -1058,7 +1058,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 			}
 			return false, nil
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, "pod of etcd-operator-alm-owned status is not Pending")
 	})
 
 	// author: jiazha@redhat.com
@@ -1850,7 +1850,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 				return false, nil
 			})
 
-			o.Expect(err).NotTo(o.HaveOccurred())
+			exutil.AssertWaitPollNoErr(err, fmt.Sprintf("catsrc of openshift-marketplace does not contain %v", t.expectedMSG))
 
 			status, err := oc.AsAdmin().Run("get").Args("-n", "openshift-operator-lifecycle-manager", "pods", "-l", "app=catalog-operator", "-o=jsonpath={.items[0].status.phase}").Output()
 			o.Expect(err).NotTo(o.HaveOccurred())
@@ -2014,7 +2014,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 			return false, nil
 		})
 
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, "pod of olm.catalogSource=scenario3 is not CrashLoopBackOff")
 
 		g.By("5) Changing the CatalogSource to include default channel for each package")
 		_, err = oc.WithoutNamespace().AsAdmin().Run("apply").Args("-f", cmMapWithDefaultChannel).Output()
@@ -2032,7 +2032,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 			}
 			return false, nil
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, "pod of olm.catalogSource=scenario3 is not running")
 	})
 
 	// author: jiazha@redhat.com
@@ -2106,7 +2106,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 			}
 			return true, nil
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("validatingwebhookconfiguration which owner ns %s is not created", "test-operators-30312"))
 
 		g.By("update csv")
 		configFile, err = oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", validatingCsv, "-p", fmt.Sprintf("NAMESPACE=%s", newNamespace), "OPERATION=DELETE").OutputToFile("config-30312.json")
@@ -2127,7 +2127,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 			}
 			return false, nil
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("validatingwebhookconfiguration %s has no DELETE operation", validatingwebhookName))
 	})
 
 	// author: xzha@redhat.com
@@ -2162,7 +2162,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 			}
 			return true, nil
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("mutatingwebhookconfiguration which owner ns %s is not created", "test-operators-30317"))
 
 		g.By("Start to test 30374")
 		g.By("update csv")
@@ -2184,7 +2184,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 			}
 			return false, nil
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("mutatingwebhookconfiguration %s has no DELETE operation", mutatingwebhookName))
 	})
 
 	// author: xzha@redhat.com
@@ -2223,7 +2223,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 				}
 				return true, nil
 			})
-			o.Expect(err).NotTo(o.HaveOccurred())
+			exutil.AssertWaitPollNoErr(err, fmt.Sprintf("validatingwebhookconfiguration which owner namespace %s is not created", newNamespace))
 
 			validatingwebhookName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("validatingwebhookconfiguration", "-l", fmt.Sprintf("olm.owner.namespace=%s", newNamespace), "-o=jsonpath={.items[0].metadata.name}").Output()
 			if i == 1 {
@@ -2303,7 +2303,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 				return false, nil
 			}
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, "installed-community-24738-global-operators is not READY")
 
 		createImgSub, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", Sub, "-p", "SUBNAME=etcd-etcdoperator.v0.9.2", "SUBNAMESPACE=test-automation-24738", "CHANNEL=alpha", "APPROVAL=Automatic", "OPERATORNAME=etcd-update", "SOURCENAME=installed-community-24738-global-operators", "SOURCENAMESPACE=openshift-marketplace", "STARTINGCSV=etcdoperator.v0.9.2").OutputToFile("config-24738.json")
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -2327,7 +2327,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 				return false, nil
 			}
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, "etcdoperator.v0.9.2 is not installed")
 
 		createEtcdCluster, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", etcdCluster, "-p", "NAME=example", "NAMESPACE=test-automation-24738").OutputToFile("config-24738.json")
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -2356,7 +2356,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 				return false, nil
 			}
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, "test-automation-24738 EtcCluster is not installed")
 
 		g.By("create new namespace")
 		err = oc.AsAdmin().Run("create").Args("ns", "test-automation-24738-1").Execute()
@@ -2399,7 +2399,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 				return false, nil
 			}
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, "test-automation-24738-1 EtcCluster is not installed")
 
 		g.By("update ConfigMap")
 		createPatchCfgMap, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", patchCfgMap, "-p", "NAME=installed-community-24738-global-operators", "NAMESPACE=openshift-marketplace").OutputToFile("config-24738.json")
@@ -2436,7 +2436,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 				return false, nil
 			}
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, "test-automation-24738-1 Ip Channel NOT created")
 
 		err = wait.Poll(60*time.Second, operatorWait, func() (bool, error) {
 			checknameCsv, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", "etcdoperator.v0.9.4", "-n", "test-automation-24738-1", "-o", "jsonpath={.status.phase}").Output()
@@ -2450,7 +2450,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 				return false, nil
 			}
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, "test-automation-24738-1 CSV not installed")
 
 	})
 
@@ -2563,7 +2563,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 			}
 			return false, nil
 		})
-		o.Expect(waitErr).To(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(waitErr, "compoent found in log of pod of openshift-operator-lifecycle-manager")
 
 	})
 
@@ -2694,7 +2694,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 				}
 				return false, nil
 			})
-			o.Expect(waitErr).NotTo(o.HaveOccurred())
+			exutil.AssertWaitPollNoErr(waitErr, "sub or csv found")
 		}
 
 		g.By("6 FINISH")
@@ -2873,7 +2873,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 				return true, nil
 			}
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, "jobs KO Limit not setted")
 
 	})
 
@@ -3375,7 +3375,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle common object", f
 			}
 			return true, nil
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("csv %s cert is not updated", packageserverName))
 
 		newCheck("expect", asAdmin, withoutNamespace, contain, "redhat-operators", ok, []string{"packagemanifest", fmt.Sprintf("--selector=catalog=%s", "redhat-operators"), "-o=jsonpath={.items[*].status.catalogSource}"}).check(oc)
 
@@ -5011,7 +5011,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 			}
 			return false, nil
 		})
-		o.Expect(waitErr).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(waitErr, "the pod is not in CrashLoopBackOff")
 
 		g.By("Check catsrc state for TRANSIENT_FAILURE in lastObservedState")
 		waitErr = wait.Poll(3*time.Second, 180*time.Second, func() (bool, error) {
@@ -5024,7 +5024,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 			}
 			return false, nil
 		})
-		o.Expect(waitErr).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("catalogsource %s is not TRANSIENT_FAILURE", catName))
 		e2e.Logf("cleaning up")
 	})
 
@@ -5148,7 +5148,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 			return false, nil
 		})
 		e2e.Logf("\nPods\n%v", msg)
-		o.Expect(waitErr).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(waitErr, "etcd-operator pod is not running as 3")
 
 		g.By("check new metrics")
 		next = false
@@ -5240,7 +5240,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 			}
 			return false, nil
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, "cockroachdb.v5.0.4 does not replace cockroachdb.v5.0.3")
 	})
 
 	// author: xzha@redhat.com
@@ -5304,7 +5304,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 			}
 			return true, nil
 		})
-		o.Expect(errWait).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(errWait, "mysecret is not created")
 
 		g.By("check configmaps")
 		errWait = wait.Poll(30*time.Second, 240*time.Second, func() (bool, error) {
@@ -5315,7 +5315,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 			}
 			return true, nil
 		})
-		o.Expect(errWait).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(errWait, "my-config-map is not found")
 
 		g.By("start to test OCP-30242")
 		g.By("delete csv")
@@ -5330,7 +5330,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 			}
 			return false, nil
 		})
-		o.Expect(errWait).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(errWait, "mysecret is not found")
 
 		g.By("check configmaps has been deleted")
 		errWait = wait.Poll(20*time.Second, 120*time.Second, func() (bool, error) {
@@ -5341,7 +5341,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 			}
 			return false, nil
 		})
-		o.Expect(errWait).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(errWait, "my-config-map still exists")
 	})
 
 	// Test case: OCP-24566, author:xzha@redhat.com
@@ -6062,7 +6062,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 			}
 			return false, nil
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("csv %s is not Succeeded", sub.installedCSV))
 	})
 
 	// author: xzha@redhat.com, test case OCP-43110
@@ -6196,7 +6196,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 				}
 				return false, nil
 			})
-			o.Expect(err2).NotTo(o.HaveOccurred())
+			exutil.AssertWaitPollNoErr(err2, "event CustomResourceDefinition is deprecated, piextensions.k8s.io and ditto-operator not found")
 
 		} else {
 			g.By("3) the opeartor cannot be installed, skip test case")
@@ -6428,7 +6428,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 			}
 			return true, nil
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("csv of sub %v is not installed", sub.subName))
 		g.By("9) SUCCESS")
 	})
 
@@ -6492,7 +6492,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 			}
 			return false, nil
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("ip of sub %v is not Failed", sub.subName))
 		conditions := getResource(oc, asAdmin, withoutNamespace, "ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.conditions}")
 		o.Expect(conditions).To(o.ContainSubstring("DeadlineExceeded"))
 		o.Expect(conditions).To(o.ContainSubstring("Job was active longer than specified deadline"))
@@ -6962,7 +6962,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle to support", func
 				e2e.Logf("get packagemanifests for %s success", strings.Join(catalogstrings, ", "))
 				return true, nil
 			})
-			o.Expect(err).NotTo(o.HaveOccurred())
+			exutil.AssertWaitPollNoErr(err, "cannot get packagemanifests for Certified Operators, Community Operators, Red Hat Operators and Red Hat Marketplace")
 		}()
 
 		for _, nodeIndex := range node {
@@ -7002,7 +7002,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle to support", func
 			}
 			return true, nil
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, "alert state is not firing or pending")
 	})
 
 })
@@ -7289,7 +7289,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within all namesp
 			}
 			return false, nil
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, "webhooktests.webhook.operators.coreos.io does exist")
 
 		g.By("check invalid CR")
 		configFile, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", crwebhook, "-p", "NAME=webhooktest-34181",
@@ -7305,7 +7305,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within all namesp
 			e2e.Logf("err:%v", err)
 			return true, nil
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, "can not apply webhooktest-34181")
 
 		g.By("check valid CR")
 		configFile, err = oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", crwebhook, "-p", "NAME=webhooktest-34181",
@@ -7320,7 +7320,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within all namesp
 			}
 			return true, nil
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, "can not apply webhooktest-34181 again")
 	})
 
 	// It will cover test case: OCP-40531, author: xzha@redhat.com
@@ -7528,7 +7528,7 @@ var _ = g.Describe("[sig-operators] OLM on VM for an end user handle within a na
 			}
 			return false, nil
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("ditto-operator.v0.1.1 of sub %s fails", sub.subName))
 
 		g.By("STEP 6: delete the catsrc sub csv")
 		catsrc.delete(itName, dr)
@@ -7655,7 +7655,7 @@ var _ = g.Describe("[sig-operators] OLM on VM for an end user handle within a na
 				return false, nil
 			}
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("ditto-operator.v0.1.1 of sub %s fails", sub_manual.subName))
 		sub_manual.approveSpecificIP(oc, itName, dr, "ditto-operator.v0.1.1", "Complete")
 		g.By("STEP 6: check the csv")
 		sub_manual.expectCSV(oc, itName, dr, "ditto-operator.v0.1.1")
@@ -7930,7 +7930,7 @@ var _ = g.Describe("[sig-operators] OLM on VM for an end user handle within a na
 			}
 			return true, nil
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("package of sub %s does not exist", sub.subName))
 
 		g.By("install operator")
 		sub.createWithoutCheck(oc, itName, dr)

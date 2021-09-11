@@ -1,6 +1,7 @@
 package operators
 
 import (
+	"fmt"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -239,7 +240,7 @@ var _ = g.Describe("[sig-operators] ISV_Operators [Suite:openshift/isv]", func()
 			}
 			return false, nil
 		})
-		o.Expect(waitErr).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("expected csv %s not Succeeded", sub.installedCSV))
 		o.Expect(csvName).NotTo(o.BeEmpty())
 
 		g.By("Create Sparkcluster")
@@ -262,7 +263,7 @@ var _ = g.Describe("[sig-operators] ISV_Operators [Suite:openshift/isv]", func()
 			}
 			return false, nil
 		})
-		o.Expect(waitErr).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(waitErr, "my-spark-app pod not not found")
 		o.Expect(appPodName).NotTo(o.BeEmpty())
 
 		g.By("Wait for SparkApplication to finish")
@@ -274,7 +275,7 @@ var _ = g.Describe("[sig-operators] ISV_Operators [Suite:openshift/isv]", func()
 			}
 			return false, nil
 		})
-		o.Expect(waitErr).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("expected pod %s not Completed", "SparkApplication"))
 		o.Expect(msg).NotTo(o.BeEmpty())
 
 		g.By("Check the answer in logs")
