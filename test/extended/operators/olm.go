@@ -1043,7 +1043,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 			}
 			return false, nil
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, "pod of etcd-operator-alm-owned special-config not mount well")
 		g.By("5) Patch a non-exist volume")
 		sub.patch(oc, "{\"spec\":{\"channel\":\"singlenamespace-alpha\",\"config\":{\"volumeMounts\":[{\"mountPath\":\"/test\",\"name\":\"volume1\"}],\"volumes\":[{\"persistentVolumeClaim\":{\"claimName\":\"claim1\"},\"name\":\"volume1\"}]},\"name\":\"etcd\",\"source\":\"community-operators\",\"sourceNamespace\":\"openshift-marketplace\"}}")
 		err = wait.Poll(10*time.Second, 180*time.Second, func() (bool, error) {
