@@ -798,6 +798,43 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
         o.Expect(output).To(o.ContainSubstring("v1.21"))
     })
     // author: chuo@redhat.com
+    g.It("ConnectedOnly-Author:chuo-High-34427-Ensure that Ansible Based Operators creation is working", func() {
+        operatorsdkCLI.showInfo = true
+        exec.Command("bash", "-c", "mkdir -p /tmp/ocp-34427/memcached-operator && cd /tmp/ocp-34427/memcached-operator && operator-sdk init --plugins=ansible --domain example.com").Output()
+        defer exec.Command("bash", "-c", "cd /tmp/ocp-34427/memcached-operator && make undeploy").Output()
+        defer exec.Command("bash", "-c", "rm -rf /tmp/ocp-34427").Output()
+        exec.Command("bash", "-c", "cd /tmp/ocp-34427/memcached-operator && operator-sdk create api --group cache --version v1alpha1 --kind Memcached --generate-role").Output()
+        exec.Command("bash", "-c", "cp test/extended/util/operatorsdk/ocp-34427-data/roles/memcached/tasks/main.yml /tmp/ocp-34427/memcached-operator/roles/memcached/tasks/main.yml").Output()
+        exec.Command("bash", "-c", "cp test/extended/util/operatorsdk/ocp-34427-data/roles/memcached/defaults/main.yml /tmp/ocp-34427/memcached-operator/roles/memcached/defaults/main.yml").Output()
+        exec.Command("bash", "-c", "sed -i '$d' /tmp/ocp-34427/memcached-operator/config/samples/cache_v1alpha1_memcached.yaml").Output()
+        exec.Command("bash", "-c", "sed -i '$a\\  size: 3' /tmp/ocp-34427/memcached-operator/config/samples/cache_v1alpha1_memcached.yaml").Output()
+        exec.Command("bash", "-c", "sed -i 's/v4.9/v4.8/g' /tmp/ocp-34427/memcached-operator/config/default/manager_auth_proxy_patch.yaml").Output()
+
+        // to replace namespace memcached-operator-system with memcached-operator-system-ocp34427
+        exec.Command("bash", "-c", "sed -i 's/name: system/name: system-ocp34427/g' `grep -rl \"name: system\" /tmp/ocp-34427/memcached-operator`").Output()
+        exec.Command("bash", "-c", "sed -i 's/namespace: system/namespace: system-ocp34427/g'  `grep -rl \"namespace: system\" /tmp/ocp-34427/memcached-operator`").Output()
+        exec.Command("bash", "-c", "sed -i 's/namespace: memcached-operator-system/namespace: memcached-operator-system-ocp34427/g'  `grep -rl \"namespace: memcached-operator-system\" /tmp/ocp-34427/memcached-operator`").Output()
+
+        exec.Command("bash", "-c", "cd /tmp/ocp-34427/memcached-operator && make install").Output()
+        exec.Command("bash", "-c", "cd /tmp/ocp-34427/memcached-operator && make deploy IMG=quay.io/olmqe/memcached-operator-ansible-base:v4.9.1").Output()
+
+        _, err := oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", "/tmp/ocp-34427/memcached-operator/config/samples/cache_v1alpha1_memcached.yaml","-n","memcached-operator-system-ocp34427").Output()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        waitErr := wait.Poll(30*time.Second, 180*time.Second, func() (bool, error) {
+            msg, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-n", "memcached-operator-system-ocp34427").Output()
+            o.Expect(err).NotTo(o.HaveOccurred())
+            if strings.Contains(msg, "memcached-sample")  {
+                e2e.Logf("found pod memcached-sample")
+                return true, nil
+            }
+            return false, nil
+        })
+        o.Expect(waitErr).NotTo(o.HaveOccurred())
+        msg, err := oc.AsAdmin().WithoutNamespace().Run("describe").Args("deployment/memcached-sample-memcached","-n", "memcached-operator-system-ocp34427").Output()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        o.Expect(msg).To(o.ContainSubstring("3 desired | 3 updated | 3 total | 3 available | 0 unavailable"))
+    })
+    // author: chuo@redhat.com
     g.It("ConnectedOnly-Author:chuo-Medium-34366-change ansible operator flags from maxWorkers using env MAXCONCURRENTRECONCILES ", func() {
         operatorsdkCLI.showInfo = true
         exec.Command("bash", "-c", "mkdir -p /tmp/ocp-34366/memcached-operator && cd /tmp/ocp-34366/memcached-operator && operator-sdk init --plugins=ansible --domain example.com").Output()
