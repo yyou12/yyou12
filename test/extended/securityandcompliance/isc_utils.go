@@ -114,7 +114,7 @@ func (sub *subscriptionDescription) expectCSV(oc *exutil.CLI, itName string, dr 
 		}
 		return false, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("the csv %s is not expected", cv))
 }
 
 func expectedResource(oc *exutil.CLI, asAdmin bool, withoutNamespace bool, isCompare bool, content string, expect bool, parameters ...string) error {
@@ -188,7 +188,7 @@ func getResource(oc *exutil.CLI, asAdmin bool, withoutNamespace bool, parameters
 		result = output
 		return true, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("fail to get %v", parameters))
 	e2e.Logf("the result of queried resource:%v", result)
 	return result
 }
@@ -223,7 +223,7 @@ func (ck checkDescription) check(oc *exutil.CLI) {
 		o.Expect(ok).To(o.BeTrue())
 	case "expect":
 		err := expectedResource(oc, ck.executor, ck.inlineNamespace, ck.expectAction, ck.expectContent, ck.expect, ck.resource...)
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("content %s not got by %v", ck.expectContent, ck.resource))
 	default:
 		err := fmt.Errorf("unknown method")
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -254,7 +254,7 @@ func (og *operatorGroupDescription) checkOperatorgroup(oc *exutil.CLI, expected 
 		}
 		return false, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("og %s not found", og.name))
 }
 
 type itResource map[string]resourceDescription
@@ -337,7 +337,7 @@ func applyResourceFromTemplate(oc *exutil.CLI, parameters ...string) error {
 		configFile = output
 		return true, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("fail to process %v", parameters))
 
 	e2e.Logf("the file of resource is %s", configFile)
 	return oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", configFile).Execute()
@@ -354,7 +354,7 @@ func applyResourceFromTemplateWithoutKeyword(oc *exutil.CLI, keyword string, par
 		configFile = output
 		return true, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("without keyword, fail to process %v", parameters))
 	e2e.Logf("the file of resource is %s", configFile)
 	removeKeywordFromFile(configFile, keyword)
 	return oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", configFile).Execute()
@@ -396,7 +396,7 @@ func removeResource(oc *exutil.CLI, asAdmin bool, withoutNamespace bool, paramet
 		}
 		return false, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("fail to remove %v", parameters))
 }
 
 func doAction(oc *exutil.CLI, action string, asAdmin bool, withoutNamespace bool, parameters ...string) (string, error) {

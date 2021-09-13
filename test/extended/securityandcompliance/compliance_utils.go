@@ -223,7 +223,7 @@ func checkComplianceSuiteStatus(oc *exutil.CLI, csuiteName string, nameSpace str
 		}
 		return false, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("the status of %s is not expected %s", csuite.name, expected))
 }
 
 func setLabelToNode(oc *exutil.CLI) {
@@ -422,7 +422,7 @@ func (subD *subscriptionDescription) getTailoredProfileNameandStatus(oc *exutil.
 		o.Expect(err).NotTo(o.HaveOccurred())
 		return false, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, "the status of tailoredprofile is not READY")
 }
 
 func (subD *subscriptionDescription) getProfileName(oc *exutil.CLI, expected string) {
@@ -527,7 +527,7 @@ func getResourceNameWithKeywordFromResourceList(oc *exutil.CLI, rs string, keywo
 		}
 		return false, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("the rs does not has %s", keyword))
 	rsl := strings.Fields(result)
 	for _, v := range rsl {
 		resourceName = fmt.Sprintf("%s", v)

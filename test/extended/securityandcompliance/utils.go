@@ -1,6 +1,7 @@
 package securityandcompliance
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -41,7 +42,7 @@ func (fi1 *fileintegrity) checkFileintegrityStatus(oc *exutil.CLI, expected stri
 		}
 		return false, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("the state of pod with app=aide-ds-example-fileintegrity is not expected %s", expected))
 }
 
 func (fi1 *fileintegrity) getConfigmapFromFileintegritynodestatus(oc *exutil.CLI, nodeName string) string {
@@ -55,7 +56,7 @@ func (fi1 *fileintegrity) getConfigmapFromFileintegritynodestatus(oc *exutil.CLI
 		}
 		return false, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("resultConfigMapName %s is not failed", fi1.name+"-"+nodeName))
 	if strings.Compare(cmName, "") == 0 {
 		e2e.Failf("Failed to get configmap name!")
 	}
@@ -71,7 +72,7 @@ func (fi1 *fileintegrity) getDataFromConfigmap(oc *exutil.CLI, cmName string, ex
 		}
 		return false, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("cm %s does not include %s", cmName, expected))
 }
 
 func getOneWorkerNodeName(oc *exutil.CLI) string {
@@ -103,7 +104,7 @@ func (fi1 *fileintegrity) checkKeywordNotExistInLog(oc *exutil.CLI, podName stri
 		}
 		return false, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("pod %s includes %s", podName, expected))
 }
 
 func (fi1 *fileintegrity) checkKeywordExistInLog(oc *exutil.CLI, podName string, expected string) {
@@ -116,7 +117,7 @@ func (fi1 *fileintegrity) checkKeywordExistInLog(oc *exutil.CLI, podName string,
 		}
 		return false, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("pod %s does not include %s", podName, expected))
 }
 
 func (fi1 *fileintegrity) checkArgsInPod(oc *exutil.CLI, expected string) {
@@ -130,7 +131,7 @@ func (fi1 *fileintegrity) checkArgsInPod(oc *exutil.CLI, expected string) {
 		}
 		return false, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("args of does not include %s", expected))
 }
 
 func (pod *podModify) doActionsOnNode(oc *exutil.CLI, expected string, dr describerResrouce) {
@@ -145,7 +146,7 @@ func (pod *podModify) doActionsOnNode(oc *exutil.CLI, expected string, dr descri
 		}
 		return false, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("phase of pod is not expected %s", expected))
 }
 
 func (fi1 *fileintegrity) createFIOWithoutConfig(oc *exutil.CLI, itName string, dr describerResrouce) {
@@ -180,7 +181,7 @@ func (sub *subscriptionDescription) checkPodFioStatus(oc *exutil.CLI, expected s
 		}
 		return false, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("state of pod with name=file-integrity-operator is not expected %s", expected))
 }
 
 func (fi1 *fileintegrity) createConfigmapFromFile(oc *exutil.CLI, itName string, dr describerResrouce, cmName string, aideKey string, aideFile string, expected string) (bool, error) {
@@ -202,7 +203,7 @@ func (fi1 *fileintegrity) checkConfigmapCreated(oc *exutil.CLI) {
 		}
 		return false, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("cm %s is not created", fi1.configname))
 }
 
 func (fi1 *fileintegrity) checkFileintegritynodestatus(oc *exutil.CLI, nodeName string, expected string) {
@@ -221,7 +222,7 @@ func (fi1 *fileintegrity) checkFileintegritynodestatus(oc *exutil.CLI, nodeName 
 		}
 		return false, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("fileintegritynodestatuses %s is not expected %s", fi1.name+"-"+nodeName, expected))
 }
 
 func (fi1 *fileintegrity) checkOnlyOneDaemonset(oc *exutil.CLI) {
@@ -238,7 +239,7 @@ func (fi1 *fileintegrity) checkOnlyOneDaemonset(oc *exutil.CLI) {
 		}
 		return false, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, "daemonset number is not expted ")
 }
 
 func (fi1 *fileintegrity) removeFileintegrity(oc *exutil.CLI, expected string) {
@@ -251,7 +252,7 @@ func (fi1 *fileintegrity) removeFileintegrity(oc *exutil.CLI, expected string) {
 
 		return false, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("delete fileintegrity  %s is not expected %s", fi1.name, expected))
 }
 
 func (fi1 *fileintegrity) reinitFileintegrity(oc *exutil.CLI, expected string) {
@@ -263,7 +264,7 @@ func (fi1 *fileintegrity) reinitFileintegrity(oc *exutil.CLI, expected string) {
 		}
 		return false, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("annotate fileintegrity  %s is not expected %s", fi1.name, expected))
 }
 
 func (fi1 *fileintegrity) getDetailedDataFromFileintegritynodestatus(oc *exutil.CLI, nodeName string) (int, int, int) {
@@ -298,7 +299,7 @@ func (fi1 *fileintegrity) getDetailedDataFromFileintegritynodestatus(oc *exutil.
 		}
 		return true, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("file of fileintegritynodestatuses  %s is not added, changed or removed", fi1.name+"-"+nodeName))
 	return intFilesAdded, intFilesChanged, intFilesRemoved
 }
 
@@ -338,7 +339,7 @@ func (fi1 *fileintegrity) getDetailedDataFromConfigmap(oc *exutil.CLI, cmName st
 		}
 		return true, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("file of cm  %s is not added, changed or removed", cmName))
 	return intFilesAdded, intFilesChanged, intFilesRemoved
 }
 
@@ -360,7 +361,7 @@ func (fi1 *fileintegrity) checkPodNumerLessThanNodeNumber(oc *exutil.CLI, label 
 		}
 		return true, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, "daemonset pod number greater than node number")
 }
 
 func (fi1 *fileintegrity) checkPodNumerEqualNodeNumber(oc *exutil.CLI, label string) {
@@ -376,7 +377,7 @@ func (fi1 *fileintegrity) checkPodNumerEqualNodeNumber(oc *exutil.CLI, label str
 		}
 		return true, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, "daemonset pod number not equal to node number")
 }
 
 func (fi1 *fileintegrity) recreateFileintegrity(oc *exutil.CLI) error {
@@ -390,7 +391,7 @@ func (fi1 *fileintegrity) recreateFileintegrity(oc *exutil.CLI) error {
 		configFile = output
 		return true, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("fileintegrity %s is not got", fi1.name))
 	e2e.Logf("the file of resource is %s", configFile)
 	fi1.removeFileintegrity(oc, "deleted")
 	return oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", configFile).Execute()
@@ -410,5 +411,5 @@ func (fi1 *fileintegrity) expectedStringNotExistInConfigmap(oc *exutil.CLI, cmNa
 		}
 		return false, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("cm %s contains %s", cmName, expected))
 }
