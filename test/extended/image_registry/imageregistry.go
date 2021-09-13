@@ -137,7 +137,7 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 				}
 
 			})
-			o.Expect(err).NotTo(o.HaveOccurred())
+			exutil.AssertWaitPollNoErr(err, "Image registry is not ready")
 			result, err := oc.AsAdmin().WithoutNamespace().Run("rsh").Args("-n", "openshift-image-registry", "deployment.apps/image-registry", "env").Output()
 			o.Expect(err).NotTo(o.HaveOccurred())
 			o.Expect(result).NotTo(o.ContainSubstring("HTTP_PROXY=http://test:3128"))
@@ -158,7 +158,7 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 				return true, nil
 			}
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, "Image registry is not ready")
 		result, err := oc.AsAdmin().WithoutNamespace().Run("rsh").Args("-n", "openshift-image-registry", "deployment.apps/image-registry", "env").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(result).To(o.ContainSubstring("HTTP_PROXY=http://test:3128"))
@@ -204,7 +204,7 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 					return true, nil
 				}
 			})
-			o.Expect(err).NotTo(o.HaveOccurred())
+			exutil.AssertWaitPollNoErr(err, "Image registry pod list is not 2")
 		}()
 
 		g.By("Confirm 3 pods scaled up")
@@ -223,7 +223,7 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 				return true, nil
 			}
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, "Image registry pod list is not 3")
 
 		g.By("At least 2 pods in different nodes")
 		_, numj = comparePodHostIp(oc)
@@ -251,7 +251,7 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 					return true, nil
 				}
 			})
-			o.Expect(err).NotTo(o.HaveOccurred())
+			exutil.AssertWaitPollNoErr(err, "Image registry pod list is not 2")
 		}()
 
 		g.By("Confirm 4 pods scaled up")
@@ -270,7 +270,7 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 				return true, nil
 			}
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, "Image registry pod list is not 4")
 
 		g.By("Check 2 pods in the same node")
 		numi, _ = comparePodHostIp(oc)
@@ -305,7 +305,7 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 			return false, nil
 
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, "Pulling image via icsp is failed")
 	})
 
 	// author: wewang@redhat.com

@@ -100,7 +100,7 @@ type bcSource struct {
 
 type authRole struct {
 	namespace string
-	rolename string
+	rolename  string
 	template  string
 }
 
@@ -125,7 +125,7 @@ func applyResourceFromTemplate(oc *exutil.CLI, parameters ...string) error {
 		configFile = output
 		return true, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, "Applying resources from template is failed")
 	e2e.Logf("the file of resource is %s", configFile)
 	return oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", configFile).Execute()
 }
@@ -152,7 +152,7 @@ func getResource(oc *exutil.CLI, asAdmin bool, withoutNamespace bool, parameters
 		}
 		return true, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("Failed to get %v", parameters))
 	e2e.Logf("$oc get %v, the returned resource:%v", parameters, result)
 	return result
 }

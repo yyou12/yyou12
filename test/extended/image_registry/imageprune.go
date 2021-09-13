@@ -45,7 +45,7 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 				}
 				return false, nil
 			})
-			o.Expect(err).NotTo(o.HaveOccurred())
+			exutil.AssertWaitPollNoErr(err, "Image registry pods list is not 2")
 		}()
 		err = wait.PollImmediate(5*time.Second, 3*time.Minute, func() (bool, error) {
 			podList, err := oc.AdminKubeClient().CoreV1().Pods("openshift-image-registry").List(metav1.ListOptions{LabelSelector: "docker-registry=default"})
@@ -55,7 +55,7 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 			}
 			return false, nil
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, "Image registry pods are not removed")
 		g.By("Set imagepruner cronjob started every 2 minutes")
 		err = oc.AsAdmin().Run("patch").Args("imagepruner/cluster", "-p", `{"spec":{"schedule":"*/2 * * * *"}}`, "--type=merge").Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -111,7 +111,7 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 			}
 			return true, nil
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, "Don't find the value")
 		o.Expect(foundValue).To(o.BeTrue())
 	})
 
