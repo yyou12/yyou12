@@ -320,11 +320,6 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The OC Compliance plugin m
 			assertRuleResult(oc, "ocp4-cis-audit-log-forwarding-enabled", subD.namespace,
 				[...]string{"Status               | FAIL", "Result Object Name   | ocp4-cis-audit-log-forwarding-enabled"})
 
-			newCheck("expect", asAdmin, withoutNamespace, contain, "FAIL", ok, []string{"compliancecheckresult",
-				"ocp4-cis-api-server-encryption-provider-cipher", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
-			assertRuleResult(oc, "ocp4-cis-api-server-encryption-provider-cipher", subD.namespace,
-				[...]string{"Status               | FAIL", "Result Object Name   | ocp4-cis-api-server-encryption-provider-cipher"})
-
 			g.By("The ocp-41190 Successfully verify oc-compliance view-result reports result in details... !!!!\n ")
 		})
 
@@ -401,8 +396,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The OC Compliance plugin m
 				"-o=jsonpath={.settingsRef}"}).check(oc)
 
 			g.By("Check ComplianceSuite status and result.. !!!\n")
-			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", "-n", subD.namespace,
-				"-o=jsonpath={.items[0].status.phase}"}).check(oc)
+			checkComplianceSuiteStatus(oc, "my-binding", subD.namespace, "DONE")
 			subD.complianceSuiteResult(oc, "my-binding", "NON-COMPLIANT")
 			subD.getScanExitCodeFromConfigmap(oc, "2")
 

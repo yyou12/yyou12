@@ -214,9 +214,9 @@ func (sclass *storageClassDescription) create(oc *exutil.CLI, itName string, dr 
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
-func (csuite *complianceSuiteDescription) checkComplianceSuiteStatus(oc *exutil.CLI, expected string) {
+func checkComplianceSuiteStatus(oc *exutil.CLI, csuiteName string, nameSpace string, expected string) {
 	err := wait.Poll(5*time.Second, 300*time.Second, func() (bool, error) {
-		output, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", csuite.namespace, "compliancesuite", csuite.name, "-o=jsonpath={.status.phase}").Output()
+		output, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", nameSpace, "compliancesuite", csuiteName, "-o=jsonpath={.status.phase}").Output()
 		e2e.Logf("the result of complianceSuite:%v", output)
 		if strings.Contains(output, expected) {
 			return true, nil
