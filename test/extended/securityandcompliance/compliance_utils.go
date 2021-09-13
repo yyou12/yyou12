@@ -223,7 +223,7 @@ func checkComplianceSuiteStatus(oc *exutil.CLI, csuiteName string, nameSpace str
 		}
 		return false, nil
 	})
-	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("the status of %s is not expected %s", csuite.name, expected))
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("the status of %s is not expected %s", csuiteName, expected))
 }
 
 func setLabelToNode(oc *exutil.CLI) {
