@@ -1,6 +1,7 @@
 package mco
 
 import (
+	"encoding/json"
 	"math/rand"
 	"path/filepath"
 	"strings"
@@ -164,6 +165,23 @@ func getMachineConfigDaemon(oc *exutil.CLI, node string) string {
 
 func getContainerRuntimeConfigDetails(oc *exutil.CLI, crName string) (string, error) {
 	return oc.AsAdmin().WithoutNamespace().Run("get").Args("ctrcfg", crName, "-o", "yaml").Output()
+}
+
+func getStatusCondition(oc *exutil.CLI, resource string, ctype string) (map[string]interface{}, error) {
+	jsonstr, ocerr := oc.AsAdmin().WithoutNamespace().Run("get").Args(resource, "-o", "jsonpath='{.status.conditions[?(@.type==\""+ctype+"\")]}'").Output()
+	if ocerr != nil {
+		return nil, ocerr
+	}
+	e2e.Logf("condition info of %v-%v : %v", resource, ctype, jsonstr)
+	jsonstr = strings.Trim(jsonstr, "'")
+	jsonbytes := []byte(jsonstr)
+	var datamap map[string]interface{}
+	if jsonerr := json.Unmarshal(jsonbytes, &datamap); jsonerr != nil {
+		return nil, jsonerr
+	} else {
+		e2e.Logf("umarshalled json: %v", datamap)
+		return datamap, jsonerr
+	}
 }
 
 func applyResourceFromTemplate(oc *exutil.CLI, parameters ...string) error {

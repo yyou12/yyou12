@@ -265,6 +265,21 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 				o.ContainSubstring("MaxRetentionSec=30s")))
 		e2e.Logf("Journald config values are verified in the worker node!")
 	})
+
+	g.It("Author:rioliu-CPaasrunOnly-High-42218-add machine config without ignition version [Serial]", func() {
+		g.By("Create machine config with empty ign version")
+		mcName := "change-worker-ign-version-to-empty"
+		mcTemplate := generateTemplateAbsolutePath(mcName + ".yaml")
+		mc := MachineConfig{name: mcName, template: mcTemplate, pool: "worker"}
+		defer mc.delete(oc)
+		mc.create(oc)
+		g.By("Get mcp/worker status to check whether it is degraded")
+		datamap, err := getStatusCondition(oc, "mcp/worker", "RenderDegraded")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(datamap).NotTo(o.BeNil())
+		o.Expect(datamap["status"].(string)).Should(o.Equal("True"))
+		o.Expect(datamap["message"].(string)).Should(o.ContainSubstring("parsing Ignition config failed: unknown version. Supported spec versions: 2.2, 3.0, 3.1, 3.2"))
+	})
 })
 
 func createMcAndVerifyMCValue(oc *exutil.CLI, stepText string, mcName string, textToVerify TextToVerify, cmd ...string) {
