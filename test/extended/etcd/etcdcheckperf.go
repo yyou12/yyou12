@@ -2,13 +2,14 @@ package etcd
 
 import (
 	"fmt"
+
 	g "github.com/onsi/ginkgo"
 	o "github.com/onsi/gomega"
 
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
 )
 
-var _ = g.Describe("[sig-etcd] Etcd", func() {
+var _ = g.Describe("[sig-etcd] ETCD", func() {
 	defer g.GinkgoRecover()
 
 	var oc = exutil.NewCLIWithoutNamespace("openshift-etcd")
