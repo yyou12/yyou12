@@ -52,7 +52,7 @@ func applyResourceFromTemplate(oc *exutil.CLI, parameters ...string) error {
 		configFile = output
 		return true, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("fail to process %v", parameters))
 
 	e2e.Logf("the file of resource is %s", configFile)
 	return oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", configFile).Execute()

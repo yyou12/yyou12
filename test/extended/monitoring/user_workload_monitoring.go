@@ -52,7 +52,7 @@ var _ = g.Describe("[sig-monitoring] Cluster_Observability parallel User workloa
 
 		g.By("check metrics")
 		err = checkMetric(oc, "https://thanos-querier.openshift-monitoring.svc:9091/api/v1/query?query=version", "\"result\":[]", 60)
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, "metrics does not contain \"result\":[]")
 
 		g.By("check alerts")
 		err = checkMetric(oc, "https://thanos-ruler.openshift-user-workload-monitoring.svc:9091/api/v1/alerts", "null", 60)
