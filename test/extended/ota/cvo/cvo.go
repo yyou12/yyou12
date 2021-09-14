@@ -34,7 +34,7 @@ var _ = g.Describe("[sig-updates] OTA cvo should", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 		e2e.Logf("Get cvo pods: %v", cvo_pods_list)
 		output, err := PodExec(oc, "/usr/bin/cluster-version-operator start --help", project_name, cvo_pods_list[0])
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("/usr/bin/cluster-version-operator start --help executs error on %v", cvo_pods_list[0]))
 		e2e.Logf(output)
 		keywords = []string{"You must set both --serving-cert-file and --serving-key-file unless you set --listen empty"}
 		for _, v := range keywords {
@@ -70,7 +70,7 @@ var _ = g.Describe("[sig-updates] OTA cvo should", func() {
 		g.By("Check metric server is providing service https, but not http")
 		cmd := fmt.Sprintf("curl http://%s/metrics", endpoint_uri)
 		output, err = PodExec(oc, cmd, project_name, cvo_pods_list[0])
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("cmd %s executs error on %v", cmd, cvo_pods_list[0]))
 		e2e.Logf(output)
 		keywords = []string{"Client sent an HTTP request to an HTTPS server"}
 		for _, v := range keywords {
@@ -80,7 +80,7 @@ var _ = g.Describe("[sig-updates] OTA cvo should", func() {
 		g.By("Check metric server is providing service via https correctly.")
 		cmd = fmt.Sprintf("curl -k -I https://%s/metrics", endpoint_uri)
 		output, err = PodExec(oc, cmd, project_name, cvo_pods_list[0])
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("cmd %s executs error on %v", cmd, cvo_pods_list[0]))
 		e2e.Logf(output)
 		keywords = []string{"HTTP/1.1 200 OK"}
 		for _, v := range keywords {

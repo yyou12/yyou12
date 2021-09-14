@@ -59,7 +59,7 @@ var _ = g.Describe("[sig-updates] OTA osus should", func() {
 			}
 			return true, nil
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, "pod with name=updateservice-operator is not found")
 
 		e2e.Logf("Waiting for osus operator pod running...")
 		err = wait.Poll(5*time.Second, 15*time.Second, func() (bool, error) {
@@ -70,7 +70,7 @@ var _ = g.Describe("[sig-updates] OTA osus should", func() {
 			}
 			return true, nil
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, "pod with name=updateservice-operator is not Running")
 
 		g.By("Delete OperatorGroup...")
 		og.delete(oc)
@@ -92,7 +92,7 @@ var _ = g.Describe("[sig-updates] OTA osus should", func() {
 			}
 			return true, nil
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, "updateservice operator is not uninstalled")
 	})
 
 })
