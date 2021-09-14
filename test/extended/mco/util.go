@@ -2,6 +2,7 @@ package mco
 
 import (
 	"encoding/json"
+	"fmt"
 	"math/rand"
 	"path/filepath"
 	"strings"
@@ -127,7 +128,7 @@ func (mcp *MachineConfigPool) waitForComplete(oc *exutil.CLI) {
 		return false, nil
 	})
 
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("mc operation is not completed on mcp %s", mcp.name))
 }
 
 func waitForNodeDoesNotContain(oc *exutil.CLI, node string, value string) {
@@ -144,7 +145,7 @@ func waitForNodeDoesNotContain(oc *exutil.CLI, node string, value string) {
 		return false, nil
 	})
 
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("node contains %s", value))
 }
 
 func getMachineConfigDetails(oc *exutil.CLI, mcName string) (string, error) {
@@ -195,7 +196,7 @@ func applyResourceFromTemplate(oc *exutil.CLI, parameters ...string) error {
 		configFile = output
 		return true, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("fail to process %v", parameters))
 
 	e2e.Logf("the file of resource is %s", configFile)
 	return oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", configFile).Execute()
