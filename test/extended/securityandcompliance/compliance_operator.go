@@ -53,6 +53,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		ldapConfigMapYAML                string
 		motdConfigMapYAML                string
 		consoleNotificationYAML          string
+		networkPolicyYAML                string
 		catSrc                           catalogSourceDescription
 		ogD                              operatorGroupDescription
 		subD                             subscriptionDescription
@@ -95,6 +96,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		ldapConfigMapYAML = filepath.Join(buildPruningBaseDir, "ldap_configmap.yaml")
 		motdConfigMapYAML = filepath.Join(buildPruningBaseDir, "motd_configmap.yaml")
 		consoleNotificationYAML = filepath.Join(buildPruningBaseDir, "consolenotification.yaml")
+		networkPolicyYAML = filepath.Join(buildPruningBaseDir, "network-policy.yaml")
 
 		catSrc = catalogSourceDescription{
 			name:        "compliance-operator",
@@ -3175,6 +3177,83 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 				"ocp4-moderate-banner-or-login-template-set", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
 
 			g.By("ocp-42700 The login banner is configured and login screen customised successfully... !!!!\n ")
+		})
+
+		// author: pdhamdhe@redhat.com
+		g.It("Author:pdhamdhe-CPaasrunOnly-Low-42720-check manual remediation for rule ocp4-moderate-configure-network-policies-namespaces working as expected [Disruptive][Slow]", func() {
+
+			var (
+				ssb = scanSettingBindingDescription{
+					name:            "moderate-test",
+					namespace:       "",
+					profilekind1:    "Profile",
+					profilename1:    "ocp4-moderate",
+					scansettingname: "default",
+					template:        scansettingbindingSingleTemplate,
+				}
+				itName = g.CurrentGinkgoTestDescription().TestText
+			)
+
+			defer func() {
+				g.By("Remove NetworkPolicy object from all non-control plane namespace.. !!!\n")
+				nsName := "ns-42720-1"
+				cleanupObjects(oc, objectTableRef{"ns", nsName, nsName})
+				cleanupObjects(oc, objectTableRef{"scansettingbinding", subD.namespace, ssb.name})
+				nonControlNamespacesList := getNonControlNamespaces(oc)
+				for _, v := range nonControlNamespacesList {
+					cleanupObjects(oc, objectTableRef{"NetworkPolicy", v, "allow-same-namespace"})
+					newCheck("expect", asAdmin, withoutNamespace, contain, "allow-same-namespace", nok, []string{"NetworkPolicy", "-n", v, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
+				}
+			}()
+
+			g.By("Check default profiles name ocp4-moderate .. !!!\n")
+			subD.getProfileName(oc, "ocp4-moderate")
+
+			g.By("Create scansettingbinding !!!\n")
+			ssb.namespace = subD.namespace
+			ssb.create(oc, itName, dr)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "moderate-test", ok, []string{"scansettingbinding", "-n", subD.namespace,
+				"-o=jsonpath={.items[0].metadata.name}"}).check(oc)
+			g.By("Check ComplianceSuite status and result.. !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", ssb.name, "-n", subD.namespace,
+				"-o=jsonpath={.status.phase}"}).check(oc)
+			subD.complianceSuiteResult(oc, ssb.name, "NON-COMPLIANT")
+			g.By("Verify ocp4-moderate-configure-network-policies-namespaces rule status through compliancecheck result.. !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "FAIL", ok, []string{"compliancecheckresult",
+				"ocp4-moderate-configure-network-policies-namespaces", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
+
+			g.By("Create NetworkPolicy in all non-control plane namespace .. !!!\n")
+			nonControlNamespacesList := getNonControlNamespaces(oc)
+			e2e.Logf("Here namespace : %v\n", nonControlNamespacesList)
+			for _, v := range nonControlNamespacesList {
+				_, err := oc.AsAdmin().WithoutNamespace().Run("create").Args("-n", v, "-f", networkPolicyYAML).Output()
+				o.Expect(err).NotTo(o.HaveOccurred())
+				newCheck("expect", asAdmin, withoutNamespace, contain, "allow-same-namespace", ok, []string{"NetworkPolicy", "-n", v, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
+			}
+
+			g.By("Rerun scan using oc-compliance plugin.. !!")
+			_, err := OcComplianceCLI().Run("rerun-now").Args("scansettingbinding", ssb.name, "-n", subD.namespace).Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", ssb.name, "-n", subD.namespace,
+				"-o=jsonpath={.status.phase}"}).check(oc)
+			g.By("Verify ocp4-moderate-configure-network-policies-namespaces rule status through compliancecheck result.. !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "PASS", ok, []string{"compliancecheckresult",
+				"ocp4-moderate-configure-network-policies-namespaces", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
+
+			g.By("Create one more non-control plane namespace .. !!!\n")
+			nsName := "ns-42720-1"
+			_, err1 := oc.AsAdmin().WithoutNamespace().Run("create").Args("ns", nsName).Output()
+			o.Expect(err1).NotTo(o.HaveOccurred())
+			g.By("Rerun scan using oc-compliance plugin.. !!")
+			_, err2 := OcComplianceCLI().Run("rerun-now").Args("scansettingbinding", ssb.name, "-n", subD.namespace).Output()
+			o.Expect(err2).NotTo(o.HaveOccurred())
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", ssb.name, "-n", subD.namespace,
+				"-o=jsonpath={.status.phase}"}).check(oc)
+			g.By("Verify motd and banner or login rules status again through compliancecheck result.. !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "FAIL", ok, []string{"compliancecheckresult",
+				"ocp4-moderate-configure-network-policies-namespaces", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
+
+			g.By("ocp-42720 The manual remediation works for network-policies-namespaces rule... !!!!\n ")
 		})
 	})
 })

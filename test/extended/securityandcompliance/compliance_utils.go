@@ -706,3 +706,12 @@ func createLoginTemp(oc *exutil.CLI, namespace string) {
 	_, err1 := oc.AsAdmin().WithoutNamespace().Run("create").Args("secret", "generic", "login-secret", "--from-file=login.html=./login.html", "-n", namespace).Output()
 	o.Expect(err1).NotTo(o.HaveOccurred())
 }
+
+func getNonControlNamespaces(oc *exutil.CLI) []string {
+	e2e.Logf("Get the all non-control plane namespaces... !!\n")
+	projects, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("projects", "--no-headers", "-n", oc.Namespace()).OutputToFile(getRandomString() + "project.json")
+	o.Expect(err).NotTo(o.HaveOccurred())
+	result, _ := exec.Command("bash", "-c", "cat "+projects+" | grep -v -e default -e kube- -e openshift | sed \"s/Active//g\" ; rm -rf "+projects).Output()
+	projectList := strings.Fields(string(result))
+	return projectList
+}
