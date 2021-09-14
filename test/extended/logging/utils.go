@@ -168,7 +168,7 @@ func WaitForDeploymentPodsToBeReady(oc *exutil.CLI, namespace string, name strin
 		}
 
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("deployment %s is not availabile", name))
 }
 
 //WaitForDaemonsetPodsToBeReady waits for all the pods controlled by the ds to be ready
@@ -189,7 +189,7 @@ func WaitForDaemonsetPodsToBeReady(oc *exutil.CLI, ns string, name string) {
 		return false, nil
 	})
 	e2e.Logf("Daemonset %s is available\n", name)
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("Daemonset %s is not availabile", name))
 }
 
 //GetDeploymentsNameByLabel retruns a list of deployment name which have specific labels
@@ -208,7 +208,7 @@ func GetDeploymentsNameByLabel(oc *exutil.CLI, ns string, label string) []string
 		}
 		return false, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("deployment with label %s is not availabile", label))
 	if err == nil {
 		deployList, err := oc.AdminKubeClient().AppsV1().Deployments(ns).List(metav1.ListOptions{LabelSelector: label})
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -282,7 +282,7 @@ func (r resource) WaitForResourceToAppear(oc *exutil.CLI) {
 		e2e.Logf("Find %s %s", r.kind, r.name)
 		return true, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("resource %s is not appear", r.name))
 }
 
 func (r resource) applyFromTemplate(oc *exutil.CLI, parameters ...string) error {
@@ -296,7 +296,7 @@ func (r resource) applyFromTemplate(oc *exutil.CLI, parameters ...string) error 
 		configFile = output
 		return true, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("fail to process %v", parameters))
 
 	e2e.Logf("the file of resource is %s", configFile)
 	err = oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", configFile, "-n", r.namespace).Execute()
@@ -310,7 +310,7 @@ func (r resource) deleteClusterLogging(oc *exutil.CLI) {
 	if err != nil {
 		e2e.Logf("could not delete %s/%s", r.kind, r.name)
 	}
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("could not delete %s/%s", r.kind, r.name))
 	//make sure other resources are removed
 	resources := []resource{{"elasticsearch", "elasticsearch", r.namespace}, {"kibana", "kibana", r.namespace}, {"daemonset", "fluentd", r.namespace}}
 	for i := 0; i < len(resources); i++ {
@@ -318,7 +318,7 @@ func (r resource) deleteClusterLogging(oc *exutil.CLI) {
 		if err != nil {
 			e2e.Logf("%s/%s is not deleted", resources[i].kind, resources[i].name)
 		}
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("%s/%s is not deleted", resources[i].kind, resources[i].name))
 	}
 	// remove all the pvcs in the namespace
 	_ = oc.AsAdmin().WithoutNamespace().Run("delete").Args("-n", r.namespace, "pvc", "--all").Execute()
@@ -355,7 +355,7 @@ func WaitForIMCronJobToAppear(oc *exutil.CLI, ns string, name string) {
 			return true, nil
 		}
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("cronjob %s is not availabile", name))
 }
 
 func waitForIMJobsToComplete(oc *exutil.CLI, ns string, timeout time.Duration) {
@@ -375,7 +375,7 @@ func waitForIMJobsToComplete(oc *exutil.CLI, ns string, timeout time.Duration) {
 			return false, nil
 		}
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("jobs %s with is not availabile", "component=indexManagement"))
 	// wait for jobs to complete
 	jobList, err := oc.AdminKubeClient().BatchV1().Jobs(ns).List(metav1.ListOptions{LabelSelector: "component=indexManagement"})
 	if err != nil {
@@ -397,7 +397,7 @@ func waitForIMJobsToComplete(oc *exutil.CLI, ns string, timeout time.Duration) {
 				}
 			}
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("job %s is not completed yet", job.Name))
 	}
 }
 

@@ -2,6 +2,7 @@ package logging
 
 import (
 	"encoding/json"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -51,7 +52,7 @@ func waitForIndexAppear(oc *exutil.CLI, ns string, pod string, indexName string,
 			return false, err
 		}
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("index %s is not counted", indexName))
 }
 
 func getDocCountPerNamespace(oc *exutil.CLI, ns string, pod string, projectName string, indexName string) (int, error) {
@@ -75,7 +76,7 @@ func waitForProjectLogsAppear(oc *exutil.CLI, ns string, pod string, projectName
 			}
 		}
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("log of index %s is not got", indexName))
 }
 
 func searchInES(oc *exutil.CLI, ns string, pod string, searchCMD string) SearchResult {
