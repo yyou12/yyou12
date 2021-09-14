@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"fmt"
 	"time"
 
 	o "github.com/onsi/gomega"
@@ -126,7 +127,7 @@ func waitPodReady(oc *exutil.CLI, namespace string, podName string) {
 		e2e.Logf("oc describe pod %v.", podName)
 		e2e.Logf(podDescribe)
 	}
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("pod %s not ready %v", podName))
 }
 
 //  Specified pod exec the bash CLI

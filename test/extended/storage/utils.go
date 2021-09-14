@@ -1,11 +1,11 @@
 package storage
 
 import (
+	"fmt"
 	"math/rand"
 	"strings"
 	"time"
 
-	o "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
@@ -24,7 +24,7 @@ func applyResourceFromTemplateAsAdmin(oc *exutil.CLI, parameters ...string) erro
 		configFile = output
 		return true, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("as admin fail to process %v", parameters))
 
 	e2e.Logf("the file of resource is %s", configFile)
 	return oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", configFile).Execute()
@@ -42,7 +42,7 @@ func applyResourceFromTemplate(oc *exutil.CLI, parameters ...string) error {
 		configFile = output
 		return true, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("fail to process %v", parameters))
 
 	e2e.Logf("the file of resource is %s", configFile)
 	return oc.WithoutNamespace().Run("apply").Args("-f", configFile).Execute()
