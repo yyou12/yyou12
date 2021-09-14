@@ -71,7 +71,7 @@ func createResourceFromTemplate(oc *exutil.CLI, parameters ...string) error {
 		jsonCfg = output
 		return true, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("fail to process %v", parameters))
 
 	e2e.Logf("the file of resource is %s", jsonCfg)
 	return oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", jsonCfg).Execute()

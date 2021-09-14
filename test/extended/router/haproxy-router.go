@@ -1,6 +1,7 @@
 package router
 
 import (
+	"fmt"
 	"path/filepath"
 
 	g "github.com/onsi/ginkgo"
@@ -34,7 +35,7 @@ var _ = g.Describe("[sig-network-edge] Network_Edge should", func() {
 		ingctrl.create(oc)
 		defer ingctrl.delete(oc)
 		err := waitForCustomIngressControllerAvailable(oc, ingctrl.name)
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("ingresscontroller %s conditions not available", ingctrl.name))
 
 		g.By("Check the router env to verify the PROXY variable is applied")
 		podname := getRouterPod(oc, "ocp40677")
@@ -61,7 +62,7 @@ var _ = g.Describe("[sig-network-edge] Network_Edge should", func() {
 		ingctrl.create(oc)
 		defer ingctrl.delete(oc)
 		err := waitForCustomIngressControllerAvailable(oc, ingctrl.name)
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("ingresscontroller %s conditions not available", ingctrl.name))
 
 		g.By("Check the router env to verify the PROXY variable is applied")
 		routername := getRouterPod(oc, "ocp40675")
@@ -104,7 +105,7 @@ var _ = g.Describe("[sig-network-edge] Network_Edge should", func() {
 		ingctrl.create(oc)
 		defer ingctrl.delete(oc)
 		err := waitForCustomIngressControllerAvailable(oc, ingctrl.name)
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("ingresscontroller %s conditions not available", ingctrl.name))
 		originalRouterpod := getRouterPod(oc, ingctrl.name)
 
 		g.By("2.  Configure a customized error page configmap from files in openshift-config namespace")
@@ -117,7 +118,7 @@ var _ = g.Describe("[sig-network-edge] Network_Edge should", func() {
 
 		g.By("3. Check if configmap is successfully configured in openshift-config namesapce")
 		err = checkConfigMap(oc, "openshift-config", configmapName)
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("cm %v not found", configmapName))
 
 		g.By("4. Patch the configmap created above to the custom ingresscontroller in openshift-ingress namespace")
 		ingctrlResource := "ingresscontrollers/" + ingctrl.name
@@ -126,11 +127,11 @@ var _ = g.Describe("[sig-network-edge] Network_Edge should", func() {
 		g.By("5. Check if configmap is successfully patched into openshift-ingress namesapce, configmap with name ingctrl.name-errorpages should be created")
 		expectedCmName := ingctrl.name + `-errorpages`
 		err = checkConfigMap(oc, "openshift-ingress", expectedCmName)
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("cm %v not found", expectedCmName))
 
 		g.By("6. Obtain new router pod created, and check if error_code_pages directory is created on it")
 		err = waitForResourceToDisappear(oc, "openshift-ingress", "pod/"+originalRouterpod)
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("resource %v does not disapper", "pod/"+originalRouterpod))
 		newrouterpod := getRouterPod(oc, ingctrl.name)
 
 		g.By("Check /var/lib/haproxy/conf directory to see if error_code_pages subdirectory is created on the router")
@@ -171,7 +172,7 @@ var _ = g.Describe("[sig-network-edge] Network_Edge should", func() {
 		ingctrl.create(oc)
 		defer ingctrl.delete(oc)
 		err := waitForCustomIngressControllerAvailable(oc, ingctrl.name)
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("ingresscontroller %s conditions not available", ingctrl.name))
 		routerpod := getRouterPod(oc, ingctrl.name)
 
 		g.By("Verify the default server/client fin and default timeout values")
@@ -186,7 +187,7 @@ var _ = g.Describe("[sig-network-edge] Network_Edge should", func() {
 		ingctrlResource := "ingresscontrollers/" + ingctrl.name
 		patchResourceAsAdmin(oc, ingctrl.namespace, ingctrlResource, "{\"spec\":{\"tuningOptions\" :{\"clientFinTimeout\": \"3s\",\"clientTimeout\":\"33s\",\"serverFinTimeout\":\"3s\",\"serverTimeout\":\"33s\"}}}")
 		err = waitForResourceToDisappear(oc, "openshift-ingress", "pod/"+routerpod)
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("resource %v does not disapper", "pod/"+routerpod))
 		newrouterpod := getRouterPod(oc, ingctrl.name)
 
 		g.By("verify the timeout variables from the new router pods")
@@ -216,7 +217,7 @@ var _ = g.Describe("[sig-network-edge] Network_Edge should", func() {
 		ingctrl.create(oc)
 		defer ingctrl.delete(oc)
 		err := waitForCustomIngressControllerAvailable(oc, ingctrl.name)
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("ingresscontroller %s conditions not available", ingctrl.name))
 		routerpod := getRouterPod(oc, ingctrl.name)
 
 		g.By("Verify the default tls values")
@@ -228,7 +229,7 @@ var _ = g.Describe("[sig-network-edge] Network_Edge should", func() {
 		ingctrlResource := "ingresscontrollers/" + ingctrl.name
 		patchResourceAsAdmin(oc, ingctrl.namespace, ingctrlResource, "{\"spec\":{\"tuningOptions\" :{\"tlsInspectDelay\": \"15s\"}}}")
 		err = waitForResourceToDisappear(oc, "openshift-ingress", "pod/"+routerpod)
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("resource %v does not disapper", "pod/"+routerpod))
 		newrouterpod := getRouterPod(oc, ingctrl.name)
 
 		g.By("verify the new tls inspect timeout value in the router pod")
@@ -256,7 +257,7 @@ var _ = g.Describe("[sig-network-edge] Network_Edge should", func() {
 		ingctrl.create(oc)
 		defer ingctrl.delete(oc)
 		err := waitForCustomIngressControllerAvailable(oc, ingctrl.name)
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("ingresscontroller %s conditions not available", ingctrl.name))
 		routerpod := getRouterPod(oc, ingctrl.name)
 
 		g.By("Verify the default tls values")
@@ -268,7 +269,7 @@ var _ = g.Describe("[sig-network-edge] Network_Edge should", func() {
 		ingctrlResource := "ingresscontrollers/" + ingctrl.name
 		patchResourceAsAdmin(oc, ingctrl.namespace, ingctrlResource, "{\"spec\":{\"tuningOptions\" :{\"tunnelTimeout\": \"2h\"}}}")
 		err = waitForResourceToDisappear(oc, "openshift-ingress", "pod/"+routerpod)
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("resource %v does not disapper", "pod/"+routerpod))
 		newrouterpod := getRouterPod(oc, ingctrl.name)
 
 		g.By("verify the new tls inspect timeout value in the router pod")

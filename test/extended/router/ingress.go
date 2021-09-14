@@ -1,6 +1,7 @@
 package router
 
 import (
+	"fmt"
 	"path/filepath"
 
 	g "github.com/onsi/ginkgo"
@@ -39,7 +40,7 @@ var _ = g.Describe("[sig-network-edge] Network_Edge should", func() {
 		ingctrl.create(oc)
 		defer ingctrl.delete(oc)
 		err = waitForCustomIngressControllerAvailable(oc, ingctrl.name)
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("ingresscontroller %s conditions not available", ingctrl.name))
 
 		g.By("check the ingressclass is created by custom ingresscontroller")
 		ingressclassname := "openshift-" + ingctrl.name

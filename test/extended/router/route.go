@@ -25,7 +25,7 @@ var _ = g.Describe("[sig-network-edge] Network_Edge should", func() {
 		oc.SetupProject()
 		createResourceFromFile(oc, oc.Namespace(), testPodSvc)
 		err := waitForPodWithLabelReady(oc, oc.Namespace(), "name=web-server-rc")
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, "the pod with name=web-server-rc Ready status not met")
 
 		g.By("expose a service in the project")
 		exposeRoute(oc, oc.Namespace(), "svc/service-unsecure")
@@ -41,7 +41,7 @@ var _ = g.Describe("[sig-network-edge] Network_Edge should", func() {
 
 		g.By("Verify the acl whitelist parameter inside router pod")
 		err = readHaproxyConfig(oc)
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, "acl whitelist is not found")
 
 	})
 

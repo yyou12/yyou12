@@ -1,10 +1,10 @@
 package router
 
 import (
+	"fmt"
 	"path/filepath"
 
 	g "github.com/onsi/ginkgo"
-	o "github.com/onsi/gomega"
 
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
 	//e2e "k8s.io/kubernetes/test/e2e/framework"
@@ -36,8 +36,8 @@ var _ = g.Describe("[sig-network-edge] Network_Edge should", func() {
 		g.By("create ipfailover deployment and ensure one of pod enter MASTER state")
 		ipf.create(oc, oc.Namespace())
 		err := waitForPodWithLabelReady(oc, oc.Namespace(), "ipfailover=hello-openshift")
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, "the pod with ipfailover=hello-openshift Ready status not met")
 		err = waitForIpfailoverEnterMaster(oc, oc.Namespace(), "ipfailover=hello-openshift")
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("label %s no ipfailover pod is in MASTER state", "ipfailover=hello-openshift"))
 	})
 })

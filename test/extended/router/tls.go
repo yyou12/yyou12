@@ -1,6 +1,7 @@
 package router
 
 import (
+	"fmt"
 	"path/filepath"
 
 	g "github.com/onsi/ginkgo"
@@ -38,13 +39,13 @@ var _ = g.Describe("[sig-network-edge] Network_Edge should", func() {
 		ingctrl.create(oc)
 		defer ingctrl.delete(oc)
 		err := waitForCustomIngressControllerAvailable(oc, ingctrl.name)
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("ingresscontroller %s conditions not available", ingctrl.name))
 
 		g.By("patch the ingresscontroller to enable client certificate with optional policy")
 		routerpod := getRouterPod(oc, "ocp43300")
 		patchResourceAsAdmin(oc, ingctrl.namespace, "ingresscontroller/ocp43300", "{\"spec\":{\"clientTLS\":{\"clientCA\":{\"name\":\"client-ca-43300\"},\"clientCertificatePolicy\":\"Optional\"}}}")
 		err = waitForResourceToDisappear(oc, "openshift-ingress", "pod/"+routerpod)
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("resource %v does not disapper", "pod/"+routerpod))
 
 		g.By("check client certification config after custom router rolled out")
 		newrouterpod := getRouterPod(oc, "ocp43300")
@@ -77,13 +78,13 @@ var _ = g.Describe("[sig-network-edge] Network_Edge should", func() {
 		ingctrl.create(oc)
 		defer ingctrl.delete(oc)
 		err := waitForCustomIngressControllerAvailable(oc, ingctrl.name)
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("ingresscontroller %s conditions not available", ingctrl.name))
 
 		g.By("patch the ingresscontroller to enable client certificate with required policy")
 		routerpod := getRouterPod(oc, "ocp43301")
 		patchResourceAsAdmin(oc, ingctrl.namespace, "ingresscontroller/ocp43301", "{\"spec\":{\"clientTLS\":{\"clientCA\":{\"name\":\"client-ca-43301\"},\"clientCertificatePolicy\":\"Required\",\"allowedSubjectPatterns\":[\"www.test2.com\"]}}}")
 		err = waitForResourceToDisappear(oc, "openshift-ingress", "pod/"+routerpod)
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("resource %v does not disapper", "pod/"+routerpod))
 
 		g.By("check client certification config after custom router rolled out")
 		newrouterpod := getRouterPod(oc, "ocp43301")
