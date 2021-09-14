@@ -76,7 +76,7 @@ func createResourceFromTemplate(oc *exutil.CLI, parameters ...string) error {
 		jsonCfg = output
 		return true, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("fail to process %v", parameters))
 
 	e2e.Logf("The resource is %s", jsonCfg)
 	return oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", jsonCfg).Execute()
@@ -356,11 +356,11 @@ func checkPodmanVersion(oc *exutil.CLI) error {
 
 				if strings.Contains(string(podmanver), "podman version 3.") {
 					e2e.Logf("\nPodman version is greater than 3.x")
-					} else {
-						e2e.Logf("\nPodman version is NOT greater than 3.x")
-						return false, nil
-					}
 				} else {
+					e2e.Logf("\nPodman version is NOT greater than 3.x")
+					return false, nil
+				}
+			} else {
 				e2e.Logf("\n NODES ARE NOT READY\n ")
 			}
 		}
