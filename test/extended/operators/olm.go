@@ -518,7 +518,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 			e2e.Failf("!!!Fail to get the InstallPlan of sub: %s/%s", sub.namespace, sub.subName)
 		}
 		// get the unpack job name
-		manifest := getResource(oc, asAdmin, withoutNamespace, "ip", "-n", sub.namespace, ipName, "-o=jsonpath={.status.plan[0].resource.manifest}")
+		manifest := getResource(oc, asAdmin, withoutNamespace, "installplan", "-n", sub.namespace, ipName, "-o=jsonpath={.status.plan[0].resource.manifest}")
 		valid := regexp.MustCompile(`name":"(\S+)","namespace"`)
 		job := valid.FindStringSubmatch(manifest)
 		g.By("5) Only check if the job pod works well")
@@ -1477,8 +1477,8 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		sub.createWithoutCheck(oc, itName, dr)
 
 		g.By("5) The install plan is Failed")
-		installPlan := getResourceNoEmpty(oc, asAdmin, withoutNamespace, "ip", "-n", sub.namespace, "-o=jsonpath={.items..metadata.name}")
-		newCheck("expect", asAdmin, withoutNamespace, compare, "InstallComponentFailed", ok, []string{"ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.conditions..reason}"}).check(oc)
+		installPlan := getResourceNoEmpty(oc, asAdmin, withoutNamespace, "installplan", "-n", sub.namespace, "-o=jsonpath={.items..metadata.name}")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "InstallComponentFailed", ok, []string{"installplan", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.conditions..reason}"}).check(oc)
 
 		g.By("6) Grant the proper permissions to the service account")
 		_, err = oc.WithoutNamespace().AsAdmin().Run("create").Args("-f", saRoles, "-n", namespace).Output()
@@ -1548,8 +1548,8 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		sub.createWithoutCheck(oc, itName, dr)
 
 		g.By("5) The install plan is Failed")
-		installPlan := getResourceNoEmpty(oc, asAdmin, withoutNamespace, "ip", "-n", sub.namespace, "-o=jsonpath={.items..metadata.name}")
-		newCheck("expect", asAdmin, withoutNamespace, compare, "Failed", ok, []string{"ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+		installPlan := getResourceNoEmpty(oc, asAdmin, withoutNamespace, "installplan", "-n", sub.namespace, "-o=jsonpath={.items..metadata.name}")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Failed", ok, []string{"installplan", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
 
 		g.By("6) Grant the proper permissions to the service account")
 		_, err = oc.WithoutNamespace().AsAdmin().Run("create").Args("-f", saRoles, "-n", namespace).Output()
@@ -2415,7 +2415,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		o.Expect(patchIP).To(o.ContainSubstring("patched"))
 
 		err = wait.Poll(30*time.Second, operatorWait, func() (bool, error) {
-			checkCreateEtcdCluster, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("ip", "-n", "test-automation-24738-1").Output()
+			checkCreateEtcdCluster, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("installplan", "-n", "test-automation-24738-1").Output()
 			o.Expect(err).NotTo(o.HaveOccurred())
 			e2e.Logf(checkCreateEtcdCluster)
 
@@ -2546,7 +2546,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		defer sub.deleteCSV(itName, dr)
 
 		nameIP := sub.getIP(oc)
-		deteleIP, err1 := oc.AsAdmin().WithoutNamespace().Run("delete").Args("ip", nameIP, "-n", oc.Namespace()).Output()
+		deteleIP, err1 := oc.AsAdmin().WithoutNamespace().Run("delete").Args("installplan", nameIP, "-n", oc.Namespace()).Output()
 		e2e.Logf(deteleIP)
 		o.Expect(err1).NotTo(o.HaveOccurred())
 		o.Expect(deteleIP).To(o.ContainSubstring("deleted"))
@@ -2924,10 +2924,10 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		newCheck("expect", asAdmin, withoutNamespace, compare, "Manual", ok, []string{"sub", "-n", namespace, "-o=jsonpath={.items[*].spec.installPlanApproval}"}).check(oc)
 
 		// the InstallPlan should Manual on ip
-		newCheck("expect", asAdmin, withoutNamespace, compare, "Manual", ok, []string{"ip", sub.getIP(oc), "-n", sub.namespace, "-o=jsonpath={.spec.approval}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Manual", ok, []string{"installplan", sub.getIP(oc), "-n", sub.namespace, "-o=jsonpath={.spec.approval}"}).check(oc)
 
 		// the InstallPlan patched
-		patchIP, err2 := oc.AsAdmin().WithoutNamespace().Run("patch").Args("ip", sub.getIP(oc), "-n", namespace, "--type=merge", "-p", "{\"spec\":{\"approved\": true}}").Output()
+		patchIP, err2 := oc.AsAdmin().WithoutNamespace().Run("patch").Args("installplan", sub.getIP(oc), "-n", namespace, "--type=merge", "-p", "{\"spec\":{\"approved\": true}}").Output()
 		o.Expect(err2).NotTo(o.HaveOccurred())
 		o.Expect(patchIP).To(o.ContainSubstring("patched"))
 
@@ -2935,7 +2935,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		newCheck("expect", asAdmin, withoutNamespace, compare, "AtLatestKnown", ok, []string{"sub", "-n", namespace, "-o=jsonpath={.items[*].status.state}"}).check(oc)
 
 		// the delete InstallPlan
-		deteleIP, err1 := oc.AsAdmin().WithoutNamespace().Run("delete").Args("ip", sub.getIP(oc), "-n", namespace).Output()
+		deteleIP, err1 := oc.AsAdmin().WithoutNamespace().Run("delete").Args("installplan", sub.getIP(oc), "-n", namespace).Output()
 		e2e.Logf(deteleIP)
 		o.Expect(err1).NotTo(o.HaveOccurred())
 		o.Expect(deteleIP).To(o.ContainSubstring("deleted"))
@@ -3163,7 +3163,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		// the state should be UpgradePending
 		newCheck("expect", asAdmin, withoutNamespace, compare, "UpgradePending", ok, []string{"sub", "sub-21126", "-n", oc.Namespace(), "-o=jsonpath={.status.state}"}).check(oc)
 		// the InstallPlan should not approved
-		newCheck("expect", asAdmin, withoutNamespace, compare, "false", ok, []string{"ip", sub.getIP(oc), "-n", oc.Namespace(), "-o=jsonpath={.spec.approved}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "false", ok, []string{"installplan", sub.getIP(oc), "-n", oc.Namespace(), "-o=jsonpath={.spec.approved}"}).check(oc)
 		// should no etcdoperator.v0.9.4 CSV found
 		msg, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", "etcdoperator.v0.9.4", "-n", oc.Namespace()).Output()
 		if !strings.Contains(msg, "not found") {
@@ -3543,11 +3543,11 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		newCheck("expect", asUser, withNamespace, compare, "Succeeded", ok, []string{"csv", sub.installedCSV, "-o=jsonpath={.status.phase}"}).check(oc)
 
 		g.By("Check there is only one ip")
-		ips := getResource(oc, asAdmin, withoutNamespace, "ip", "-n", sub.namespace, "--no-headers")
+		ips := getResource(oc, asAdmin, withoutNamespace, "installplan", "-n", sub.namespace, "--no-headers")
 		ipList := strings.Split(ips, "\n")
 		for _, ip := range ipList {
 			name := strings.Fields(ip)[0]
-			getResource(oc, asAdmin, withoutNamespace, "ip", name, "-n", sub.namespace, "-o=json")
+			getResource(oc, asAdmin, withoutNamespace, "installplan", name, "-n", sub.namespace, "-o=json")
 		}
 		o.Expect(strings.Count(ips, sub.installedCSV)).To(o.Equal(1))
 	})
@@ -3598,7 +3598,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		g.By("the install plan is RequiresApproval")
 		installPlan := getResource(oc, asAdmin, withoutNamespace, "sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.installplan.name}")
 		o.Expect(installPlan).NotTo(o.BeEmpty())
-		newCheck("expect", asAdmin, withoutNamespace, compare, "RequiresApproval", ok, []string{"ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "RequiresApproval", ok, []string{"installplan", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
 
 		g.By("manually approve sub")
 		sub.approve(oc, itName, dr)
@@ -3645,11 +3645,11 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		newCheck("expect", asAdmin, withNamespace, compare, "Succeeded", ok, []string{"csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
 
 		g.By("Check there is only one ip")
-		ips := getResource(oc, asAdmin, withoutNamespace, "ip", "-n", sub.namespace, "--no-headers")
+		ips := getResource(oc, asAdmin, withoutNamespace, "installplan", "-n", sub.namespace, "--no-headers")
 		ipList := strings.Split(ips, "\n")
 		for _, ip := range ipList {
 			name := strings.Fields(ip)[0]
-			getResource(oc, asAdmin, withoutNamespace, "ip", name, "-n", sub.namespace, "-o=json")
+			getResource(oc, asAdmin, withoutNamespace, "installplan", name, "-n", sub.namespace, "-o=json")
 		}
 		o.Expect(strings.Count(ips, sub.installedCSV)).To(o.Equal(1))
 	})
@@ -4093,7 +4093,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		g.By("get bundle package from ip")
 		installPlan := getResource(oc, asAdmin, withoutNamespace, "sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.installplan.name}")
 		o.Expect(installPlan).NotTo(o.BeEmpty())
-		ipBundle := getResource(oc, asAdmin, withoutNamespace, "ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.bundleLookups[0].path}")
+		ipBundle := getResource(oc, asAdmin, withoutNamespace, "installplan", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.bundleLookups[0].path}")
 		o.Expect(ipBundle).NotTo(o.BeEmpty())
 
 		g.By("get bundle package from job")
@@ -4245,7 +4245,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		g.By("check schema does not work")
 		installPlan := getResource(oc, asAdmin, withoutNamespace, "sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.installplan.name}")
 		o.Expect(installPlan).NotTo(o.BeEmpty())
-		newCheck("expect", asAdmin, withoutNamespace, contain, "error validating existing CRs", ok, []string{"ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.conditions[*].message}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, contain, "error validating existing CRs", ok, []string{"installplan", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.conditions[*].message}"}).check(oc)
 	})
 
 	// It will cover test case: OCP-25760, author: kuiwang@redhat.com
@@ -6044,15 +6044,15 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		g.By("3) check ip status")
 		installPlan := sub.getIP(oc)
 		o.Expect(installPlan).NotTo(o.BeEmpty())
-		newCheck("expect", asAdmin, withoutNamespace, contain, "no operator group found", ok, []string{"ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.conditions}"}).check(oc)
-		phase := getResource(oc, asAdmin, withoutNamespace, "ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.phase}")
+		newCheck("expect", asAdmin, withoutNamespace, contain, "no operator group found", ok, []string{"installplan", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.conditions}"}).check(oc)
+		phase := getResource(oc, asAdmin, withoutNamespace, "installplan", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.phase}")
 		o.Expect(phase).To(o.Equal("Installing"))
 
 		g.By("4) install og")
 		og.createwithCheck(oc, itName, dr)
 
 		g.By("check ip and csv")
-		newCheck("expect", asAdmin, withoutNamespace, compare, "Complete", ok, []string{"ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Complete", ok, []string{"installplan", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
 		sub.findInstalledCSV(oc, itName, dr)
 		err := wait.Poll(10*time.Second, 300*time.Second, func() (bool, error) {
 			status := getResource(oc, asAdmin, withoutNamespace, "csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={..status.phase}")
@@ -6114,8 +6114,8 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		g.By("3) check ip/sub conditions")
 		installPlan := sub.getIP(oc)
 		o.Expect(installPlan).NotTo(o.BeEmpty())
-		newCheck("expect", asAdmin, withoutNamespace, compare, "Failed", ok, []string{"ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
-		ipConditions := getResource(oc, asAdmin, withoutNamespace, "ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.conditions}")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Failed", ok, []string{"installplan", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+		ipConditions := getResource(oc, asAdmin, withoutNamespace, "installplan", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.conditions}")
 		o.Expect(ipConditions).To(o.ContainSubstring("api-server resource not found installing CustomResourceDefinition"))
 		o.Expect(ipConditions).To(o.ContainSubstring("apiextensions.k8s.io/v1beta1"))
 		o.Expect(ipConditions).To(o.ContainSubstring("Kind=CustomResourceDefinition not found on the cluster"))
@@ -6176,7 +6176,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		installPlan := sub.getIP(oc)
 		o.Expect(installPlan).NotTo(o.BeEmpty())
 		err := wait.Poll(20*time.Second, 120*time.Second, func() (bool, error) {
-			ipPhase := getResource(oc, asAdmin, withoutNamespace, "ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.phase}")
+			ipPhase := getResource(oc, asAdmin, withoutNamespace, "installplan", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.phase}")
 			if strings.Contains(ipPhase, "Complete") {
 				e2e.Logf("sub is installed")
 				return true, nil
@@ -6271,8 +6271,8 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 
 		g.By("The install plan is Failed, without og")
 		installPlan := sub.getIP(oc)
-		newCheck("expect", asAdmin, withoutNamespace, compare, "Installing", ok, []string{"ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
-		newCheck("expect", asAdmin, withoutNamespace, contain, "no operator group found", ok, []string{"ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.conditions}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Installing", ok, []string{"installplan", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, contain, "no operator group found", ok, []string{"installplan", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.conditions}"}).check(oc)
 		newCheck("expect", asAdmin, withoutNamespace, contain, "InstallPlanPending", ok, []string{"sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.conditions}"}).check(oc)
 
 		g.By("delete operator")
@@ -6289,8 +6289,8 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 
 		g.By("The install plan is Failed, multiple og")
 		installPlan = sub.getIP(oc)
-		newCheck("expect", asAdmin, withoutNamespace, compare, "Installing", ok, []string{"ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
-		newCheck("expect", asAdmin, withoutNamespace, contain, "more than one operator group", ok, []string{"ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.conditions}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Installing", ok, []string{"installplan", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, contain, "more than one operator group", ok, []string{"installplan", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.conditions}"}).check(oc)
 		newCheck("expect", asAdmin, withoutNamespace, contain, "InstallPlanPending", ok, []string{"sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.conditions}"}).check(oc)
 
 		g.By("delete resource for next step")
@@ -6315,8 +6315,8 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 
 		g.By("The install plan is Failed, without sa for og")
 		installPlan = sub.getIP(oc)
-		newCheck("expect", asAdmin, withoutNamespace, compare, "Installing", ok, []string{"ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
-		newCheck("expect", asAdmin, withoutNamespace, contain, "not found+2+please make sure the service account exists", ok, []string{"ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.conditions}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Installing", ok, []string{"installplan", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, contain, "not found+2+please make sure the service account exists", ok, []string{"installplan", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.conditions}"}).check(oc)
 		newCheck("expect", asAdmin, withoutNamespace, contain, "InstallComponentFailed+2+InstallPlanPending", ok, []string{"sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.conditions}"}).check(oc)
 	})
 
@@ -6397,28 +6397,28 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		sub.createWithoutCheck(oc, itName, dr)
 		installPlan := sub.getIP(oc)
 		o.Expect(installPlan).NotTo(o.BeEmpty())
-		newCheck("expect", asAdmin, withoutNamespace, contain, "retrying execution due to error: serviceaccounts", ok, []string{"ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.message}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, contain, "retrying execution due to error: serviceaccounts", ok, []string{"installplan", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.message}"}).check(oc)
 
 		g.By("4) Create the service account, check the installplan")
 		_, err = oc.WithoutNamespace().AsAdmin().Run("create").Args("sa", sa, "-n", namespace).Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
-		newCheck("expect", asAdmin, withoutNamespace, contain, "retrying execution due to error: error creating csv etcdoperator", ok, []string{"ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.message}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, contain, "retrying execution due to error: error creating csv etcdoperator", ok, []string{"installplan", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.message}"}).check(oc)
 
 		g.By("5) After retry timeout, the install plan is Failed")
-		newCheck("expect", asAdmin, withoutNamespace, compare, "Failed", ok, []string{"ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Failed", ok, []string{"installplan", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
 
 		g.By("6) delete sub, then create sub again")
 		sub.delete(itName, dr)
 		sub.createWithoutCheck(oc, itName, dr)
 		installPlan = sub.getIP(oc)
-		newCheck("expect", asAdmin, withoutNamespace, contain, "retrying execution due to error", ok, []string{"ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.message}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, contain, "retrying execution due to error", ok, []string{"installplan", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.message}"}).check(oc)
 
 		g.By("7) Grant the proper permissions to the service account")
 		role.create(oc)
 		rolebinding.create(oc)
 
 		g.By("8) Checking the state of CSV")
-		newCheck("expect", asAdmin, withoutNamespace, compare, "Complete", ok, []string{"ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Complete", ok, []string{"installplan", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
 		newCheck("expect", asUser, withNamespace, compare, "Succeeded", ok, []string{"csv", csv, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
 		err = wait.Poll(1*time.Second, 10*time.Second, func() (bool, error) {
 			installedCSV := getResource(oc, asAdmin, withoutNamespace, "sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.installedCSV}")
@@ -6485,7 +6485,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		g.By("The install plan is Failed")
 		installPlan := sub.getIP(oc)
 		err := wait.Poll(15*time.Second, 900*time.Second, func() (bool, error) {
-			result := getResource(oc, asAdmin, withoutNamespace, "ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.phase}")
+			result := getResource(oc, asAdmin, withoutNamespace, "installplan", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.phase}")
 			if strings.Compare(result, "Failed") == 0 {
 				e2e.Logf("ip is failed")
 				return true, nil
@@ -6493,7 +6493,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 			return false, nil
 		})
 		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("ip of sub %v is not Failed", sub.subName))
-		conditions := getResource(oc, asAdmin, withoutNamespace, "ip", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.conditions}")
+		conditions := getResource(oc, asAdmin, withoutNamespace, "installplan", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.conditions}")
 		o.Expect(conditions).To(o.ContainSubstring("DeadlineExceeded"))
 		o.Expect(conditions).To(o.ContainSubstring("Job was active longer than specified deadline"))
 		o.Expect(conditions).To(o.ContainSubstring("Bundle unpacking failed"))
