@@ -700,10 +700,10 @@ func assertCheckAuditLogsForword(oc *exutil.CLI, namespace string, csvname strin
 
 func createLoginTemp(oc *exutil.CLI, namespace string) {
 	e2e.Logf("Create a login.html template.. !!")
-	_, err := oc.AsAdmin().WithoutNamespace().Run("adm").Args("create-login-template", "-n", namespace).OutputToFile(getRandomString() + "login.html")
+	login, err := oc.AsAdmin().WithoutNamespace().Run("adm").Args("create-login-template", "-n", namespace).OutputToFile(getRandomString() + "login.html")
 	o.Expect(err).NotTo(o.HaveOccurred())
 	e2e.Logf("Create a login-secret.. !!")
-	_, err1 := oc.AsAdmin().WithoutNamespace().Run("create").Args("secret", "generic", "login-secret", "--from-file=login.html=./login.html", "-n", namespace).Output()
+	_, err1 := oc.AsAdmin().WithoutNamespace().Run("create").Args("secret", "generic", "login-secret", "--from-file=login.html="+login, "-n", namespace).Output()
 	o.Expect(err1).NotTo(o.HaveOccurred())
 }
 
@@ -714,4 +714,12 @@ func getNonControlNamespaces(oc *exutil.CLI) []string {
 	result, _ := exec.Command("bash", "-c", "cat "+projects+" | grep -v -e default -e kube- -e openshift | sed \"s/Active//g\" ; rm -rf "+projects).Output()
 	projectList := strings.Fields(string(result))
 	return projectList
+}
+
+func checkRulesExistInComplianceCheckResult(oc *exutil.CLI, cisRlueList []string, namespace string) {
+	for _, v := range cisRlueList {
+		e2e.Logf("the rule: %v", v)
+		newCheck("expect", asAdmin, withoutNamespace, contain, v, ok, []string{"compliancecheckresult", "-n", namespace,
+			"-o=jsonpath={.items[*].metadata.name}"}).check(oc)
+	}
 }

@@ -1502,8 +1502,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		})
 
 		// author: pdhamdhe@redhat.com
-		g.It("Author:pdhamdhe-High-33418-The ComplianceSuite performs the schedule scan through cron job", func() {
-
+		g.It("Author:pdhamdhe-High-33418-Medium-44062-The ComplianceSuite performs the schedule scan through cron job and also verify the suitererunner resources are doubled [Slow]", func() {
 			var (
 				csuiteD = complianceSuiteDescription{
 					name:         "worker-compliancesuite",
@@ -1547,6 +1546,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			newCheck("expect", asAdmin, withoutNamespace, contain, "*/3 * * * *", ok, []string{"cronjob", "worker-compliancesuite-rerunner",
 				"-n", subD.namespace, "-o=jsonpath={.spec.schedule}"}).check(oc)
 
+			checkComplianceSuiteStatus(oc, csuiteD.name, subD.namespace, "RUNNING")
 			newCheck("expect", asAdmin, withoutNamespace, contain, "1", ok, []string{"compliancesuite", csuiteD.name, "-n",
 				subD.namespace, "-o=jsonpath={.status.scanStatuses[*].currentIndex}"}).check(oc)
 			newCheck("expect", asAdmin, withoutNamespace, contain, "Succeeded", ok, []string{"pod", "-l workload=suitererunner", "-n",
@@ -1554,14 +1554,25 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", csuiteD.name, "-n",
 				subD.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
 
+			g.By("Verify the suitererunner resource requests and limits doubled through jobs.. !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "{\"cpu\":\"50m\",\"memory\":\"100Mi\"}", ok, []string{"jobs", "-l workload=suitererunner", "-n",
+				subD.namespace, "-o=jsonpath={.items[0].spec.template.spec.containers[0].resources.limits}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "{\"cpu\":\"10m\",\"memory\":\"20Mi\"}", ok, []string{"jobs", "-l workload=suitererunner", "-n",
+				subD.namespace, "-o=jsonpath={.items[0].spec.template.spec.containers[0].resources.requests}"}).check(oc)
+
+			g.By("Verify the suitererunner resource requests and limits doubled through pods.. !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "{\"cpu\":\"50m\",\"memory\":\"100Mi\"}", ok, []string{"pods", "-l workload=suitererunner", "-n",
+				subD.namespace, "-o=jsonpath={.items[0].spec.containers[0].resources.limits}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "{\"cpu\":\"10m\",\"memory\":\"20Mi\"}", ok, []string{"pods", "-l workload=suitererunner", "-n",
+				subD.namespace, "-o=jsonpath={.items[0].spec.containers[0].resources.requests}"}).check(oc)
+
 			g.By("Check worker-compliancesuite name and result.. !!!\n")
 			subD.complianceSuiteName(oc, "worker-compliancesuite")
 			subD.complianceSuiteResult(oc, csuiteD.name, "COMPLIANT")
-
 			g.By("Check worker-compliancesuite result through exit-code.. !!!\n")
 			subD.getScanExitCodeFromConfigmap(oc, "0")
 
-			g.By("The ocp-33418 The ComplianceSuite object performed schedule scan successfully.. !!!\n")
+			g.By("ocp-33418 ocp-44062 The ComplianceSuite object performed schedule scan and verify the suitererunner resources requests & limit successfully.. !!!\n")
 		})
 
 		// author: xiyuan@redhat.com
@@ -3254,6 +3265,45 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 				"ocp4-moderate-configure-network-policies-namespaces", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
 
 			g.By("ocp-42720 The manual remediation works for network-policies-namespaces rule... !!!!\n ")
+		})
+
+		// author: pdhamdhe@redhat.com
+		g.It("Author:pdhamdhe-High-41153-There are OpenSCAP checks created to verify that the cluster is compliant  for the section 5 of the Kubernetes CIS profile [Slow]", func() {
+			var (
+				ssb = scanSettingBindingDescription{
+					name:            "cis-test",
+					namespace:       "",
+					profilekind1:    "Profile",
+					profilename1:    "ocp4-cis",
+					scansettingname: "default",
+					template:        scansettingbindingSingleTemplate,
+				}
+				itName = g.CurrentGinkgoTestDescription().TestText
+			)
+
+			defer cleanupObjects(oc, objectTableRef{"scansettingbinding", subD.namespace, ssb.name})
+
+			g.By("Check default profiles name ocp4-cis .. !!!\n")
+			subD.getProfileName(oc, "ocp4-cis")
+			g.By("Create scansettingbinding !!!\n")
+			ssb.namespace = subD.namespace
+			ssb.create(oc, itName, dr)
+			newCheck("expect", asAdmin, withoutNamespace, contain, ssb.name, ok, []string{"scansettingbinding", "-n", subD.namespace,
+				"-o=jsonpath={.items[0].metadata.name}"}).check(oc)
+			g.By("Check ComplianceSuite status and result.. !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", ssb.name, "-n", subD.namespace,
+				"-o=jsonpath={.status.phase}"}).check(oc)
+			subD.complianceSuiteResult(oc, ssb.name, "NON-COMPLIANT")
+
+			cisRlueList := []string{"ocp4-cis-rbac-limit-cluster-admin", "ocp4-cis-rbac-limit-secrets-access", "ocp4-cis-rbac-wildcard-use", "ocp4-cis-rbac-pod-creation-access",
+				"ocp4-cis-accounts-unique-service-account", "ocp4-cis-accounts-restrict-service-account-tokens", "ocp4-cis-scc-limit-privileged-containers", "ocp4-cis-scc-limit-process-id-namespace",
+				"ocp4-cis-scc-limit-ipc-namespace", "ocp4-cis-scc-limit-network-namespace", "ocp4-cis-scc-limit-privilege-escalation", "ocp4-cis-scc-limit-root-containers",
+				"ocp4-cis-scc-limit-net-raw-capability", "ocp4-cis-scc-limit-container-allowed-capabilities", "ocp4-cis-scc-drop-container-capabilities", "ocp4-cis-configure-network-policies",
+				"ocp4-cis-configure-network-policies-namespaces", "ocp4-cis-secrets-no-environment-variables", "ocp4-cis-secrets-consider-external-storage", "ocp4-cis-general-configure-imagepolicywebhook",
+				"ocp4-cis-general-namespaces-in-use", "ocp4-cis-general-default-seccomp-profile", "ocp4-cis-general-apply-scc", "ocp4-cis-general-default-namespace-use"}
+			checkRulesExistInComplianceCheckResult(oc, cisRlueList, subD.namespace)
+
+			g.By("ocp-41153 There are OpenSCAP checks created to verify that the cluster is compliant  for the section 5 of the Kubernetes CIS profile... !!!!\n ")
 		})
 	})
 })
