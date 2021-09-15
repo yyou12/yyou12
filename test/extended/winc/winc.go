@@ -212,11 +212,14 @@ var _ = g.Describe("[sig-windows] Windows_Containers", func() {
 			windowsMachineSet := getFileContent("winc", "azure_windows_machineset_no_label.yaml")
 			infrastructureID, err := oc.WithoutNamespace().Run("get").Args("infrastructure", "cluster", "-o=jsonpath={.status.infrastructureName}").Output()
 			o.Expect(err).NotTo(o.HaveOccurred())
-			region := "northcentralus"
+			// region := "northcentralus"
+			windowsMachineSetName = "winnol"
+			location := "centralus"
 			windowsMachineSet = strings.ReplaceAll(windowsMachineSet, "<infrastructureID>", infrastructureID)
-			windowsMachineSet = strings.ReplaceAll(windowsMachineSet, "<region>", region)
+			windowsMachineSet = strings.ReplaceAll(windowsMachineSet, "<location>", location)
+			windowsMachineSet = strings.ReplaceAll(windowsMachineSet, "<name>", windowsMachineSetName)
+
 			ioutil.WriteFile("availWindowsMachineSetWithoutLabel", []byte(windowsMachineSet), 0644)
-			windowsMachineSetName = "win-nol"
 		} else {
 			e2e.Failf("IAAS platform: %s is not automated yet", iaasPlatform)
 		}
@@ -628,17 +631,12 @@ var _ = g.Describe("[sig-windows] Windows_Containers", func() {
 
 	})
 	// author: rrasouli@redhat.com
-	g.It("Author:rrasouli-High-38186 Check Windows LB service [Slow]", func() {
-		namespace := "winc-38186"
-		createWindowsWorkload(oc, namespace)
-		defer deleteProject(oc, namespace)
+	g.It("Author:rrasouli-High-38186-[wmco] Windows LB service [Slow]", func() {
+		namespace := "winc-test"
 		// we determine range of 20
 		attempts := 20
-		e2e.Logf("Scaling up 2 workloads")
-		// we scale here for to start testing with 2 workloads.
-		scaleDeployment(oc, "windows", 2, namespace)
 		// fetching here the external IP
-		externalIP := getExternalIP("aws", oc, "windows", namespace)
+		externalIP := getExternalIP(iaasPlatform, oc, "windows", namespace)
 		e2e.Logf("External IP is: " + externalIP)
 		g.By("Test LB works well several times and should not get Connection timed out error")
 		if checkLBConnectivity(attempts, externalIP) {
@@ -647,8 +645,8 @@ var _ = g.Describe("[sig-windows] Windows_Containers", func() {
 			e2e.Failf("Failed testing loadbalancer on same node scheduling")
 		}
 
-		g.By("2 Windows node + N Windows pods, N >= 2 and Windows pods should be landed on different nodes, we scale to 6 Windows workloads")
-		scaleDeployment(oc, "windows", 6, namespace)
+		g.By("2 Windows node + N Windows pods, N >= 2 and Windows pods should be landed on different nodes, we scale to 5 Windows workloads")
+		// scaleDeployment(oc, "windows", 6, namespace)
 		if checkLBConnectivity(attempts, externalIP) {
 			e2e.Logf("Successfully tested loadbalancer on differnt node scheduling")
 		} else {
