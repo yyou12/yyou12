@@ -3,6 +3,7 @@ package image_registry
 import (
 	"encoding/base64"
 	"fmt"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -354,5 +355,20 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 		out = getResource(oc, true, withoutNamespace, "istag", "-n", oc.Namespace())
 		o.Expect(out).To(o.ContainSubstring("test-img:latest"))
 		o.Expect(out).To(o.ContainSubstring("test-img:v1"))
+	})
+
+	// author: xiuwang@redhat.com
+	g.It("Author:xiuwang-Medium-43664-Check ServiceMonitor of registry which will not hotloop CVO", func() {
+		g.By("Check the servicemonitor of openshift-image-registry")
+		out := getResource(oc, asAdmin, withoutNamespace, "servicemonitor", "-n", "openshift-image-registry", "-o=jsonpath={.items[1].spec.selector.matchLabels.name}")
+		o.Expect(out).To(o.ContainSubstring("image-registry-operator"))
+
+		g.By("Check CVO not hotloop due to registry")
+		masterlogs, err := oc.AsAdmin().WithoutNamespace().Run("adm").Args("node-logs", "--role", "master", "--path=kube-apiserver/audit.log", "--raw").OutputToFile("audit.log")
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		result, err := exec.Command("bash", "-c", "cat "+masterlogs+" | grep verb.*update.*resource.*servicemonitors").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(result).NotTo(o.ContainSubstring("image-registry"))
 	})
 })
