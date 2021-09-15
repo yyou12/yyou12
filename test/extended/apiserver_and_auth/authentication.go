@@ -40,7 +40,7 @@ var _ = g.Describe("[sig-auth] Apiserver_and_Auth", func() {
 			}
 			return false, nil
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, "openshift-authentication is not back")
 
 		g.By("Waiting for oauth-openshift pods back")
 		// It needs some time to wait for pods recreated and Running, so the Poll parameters are a little larger
@@ -56,7 +56,7 @@ var _ = g.Describe("[sig-auth] Apiserver_and_Auth", func() {
 			}
 			return false, nil
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, "pod of openshift-authentication is not back")
 
 		g.By("Waiting for the clusteroperator back to normal")
 		// It needs more time to wait for clusteroperator back to normal. In test, the max time observed is up to 4 mins, so the Poll parameters are larger
@@ -72,7 +72,7 @@ var _ = g.Describe("[sig-auth] Apiserver_and_Auth", func() {
 			}
 			return false, nil
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, "clusteroperator authentication is not back to normal")
 
 		g.By("Delete authentication.operator cluster")
 		err = oc.WithoutNamespace().Run("delete").Args("authentication.operator", "cluster").Execute()
@@ -91,7 +91,7 @@ var _ = g.Describe("[sig-auth] Apiserver_and_Auth", func() {
 			}
 			return false, nil
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, "authentication.operator cluster is not back")
 
 		g.By("Delete project openshift-authentication-operator")
 		err = oc.WithoutNamespace().Run("delete").Args("project", "openshift-authentication-operator").Execute()
@@ -110,7 +110,7 @@ var _ = g.Describe("[sig-auth] Apiserver_and_Auth", func() {
 			}
 			return false, nil
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, "project openshift-authentication-operator  is not back")
 
 		g.By("Waiting for the authentication-operator pod back")
 		// It needs some time to wait for pods recreated and Running, so the Poll parameters are a little larger
@@ -126,7 +126,7 @@ var _ = g.Describe("[sig-auth] Apiserver_and_Auth", func() {
 			}
 			return false, nil
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, "pod of  openshift-authentication-operator is not back")
 	})
 
 	// author: pmali@redhat.com
@@ -146,7 +146,7 @@ var _ = g.Describe("[sig-auth] Apiserver_and_Auth", func() {
 			}
 			return false, nil
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, "pod of openshift-authentication is not Running")
 
 		// Check authentication operator, If its UP and running that means route and service is also working properly. No need to check seperately Service and route endpoints.
 		g.By("Check authentication operator is available")
@@ -162,7 +162,7 @@ var _ = g.Describe("[sig-auth] Apiserver_and_Auth", func() {
 			}
 			return false, nil
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, "authentication.operator cluster is not UP")
 
 		//Check service endpoint is showing correct error
 
@@ -190,7 +190,7 @@ var _ = g.Describe("[sig-auth] Apiserver_and_Auth", func() {
 			}
 			return false, nil
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, "Allow network policy applied failure")
 
 		g.By("Delete allow-same-namespace Networkpolicy")
 		err = oc.AsAdmin().WithoutNamespace().Run("delete").Args("-n", "openshift-authentication", "-f="+networkPolicyAllow).Execute()
@@ -220,7 +220,7 @@ var _ = g.Describe("[sig-auth] Apiserver_and_Auth", func() {
 			}
 			return false, nil
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, "Deny network policy not applied")
 
 		g.By("Delete Networkpolicy")
 		err = oc.AsAdmin().WithoutNamespace().Run("delete").Args("-n", "openshift-authentication", "-f="+networkPolicyDeny).Execute()

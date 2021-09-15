@@ -1,6 +1,7 @@
 package apiserver_and_auth
 
 import (
+	"fmt"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"regexp"
 	"strconv"
@@ -75,11 +76,11 @@ var _ = g.Describe("[sig-api-machinery] Apiserver_and_Auth", func() {
 			var oasEncValPrefix1, kasEncValPrefix1 string
 
 			oasEncValPrefix1, err = GetEncryptionPrefix(oc, "/openshift.io/routes")
-			o.Expect(err).NotTo(o.HaveOccurred())
+			exutil.AssertWaitPollNoErr(err, "fail to get encryption prefix for key routes ")
 			e2e.Logf("openshift-apiserver resource encrypted value prefix before test is %s", oasEncValPrefix1)
 
 			kasEncValPrefix1, err = GetEncryptionPrefix(oc, "/kubernetes.io/secrets")
-			o.Expect(err).NotTo(o.HaveOccurred())
+			exutil.AssertWaitPollNoErr(err, "fail to get encryption prefix for key secrets ")
 			e2e.Logf("kube-apiserver resource encrypted value prefix before test is %s", kasEncValPrefix1)
 
 			var oasEncNumber, kasEncNumber int
@@ -120,23 +121,23 @@ spec:
 				e2e.Logf("Got new encryption key secrets:\n%s", output)
 				return true, nil
 			})
-			o.Expect(err).NotTo(o.HaveOccurred())
+			exutil.AssertWaitPollNoErr(err, fmt.Sprintf("new encryption key secrets %s, %s not found", newOASEncSecretName, newKASEncSecretName))
 
 			g.By("Waiting for the force encryption completion")
 			// Only need to check kubeapiserver because kubeapiserver takes more time.
 			var completed bool
 			completed, err = WaitEncryptionKeyMigration(oc, newKASEncSecretName)
-			o.Expect(err).NotTo(o.HaveOccurred())
+			exutil.AssertWaitPollNoErr(err, fmt.Sprintf("saw all migrated-resources for %s", newKASEncSecretName))
 			o.Expect(completed).Should(o.Equal(true))
 
 			var oasEncValPrefix2, kasEncValPrefix2 string
 			g.By("Get encryption prefix after force encryption completed")
 			oasEncValPrefix2, err = GetEncryptionPrefix(oc, "/openshift.io/routes")
-			o.Expect(err).NotTo(o.HaveOccurred())
+			exutil.AssertWaitPollNoErr(err, "fail to get encryption prefix for key routes ")
 			e2e.Logf("openshift-apiserver resource encrypted value prefix after test is %s", oasEncValPrefix2)
 
 			kasEncValPrefix2, err = GetEncryptionPrefix(oc, "/kubernetes.io/secrets")
-			o.Expect(err).NotTo(o.HaveOccurred())
+			exutil.AssertWaitPollNoErr(err, "fail to get encryption prefix for key secrets ")
 			e2e.Logf("kube-apiserver resource encrypted value prefix after test is %s", kasEncValPrefix2)
 
 			o.Expect(oasEncValPrefix2).Should(o.ContainSubstring("k8s:enc:aescbc:v1"))
@@ -186,7 +187,7 @@ spec:
 				}
 				return false, nil
 			})
-			o.Expect(err).NotTo(o.HaveOccurred())
+			exutil.AssertWaitPollNoErr(err, "do not see recreated secrets encryption-config in openshift-config-managed")
 
 			var oasEncNumber, kasEncNumber int
 			oasEncNumber, err = GetEncryptionKeyNumber(oc, `encryption-key-openshift-apiserver-[^ ]*`)
@@ -219,14 +220,14 @@ spec:
 				e2e.Logf("Got new encryption-key-* secrets:\n%s", output)
 				return true, nil
 			})
-			o.Expect(err).NotTo(o.HaveOccurred())
+			exutil.AssertWaitPollNoErr(err, fmt.Sprintf("new encryption key secrets %s, %s not found", newOASEncSecretName, newKASEncSecretName))
 
 			var completed bool
 			completed, err = WaitEncryptionKeyMigration(oc, newOASEncSecretName)
-			o.Expect(err).NotTo(o.HaveOccurred())
+			exutil.AssertWaitPollNoErr(err, fmt.Sprintf("saw all migrated-resources for %s", newOASEncSecretName))
 			o.Expect(completed).Should(o.Equal(true))
 			completed, err = WaitEncryptionKeyMigration(oc, newKASEncSecretName)
-			o.Expect(err).NotTo(o.HaveOccurred())
+			exutil.AssertWaitPollNoErr(err, fmt.Sprintf("saw all migrated-resources for %s", newKASEncSecretName))
 			o.Expect(completed).Should(o.Equal(true))
 
 		} else {
@@ -316,7 +317,7 @@ spec:
 				return false, nil
 			})
 
-			o.Expect(err).NotTo(o.HaveOccurred())
+			exutil.AssertWaitPollNoErr(err, "new openshift-apiserver and openshift-kube-apiserver namespaces are not both seen")
 
 			// After new namespaces are seen, it goes to self recovery
 			err = wait.Poll(2*time.Second, 2*time.Minute, func() (bool, error) {
@@ -330,7 +331,7 @@ spec:
 				}
 				return false, nil
 			})
-			o.Expect(err).NotTo(o.HaveOccurred())
+			exutil.AssertWaitPollNoErr(err, "Detected self recovery is not in progress")
 			e2e.Logf("Check openshift-kube-apiserver pods' revisions when self recovery is in progress")
 			oc.WithoutNamespace().Run("get").Args("po", "-n", "openshift-kube-apiserver", "-l=apiserver", "-L=revision").Execute()
 
@@ -354,7 +355,7 @@ spec:
 				}
 				return false, nil
 			})
-			o.Expect(err).NotTo(o.HaveOccurred())
+			exutil.AssertWaitPollNoErr(err, "openshift-kube-apiserver pods revisions recovery not completed")
 
 			var output string
 			output, err = oc.WithoutNamespace().Run("get").Args("co/openshift-apiserver").Output()
