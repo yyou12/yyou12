@@ -2,9 +2,11 @@ package workloads
 
 import (
 	"encoding/json"
+	"path/filepath"
 	"regexp"
 	"os/exec"
 	"strings"
+	"io/ioutil"
 	"time"
 
 	g "github.com/onsi/ginkgo"
@@ -83,6 +85,88 @@ var _ = g.Describe("[sig-cli] Workloads", func() {
 			return true, nil
 		})
 		o.Expect(err).NotTo(o.HaveOccurred())
+
+	})
+
+	// author: yinzhou@redhat.com
+        g.It("Author:yinzhou-High-43032-oc adm release mirror generating correct imageContentSources when using --to and --to-release-image [Slow]", func() {
+		buildPruningBaseDir := exutil.FixturePath("testdata", "workloads")
+		podMirrorT := filepath.Join(buildPruningBaseDir, "pod_mirror.yaml")
+		g.By("create new namespace")
+		oc.SetupProject()
+
+		registry := registry{
+			dockerImage: "quay.io/openshifttest/registry:2",
+			namespace:   oc.Namespace(),
+		}
+
+		g.By("Trying to launch a registry app")
+		serInfo := registry.createregistry(oc)
+		defer registry.deleteregistry(oc)
+
+		g.By("Get the cli image from openshift")
+		cliImage := getCliImage(oc)
+
+
+		g.By("Create the  pull secret from the localfile")
+		createPullSecret(oc, oc.Namespace())
+		defer oc.Run("delete").Args("secret/my-secret", "-n", oc.Namespace()).Execute()
+
+		imageSouceS := "--from=quay.io/openshift-release-dev/ocp-release:4.5.8-x86_64"
+		imageToS := "--to="+serInfo.serviceUrl+"/zhouytest/test-release"
+		imageToReleaseS := "--to-release-image="+serInfo.serviceUrl+"/zhouytest/ocptest-release:4.5.8-x86_64"
+		imagePullSecretS := "-a "+"/etc/foo/"+".dockerconfigjson"
+
+		pod43032 := podMirror{
+			name:            "mypod43032",
+			namespace:       oc.Namespace(),
+			cliImageId:      cliImage,
+			imagePullSecret: imagePullSecretS,
+			imageSource:     imageSouceS,
+			imageTo:         imageToS,
+			imageToRelease:  imageToReleaseS,
+			template:        podMirrorT,
+		}
+
+
+		g.By("Trying to launch the mirror pod")
+		pod43032.createPodMirror(oc)
+		defer oc.Run("delete").Args("pod/mypod43032", "-n", oc.Namespace()).Execute()
+		g.By("check the mirror pod status")
+		err := wait.Poll(5*time.Second, 600*time.Second, func() (bool, error) {
+			out, err := oc.Run("get").Args("-n", oc.Namespace(), "pod", pod43032.name, "-o=jsonpath={.status.phase}").Output()
+			if err != nil {
+				e2e.Logf("Fail to get pod: %s, error: %s and try again", pod43032.name, err)
+			}
+			if matched, _ := regexp.MatchString("Succeeded", out); matched {
+				e2e.Logf("Mirror completed: %s", out)
+				return true, nil
+			}
+			return false, nil
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Check the mirror result")
+		mirrorOutFile, err := oc.Run("logs").Args("-n", oc.Namespace(), "pod/"+pod43032.name).OutputToFile(getRandomString() + "workload-mirror.txt")
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		reg := regexp.MustCompile(`(?m:^  -.*/zhouytest/test-release$)`)
+		reg2 := regexp.MustCompile(`(?m:^  -.*/zhouytest/ocptest-release$)`)
+		if reg == nil && reg2 == nil {
+			e2e.Failf("regexp err")
+		}
+		b, err := ioutil.ReadFile(mirrorOutFile)
+		if err != nil {
+			e2e.Failf("failed to read the file ")
+		}
+		s := string(b)
+		match := reg.FindString(s)
+		match2 := reg2.FindString(s)
+		if match != "" && match2 != "" {
+			e2e.Logf("mirror succeed %v and %v ", match, match2)
+		} else {
+			e2e.Failf("Failed to mirror")
+		}
 
 	})
 })

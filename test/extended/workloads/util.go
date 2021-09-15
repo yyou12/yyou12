@@ -154,6 +154,30 @@ type ControlplaneInfo struct {
 	LeaderTransitions    int           `json:"leaderTransitions"`
 }
 
+type serviceInfo struct {
+	serviceIp      string
+	namespace      string
+	servicePort    string
+	serviceUrl     string
+	serviceName    string
+}
+
+type registry struct {
+        dockerImage string
+        namespace string
+}
+
+type podMirror struct {
+        name             string
+        namespace        string
+        cliImageId       string
+        imagePullSecret  string
+        imageSource      string
+        imageTo          string
+        imageToRelease   string
+        template         string
+}
+
 func (pod *podNodeSelector) createPodNodeSelector(oc *exutil.CLI) {
 	err := wait.Poll(5*time.Second, 20*time.Second, func() (bool, error) {
 		err1 := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", pod.template, "-p", "NAME="+pod.name, "NAMESPACE="+pod.namespace,
@@ -463,4 +487,76 @@ func removeDuplicateElement(elements []string) []string {
         }
     }
     return result
+}
+
+
+func  (registry *registry) createregistry(oc *exutil.CLI) serviceInfo {
+	err := oc.AsAdmin().Run("new-app").Args("--image", registry.dockerImage, "-n", registry.namespace).Execute()
+	if err != nil {
+                e2e.Failf("Failed to create the registry server")
+        }
+	err = oc.AsAdmin().Run("set").Args("probe", "deploy/registry", "--readiness", "--liveness", "--get-url="+"http://:5000/v2", "-n", registry.namespace).Execute()
+	if err != nil {
+                e2e.Failf("Failed to config the registry")
+        }
+	err = wait.Poll(5*time.Second, 20*time.Second, func() (bool, error) {
+		err = oc.AsAdmin().Run("get").Args("pod", "-l", "deployment=registry",  "-n", registry.namespace).Execute()
+		if err != nil {
+                        e2e.Logf("The err:%v, and try next round", err)
+                        return false, nil
+                }
+                return true, nil
+        })
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	e2e.Logf("Get the service info of the registry")
+	reg_svc_ip, err := oc.AsAdmin().Run("get").Args("svc", "registry", "-n", registry.namespace,"-o=jsonpath={.spec.clusterIP}").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	reg_svc_port, err := oc.AsAdmin().Run("get").Args("svc", "registry", "-n", registry.namespace,"-o=jsonpath={.spec.ports[0].port}").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	reg_svc_url := reg_svc_ip + ":" + reg_svc_port
+	reg_name := "registry"
+	svc := serviceInfo {
+		serviceIp:    reg_svc_ip,
+		namespace:    registry.namespace,
+		servicePort:  reg_svc_port,
+		serviceUrl:   reg_svc_url,
+		serviceName:  reg_name,
+	}
+	return svc
+
+
+}
+
+func (registry *registry) deleteregistry(oc *exutil.CLI) {
+	_ = oc.Run("delete").Args("svc", "registry", "-n", registry.namespace).Execute()
+	_ = oc.Run("delete").Args("deploy", "registry", "-n", registry.namespace).Execute()
+	_ = oc.Run("delete").Args("is", "registry", "-n", registry.namespace).Execute()
+}
+
+func (pod *podMirror) createPodMirror(oc *exutil.CLI) {
+        err := wait.Poll(5*time.Second, 20*time.Second, func() (bool, error) {
+                err1 := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", pod.template, "-p", "NAME="+pod.name, "NAMESPACE="+pod.namespace,"CLIIMAGEID="+pod.cliImageId, "IMAGEPULLSECRET="+pod.imagePullSecret, "IMAGESOURCE="+pod.imageSource, "IMAGETO="+pod.imageTo, "IMAGETORELEASE="+pod.imageToRelease)
+                if err1 != nil {
+                        e2e.Logf("the err:%v, and try next round", err1)
+                        return false, nil
+                }
+                return true, nil
+        })
+        o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+
+func createPullSecret(oc *exutil.CLI, namespace string) {
+	err := oc.AsAdmin().WithoutNamespace().Run("extract").Args("secret/pull-secret", "-n", "openshift-config", "--to=/tmp", "--confirm").Execute()
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	err = oc.Run("create").Args("secret", "generic", "my-secret", "--from-file="+"/tmp/.dockerconfigjson", "-n", namespace).Execute()
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+func getCliImage(oc *exutil.CLI) string {
+	cliImage, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("imagestreams", "cli", "-n", "openshift", "-o=jsonpath={.spec.tags[0].from.name}").Output()
+        o.Expect(err).NotTo(o.HaveOccurred())
+	return cliImage
 }
