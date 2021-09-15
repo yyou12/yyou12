@@ -150,29 +150,35 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 	})
 
 	g.It("Author:mhanss-Longduration-CPaasrunOnly-Critical-42365-add real time kernel argument [Disruptive]", func() {
+		workerNode, err := skipTestIfOsIsNotCoreOs(oc)
+		o.Expect(err).NotTo(o.HaveOccurred())
 		textToVerify := TextToVerify{
 			textToVerifyForMC:   "realtime",
 			textToVerifyForNode: "PREEMPT_RT",
 			needBash:            true,
 		}
-		createMcAndVerifyMCValue(oc, "Kernel argument", "change-worker-kernel-argument", textToVerify, "uname -a")
+		createMcAndVerifyMCValue(oc, "Kernel argument", "change-worker-kernel-argument", workerNode, textToVerify, "uname -a")
 	})
 
 	g.It("Author:mhanss-Longduration-CPaasrunOnly-Critical-42364-add selinux kernel argument [Disruptive]", func() {
+		workerNode, err := skipTestIfOsIsNotCoreOs(oc)
+		o.Expect(err).NotTo(o.HaveOccurred())
 		textToVerify := TextToVerify{
 			textToVerifyForMC:   "enforcing=0",
 			textToVerifyForNode: "enforcing=0",
 		}
-		createMcAndVerifyMCValue(oc, "Kernel argument", "change-worker-kernel-selinux", textToVerify, "cat", "/rootfs/proc/cmdline")
+		createMcAndVerifyMCValue(oc, "Kernel argument", "change-worker-kernel-selinux", workerNode, textToVerify, "cat", "/rootfs/proc/cmdline")
 	})
 
 	g.It("Author:mhanss-Longduration-CPaasrunOnly-Critical-42367-add extension to RHCOS [Disruptive]", func() {
+		workerNode, err := skipTestIfOsIsNotCoreOs(oc)
+		o.Expect(err).NotTo(o.HaveOccurred())
 		textToVerify := TextToVerify{
 			textToVerifyForMC:   "usbguard",
 			textToVerifyForNode: "usbguard",
 			needChroot:          true,
 		}
-		createMcAndVerifyMCValue(oc, "Usb Extension", "change-worker-extension-usbguard", textToVerify, "rpm", "-q", "usbguard")
+		createMcAndVerifyMCValue(oc, "Usb Extension", "change-worker-extension-usbguard", workerNode, textToVerify, "rpm", "-q", "usbguard")
 	})
 
 	g.It("Author:mhanss-Longduration-CPaasrunOnly-Critical-42368-add max pods to the kubelet config [Disruptive]", func() {
@@ -282,7 +288,7 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 	})
 })
 
-func createMcAndVerifyMCValue(oc *exutil.CLI, stepText string, mcName string, textToVerify TextToVerify, cmd ...string) {
+func createMcAndVerifyMCValue(oc *exutil.CLI, stepText string, mcName string, workerNode string, textToVerify TextToVerify, cmd ...string) {
 	g.By(fmt.Sprintf("Create new MC to add the %s", stepText))
 	mcTemplate := generateTemplateAbsolutePath(mcName + ".yaml")
 	mc := MachineConfig{name: mcName, template: mcTemplate, pool: "worker"}
@@ -297,9 +303,6 @@ func createMcAndVerifyMCValue(oc *exutil.CLI, stepText string, mcName string, te
 	e2e.Logf("%s is verified in the created machine config!", stepText)
 
 	g.By(fmt.Sprintf("Check %s in the machine config daemon", stepText))
-	workerNode, err := exutil.GetFirstWorkerNode(oc)
-	o.Expect(err).NotTo(o.HaveOccurred())
-
 	var podOut string
 	if textToVerify.needBash {
 		podOut, err = exutil.RemoteShPodWithBash(oc, "openshift-machine-config-operator", getMachineConfigDaemon(oc, workerNode), cmd...)
@@ -312,3 +315,13 @@ func createMcAndVerifyMCValue(oc *exutil.CLI, stepText string, mcName string, te
 	o.Expect(podOut).Should(o.ContainSubstring(textToVerify.textToVerifyForNode))
 	e2e.Logf("%s is verified in the machine config daemon!", stepText)
 }
+
+// skipTestIfOsIsNotCoreOs it will either skip the test case in case of worker node is not CoreOS or will return the CoreOS worker node
+func skipTestIfOsIsNotCoreOs(oc *exutil.CLI) (string, error) {
+	coreOs, err := exutil.GetFirstCoreOsWorkerNode(oc)
+	if coreOs == "" {
+		g.Skip("CoreOs is required to execute this test case!")
+	}
+	return coreOs, err
+}
+
