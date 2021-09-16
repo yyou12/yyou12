@@ -830,7 +830,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
             }
             return false, nil
         })
-        o.Expect(waitErr).NotTo(o.HaveOccurred())
+        exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("No memcached-sample in project memcached-operator-system-ocp34427"))
         msg, err := oc.AsAdmin().WithoutNamespace().Run("describe").Args("deployment/memcached-sample-memcached","-n", "memcached-operator-system-ocp34427").Output()
         o.Expect(err).NotTo(o.HaveOccurred())
         o.Expect(msg).To(o.ContainSubstring("3 desired | 3 updated | 3 total | 3 available | 0 unavailable"))
@@ -880,7 +880,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
         exec.Command("bash", "-c", "cd /tmp/ocp-34883/memcached-operator && operator-sdk create api --group cache --version v1alpha1 --kind Memcached --generate-role").Output()
         exec.Command("bash", "-c", "cd /tmp/ocp-34883/memcached-operator && mkdir -p /tmp/ocp-34883/memcached-operator/config/manifests/").Output()
         exec.Command("bash", "-c", "cp -rf test/extended/util/operatorsdk/ocp-34883-data/manifests/bases/ /tmp/ocp-34883/memcached-operator/config/manifests/").Output()
-        waitErr := wait.Poll(5*time.Second, 120*time.Second, func() (bool, error) {
+        waitErr := wait.Poll(30*time.Second, 120*time.Second, func() (bool, error) {
 			msg, err := exec.Command("bash", "-c", "cd /tmp/ocp-34883/memcached-operator && make bundle").Output()
 			o.Expect(err).NotTo(o.HaveOccurred())
 			if strings.Contains(string(msg), "operator-sdk bundle validate ./bundle")  {
@@ -888,7 +888,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
 			}
 			return false, nil
         })
-        o.Expect(waitErr).NotTo(o.HaveOccurred())
+        exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("operator-sdk bundle generate failed"))
         
         output, err := exec.Command("bash", "-c", "cat /tmp/ocp-34883/memcached-operator/bundle/metadata/annotations.yaml  | grep -E \"operators.operatorframework.io.metrics.builder: operator-sdk\"").Output()
         o.Expect(err).NotTo(o.HaveOccurred())
@@ -906,7 +906,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
         exec.Command("bash", "-c", "cd /tmp/ocp-43973/memcached-operator && mkdir -p /tmp/ocp-43973/memcached-operator/config/manifests/").Output()
         exec.Command("bash", "-c", "cp -rf test/extended/util/operatorsdk/ocp-43973-data/manifests/bases/ /tmp/ocp-43973/memcached-operator/config/manifests/").Output()
 
-        waitErr := wait.Poll(5*time.Second, 120*time.Second, func() (bool, error) {
+        waitErr := wait.Poll(30*time.Second, 120*time.Second, func() (bool, error) {
 			msg, err := exec.Command("bash", "-c", "cd /tmp/ocp-43973/memcached-operator && make bundle").Output()
 			o.Expect(err).NotTo(o.HaveOccurred())
 			if strings.Contains(string(msg), "operator-sdk bundle validate ./bundle")  {
@@ -914,7 +914,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
 			}
 			return false, nil
         })
-        o.Expect(waitErr).NotTo(o.HaveOccurred())
+        exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("operator-sdk bundle generate failed"))
 
         //ocp-43973
         g.By("scorecard basic test migration")
@@ -987,14 +987,14 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
         _, err = oc.AsAdmin().WithoutNamespace().Run("apply").Args( "-f", "/tmp/ocp-34426/nginx-operator/config/samples/demo_v1_nginx.yaml","-n","nginx-operator-system-ocp34426").Output()
         o.Expect(err).NotTo(o.HaveOccurred())
         
-        waitErr := wait.Poll(15*time.Second, 360*time.Second, func() (bool, error) {
+        waitErr := wait.Poll(30*time.Second, 300*time.Second, func() (bool, error) {
             msg, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-n", "nginx-operator-system-ocp34426").Output()
             if strings.Contains(msg, "nginx-sample") {
                 return true, nil
             }
             return false, nil
         })
-        o.Expect(waitErr).NotTo(o.HaveOccurred())
+        exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("No nginx-sample in project nginx-operator-system-ocp34426"))
         
         podstatus, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-n", "nginx-operator-system-ocp34426","-o=jsonpath={.items[1].status.phase}").Output()
         o.Expect(err).NotTo(o.HaveOccurred())
@@ -1022,7 +1022,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
         exec.Command("bash", "-c", "cd /tmp/ocp-40341/memcached-operator && make deploy IMG=quay.io/olmqe/memcached-operator-pass-unsafe:v4.8").Output()
         
     
-        waitErr := wait.Poll(5*time.Second, 120*time.Second, func() (bool, error) {
+        waitErr := wait.Poll(30*time.Second, 300*time.Second, func() (bool, error) {
 			msg, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-n", "memcached-operator-system-ocp40341").Output()
 			o.Expect(err).NotTo(o.HaveOccurred())
 			if strings.Contains(msg, "Running")  {
@@ -1030,7 +1030,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
 			}
 			return false, nil
         })
-        o.Expect(waitErr).NotTo(o.HaveOccurred())
+        exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("No pod in Running status in project memcached-operator-system-ocp40341"))
         
         _, err := oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", "/tmp/ocp-40341/memcached-operator/config/samples/cache_v1alpha1_memcached.yaml","-n","memcached-operator-system-ocp40341").Output()
         o.Expect(err).NotTo(o.HaveOccurred())
