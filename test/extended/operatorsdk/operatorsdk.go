@@ -257,7 +257,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
             return false, nil
         })
         o.Expect(waitErr).NotTo(o.HaveOccurred())
-        err = oc.AsAdmin().WithoutNamespace().Run("delete").Args("nginx", "nginx-sample", "-n", namespace).Execute()
+        err = oc.AsAdmin().WithoutNamespace().Run("delete").Args("nginx.helmdemo.example.com", "nginx-sample", "-n", namespace).Execute()
         o.Expect(err).NotTo(o.HaveOccurred())
     })
 
