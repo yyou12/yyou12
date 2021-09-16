@@ -418,3 +418,20 @@ func getStorageClassName(oc *exutil.CLI) (string, error) {
 	}
 	return scName, err
 }
+
+//Assert the status of cluster logging components
+func (r resource) assertCLStatus(oc *exutil.CLI, content string, exptdStatus string) {
+	err := wait.Poll(10*time.Second, 180*time.Second, func() (done bool, err error) {
+		clStatus, err := oc.AsAdmin().WithoutNamespace().Run("get").Args(r.kind, r.name, "-n", r.namespace, "-o", content).Output()
+		if err != nil {
+			return false, err
+		} else {
+			if strings.Compare(clStatus, exptdStatus) != 0 {
+				return false, nil
+			} else {
+				return true, nil
+			}
+		}
+	})
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("%s %s value for %s is not %s", r.kind, r.name, content, exptdStatus))
+}
