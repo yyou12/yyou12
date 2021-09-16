@@ -4,6 +4,7 @@ import (
     "os/exec"
     "strings"
     "time"
+    "fmt"
 
     g "github.com/onsi/ginkgo"
     o "github.com/onsi/gomega"
@@ -841,20 +842,20 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
         defer exec.Command("bash", "-c", "cd /tmp/ocp-34366/memcached-operator && make undeploy").Output()
         defer exec.Command("bash", "-c", "rm -rf /tmp/ocp-34366").Output()
         exec.Command("bash", "-c", "cd /tmp/ocp-34366/memcached-operator && operator-sdk create api --group cache --version v1alpha1 --kind Memcached --generate-role").Output()
-        exec.Command("bash", "-c", "cp -rf test/extended/util/operatorsdk/ocp-34366-data/config/default/manager_auth_proxy_patch.yaml /tmp/ocp-34366/memcached-operator/config/default/manager_auth_proxy_patch.yaml").Output()
-        exec.Command("bash", "-c", "cp -rf test/extended/util/operatorsdk/ocp-34366-data/config/manager/manager.yaml /tmp/ocp-34366/memcached-operator/config/manager/manager.yaml").Output()
         exec.Command("bash", "-c", "cp -rf test/extended/util/operatorsdk/ocp-34366-data/roles/memcached/tasks/main.yml /tmp/ocp-34366/memcached-operator/roles/memcached/tasks/main.yml").Output()
+        exec.Command("bash", "-c", "sed -i 's/v4.9/v4.8/g' /tmp/ocp-34427/memcached-operator/config/default/manager_auth_proxy_patch.yaml").Output()
+        exec.Command("bash", "-c", "cp -rf test/extended/util/operatorsdk/ocp-34366-data/config/manager/manager.yaml /tmp/ocp-34366/memcached-operator/config/manager/manager.yaml").Output()
         
         // to replace namespace memcached-operator-system with memcached-operator-system-ocp34366
         exec.Command("bash", "-c", "sed -i 's/name: system/name: system-ocp34366/g' `grep -rl \"name: system\" /tmp/ocp-34366/memcached-operator`").Output()
         exec.Command("bash", "-c", "sed -i 's/namespace: system/namespace: system-ocp34366/g'  `grep -rl \"namespace: system\" /tmp/ocp-34366/memcached-operator`").Output()
         exec.Command("bash", "-c", "sed -i 's/namespace: memcached-operator-system/namespace: memcached-operator-system-ocp34366/g'  `grep -rl \"namespace: memcached-operator-system\" /tmp/ocp-34366/memcached-operator`").Output()
 
-
+ 
         exec.Command("bash", "-c", "cd /tmp/ocp-34366/memcached-operator && make install").Output()
-        exec.Command("bash", "-c", "cd /tmp/ocp-34366/memcached-operator && make deploy IMG=quay.io/olmqe/memcached-operator-max-worker:v4.8").Output()
-
-        waitErr := wait.Poll(5*time.Second, 120*time.Second, func() (bool, error) {
+        exec.Command("bash", "-c", "cd /tmp/ocp-34366/memcached-operator && make deploy IMG=quay.io/olmqe/memcached-operator-max-worker:v4.9").Output()
+        _, err := oc.AsAdmin().WithoutNamespace().Run("adm").Args( "policy", "add-cluster-role-to-user", "cluster-admin", "system:serviceaccount:nginx-operator-system-ocp34366:default").Output()
+        waitErr := wait.Poll(30*time.Second, 300*time.Second, func() (bool, error) {
 			msg, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-n", "memcached-operator-system-ocp34366").Output()
 			o.Expect(err).NotTo(o.HaveOccurred())
 			if strings.Contains(msg, "Running")  {
@@ -862,12 +863,13 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
 			}
 			return false, nil
         })
-        o.Expect(waitErr).NotTo(o.HaveOccurred())
+        exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("memcached-operator-controller-manager of project memcached-operator-system-ocp34366 has no Starting workers"))
 
         podname, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-n", "memcached-operator-system-ocp34366", "-o=jsonpath={.items[0].metadata.name}").Output()
         output, err := oc.AsAdmin().WithoutNamespace().Run("logs").Args(podname, "-c", "manager", "-n", "memcached-operator-system-ocp34366").Output()
         o.Expect(err).NotTo(o.HaveOccurred())
-        o.Expect(output).To(o.ContainSubstring("\"worker count\":6"))	
+        o.Expect(output).To(o.ContainSubstring("\"worker count\":6"))
+
     })
 
     // author: chuo@redhat.com
