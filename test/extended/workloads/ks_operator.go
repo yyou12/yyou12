@@ -1,9 +1,9 @@
 package workloads
 
 import (
+	"reflect"
 	"regexp"
-        "reflect"
-        "sort"
+	"sort"
 	"time"
 
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -13,7 +13,7 @@ import (
 
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
-        e2enode "k8s.io/kubernetes/test/e2e/framework/node"
+	e2enode "k8s.io/kubernetes/test/e2e/framework/node"
 )
 
 var _ = g.Describe("[sig-apps] Workloads", func() {
@@ -49,7 +49,7 @@ var _ = g.Describe("[sig-apps] Workloads", func() {
 				}
 				return false, nil
 			})
-			o.Expect(err).NotTo(o.HaveOccurred())
+			exutil.AssertWaitPollNoErr(err, "clusteroperator kube-scheduler is not Progressing")
 
 			g.By("Wait for the scheduler operator to rollout")
 			err = wait.Poll(30*time.Second, 300*time.Second, func() (bool, error) {
@@ -64,7 +64,7 @@ var _ = g.Describe("[sig-apps] Workloads", func() {
 				}
 				return false, nil
 			})
-			o.Expect(err).NotTo(o.HaveOccurred())
+			exutil.AssertWaitPollNoErr(err, "clusteroperator kube-scheduler is not recovered to normal")
 		}()
 		g.By("Check the scheduler operator should be in Progressing")
 		err = wait.Poll(5*time.Second, 60*time.Second, func() (bool, error) {
@@ -79,7 +79,7 @@ var _ = g.Describe("[sig-apps] Workloads", func() {
 			}
 			return false, nil
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, "clusteroperator kube-scheduler is not Progressing")
 
 		g.By("Wait for the scheduler operator to rollout")
 		err = wait.Poll(30*time.Second, 300*time.Second, func() (bool, error) {
@@ -94,7 +94,7 @@ var _ = g.Describe("[sig-apps] Workloads", func() {
 			}
 			return false, nil
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, "clusteroperator kube-scheduler is not recovered to normal")
 
 		g.By("Check the loglevel setting for the pod")
 		output, err := oc.AsAdmin().WithoutNamespace().Run("describe").Args("pods", "-n", "openshift-kube-scheduler", "-l", "app=openshift-kube-scheduler").Output()
@@ -121,7 +121,7 @@ var _ = g.Describe("[sig-apps] Workloads", func() {
 			}
 			return false, nil
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, "clusteroperator kube-scheduler is not Progressing")
 
 		g.By("Wait for the scheduler operator to rollout")
 		err = wait.Poll(30*time.Second, 300*time.Second, func() (bool, error) {
@@ -136,7 +136,7 @@ var _ = g.Describe("[sig-apps] Workloads", func() {
 			}
 			return false, nil
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, "clusteroperator kube-scheduler is not recovered to normal")
 
 		g.By("Check the loglevel setting for the pod")
 		output, err = oc.AsAdmin().WithoutNamespace().Run("describe").Args("pods", "-n", "openshift-kube-scheduler", "-l", "app=openshift-kube-scheduler").Output()
@@ -163,7 +163,7 @@ var _ = g.Describe("[sig-apps] Workloads", func() {
 			}
 			return false, nil
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, "clusteroperator kube-scheduler is not Progressing")
 
 		g.By("Wait for the scheduler operator to rollout")
 		err = wait.Poll(30*time.Second, 300*time.Second, func() (bool, error) {
@@ -178,7 +178,7 @@ var _ = g.Describe("[sig-apps] Workloads", func() {
 			}
 			return false, nil
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, "clusteroperator kube-scheduler is not recovered to normal")
 
 		g.By("Check the loglevel setting for the pod")
 		output, err = oc.AsAdmin().WithoutNamespace().Run("describe").Args("pods", "-n", "openshift-kube-scheduler", "-l", "app=openshift-kube-scheduler").Output()
@@ -188,72 +188,69 @@ var _ = g.Describe("[sig-apps] Workloads", func() {
 		}
 	})
 
-        g.It("Author:knarra-High-44049-DefaultPodTopologySpread doesn't work in non-CloudProvider env in OpenShift 4.7", func() {
-                nodeList, err := e2enode.GetReadySchedulableNodes(oc.KubeFramework().ClientSet)
-                // Create test project
-                g.By("Create test project")
-                oc.SetupProject()
+	g.It("Author:knarra-High-44049-DefaultPodTopologySpread doesn't work in non-CloudProvider env in OpenShift 4.7", func() {
+		nodeList, err := e2enode.GetReadySchedulableNodes(oc.KubeFramework().ClientSet)
+		// Create test project
+		g.By("Create test project")
+		oc.SetupProject()
 
-                // Label nodes
-                g.By("Label Node1 & Node2")
-                defer e2e.RemoveLabelOffNode(oc.KubeFramework().ClientSet, nodeList.Items[0].Name, "topology.kubernetes.io/zone")
-                e2e.AddOrUpdateLabelOnNode(oc.KubeFramework().ClientSet, nodeList.Items[0].Name, "topology.kubernetes.io/zone", "ocp44049zoneA")
-                defer e2e.RemoveLabelOffNode(oc.KubeFramework().ClientSet, nodeList.Items[1].Name, "topology.kubernetes.io/zone")
-                e2e.AddOrUpdateLabelOnNode(oc.KubeFramework().ClientSet, nodeList.Items[1].Name, "topology.kubernetes.io/zone", "ocp44049zoneB")
+		// Label nodes
+		g.By("Label Node1 & Node2")
+		defer e2e.RemoveLabelOffNode(oc.KubeFramework().ClientSet, nodeList.Items[0].Name, "topology.kubernetes.io/zone")
+		e2e.AddOrUpdateLabelOnNode(oc.KubeFramework().ClientSet, nodeList.Items[0].Name, "topology.kubernetes.io/zone", "ocp44049zoneA")
+		defer e2e.RemoveLabelOffNode(oc.KubeFramework().ClientSet, nodeList.Items[1].Name, "topology.kubernetes.io/zone")
+		e2e.AddOrUpdateLabelOnNode(oc.KubeFramework().ClientSet, nodeList.Items[1].Name, "topology.kubernetes.io/zone", "ocp44049zoneB")
 
-                // Test starts here
-                // Test for Large pods
+		// Test starts here
+		// Test for Large pods
 		err = oc.Run("create").Args("deployment", "ocp44049large", "--image", "gcr.io/google-samples/node-hello:1.0", "--replicas", "0").Execute()
-                o.Expect(err).NotTo(o.HaveOccurred())
-                err = oc.Run("set").Args("resources", "deployment/ocp44049large", "--limits=cpu=2,memory=4Gi").Execute()
-                o.Expect(err).NotTo(o.HaveOccurred())
-                err = oc.Run("scale").Args("deployment/ocp44049large", "--replicas", "2").Execute()
-                o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = oc.Run("set").Args("resources", "deployment/ocp44049large", "--limits=cpu=2,memory=4Gi").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = oc.Run("scale").Args("deployment/ocp44049large", "--replicas", "2").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
 
-                g.By("Check all the pods should running")
-                if ok := waitForAvailableRsRunning(oc, "deployment", "ocp44049large", oc.Namespace(), "2"); ok {
-                    e2e.Logf("All pods are runnnig now\n")
-                }
+		g.By("Check all the pods should running")
+		if ok := waitForAvailableRsRunning(oc, "deployment", "ocp44049large", oc.Namespace(), "2"); ok {
+			e2e.Logf("All pods are runnnig now\n")
+		}
 
-                expectNodeList := []string{nodeList.Items[0].Name, nodeList.Items[1].Name}
-                g.By("Geting the node list where pods running")
-                lpodNodeList := getPodNodeListByLabel(oc, oc.Namespace(), "app=ocp44049large")
-                sort.Strings(lpodNodeList)
+		expectNodeList := []string{nodeList.Items[0].Name, nodeList.Items[1].Name}
+		g.By("Geting the node list where pods running")
+		lpodNodeList := getPodNodeListByLabel(oc, oc.Namespace(), "app=ocp44049large")
+		sort.Strings(lpodNodeList)
 
+		if reflect.DeepEqual(lpodNodeList, expectNodeList) {
+			e2e.Logf("All large pods have spread properly, which is expected")
+		} else {
+			e2e.Failf("Large pods have not been spread properly")
+		}
 
-                if reflect.DeepEqual(lpodNodeList, expectNodeList) {
-                        e2e.Logf("All large pods have spread properly, which is expected")
-                } else {
-                        e2e.Failf("Large pods have not been spread properly")
-                }
+		// Create test project
+		g.By("Create test project")
+		oc.SetupProject()
 
+		// Test for small pods
+		err = oc.Run("create").Args("deployment", "ocp44049small", "--image", "gcr.io/google-samples/node-hello:1.0", "--replicas", "0").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = oc.Run("set").Args("resources", "deployment/ocp44049small", "--limits=cpu=0.1,memory=128Mi").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = oc.Run("scale").Args("deployment/ocp44049small", "--replicas", "6").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		g.By("Check all the pods should running")
+		if ok := waitForAvailableRsRunning(oc, "deployment", "ocp44049small", oc.Namespace(), "2"); ok {
+			e2e.Logf("All pods are runnnig now\n")
+		}
 
-                // Create test project
-                g.By("Create test project")
-                oc.SetupProject()
+		spodNodeList := getPodNodeListByLabel(oc, oc.Namespace(), "app=ocp44049small")
+		spodNodeList = removeDuplicateElement(spodNodeList)
+		sort.Strings(spodNodeList)
 
-                // Test for small pods
-                err = oc.Run("create").Args("deployment", "ocp44049small", "--image", "gcr.io/google-samples/node-hello:1.0", "--replicas", "0").Execute()
-                o.Expect(err).NotTo(o.HaveOccurred())
-                err = oc.Run("set").Args("resources", "deployment/ocp44049small", "--limits=cpu=0.1,memory=128Mi").Execute()
-                o.Expect(err).NotTo(o.HaveOccurred())
-                err = oc.Run("scale").Args("deployment/ocp44049small", "--replicas", "6").Execute()
-                o.Expect(err).NotTo(o.HaveOccurred())
-                g.By("Check all the pods should running")
-                if ok := waitForAvailableRsRunning(oc, "deployment", "ocp44049small", oc.Namespace(), "2"); ok {
-                    e2e.Logf("All pods are runnnig now\n")
-                }
-
-                spodNodeList := getPodNodeListByLabel(oc, oc.Namespace(), "app=ocp44049small")
-                spodNodeList = removeDuplicateElement(spodNodeList)
-                sort.Strings(spodNodeList)
-
-                if reflect.DeepEqual(spodNodeList, expectNodeList) {
+		if reflect.DeepEqual(spodNodeList, expectNodeList) {
 			e2e.Logf("All small pods have spread properly, which is expected")
-                } else {
-                        e2e.Failf("small pods have not been spread properly")
-                }
-
+		} else {
+			e2e.Failf("small pods have not been spread properly")
+		}
 
 	})
 })

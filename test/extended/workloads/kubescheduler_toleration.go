@@ -79,7 +79,7 @@ var _ = g.Describe("[sig-scheduling] Workloads", func() {
 			}
 			return false, nil
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, "pods is not deleted on node after 120s")
 	})
 
 })

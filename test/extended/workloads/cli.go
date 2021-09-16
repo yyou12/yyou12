@@ -2,17 +2,17 @@ package workloads
 
 import (
 	"encoding/json"
+	"io/ioutil"
+	"os/exec"
 	"path/filepath"
 	"regexp"
-	"os/exec"
 	"strings"
-	"io/ioutil"
 	"time"
 
 	g "github.com/onsi/ginkgo"
 	o "github.com/onsi/gomega"
-	e2e "k8s.io/kubernetes/test/e2e/framework"
 	"k8s.io/apimachinery/pkg/util/wait"
+	e2e "k8s.io/kubernetes/test/e2e/framework"
 
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
 )
@@ -38,7 +38,7 @@ var _ = g.Describe("[sig-cli] Workloads", func() {
 	})
 
 	// author: yinzhou@redhat.com
-        g.It("Author:yinzhou-High-43030-oc get events always show the timestamp as LAST SEEN", func() {
+	g.It("Author:yinzhou-High-43030-oc get events always show the timestamp as LAST SEEN", func() {
 		g.By("Get all the namespace")
 		output, err := oc.AsAdmin().Run("get").Args("projects", "-o=custom-columns=NAME:.metadata.name", "--no-headers").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -49,7 +49,7 @@ var _ = g.Describe("[sig-cli] Workloads", func() {
 			output, _ = oc.AsAdmin().WithoutNamespace().Run("get").Args("events", "-n", projectN).Output()
 			if match, _ := regexp.MatchString("No resources found", string(output)); match {
 				e2e.Logf("No events in project: %v", projectN)
-			}else {
+			} else {
 				result, _ := exec.Command("bash", "-c", "cat "+output+" | awk '{print $1}'").Output()
 				if match, _ := regexp.MatchString("unknown", string(result)); match {
 					e2e.Failf("Does not show timestamp as expected: %v", result)
@@ -69,7 +69,7 @@ var _ = g.Describe("[sig-cli] Workloads", func() {
 		oc.SetupProject()
 
 		g.By("Run debug node")
-		for  _, nodeName := range nodeList {
+		for _, nodeName := range nodeList {
 			err = oc.AsAdmin().Run("debug").Args("node/"+nodeName, "--", "chroot", "/host", "date").Execute()
 			o.Expect(err).NotTo(o.HaveOccurred())
 		}
@@ -84,12 +84,12 @@ var _ = g.Describe("[sig-cli] Workloads", func() {
 			}
 			return true, nil
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, "pods still not deleted")
 
 	})
 
 	// author: yinzhou@redhat.com
-        g.It("Author:yinzhou-High-43032-oc adm release mirror generating correct imageContentSources when using --to and --to-release-image [Slow]", func() {
+	g.It("Author:yinzhou-High-43032-oc adm release mirror generating correct imageContentSources when using --to and --to-release-image [Slow]", func() {
 		buildPruningBaseDir := exutil.FixturePath("testdata", "workloads")
 		podMirrorT := filepath.Join(buildPruningBaseDir, "pod_mirror.yaml")
 		g.By("create new namespace")
@@ -107,15 +107,14 @@ var _ = g.Describe("[sig-cli] Workloads", func() {
 		g.By("Get the cli image from openshift")
 		cliImage := getCliImage(oc)
 
-
 		g.By("Create the  pull secret from the localfile")
 		createPullSecret(oc, oc.Namespace())
 		defer oc.Run("delete").Args("secret/my-secret", "-n", oc.Namespace()).Execute()
 
 		imageSouceS := "--from=quay.io/openshift-release-dev/ocp-release:4.5.8-x86_64"
-		imageToS := "--to="+serInfo.serviceUrl+"/zhouytest/test-release"
-		imageToReleaseS := "--to-release-image="+serInfo.serviceUrl+"/zhouytest/ocptest-release:4.5.8-x86_64"
-		imagePullSecretS := "-a "+"/etc/foo/"+".dockerconfigjson"
+		imageToS := "--to=" + serInfo.serviceUrl + "/zhouytest/test-release"
+		imageToReleaseS := "--to-release-image=" + serInfo.serviceUrl + "/zhouytest/ocptest-release:4.5.8-x86_64"
+		imagePullSecretS := "-a " + "/etc/foo/" + ".dockerconfigjson"
 
 		pod43032 := podMirror{
 			name:            "mypod43032",
@@ -127,7 +126,6 @@ var _ = g.Describe("[sig-cli] Workloads", func() {
 			imageToRelease:  imageToReleaseS,
 			template:        podMirrorT,
 		}
-
 
 		g.By("Trying to launch the mirror pod")
 		pod43032.createPodMirror(oc)
@@ -144,7 +142,7 @@ var _ = g.Describe("[sig-cli] Workloads", func() {
 			}
 			return false, nil
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, "Mirror is not completed")
 
 		g.By("Check the mirror result")
 		mirrorOutFile, err := oc.Run("logs").Args("-n", oc.Namespace(), "pod/"+pod43032.name).OutputToFile(getRandomString() + "workload-mirror.txt")

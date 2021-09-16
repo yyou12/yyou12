@@ -1,6 +1,7 @@
 package workloads
 
 import (
+	"fmt"
 	"path/filepath"
 	"strconv"
 	"time"
@@ -283,7 +284,7 @@ var _ = g.Describe("[sig-scheduling] Workloads", func() {
 			}
 			return false, nil
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("depoly %s is not scale up to 5", deploy34019.dName))
 
 		g.By("Geting the node list where pods running")
 		podNodeList = getPodNodeListByLabel(oc, deploy34019.namespace, deploy34019.labelKey)
@@ -424,7 +425,7 @@ var _ = g.Describe("[sig-scheduling] Workloads", func() {
 		o.Expect(pod338245describestatus).Should(o.ContainSubstring("FailedScheduling"))
 	})
 
-        // author: knarra@redhat.com
+	// author: knarra@redhat.com
 	g.It("Author:knarra-High-34017-TopologySpreadConstraints do not work on cross namespaced pods", func() {
 		buildPruningBaseDir := exutil.FixturePath("testdata", "workloads")
 		podSelectorT := filepath.Join(buildPruningBaseDir, "pod_nodeselect.yaml")
@@ -491,23 +492,23 @@ var _ = g.Describe("[sig-scheduling] Workloads", func() {
 		g.By("create second namespace")
 		oc.SetupProject()
 
-                pod3 := podNodeAffinityRequiredPts{
-                        name:           "pod3-34017",
-                        namespace:      oc.Namespace(),
-                        labelKey:       "foo",
-                        labelValue:     "bar",
-                        ptsKeyName:     "zone34017",
-                        ptsPolicy:      "DoNotSchedule",
-                        skewNum:        1,
-                        ptsKey2Name:    "node34017",
-                        ptsPolicy2:     "DoNotSchedule",
-                        skewNum2:       1,
-                        affinityMethod: "nodeAffinity",
-                        keyName:        "zone34017",
-                        operatorName:   "NotIn",
-                        valueName:      "zone34017B",
-                        template:       podNodeAffinityRequiredPtsT,
-                }
+		pod3 := podNodeAffinityRequiredPts{
+			name:           "pod3-34017",
+			namespace:      oc.Namespace(),
+			labelKey:       "foo",
+			labelValue:     "bar",
+			ptsKeyName:     "zone34017",
+			ptsPolicy:      "DoNotSchedule",
+			skewNum:        1,
+			ptsKey2Name:    "node34017",
+			ptsPolicy2:     "DoNotSchedule",
+			skewNum2:       1,
+			affinityMethod: "nodeAffinity",
+			keyName:        "zone34017",
+			operatorName:   "NotIn",
+			valueName:      "zone34017B",
+			template:       podNodeAffinityRequiredPtsT,
+		}
 
 		g.By("Trying to launch a pod with nodeAffinity not to second node")
 		pod3.createpodNodeAffinityRequiredPts(oc)
@@ -549,23 +550,23 @@ var _ = g.Describe("[sig-scheduling] Workloads", func() {
 		oc.SetupProject()
 
 		pod340141 := podSingleNodeAffinityRequiredPts{
-                        name:           "pod1-34014",
-                        namespace:      oc.Namespace(),
-                        labelKey:       "foo",
-                        labelValue:     "bar",
-                        ptsKeyName:     "node34014",
-                        ptsPolicy:      "DoNotSchedule",
-                        skewNum:        1,
-                        affinityMethod: "nodeAffinity",
-                        keyName:        "zone34014",
-                        operatorName:   "NotIn",
-                        valueName:      "zone34014B",
-                        template:       podSingleNodeAffinityRequiredPtsT,
-                }
+			name:           "pod1-34014",
+			namespace:      oc.Namespace(),
+			labelKey:       "foo",
+			labelValue:     "bar",
+			ptsKeyName:     "node34014",
+			ptsPolicy:      "DoNotSchedule",
+			skewNum:        1,
+			affinityMethod: "nodeAffinity",
+			keyName:        "zone34014",
+			operatorName:   "NotIn",
+			valueName:      "zone34014B",
+			template:       podSingleNodeAffinityRequiredPtsT,
+		}
 
 		pod340142 := podSingleNodeAffinityRequiredPts{
 			name:           "pod2-34014",
-                        namespace:      oc.Namespace(),
+			namespace:      oc.Namespace(),
 			labelKey:       "foo",
 			labelValue:     "bar",
 			ptsKeyName:     "node34014",

@@ -1,8 +1,9 @@
 package workloads
 
 import (
-	o "github.com/onsi/gomega"
 	"encoding/json"
+	"fmt"
+	o "github.com/onsi/gomega"
 	"regexp"
 
 	"math/rand"
@@ -122,60 +123,60 @@ type podNodeAffinityRequiredPts struct {
 }
 
 type podSingleNodeAffinityRequiredPts struct {
-        name           string
-        namespace      string
-        labelKey       string
-        labelValue     string
-        ptsKeyName     string
-        ptsPolicy      string
-        skewNum        int
-        affinityMethod string
-        keyName        string
-        valueName      string
-        operatorName   string
-        template       string
+	name           string
+	namespace      string
+	labelKey       string
+	labelValue     string
+	ptsKeyName     string
+	ptsPolicy      string
+	skewNum        int
+	affinityMethod string
+	keyName        string
+	valueName      string
+	operatorName   string
+	template       string
 }
 
 type podTolerate struct {
-        namespace      string
-        keyName        string
-        operatorPolicy string
-        valueName      string
-        effectPolicy   string
-        tolerateTime   int
-        template       string
+	namespace      string
+	keyName        string
+	operatorPolicy string
+	valueName      string
+	effectPolicy   string
+	tolerateTime   int
+	template       string
 }
 
 type ControlplaneInfo struct {
-	HolderIdentity       string        `json:"holderIdentity"`
-	LeaseDurationSeconds int           `json:"leaseDurationSeconds"`
-	AcquireTime          string        `json:"acquireTime"`
-	RenewTime            string        `json:"renewTime"`
-	LeaderTransitions    int           `json:"leaderTransitions"`
+	HolderIdentity       string `json:"holderIdentity"`
+	LeaseDurationSeconds int    `json:"leaseDurationSeconds"`
+	AcquireTime          string `json:"acquireTime"`
+	RenewTime            string `json:"renewTime"`
+	LeaderTransitions    int    `json:"leaderTransitions"`
 }
 
 type serviceInfo struct {
-	serviceIp      string
-	namespace      string
-	servicePort    string
-	serviceUrl     string
-	serviceName    string
+	serviceIp   string
+	namespace   string
+	servicePort string
+	serviceUrl  string
+	serviceName string
 }
 
 type registry struct {
-        dockerImage string
-        namespace string
+	dockerImage string
+	namespace   string
 }
 
 type podMirror struct {
-        name             string
-        namespace        string
-        cliImageId       string
-        imagePullSecret  string
-        imageSource      string
-        imageTo          string
-        imageToRelease   string
-        template         string
+	name            string
+	namespace       string
+	cliImageId      string
+	imagePullSecret string
+	imageSource     string
+	imageTo         string
+	imageToRelease  string
+	template        string
 }
 
 func (pod *podNodeSelector) createPodNodeSelector(oc *exutil.CLI) {
@@ -188,7 +189,7 @@ func (pod *podNodeSelector) createPodNodeSelector(oc *exutil.CLI) {
 		}
 		return true, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("pod %s with %s is not created successfully", pod.name, pod.labelKey))
 }
 
 func (pod *podSinglePts) createPodSinglePts(oc *exutil.CLI) {
@@ -201,7 +202,7 @@ func (pod *podSinglePts) createPodSinglePts(oc *exutil.CLI) {
 		}
 		return true, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("pod %s with %s is not created successfully", pod.name, pod.labelKey))
 }
 
 func (pod *podSinglePtsNodeSelector) createPodSinglePtsNodeSelector(oc *exutil.CLI) {
@@ -215,7 +216,7 @@ func (pod *podSinglePtsNodeSelector) createPodSinglePtsNodeSelector(oc *exutil.C
 		}
 		return true, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("pod %s with %s is not created successfully", pod.name, pod.labelKey))
 }
 
 func (deploy *deploySinglePts) createDeploySinglePts(oc *exutil.CLI) {
@@ -229,7 +230,7 @@ func (deploy *deploySinglePts) createDeploySinglePts(oc *exutil.CLI) {
 		}
 		return true, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("deploy %s with %s is not created successfully", deploy.dName, deploy.labelKey))
 }
 
 func (pod *podAffinityRequiredPts) createPodAffinityRequiredPts(oc *exutil.CLI) {
@@ -243,7 +244,7 @@ func (pod *podAffinityRequiredPts) createPodAffinityRequiredPts(oc *exutil.CLI) 
 		}
 		return true, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("pod %s with %s is not created successfully", pod.name, pod.labelKey))
 }
 
 func (pod *podAffinityPreferredPts) createPodAffinityPreferredPts(oc *exutil.CLI) {
@@ -257,7 +258,7 @@ func (pod *podAffinityPreferredPts) createPodAffinityPreferredPts(oc *exutil.CLI
 		}
 		return true, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("pod %s with %s is not created successfully", pod.name, pod.labelKey))
 }
 
 func (pod *podSinglePts) getPodNodeName(oc *exutil.CLI) string {
@@ -298,7 +299,7 @@ func (pod *podAffinityPreferredPts) getPodNodeName(oc *exutil.CLI) string {
 func applyResourceFromTemplate(oc *exutil.CLI, parameters ...string) error {
 	var configFile string
 	err := wait.Poll(3*time.Second, 15*time.Second, func() (bool, error) {
-                output, err := oc.AsAdmin().Run("process").Args(parameters...).OutputToFile(getRandomString() + "workload-config.json")
+		output, err := oc.AsAdmin().Run("process").Args(parameters...).OutputToFile(getRandomString() + "workload-config.json")
 		if err != nil {
 			e2e.Logf("the err:%v, and try next round", err)
 			return false, nil
@@ -306,10 +307,10 @@ func applyResourceFromTemplate(oc *exutil.CLI, parameters ...string) error {
 		configFile = output
 		return true, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("fail to process %v", parameters))
 
 	e2e.Logf("the file of resource is %s", configFile)
-        return oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", configFile).Execute()
+	return oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", configFile).Execute()
 }
 
 func describePod(oc *exutil.CLI, namespace string, podName string) string {
@@ -351,7 +352,7 @@ func (pod *podNodeAffinityRequiredPts) createpodNodeAffinityRequiredPts(oc *exut
 		}
 		return true, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("pod %s with %s is not created successfully", pod.name, pod.labelKey))
 }
 
 func (pod *podNodeAffinityRequiredPts) getPodNodeName(oc *exutil.CLI) string {
@@ -362,44 +363,43 @@ func (pod *podNodeAffinityRequiredPts) getPodNodeName(oc *exutil.CLI) string {
 }
 
 func (pod *podSingleNodeAffinityRequiredPts) createpodSingleNodeAffinityRequiredPts(oc *exutil.CLI) {
-        err := wait.Poll(5*time.Second, 20*time.Second, func() (bool, error) {
-                err1 := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", pod.template, "-p", "NAME="+pod.name, "NAMESPACE="+pod.namespace, "LABELKEY="+pod.labelKey, "LABELVALUE="+pod.labelValue, "PTSKEYNAME="+pod.ptsKeyName, "PTSPOLICY="+pod.ptsPolicy, "SKEWNUM="+strconv.Itoa(pod.skewNum), "AFFINITYMETHOD="+pod.affinityMethod, "KEYNAME="+pod.keyName, "VALUENAME="+pod.valueName, "OPERATORNAME="+pod.operatorName)
-                if err1 != nil {
-                        e2e.Logf("the err:%v, and try next round", err1)
-                        return false, nil
-                }
-                return true, nil
-        })
-        o.Expect(err).NotTo(o.HaveOccurred())
+	err := wait.Poll(5*time.Second, 20*time.Second, func() (bool, error) {
+		err1 := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", pod.template, "-p", "NAME="+pod.name, "NAMESPACE="+pod.namespace, "LABELKEY="+pod.labelKey, "LABELVALUE="+pod.labelValue, "PTSKEYNAME="+pod.ptsKeyName, "PTSPOLICY="+pod.ptsPolicy, "SKEWNUM="+strconv.Itoa(pod.skewNum), "AFFINITYMETHOD="+pod.affinityMethod, "KEYNAME="+pod.keyName, "VALUENAME="+pod.valueName, "OPERATORNAME="+pod.operatorName)
+		if err1 != nil {
+			e2e.Logf("the err:%v, and try next round", err1)
+			return false, nil
+		}
+		return true, nil
+	})
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("pod %s with %s is not created successfully", pod.name, pod.labelKey))
 }
 
 func (pod *podSingleNodeAffinityRequiredPts) getPodNodeName(oc *exutil.CLI) string {
-        nodeName, err := oc.WithoutNamespace().Run("get").Args("pod", "-n", pod.namespace, pod.name, "-o=jsonpath={.spec.nodeName}").Output()
-        o.Expect(err).NotTo(o.HaveOccurred())
-        e2e.Logf("The pod %s lands on node %q", pod.name, nodeName)
-        return nodeName
+	nodeName, err := oc.WithoutNamespace().Run("get").Args("pod", "-n", pod.namespace, pod.name, "-o=jsonpath={.spec.nodeName}").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	e2e.Logf("The pod %s lands on node %q", pod.name, nodeName)
+	return nodeName
 }
 
 func (pod *podTolerate) createPodTolerate(oc *exutil.CLI) {
-        err := wait.Poll(5*time.Second, 20*time.Second, func() (bool, error) {
-                err1 := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", pod.template, "-p", "NAMESPACE="+pod.namespace,"KEYNAME="+pod.keyName,
-                "OPERATORPOLICY="+pod.operatorPolicy, "VALUENAME="+pod.valueName, "EFFECTPOLICY="+pod.effectPolicy, "TOLERATETIME="+strconv.Itoa(pod.tolerateTime))
-                if err1 != nil {
-                        e2e.Logf("the err:%v, and try next round", err1)
-                        return false, nil
-                }
-                return true, nil
-        })
-        o.Expect(err).NotTo(o.HaveOccurred())
+	err := wait.Poll(5*time.Second, 20*time.Second, func() (bool, error) {
+		err1 := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", pod.template, "-p", "NAMESPACE="+pod.namespace, "KEYNAME="+pod.keyName,
+			"OPERATORPOLICY="+pod.operatorPolicy, "VALUENAME="+pod.valueName, "EFFECTPOLICY="+pod.effectPolicy, "TOLERATETIME="+strconv.Itoa(pod.tolerateTime))
+		if err1 != nil {
+			e2e.Logf("the err:%v, and try next round", err1)
+			return false, nil
+		}
+		return true, nil
+	})
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("pod %s is not created successfully", pod.keyName))
 }
 
 func getPodNodeName(oc *exutil.CLI, namespace string, podName string) string {
-        nodeName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-n", namespace, podName, "-o=jsonpath={.spec.nodeName}").Output()
-        o.Expect(err).NotTo(o.HaveOccurred())
-        e2e.Logf("The pod %s lands on node %q", podName, nodeName)
-        return nodeName
+	nodeName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-n", namespace, podName, "-o=jsonpath={.spec.nodeName}").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	e2e.Logf("The pod %s lands on node %q", podName, nodeName)
+	return nodeName
 }
-
 
 func createLdapService(oc *exutil.CLI, namespace string, podName string, initGroup string) {
 	err := oc.Run("run").Args(podName, "--image", "quay.io/openshifttest/ldap:openldap-2441-centos7", "-n", namespace).Execute()
@@ -410,10 +410,10 @@ func createLdapService(oc *exutil.CLI, namespace string, podName string, initGro
 	err = wait.Poll(5*time.Second, 20*time.Second, func() (bool, error) {
 		podStatus, _ := oc.AsAdmin().Run("get").Args("pod", podName, "-n", namespace, "-o=jsonpath={.status.phase}").Output()
 		if strings.Compare(podStatus, "Running") != 0 {
-                        e2e.Logf("the podstatus is :%v, and try next round", podStatus)
-                        return false, nil
+			e2e.Logf("the podstatus is :%v, and try next round", podStatus)
+			return false, nil
 		}
-                return true, nil
+		return true, nil
 	})
 	if err != nil {
 		oc.Run("delete").Args("pod/ldapserver", "-n", namespace).Execute()
@@ -435,17 +435,17 @@ func createLdapService(oc *exutil.CLI, namespace string, podName string, initGro
 func getSyncGroup(oc *exutil.CLI, syncConfig string) string {
 	var groupFile string
 	err := wait.Poll(5*time.Second, 200*time.Second, func() (bool, error) {
-		output, err := oc.AsAdmin().Run("adm").Args("groups", "sync",  "--sync-config="+syncConfig).OutputToFile(getRandomString() + "workload-group.json")
-                if err != nil {
-                        e2e.Logf("the err:%v, and try next round", err)
-                        return false, nil
-                }
+		output, err := oc.AsAdmin().Run("adm").Args("groups", "sync", "--sync-config="+syncConfig).OutputToFile(getRandomString() + "workload-group.json")
+		if err != nil {
+			e2e.Logf("the err:%v, and try next round", err)
+			return false, nil
+		}
 		groupFile = output
 		return true, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, "adm groups sync fails")
 	if strings.Compare(groupFile, "") == 0 {
-                e2e.Failf("Failed to get group infomation!")
+		e2e.Failf("Failed to get group infomation!")
 	}
 	return groupFile
 }
@@ -472,59 +472,57 @@ func getLeaderKCM(oc *exutil.CLI) string {
 			e2e.Logf("Find the leader of KCM :%s\n", masterNode)
 			leaderKCM = masterNode
 			break
-                }
+		}
 	}
 	return leaderKCM
 }
 
 func removeDuplicateElement(elements []string) []string {
-    result := make([]string, 0, len(elements))
-    temp := map[string]struct{}{}
-    for _, item := range elements {
-        if _, ok := temp[item]; !ok { //if can't find the item，ok=false，!ok is true，then append item。
-            temp[item] = struct{}{}
-            result = append(result, item)
-        }
-    }
-    return result
+	result := make([]string, 0, len(elements))
+	temp := map[string]struct{}{}
+	for _, item := range elements {
+		if _, ok := temp[item]; !ok { //if can't find the item，ok=false，!ok is true，then append item。
+			temp[item] = struct{}{}
+			result = append(result, item)
+		}
+	}
+	return result
 }
 
-
-func  (registry *registry) createregistry(oc *exutil.CLI) serviceInfo {
+func (registry *registry) createregistry(oc *exutil.CLI) serviceInfo {
 	err := oc.AsAdmin().Run("new-app").Args("--image", registry.dockerImage, "-n", registry.namespace).Execute()
 	if err != nil {
-                e2e.Failf("Failed to create the registry server")
-        }
+		e2e.Failf("Failed to create the registry server")
+	}
 	err = oc.AsAdmin().Run("set").Args("probe", "deploy/registry", "--readiness", "--liveness", "--get-url="+"http://:5000/v2", "-n", registry.namespace).Execute()
 	if err != nil {
-                e2e.Failf("Failed to config the registry")
-        }
+		e2e.Failf("Failed to config the registry")
+	}
 	err = wait.Poll(5*time.Second, 20*time.Second, func() (bool, error) {
-		err = oc.AsAdmin().Run("get").Args("pod", "-l", "deployment=registry",  "-n", registry.namespace).Execute()
+		err = oc.AsAdmin().Run("get").Args("pod", "-l", "deployment=registry", "-n", registry.namespace).Execute()
 		if err != nil {
-                        e2e.Logf("The err:%v, and try next round", err)
-                        return false, nil
-                }
-                return true, nil
-        })
-	o.Expect(err).NotTo(o.HaveOccurred())
+			e2e.Logf("The err:%v, and try next round", err)
+			return false, nil
+		}
+		return true, nil
+	})
+	exutil.AssertWaitPollNoErr(err, "pod of deployment=registry is not got")
 
 	e2e.Logf("Get the service info of the registry")
-	reg_svc_ip, err := oc.AsAdmin().Run("get").Args("svc", "registry", "-n", registry.namespace,"-o=jsonpath={.spec.clusterIP}").Output()
+	reg_svc_ip, err := oc.AsAdmin().Run("get").Args("svc", "registry", "-n", registry.namespace, "-o=jsonpath={.spec.clusterIP}").Output()
 	o.Expect(err).NotTo(o.HaveOccurred())
-	reg_svc_port, err := oc.AsAdmin().Run("get").Args("svc", "registry", "-n", registry.namespace,"-o=jsonpath={.spec.ports[0].port}").Output()
+	reg_svc_port, err := oc.AsAdmin().Run("get").Args("svc", "registry", "-n", registry.namespace, "-o=jsonpath={.spec.ports[0].port}").Output()
 	o.Expect(err).NotTo(o.HaveOccurred())
 	reg_svc_url := reg_svc_ip + ":" + reg_svc_port
 	reg_name := "registry"
-	svc := serviceInfo {
-		serviceIp:    reg_svc_ip,
-		namespace:    registry.namespace,
-		servicePort:  reg_svc_port,
-		serviceUrl:   reg_svc_url,
-		serviceName:  reg_name,
+	svc := serviceInfo{
+		serviceIp:   reg_svc_ip,
+		namespace:   registry.namespace,
+		servicePort: reg_svc_port,
+		serviceUrl:  reg_svc_url,
+		serviceName: reg_name,
 	}
 	return svc
-
 
 }
 
@@ -535,17 +533,16 @@ func (registry *registry) deleteregistry(oc *exutil.CLI) {
 }
 
 func (pod *podMirror) createPodMirror(oc *exutil.CLI) {
-        err := wait.Poll(5*time.Second, 20*time.Second, func() (bool, error) {
-                err1 := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", pod.template, "-p", "NAME="+pod.name, "NAMESPACE="+pod.namespace,"CLIIMAGEID="+pod.cliImageId, "IMAGEPULLSECRET="+pod.imagePullSecret, "IMAGESOURCE="+pod.imageSource, "IMAGETO="+pod.imageTo, "IMAGETORELEASE="+pod.imageToRelease)
-                if err1 != nil {
-                        e2e.Logf("the err:%v, and try next round", err1)
-                        return false, nil
-                }
-                return true, nil
-        })
-        o.Expect(err).NotTo(o.HaveOccurred())
+	err := wait.Poll(5*time.Second, 20*time.Second, func() (bool, error) {
+		err1 := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", pod.template, "-p", "NAME="+pod.name, "NAMESPACE="+pod.namespace, "CLIIMAGEID="+pod.cliImageId, "IMAGEPULLSECRET="+pod.imagePullSecret, "IMAGESOURCE="+pod.imageSource, "IMAGETO="+pod.imageTo, "IMAGETORELEASE="+pod.imageToRelease)
+		if err1 != nil {
+			e2e.Logf("the err:%v, and try next round", err1)
+			return false, nil
+		}
+		return true, nil
+	})
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("pod %s with %s is not created successfully", pod.name, pod.cliImageId))
 }
-
 
 func createPullSecret(oc *exutil.CLI, namespace string) {
 	err := oc.AsAdmin().WithoutNamespace().Run("extract").Args("secret/pull-secret", "-n", "openshift-config", "--to=/tmp", "--confirm").Execute()
@@ -557,6 +554,6 @@ func createPullSecret(oc *exutil.CLI, namespace string) {
 
 func getCliImage(oc *exutil.CLI) string {
 	cliImage, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("imagestreams", "cli", "-n", "openshift", "-o=jsonpath={.spec.tags[0].from.name}").Output()
-        o.Expect(err).NotTo(o.HaveOccurred())
+	o.Expect(err).NotTo(o.HaveOccurred())
 	return cliImage
 }
