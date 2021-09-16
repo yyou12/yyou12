@@ -7791,6 +7791,19 @@ var _ = g.Describe("[sig-operators] OLM on VM for an end user handle within a na
 		}
 	})
 
+	// OCP-43769 author: jitli@redhat.com
+	g.It("Author:jitli-Medium-43769-Remove opm alpha add command", func() {
+
+		g.By("step: opm alpha --help")
+		output1, err := opm.NewOpmCLI().Run("alpha").Args("--help").Output()
+		e2e.Logf(output1)
+
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output1).NotTo(o.ContainSubstring("add"))
+		g.By("test case 43769 SUCCESS")
+
+	})
+
 	// author: xzha@redhat.com
 	g.It("Author:xzha-ConnectedOnly-VMonly-Medium-25920-Expose bundle data from bundle image container", func() {
 		var (
