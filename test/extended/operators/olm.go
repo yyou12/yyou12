@@ -1495,6 +1495,61 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	})
 
 	// author: bandrade@redhat.com
+	g.It("Author:bandrade-Medium-43073-Indicate dependency class in resolution constraint text", func() {
+
+		oc.SetupProject()
+		dr := make(describerResrouce)
+		itName := g.CurrentGinkgoTestDescription().TestText
+		catName := "cs-43073"
+		dr.addIr(itName)
+		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
+		csImageTemplate := filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
+		subTemplate := filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+		ogSingleTemplate := filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+		cs := catalogSourceDescription{
+			name:        catName,
+			namespace:   "openshift-marketplace",
+			displayName: "OLM QE Operators",
+			publisher:   "bandrade",
+			sourceType:  "grpc",
+			address:     "quay.io/olmqe/bundle-with-dep-error-index:4.0",
+			template:    csImageTemplate,
+		}
+
+		og := operatorGroupDescription{
+			name:      "og-43073",
+			namespace: oc.Namespace(),
+			template:  ogSingleTemplate,
+		}
+
+		defer cs.delete(itName, dr)
+		g.By("1) Create the CatalogSource")
+		cs.create(oc, itName, dr)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "READY", ok, []string{"catsrc", cs.name, "-n", cs.namespace, "-o=jsonpath={.status..lastObservedState}"}).check(oc)
+
+		g.By("2) Install the OperatorGroup in a random project")
+		og.createwithCheck(oc, itName, dr)
+
+		g.By("3) Install the lib-bucket-provisioner with Automatic approval")
+
+		sub := subscriptionDescription{
+			subName:                "lib-bucket-provisioner-43073",
+			namespace:              oc.Namespace(),
+			catalogSourceName:      catName,
+			catalogSourceNamespace: "openshift-marketplace",
+			channel:                "alpha",
+			ipApproval:             "Automatic",
+			operatorPackage:        "lib-bucket-provisioner",
+			singleNamespace:        true,
+			template:               subTemplate,
+		}
+		defer sub.delete(itName, dr)
+		defer sub.deleteCSV(itName, dr)
+		sub.createWithoutCheck(oc, itName, dr)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "ConstraintsNotSatisfiable", ok, []string{"subs", "lib-bucket-provisioner-43073", "-n", oc.Namespace(), "-o=jsonpath={.status.conditions[?(.type==\"ResolutionFailed\")].reason}"}).check(oc)
+	})
+
+	// author: bandrade@redhat.com
 	g.It("Author:bandrade-Medium-24772-OLM should support for user defined ServiceAccount for OperatorGroup with fine grained permission", func() {
 		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
 		saRoles := filepath.Join(buildPruningBaseDir, "scoped-sa-fine-grained-roles.yaml")
@@ -6510,9 +6565,9 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 			errorText           = "more than one operator group(s) are managing this namespace count=2"
 			exists              bool
 			msg                 string
-			ip                   string
+			ip                  string
 			snooze              time.Duration = 360
-			testCase            = "43114"
+			testCase                          = "43114"
 			waitErr             error
 		)
 
