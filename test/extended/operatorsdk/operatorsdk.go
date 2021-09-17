@@ -134,7 +134,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
             }
             return false, nil
         })
-        o.Expect(waitErr).NotTo(o.HaveOccurred())
+        exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("contentpath-controller-manager deployment of %s has not Starting workers", namespace))
     })
 
     // author: jfan@redhat.com
@@ -154,7 +154,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
             }
             return false, nil
         })
-        o.Expect(waitErr).NotTo(o.HaveOccurred())  
+        exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("log of deploy/max-concurrent-reconciles-controller-manager of %s doesn't have worker count:4", namespace))
     })
 
     // author: jfan@redhat.com
@@ -178,7 +178,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
             }
             return false, nil
         })
-        o.Expect(waitErr).NotTo(o.HaveOccurred())
+        exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("blacklist-sample pod in %s doesn't found", namespace))
         msg, err := oc.AsAdmin().WithoutNamespace().Run("logs").Args("deploy/blacklist-controller-manager", "-c", "manager", "-n", namespace).Output()
         o.Expect(err).NotTo(o.HaveOccurred())
         o.Expect(msg).To(o.ContainSubstring("Skipping"))
@@ -205,7 +205,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
             }
             return false, nil
         })
-        o.Expect(waitErr).NotTo(o.HaveOccurred())
+        exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("miss log dummy : Create ConfigMap in %s", namespace))
     })
 
     // author: jfan@redhat.com
@@ -229,7 +229,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
             }
             return false, nil
         })
-        o.Expect(waitErr).NotTo(o.HaveOccurred())
+        exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("doesn't get secret test-secret %s", namespace))
         //oc get secret test-secret -o yaml
         msg, err := oc.AsAdmin().Run("describe").Args("secret", "test-secret", "-n", namespace).Output()
         o.Expect(err).NotTo(o.HaveOccurred())
@@ -257,7 +257,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
             }
             return false, nil
         })
-        o.Expect(waitErr).NotTo(o.HaveOccurred())
+        exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("miss pod nginx-sample in %s", namespace))
         err = oc.AsAdmin().WithoutNamespace().Run("delete").Args("nginx.helmdemo.example.com", "nginx-sample", "-n", namespace).Execute()
         o.Expect(err).NotTo(o.HaveOccurred())
     })
@@ -316,7 +316,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
             }
             return false, nil
         })
-        o.Expect(waitErr).NotTo(o.HaveOccurred())
+        exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("pod quay-io-olmqe-ownsingleallsupport-bundle-v4-9 can't be deleted in %s", namespace))
         // install the operator with og and installmode
         configFile, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", operatorGroup, "-p", "NAME=og-own", "NAMESPACE=" + namespace).OutputToFile("config-35443.json")
         o.Expect(err).NotTo(o.HaveOccurred())
@@ -336,7 +336,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
             }
             return false, nil
         })
-        o.Expect(waitErr).NotTo(o.HaveOccurred())
+        exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("pod quay-io-olmqe-ownsingleallsupport-bundle-v4-9 can't be deleted in %s", namespace))
         msg, err = operatorsdkCLI.Run("run").Args("bundle", "quay.io/olmqe/ownsingleallsupport-bundle:v4.9", "-n", namespace, "--timeout", "5m").Output()
         o.Expect(err).NotTo(o.HaveOccurred())
         o.Expect(msg).To(o.ContainSubstring("OLM has successfully installed"))
@@ -353,7 +353,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
             }
             return false, nil
         })
-        o.Expect(waitErr).NotTo(o.HaveOccurred())
+        exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("pod quay-io-olmqe-ownsingleallsupport-bundle-v4-9 can't be deleted in %s", namespace))
         // install the operator without og and installmode, the csv support ownnamespace and singlenamespace
         msg, err = operatorsdkCLI.Run("run").Args("bundle", "quay.io/olmqe/ownsinglesupport-bundle:v4.9", "-n", namespace, "--timeout", "5m").Output()
         o.Expect(err).NotTo(o.HaveOccurred())
@@ -390,7 +390,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
             }
             return false, nil
         })
-        o.Expect(waitErr).NotTo(o.HaveOccurred())
+        exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("pod quay-io-olmqe-ownsingleallsupport-bundle-v4-9 can't be deleted in %s", namespace))
         // install the operator with og and installmode
         configFile, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", operatorGroup, "-p", "NAME=og-single", "NAMESPACE=" + namespace, "KAKA=test-sdk-41064",).OutputToFile("config-41064.json")
         o.Expect(err).NotTo(o.HaveOccurred())
@@ -410,7 +410,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
             }
             return false, nil
         })
-        o.Expect(waitErr).NotTo(o.HaveOccurred())
+        exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("pod quay-io-olmqe-ownsingleallsupport-bundle-v4-9 can't be deleted in %s", namespace))
         msg, err = operatorsdkCLI.Run("run").Args("bundle", "quay.io/olmqe/ownsingleallsupport-bundle:v4.9", "-n", namespace, "--timeout", "5m").Output()
         o.Expect(err).NotTo(o.HaveOccurred())
         o.Expect(msg).To(o.ContainSubstring("OLM has successfully installed"))
@@ -427,7 +427,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
             }
             return false, nil
         })
-        o.Expect(waitErr).NotTo(o.HaveOccurred())
+        exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("pod quay-io-olmqe-ownsingleallsupport-bundle-v4-9 can't be deleted in %s", namespace))
         // install the operator without og and installmode, the csv only support singlenamespace
         msg, _ = operatorsdkCLI.Run("run").Args("bundle", "quay.io/olmqe/singlesupport-bundle:v4.9", "-n", namespace, "--timeout", "5m").Output()
         o.Expect(msg).To(o.ContainSubstring("AllNamespaces InstallModeType not supported"))
@@ -458,7 +458,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
             }
             return false, nil
         })
-        o.Expect(waitErr).NotTo(o.HaveOccurred())
+        exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("can't get csv ownsingleallsupport.v0.0.1 in %s", namespace))
         output, err := operatorsdkCLI.Run("cleanup").Args("ownsingleallsupport", "-n", namespace).Output()
         o.Expect(err).NotTo(o.HaveOccurred())
         o.Expect(output).To(o.ContainSubstring("uninstalled"))
@@ -470,7 +470,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
             }
             return false, nil
         })
-        o.Expect(waitErr).NotTo(o.HaveOccurred())
+        exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("pod quay-io-olmqe-ownsingleallsupport-bundle-v4-9 can't be deleted in %s", namespace))
         // install the operator with og and installmode
         configFile, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", operatorGroup, "-p", "NAME=og-allnames", "NAMESPACE=" + namespace).OutputToFile("config-41065.json")
         o.Expect(err).NotTo(o.HaveOccurred())
@@ -487,7 +487,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
             }
             return false, nil
         })
-        o.Expect(waitErr).NotTo(o.HaveOccurred())
+        exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("can't get csv ownsingleallsupport.v0.0.1 in %s", namespace))
         output, _ = operatorsdkCLI.Run("cleanup").Args("ownsingleallsupport", "-n", namespace).Output()
         o.Expect(output).To(o.ContainSubstring("uninstalled"))
         // install the operator with og without installmode
@@ -499,7 +499,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
             }
             return false, nil
         })
-        o.Expect(waitErr).NotTo(o.HaveOccurred())
+        exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("pod quay-io-olmqe-ownsingleallsupport-bundle-v4-9 can't be deleted in %s", namespace))
         msg, err = operatorsdkCLI.Run("run").Args("bundle", "quay.io/olmqe/ownsingleallsupport-bundle:v4.9", "-n", namespace, "--timeout", "5m").Output()
         o.Expect(err).NotTo(o.HaveOccurred())
         o.Expect(msg).To(o.ContainSubstring("OLM has successfully installed"))
@@ -511,7 +511,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
             }
             return false, nil
         })
-        o.Expect(waitErr).NotTo(o.HaveOccurred())
+        exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("can't get csv ownsingleallsupport.v0.0.1 in %s", namespace))
         output, _ = operatorsdkCLI.Run("cleanup").Args("ownsingleallsupport", "-n", namespace).Output()
         o.Expect(output).To(o.ContainSubstring("uninstalled"))
         // delete the og
@@ -525,7 +525,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
             }
             return false, nil
         })
-        o.Expect(waitErr).NotTo(o.HaveOccurred())
+        exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("pod quay-io-olmqe-ownsingleallsupport-bundle-v4-9 can't be deleted in %s", namespace))
         // install the operator without og and installmode, the csv support allnamespace and ownnamespace
         msg, _ = operatorsdkCLI.Run("run").Args("bundle", "quay.io/olmqe/ownsingleallsupport-bundle:v4.9", "-n", namespace, "--timeout", "5m").Output()
         o.Expect(msg).To(o.ContainSubstring("OLM has successfully installed"))
@@ -537,7 +537,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
             }
             return false, nil
         })
-        o.Expect(waitErr).NotTo(o.HaveOccurred())
+        exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("can't get csv ownsingleallsupport.v0.0.1 in %s", namespace))
         output, _ = operatorsdkCLI.Run("cleanup").Args("ownsingleallsupport", "-n", namespace).Output()
         o.Expect(output).To(o.ContainSubstring("uninstalled"))
     })
@@ -563,7 +563,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
             }
             return false, nil
         })
-        o.Expect(waitErr).NotTo(o.HaveOccurred())
+        exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("can't get k8sstatus-sample hello world in %s", namespace))
     })
 
     // author: jfan@redhat.com
@@ -590,7 +590,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
             }
             return false, nil
         })
-        o.Expect(waitErr).NotTo(o.HaveOccurred())
+        exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("can't get csv wso2am-operator.v1.0.0 %s", namespace))
         // upgrade wso2m by operator-sdk
         msg, err := operatorsdkCLI.Run("run").Args("bundle-upgrade", "quay.io/olmqe/wso2am-operator-bundle:1.0.1", "-n", namespace, "--timeout", "5m").Output()
         o.Expect(err).NotTo(o.HaveOccurred())
@@ -620,7 +620,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
             }
             return false, nil
         })
-        o.Expect(waitErr).NotTo(o.HaveOccurred())
+        exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("can't get previous-sample hello world in %s", namespace))
         
         // migrate test
         msg, err := oc.AsAdmin().Run("describe").Args("secret", "test-secret", "-n", namespace).Output()
@@ -650,7 +650,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
             }
             return false, nil
         })
-        o.Expect(waitErr).NotTo(o.HaveOccurred())
+        exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("can't get log dummy create ConfigMap in %s", namespace))
 
         output, _ := operatorsdkCLI.Run("cleanup").Args("previousansiblebase", "-n", namespace).Output()
         o.Expect(output).To(o.ContainSubstring("uninstalled"))
@@ -678,7 +678,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
             }
             return false, nil
         })
-        o.Expect(waitErr).NotTo(o.HaveOccurred())
+        exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("can't get pod nginx-sample in %s", namespace))
         err = oc.AsAdmin().WithoutNamespace().Run("delete").Args("nginx.helmbase.previous.com", "previousnginx-sample", "-n", namespace).Execute()
         o.Expect(err).NotTo(o.HaveOccurred())
         output, _ := operatorsdkCLI.Run("cleanup").Args("previoushelmbase", "-n", namespace).Output()
@@ -768,7 +768,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
             }
             return false, nil
         })
-        o.Expect(waitErr).NotTo(o.HaveOccurred())
+        exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("can't get csv catalogtest.v0.0.1 in %s", namespace))
     })
    
     // author: chuo@redhat.com
