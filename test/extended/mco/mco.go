@@ -206,7 +206,7 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 				o.ContainSubstring("usbguard"),
 				o.ContainSubstring("z=10"),
 				o.ContainSubstring("realtime")))
-		
+
 		g.By("Check kernel arguments, kernel type and extension on the rhel worker node")
 		rhelRpmOut, err := exutil.DebugNodeWithChroot(oc, rhelOs, "rpm", "-qa")
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -342,6 +342,22 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		o.Expect(datamap).NotTo(o.BeNil())
 		o.Expect(datamap["status"].(string)).Should(o.Equal("True"))
 		o.Expect(datamap["message"].(string)).Should(o.ContainSubstring("parsing Ignition config failed: unknown version. Supported spec versions: 2.2, 3.0, 3.1, 3.2"))
+	})
+
+	g.It("Author:rioliu-CPaasrunOnly-High-42679-add new ssh authorized keys [Serial]", func() {
+		g.By("Create new machine config with new authorized key")
+		mcName := "change-worker-add-ssh-authorized-key"
+		mcTemplate := generateTemplateAbsolutePath(mcName + ".yaml")
+		mc := MachineConfig{name: mcName, template: mcTemplate, pool: "worker"}
+		defer mc.delete(oc)
+		mc.create(oc)
+		g.By("Check content of file authorized_keys to verify whether new one is added successfully")
+		workerNode, err := exutil.GetFirstWorkerNode(oc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		sshKeyOut, err := exutil.DebugNodeWithChroot(oc, workerNode, "cat", "/home/core/.ssh/authorized_keys")
+		e2e.Logf("file content of authorized_keys: %v", sshKeyOut)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(sshKeyOut).Should(o.ContainSubstring("mco_test@redhat.com"))
 	})
 })
 
