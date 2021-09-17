@@ -1,6 +1,7 @@
 package networking
 
 import (
+	"fmt"
 	"path/filepath"
 	"strings"
 	"time"
@@ -144,7 +145,7 @@ var _ = g.Describe("[sig-networking] SDN", func() {
 			e2e.Logf("The egressip is :\n %v", msg1)
 			return true, nil
 		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("egressip %v is not ready", egressip1.name))
 
 		g.By("Check EgressIP object status includes both IPv4 and IPv6")
 		msg, _ := oc.WithoutNamespace().AsAdmin().Run("get").Args("egressip", egressip1.name, "-o=jsonpath={.status.items[*]}").Output()

@@ -54,7 +54,7 @@ func (rs *sriovNetResource) create(oc *exutil.CLI, parameters ...string) {
 		configFile = output
 		return true, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("fail to process sriov resource %v", cmd))
 	e2e.Logf("the file of resource is %s\n", configFile)
 
 	_, err1 := oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", configFile, "-n", rs.namespace).Output()
@@ -74,7 +74,7 @@ func (pod *sriovPod) processPodTemplate(oc *exutil.CLI) string {
 		configFile = output
 		return true, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("fail to process pod resource %v", pod.name))
 	e2e.Logf("the file of resource is %s\n", configFile)
 	return configFile
 }
@@ -163,7 +163,7 @@ func (pod *sriovPod) waitForPodReady(oc *exutil.CLI) {
 		}
 		return false, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("sriov pod %v is not ready", pod.name))
 	o.Expect(res).To(o.Equal(true))
 }
 
@@ -187,7 +187,7 @@ func waitForSriovPolicyReady(oc *exutil.CLI, ns string) bool {
 		res = true
 		return true, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, "sriovnetworknodestates is not ready")
 	return res
 }
 

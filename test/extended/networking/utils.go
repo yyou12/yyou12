@@ -1,6 +1,7 @@
 package networking
 
 import (
+	"fmt"
 	"math/rand"
 	"net"
 	"strings"
@@ -49,7 +50,7 @@ func (pod *pingPodResource) createPingPod(oc *exutil.CLI) {
 		}
 		return true, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("fail to create pod %v", pod.name))
 }
 
 func applyResourceFromTemplate(oc *exutil.CLI, parameters ...string) error {
@@ -63,7 +64,7 @@ func applyResourceFromTemplate(oc *exutil.CLI, parameters ...string) error {
 		configFile = output
 		return true, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("fail to process %v", parameters))
 
 	e2e.Logf("the file of resource is %s", configFile)
 	return oc.WithoutNamespace().Run("apply").Args("-f", configFile).Execute()
@@ -78,7 +79,7 @@ func (egressIP *egressIPResource1) createEgressIPObject1(oc *exutil.CLI) {
 		}
 		return true, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("fail to create EgressIP %v", egressIP.name))
 }
 
 func (egressIP *egressIPResource1) deleteEgressIPObject1(oc *exutil.CLI) {
@@ -94,7 +95,7 @@ func (egressFirewall *egressFirewall1) createEgressFWObject1(oc *exutil.CLI) {
 		}
 		return true, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("fail to create EgressFW %v", egressFirewall.name))
 }
 
 func (egressFirewall *egressFirewall1) deleteEgressFWObject1(oc *exutil.CLI) {
@@ -110,7 +111,7 @@ func (egressFirewall *egressFirewall2) createEgressFW2Object(oc *exutil.CLI) {
 		}
 		return true, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("fail to create EgressFW2 %v", egressFirewall.name))
 }
 
 func (egressFirewall *egressFirewall2) deleteEgressFW2Object(oc *exutil.CLI) {
@@ -137,7 +138,7 @@ func removeResource(oc *exutil.CLI, asAdmin bool, withoutNamespace bool, paramet
 		}
 		return false, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("fail to delete resource %v", parameters))
 }
 
 func doAction(oc *exutil.CLI, action string, asAdmin bool, withoutNamespace bool, parameters ...string) (string, error) {
@@ -167,7 +168,7 @@ func applyResourceFromTemplateByAdmin(oc *exutil.CLI, parameters ...string) erro
 		configFile = output
 		return true, nil
 	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("as admin fail to process %v", parameters))
 
 	e2e.Logf("the file of resource is %s", configFile)
 	return oc.WithoutNamespace().AsAdmin().Run("apply").Args("-f", configFile).Execute()
@@ -224,7 +225,7 @@ func waitPodReady(oc *exutil.CLI, namespace string, podName string) {
 		e2e.Logf("oc describe pod %v.", podName)
 		e2e.Logf(podDescribe)
 	}
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("pod %v is not ready", podName))
 }
 
 func describePod(oc *exutil.CLI, namespace string, podName string) string {
