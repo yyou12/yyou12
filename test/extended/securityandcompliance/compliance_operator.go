@@ -24,6 +24,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		catsrcCoTemplate                 string
 		subCoTemplate                    string
 		csuiteTemplate                   string
+		csuiteRemTemplate                string
 		csuitetpcmTemplate               string
 		csuitetaintTemplate              string
 		csuitenodeTemplate               string
@@ -54,6 +55,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		motdConfigMapYAML                string
 		consoleNotificationYAML          string
 		networkPolicyYAML                string
+		machineConfigPoolYAML            string
 		catSrc                           catalogSourceDescription
 		ogD                              operatorGroupDescription
 		subD                             subscriptionDescription
@@ -67,6 +69,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		catsrcCoTemplate = filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
 		subCoTemplate = filepath.Join(buildPruningBaseDir, "subscription.yaml")
 		csuiteTemplate = filepath.Join(buildPruningBaseDir, "compliancesuite.yaml")
+		csuiteRemTemplate = filepath.Join(buildPruningBaseDir, "compliancesuiterem.yaml")
 		csuitetpcmTemplate = filepath.Join(buildPruningBaseDir, "compliancesuitetpconfmap.yaml")
 		csuitetaintTemplate = filepath.Join(buildPruningBaseDir, "compliancesuitetaint.yaml")
 		csuitenodeTemplate = filepath.Join(buildPruningBaseDir, "compliancesuitenodes.yaml")
@@ -97,6 +100,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		motdConfigMapYAML = filepath.Join(buildPruningBaseDir, "motd_configmap.yaml")
 		consoleNotificationYAML = filepath.Join(buildPruningBaseDir, "consolenotification.yaml")
 		networkPolicyYAML = filepath.Join(buildPruningBaseDir, "network-policy.yaml")
+		machineConfigPoolYAML = filepath.Join(buildPruningBaseDir, "machineConfigPool.yaml")
 
 		catSrc = catalogSourceDescription{
 			name:        "compliance-operator",
@@ -3303,7 +3307,119 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 				"ocp4-cis-general-namespaces-in-use", "ocp4-cis-general-default-seccomp-profile", "ocp4-cis-general-apply-scc", "ocp4-cis-general-default-namespace-use"}
 			checkRulesExistInComplianceCheckResult(oc, cisRlueList, subD.namespace)
 
-			g.By("ocp-41153 There are OpenSCAP checks created to verify that the cluster is compliant  for the section 5 of the Kubernetes CIS profile... !!!!\n ")
+			g.By("ocp-41153 There are OpenSCAP checks created to verify that the cluster is compliant for the section 5 of the Kubernetes CIS profile... !!!!\n ")
+		})
+
+		// author: pdhamdhe@redhat.com
+		g.It("Author:pdhamdhe-Longduration-CPaasrunOnly-High-27967-High-33782-Medium-33711-The ComplianceSuite performs scan on a subset of nodes with autoApplyRemediations enable and ComplianceCheckResult shows remediation rule result in details [Disruptive][Slow]", func() {
+			var (
+				csuiteD = complianceSuiteDescription{
+					name:         "worker-compliancesuite",
+					namespace:    "",
+					scanname:     "worker-scan",
+					profile:      "xccdf_org.ssgproject.content_profile_moderate",
+					content:      "ssg-rhcos4-ds.xml",
+					contentImage: "quay.io/complianceascode/ocp4:latest",
+					rule:         "xccdf_org.ssgproject.content_rule_audit_rules_dac_modification_chmod",
+					nodeSelector: "wrscan",
+					template:     csuiteTemplate,
+				}
+				csuite = complianceSuiteDescription{
+					name:         "example-compliancesuite",
+					namespace:    "",
+					scanname:     "example-scan",
+					profile:      "xccdf_org.ssgproject.content_profile_moderate",
+					content:      "ssg-rhcos4-ds.xml",
+					contentImage: "quay.io/complianceascode/ocp4:latest",
+					rule:         "xccdf_org.ssgproject.content_rule_no_empty_passwords",
+					nodeSelector: "wrscan",
+					template:     csuiteRemTemplate,
+				}
+				itName = g.CurrentGinkgoTestDescription().TestText
+			)
+			// checking all nodes are in Ready state before the test case starts
+			checkNodeStatus(oc)
+			// adding label to one rhcos worker node to skip rhel and other RHCOS worker nodes
+			g.By("Label one rhcos worker node as wrscan.. !!!\n")
+			workerNodeName := getOneRhcosWorkerNodeName(oc)
+			setLabelToOneWorkerNode(oc, workerNodeName)
+
+			defer func() {
+				g.By("Remove compliancesuite, machineconfig, machineconfigpool objects.. !!!\n")
+				removeLabelFromWorkerNode(oc, workerNodeName)
+				checkMachineConfigPoolStatus(oc, "worker")
+				cleanupObjects(oc, objectTableRef{"mc", subD.namespace, "75-worker-scan-audit-rules-dac-modification-chmod"})
+				cleanupObjects(oc, objectTableRef{"mc", subD.namespace, "75-example-scan-no-empty-passwords"})
+				cleanupObjects(oc, objectTableRef{"compliancesuite", subD.namespace, csuiteD.name})
+				cleanupObjects(oc, objectTableRef{"compliancesuite", subD.namespace, csuite.name})
+				checkMachineConfigPoolStatus(oc, "worker")
+				cleanupObjects(oc, objectTableRef{"mcp", subD.namespace, csuiteD.nodeSelector})
+				checkNodeStatus(oc)
+			}()
+
+			g.By("Create wrscan machineconfigpool.. !!!\n")
+			_, err := oc.AsAdmin().WithoutNamespace().Run("create").Args("-n", subD.namespace, "-f", machineConfigPoolYAML).Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			checkMachineConfigPoolStatus(oc, csuiteD.nodeSelector)
+
+			g.By("Create compliancesuite objects !!!\n")
+			csuiteD.namespace = subD.namespace
+			csuite.namespace = subD.namespace
+			csuiteD.create(oc, itName, dr)
+			csuite.create(oc, itName, dr)
+			g.By("Check ComplianceSuite status !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", csuiteD.name, "-n", csuiteD.namespace,
+				"-o=jsonpath={.status.phase}"}).check(oc)
+			subD.complianceSuiteResult(oc, csuiteD.name, "NON-COMPLIANT")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", csuite.name, "-n", csuite.namespace,
+				"-o=jsonpath={.status.phase}"}).check(oc)
+			subD.complianceSuiteResult(oc, csuite.name, "NON-COMPLIANT")
+
+			g.By("Verify worker-scan-audit-rules-dac-modification-chmod rule status through compliancecheckresult & complianceremediations.. !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "FAIL", ok, []string{"compliancecheckresult",
+				"worker-scan-audit-rules-dac-modification-chmod", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "NotApplied", ok, []string{"complianceremediations",
+				"worker-scan-audit-rules-dac-modification-chmod", "-n", subD.namespace, "-o=jsonpath={.status.applicationState}"}).check(oc)
+
+			g.By("Apply remediation by patching rule.. !!!\n")
+			patch := fmt.Sprintf("{\"spec\":{\"apply\":true}}")
+			patchResource(oc, asAdmin, withoutNamespace, "complianceremediations", "worker-scan-audit-rules-dac-modification-chmod", "-n", csuiteD.namespace, "--type", "merge", "-p", patch)
+
+			g.By("Verify example-scan-no-empty-passwords rule status through compliancecheckresult & complianceremediations.. !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "FAIL", ok, []string{"compliancecheckresult",
+				"example-scan-no-empty-passwords", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
+
+			g.By("Verified autoremediation applied for those rules and machineConfig gets created.. !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "Applied", ok, []string{"complianceremediations", "worker-scan-audit-rules-dac-modification-chmod", "-n", csuiteD.namespace,
+				"-o=jsonpath={.status.applicationState}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "75-worker-scan-audit-rules-dac-modification-chmod", ok, []string{"mc", "-n", csuiteD.namespace,
+				"--selector=compliance.openshift.io/scan-name=worker-scan", "-o=jsonpath={.items[0].metadata.name}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "Applied", ok, []string{"complianceremediations", "example-scan-no-empty-passwords", "-n", csuiteD.namespace,
+				"-o=jsonpath={.status.applicationState}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "75-example-scan-no-empty-passwords", ok, []string{"mc", "-n", csuiteD.namespace,
+				"--selector=compliance.openshift.io/scan-name=example-scan", "-o=jsonpath={.items[0].metadata.name}"}).check(oc)
+
+			g.By("Check worker machineconfigpool status.. !!!\n")
+			checkMachineConfigPoolStatus(oc, csuiteD.nodeSelector)
+
+			g.By("Rerun scan using oc-compliance plugin.. !!!\n")
+			_, err1 := OcComplianceCLI().Run("rerun-now").Args("compliancesuite", csuiteD.name, "-n", subD.namespace).Output()
+			o.Expect(err1).NotTo(o.HaveOccurred())
+			_, err2 := OcComplianceCLI().Run("rerun-now").Args("compliancesuite", csuite.name, "-n", subD.namespace).Output()
+			o.Expect(err2).NotTo(o.HaveOccurred())
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", csuiteD.name, "-n", csuiteD.namespace,
+				"-o=jsonpath={.status.phase}"}).check(oc)
+			subD.complianceSuiteResult(oc, csuiteD.name, "COMPLIANT")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", csuiteD.name, "-n", csuiteD.namespace,
+				"-o=jsonpath={.status.phase}"}).check(oc)
+			subD.complianceSuiteResult(oc, csuiteD.name, "COMPLIANT")
+
+			g.By("Verify worker-scan-audit-rules-dac-modification-chmod rule status through compliancecheck result again.. !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "PASS", ok, []string{"compliancecheckresult",
+				"worker-scan-audit-rules-dac-modification-chmod", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
+			g.By("Verify example-scan-no-empty-passwords rule status through compliancecheck result again.. !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "PASS", ok, []string{"compliancecheckresult",
+				"example-scan-no-empty-passwords", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
 		})
 	})
 })

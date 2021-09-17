@@ -723,3 +723,55 @@ func checkRulesExistInComplianceCheckResult(oc *exutil.CLI, cisRlueList []string
 			"-o=jsonpath={.items[*].metadata.name}"}).check(oc)
 	}
 }
+
+func setLabelToOneWorkerNode(oc *exutil.CLI, workerNodeName string) {
+	nodeLabel, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("nodes", workerNodeName, "--show-labels").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	if !strings.Contains(nodeLabel, "node-role.kubernetes.io/wrscan=") {
+		_, err := oc.AsAdmin().WithoutNamespace().Run("label").Args("node", workerNodeName, "node-role.kubernetes.io/wrscan=").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+	}
+}
+
+func removeLabelFromWorkerNode(oc *exutil.CLI, workerNodeName string) {
+	_, err := oc.AsAdmin().WithoutNamespace().Run("label").Args("node", workerNodeName, "node-role.kubernetes.io/wrscan-").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	e2e.Logf("\nThe label is removed from node %s \n", workerNodeName)
+}
+
+func checkMachineConfigPoolStatus(oc *exutil.CLI, nodeSelector string) {
+	err := wait.Poll(10*time.Second, 360*time.Second, func() (bool, error) {
+		mCount, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("mcp", nodeSelector, "-n", oc.Namespace(), "-o=jsonpath={.status.machineCount}").Output()
+		e2e.Logf("MachineCount:%v", mCount)
+		unmCount, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("mcp", nodeSelector, "-n", oc.Namespace(), "-o=jsonpath={.status.unavailableMachineCount}").Output()
+		e2e.Logf("unavailableMachineCount:%v", unmCount)
+		dmCount, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("mcp", nodeSelector, "-n", oc.Namespace(), "-o=jsonpath={.status.degradedMachineCount}").Output()
+		e2e.Logf("degradedMachineCount:%v", dmCount)
+		rmCount, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("mcp", nodeSelector, "-n", oc.Namespace(), "-o=jsonpath={.status.readyMachineCount}").Output()
+		e2e.Logf("ReadyMachineCount:%v", rmCount)
+		if strings.Compare(mCount, rmCount) == 0 && strings.Compare(unmCount, dmCount) == 0 {
+			return true, nil
+		}
+		return false, nil
+	})
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("Fails to update %v machineconfigpool", nodeSelector))
+}
+
+func checkNodeStatus(oc *exutil.CLI) {
+	err := wait.Poll(10*time.Second, 1*time.Minute, func() (bool, error) {
+		nodeName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("nodes", "--selector=node-role.kubernetes.io/worker=", "-o=jsonpath={.items[*].metadata.name}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		node := strings.Fields(nodeName)
+		for _, v := range node {
+			nodeStatus, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("nodes", fmt.Sprintf("%s", v), "-o=jsonpath={.status.conditions[3].type}").Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			if strings.Compare(nodeStatus, "Ready") != 0 {
+				e2e.Logf("\nNode %s Status is %s\n", v, nodeStatus)
+				return false, nil
+			}
+			e2e.Logf("\nNode %s Status is %s\n", v, nodeStatus)
+		}
+		return true, nil
+	})
+	exutil.AssertWaitPollNoErr(err, "One or more nodes are NotReady state")
+}
