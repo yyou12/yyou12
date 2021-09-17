@@ -181,6 +181,63 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		createMcAndVerifyMCValue(oc, "Usb Extension", "change-worker-extension-usbguard", workerNode, textToVerify, "rpm", "-q", "usbguard")
 	})
 
+	g.It("Author:mhanss-Longduration-CPaasrunOnly-Critical-43310-add kernel arguments, kernel type and extension to the RHCOS and RHEL [Disruptive]", func() {
+		rhelOs, err := exutil.GetFirstRhelWorkerNode(oc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		coreOs, err := exutil.GetFirstCoreOsWorkerNode(oc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		if rhelOs == "" || coreOs == "" {
+			g.Skip("Both Rhel and CoreOs are required to execute this test case!")
+		}
+
+		g.By("Create new MC to add the kernel arguments, kernel type and extension")
+		mcName := "change-worker-karg-ktype-extension"
+		mcTemplate := generateTemplateAbsolutePath(mcName + ".yaml")
+		mc := MachineConfig{name: mcName, template: mcTemplate, pool: "worker"}
+		defer mc.delete(oc)
+		mc.create(oc)
+
+		g.By("Check kernel arguments, kernel type and extension on the created machine config")
+		mcOut, err := getMachineConfigDetails(oc, mc.name)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(mcOut).Should(
+			o.And(
+				o.ContainSubstring("usbguard"),
+				o.ContainSubstring("z=10"),
+				o.ContainSubstring("realtime")))
+		
+		g.By("Check kernel arguments, kernel type and extension on the rhel worker node")
+		rhelRpmOut, err := exutil.DebugNodeWithChroot(oc, rhelOs, "rpm", "-qa")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(rhelRpmOut).Should(o.And(
+			o.MatchRegexp(".*kernel-tools-[0-9-.]+el[0-9]+.x86_64.*"),
+			o.MatchRegexp(".*kernel-tools-libs-[0-9-.]+el[0-9]+.x86_64.*"),
+			o.MatchRegexp(".*kernel-[0-9-.]+el[0-9]+.x86_64.*")))
+		rhelUnameOut, err := exutil.DebugNodeWithChroot(oc, rhelOs, "uname", "-a")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(rhelUnameOut).Should(o.Not(o.ContainSubstring("PREEMPT_RT")))
+		rhelCmdlineOut, err := exutil.DebugNodeWithChroot(oc, rhelOs, "cat", "/proc/cmdline")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(rhelCmdlineOut).Should(o.Not(o.ContainSubstring("z=10")))
+
+		g.By("Check kernel arguments, kernel type and extension on the rhcos worker node")
+		coreOsRpmOut, err := exutil.DebugNodeWithChroot(oc, coreOs, "rpm", "-qa")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(coreOsRpmOut).Should(o.And(
+			o.MatchRegexp(".*kernel-rt-kvm-[0-9-.]+rt[0-9.]+el[0-9_]+.x86_64.*"),
+			o.MatchRegexp(".*kernel-rt-core-[0-9-.]+rt[0-9.]+el[0-9_]+.x86_64.*"),
+			o.MatchRegexp(".*kernel-rt-modules-extra-[0-9-.]+rt[0-9.]+el[0-9_]+.x86_64.*"),
+			o.MatchRegexp(".*kernel-rt-modules-[0-9-.]+rt[0-9.]+el[0-9_]+.x86_64.*")))
+		coreOsUnameOut, err := exutil.DebugNodeWithChroot(oc, coreOs, "uname", "-a")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(coreOsUnameOut).Should(o.ContainSubstring("PREEMPT_RT"))
+		coreOsCmdlineOut, err := exutil.DebugNodeWithChroot(oc, coreOs, "cat", "/proc/cmdline")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(coreOsCmdlineOut).Should(o.ContainSubstring("z=10"))
+		e2e.Logf("Kernel argument, kernel type and extension changes are verified on both rhcos and rhel worker nodes!")
+	})
+
 	g.It("Author:mhanss-Longduration-CPaasrunOnly-Critical-42368-add max pods to the kubelet config [Disruptive]", func() {
 		g.By("create kubelet config to add 500 max pods")
 		kcName := "change-maxpods-kubelet-config"
@@ -324,4 +381,3 @@ func skipTestIfOsIsNotCoreOs(oc *exutil.CLI) (string, error) {
 	}
 	return coreOs, err
 }
-
