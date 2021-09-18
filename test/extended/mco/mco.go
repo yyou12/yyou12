@@ -329,6 +329,35 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		e2e.Logf("Journald config values are verified in the worker node!")
 	})
 
+	g.It("Author:mhanss-Longduration-CPaasrunOnly-High-43405-node drain is not needed for mirror config change in container registry [Disruptive]", func() {
+		g.By("Create image content source policy for mirror changes")
+		icspName := "repository-mirror"
+		icspTemplate := generateTemplateAbsolutePath(icspName + ".yaml")
+		icsp := ImageContentSourcePolicy{name: icspName, template: icspTemplate}
+		defer icsp.delete(oc)
+		icsp.create(oc)
+
+		g.By("Check registry changes in the worker node")
+		workerNode, err := exutil.GetFirstWorkerNode(oc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		registryOut, err := exutil.DebugNodeWithChroot(oc, workerNode, "cat", "/etc/containers/registries.conf")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(registryOut).Should(
+			o.And(
+				o.ContainSubstring("mirror-by-digest-only = true"),
+				o.ContainSubstring("example.com/example/ubi-minimal"),
+				o.ContainSubstring("example.io/example/ubi-minimal")))
+
+		g.By("Check MCD logs to make sure drain is skipped")
+		podLogs, err := exutil.GetSpecificPodLogs(oc, "openshift-machine-config-operator","machine-config-daemon", getMachineConfigDaemon(oc, workerNode), "drain")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf("Pod logs to skip node drain :\n %v", podLogs)
+		o.Expect(podLogs).Should(
+			o.And(
+				o.ContainSubstring("/etc/containers/registries.conf: changes made are safe to skip drain"),
+				o.ContainSubstring("Changes do not require drain, skipping")))
+	})
+
 	g.It("Author:rioliu-CPaasrunOnly-High-42218-add machine config without ignition version [Serial]", func() {
 		g.By("Create machine config with empty ign version")
 		mcName := "change-worker-ign-version-to-empty"

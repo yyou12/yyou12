@@ -1,6 +1,7 @@
 package util
 
 import (
+	"os/exec"
 	"strings"
 	"time"
 
@@ -91,4 +92,15 @@ func RemoteShPodWithChroot(oc *CLI, namespace string, podName string, cmd ...str
 // RemoteShPodWithBash creates a remote shell of the pod with bash
 func RemoteShPodWithBash(oc *CLI, namespace string, podName string, cmd ...string) (string, error) {
 	return remoteShPod(oc, namespace, podName, true, false, cmd...)
+}
+
+// GetSpecificPodLogs returns the pod logs by the specific filter
+func GetSpecificPodLogs(oc *CLI, namespace string, container string, podName string, filter string) (string, error) {
+	podLogs, err := oc.AsAdmin().WithoutNamespace().Run("logs").Args("-n", namespace, "-c", container, podName).OutputToFile("podLogs.txt")
+	if err != nil {
+		e2e.Logf("unable to get the pod (%s) logs", podName)
+		return podLogs, err
+	}
+	filteredLogs, err := exec.Command("bash", "-c", "cat "+podLogs+" | grep -i "+filter).Output()
+	return string(filteredLogs), err
 }

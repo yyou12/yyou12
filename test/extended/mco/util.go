@@ -37,6 +37,11 @@ type ContainerRuntimeConfig struct {
 	template string
 }
 
+type ImageContentSourcePolicy struct {
+	name     string
+	template string
+}
+
 type TextToVerify struct {
 	textToVerifyForMC   string
 	textToVerifyForNode string
@@ -85,6 +90,24 @@ func (kc *KubeletConfig) delete(oc *exutil.CLI) {
 	e2e.Logf("deleting kubelet config: %s", kc.name)
 	oc.AsAdmin().WithoutNamespace().Run("delete").Args("kubeletconfig", kc.name).Execute()
 	mcp := MachineConfigPool{name: "worker"}
+	mcp.waitForComplete(oc)
+}
+
+func (icsp *ImageContentSourcePolicy) create(oc *exutil.CLI) {
+	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", icsp.template, "-p", "NAME="+icsp.name)
+	o.Expect(err).NotTo(o.HaveOccurred())
+	mcp := MachineConfigPool{name: "worker"}
+	mcp.waitForComplete(oc)
+	mcp.name = "master"
+	mcp.waitForComplete(oc)
+}
+
+func (icsp *ImageContentSourcePolicy) delete(oc *exutil.CLI) {
+	e2e.Logf("deleting icsp config: %s", icsp.name)
+	oc.AsAdmin().WithoutNamespace().Run("delete").Args("imagecontentsourcepolicy", icsp.name).Execute()
+	mcp := MachineConfigPool{name: "worker"}
+	mcp.waitForComplete(oc)
+	mcp.name = "master"
 	mcp.waitForComplete(oc)
 }
 
