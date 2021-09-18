@@ -371,4 +371,59 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(result).NotTo(o.ContainSubstring("image-registry"))
 	})
+
+	// author: wewang@redhat.com
+	g.It("Author:wewang-Medium-27985-Image with invalid resource name can be pruned", func() {
+		g.By("Config image registry to emptydir")
+		defer recoverRegistryStorageConfig(oc)
+		defer recoverRegistryDefaultReplicas(oc)
+		configureRegistryStorageToEmptyDir(oc)
+
+		g.By("Import image to internal registry")
+		oc.SetupProject()
+		var invalidInfo = "Invalid image name foo/bar/" + oc.Namespace() + "/ruby-hello-world"
+		err := oc.Run("new-build").Args("openshift/ruby:latest~https://github.com/openshift/ruby-hello-world.git").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = exutil.WaitForABuild(oc.BuildClient().BuildV1().Builds(oc.Namespace()), "ruby-hello-world-1", nil, nil, nil)
+		if err != nil {
+			exutil.DumpBuildLogs("ruby-hello-world", oc)
+		}
+		exutil.AssertWaitPollNoErr(err, "build is not complete")
+
+		g.By("Add system:image-pruner role to system:serviceaccount:openshift-image-registry:registry")
+		err = oc.AsAdmin().WithoutNamespace().Run("adm").Args("policy", "add-cluster-role-to-user", "system:image-pruner", "system:serviceaccount:openshift-image-registry:registry").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		defer oc.AsAdmin().WithoutNamespace().Run("adm").Args("policy", "remove-cluster-role-from-user", "system:image-pruner", "system:serviceaccount:openshift-image-registry:registry").Execute()
+
+		g.By("Check invaild image source can be pruned")
+		err = oc.AsAdmin().WithoutNamespace().Run("rsh").Args("-n", "openshift-image-registry", "deployment.apps/image-registry", "mkdir", "-p", "/registry/docker/registry/v2/repositories/foo/bar").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = oc.AsAdmin().WithoutNamespace().Run("rsh").Args("-n", "openshift-image-registry", "deployment.apps/image-registry", "cp", "-r", "/registry/docker/registry/v2/repositories/"+oc.Namespace(), "/registry/docker/registry/v2/repositories/foo/bar").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		out, err := oc.AsAdmin().WithoutNamespace().Run("rsh").Args("-n", "openshift-image-registry", "deployment.apps/image-registry", "/bin/bash", "-c", "/usr/bin/dockerregistry -prune=check").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(out).To(o.ContainSubstring(invalidInfo))
+	})
+
+	// author: wewang@redhat.com
+	g.It("Author:wewang-High-41414-There are 2 replicas for image registry on HighAvailable workers S3/Azure/GCS/Swift storage", func() {
+		g.By("Check image registry pod")
+		platformtype, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("infrastructure", "cluster", "-o=jsonpath={.spec.platformSpec.type}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		switch platformtype {
+		case "AWS", "Azure", "GCP", "OpenStack":
+			podList, _ := oc.AdminKubeClient().CoreV1().Pods("openshift-image-registry").List(metav1.ListOptions{LabelSelector: "docker-registry=default"})
+			o.Expect(len(podList.Items)).To(o.Equal(2))
+			oc.SetupProject()
+			err := oc.Run("new-build").Args("openshift/ruby:latest~https://github.com/openshift/ruby-hello-world.git").Execute()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			err = exutil.WaitForABuild(oc.BuildClient().BuildV1().Builds(oc.Namespace()), "ruby-hello-world-1", nil, nil, nil)
+			if err != nil {
+				exutil.DumpBuildLogs("ruby-hello-world", oc)
+			}
+			exutil.AssertWaitPollNoErr(err, "build is not complete")
+		default:
+			g.Skip("Skip for other clusters!")
+		}
+	})
 })
