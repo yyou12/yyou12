@@ -1,8 +1,14 @@
 package logging
 
 import (
+	"crypto/tls"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"math/rand"
+	"net/http"
+	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -101,13 +107,24 @@ func (so *SubscriptionObjects) SubscribeLoggingOperators(oc *exutil.CLI) {
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			e2e.Logf("The project %s is not found, create it now...", so.Namespace)
-			err = oc.AsAdmin().WithoutNamespace().Run("create").Args("namespace", so.Namespace).Execute()
+			namespaceTemplate := exutil.FixturePath("testdata", "logging", "subscription", "namespace.yaml")
+			namespaceFile, err := oc.AsAdmin().Run("process").Args("-f", namespaceTemplate, "-p", "NAMESPACE_NAME="+so.Namespace).OutputToFile(getRandomString() + ".json")
 			o.Expect(err).NotTo(o.HaveOccurred())
-			err = oc.AsAdmin().WithoutNamespace().Run("label").Args("ns", so.Namespace, "openshift.io/cluster-monitoring=true").Execute()
-			o.Expect(err).NotTo(o.HaveOccurred())
+			err = wait.Poll(5*time.Second, 60*time.Second, func() (done bool, err error) {
+				output, err := oc.AsAdmin().Run("apply").Args("-f", namespaceFile).Output()
+				if err != nil {
+					if strings.Contains(output, "AlreadyExists") {
+						return true, nil
+					} else {
+						return false, err
+					}
+				} else {
+					return true, nil
+				}
+			})
+			exutil.AssertWaitPollNoErr(err, fmt.Sprintf("can't create project %s", so.Namespace))
 		}
 	}
-	o.Expect(err).NotTo(o.HaveOccurred())
 
 	// check the operator group, if no object found, then create an operator group in the project
 	og, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", so.Namespace, "og").Output()
@@ -115,10 +132,21 @@ func (so *SubscriptionObjects) SubscribeLoggingOperators(oc *exutil.CLI) {
 	msg := fmt.Sprintf("%v", og)
 	if strings.Contains(msg, "No resources found") {
 		// create operator group
-		ogFile, err := oc.AsAdmin().WithoutNamespace().Run("process").Args("-n", so.Namespace, "-f", so.OperatorGroup, "-p", "OG_NAME="+so.PackageName, "NAMESPACE="+so.Namespace).OutputToFile("og.json")
+		ogFile, err := oc.AsAdmin().Run("process").Args("-n", so.Namespace, "-f", so.OperatorGroup, "-p", "OG_NAME="+so.PackageName, "NAMESPACE="+so.Namespace).OutputToFile(getRandomString() + ".json")
 		o.Expect(err).NotTo(o.HaveOccurred())
-		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", ogFile, "-n", so.Namespace).Execute()
-		o.Expect(err).NotTo(o.HaveOccurred())
+		err = wait.Poll(5*time.Second, 60*time.Second, func() (done bool, err error) {
+			output, err := oc.AsAdmin().Run("apply").Args("-f", ogFile, "-n", so.Namespace).Output()
+			if err != nil {
+				if strings.Contains(output, "AlreadyExists") {
+					return true, nil
+				} else {
+					return false, err
+				}
+			} else {
+				return true, nil
+			}
+		})
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("can't create operatorgroup %s in %s project", so.PackageName, so.Namespace))
 	}
 
 	// subscribe operator if the deployment doesn't exist
@@ -137,10 +165,21 @@ func (so *SubscriptionObjects) SubscribeLoggingOperators(oc *exutil.CLI) {
 				packages, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", catsrcNamespaceName, "packagemanifests", "-l", "catalog="+catsrcName, "-o", "name").Output()
 				o.Expect(packages).Should(o.ContainSubstring(so.PackageName))
 				//create subscription object
-				subscriptionFile, err := oc.AsAdmin().WithoutNamespace().Run("process").Args("-n", so.Namespace, "-f", so.Subscription, "-p", "PACKAGE_NAME="+so.PackageName, "NAMESPACE="+so.Namespace, "CHANNEL="+channelName, "SOURCE="+catsrcName, "SOURCE_NAMESPACE="+catsrcNamespaceName).OutputToFile("subscription.json")
+				subscriptionFile, err := oc.AsAdmin().Run("process").Args("-n", so.Namespace, "-f", so.Subscription, "-p", "PACKAGE_NAME="+so.PackageName, "NAMESPACE="+so.Namespace, "CHANNEL="+channelName, "SOURCE="+catsrcName, "SOURCE_NAMESPACE="+catsrcNamespaceName).OutputToFile(getRandomString() + ".json")
 				o.Expect(err).NotTo(o.HaveOccurred())
-				err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", subscriptionFile, "-n", so.Namespace).Execute()
-				o.Expect(err).NotTo(o.HaveOccurred())
+				err = wait.Poll(5*time.Second, 60*time.Second, func() (done bool, err error) {
+					output, err := oc.AsAdmin().Run("apply").Args("-f", subscriptionFile, "-n", so.Namespace).Output()
+					if err != nil {
+						if strings.Contains(output, "AlreadyExists") {
+							return true, nil
+						} else {
+							return false, err
+						}
+					} else {
+						return true, nil
+					}
+				})
+				exutil.AssertWaitPollNoErr(err, fmt.Sprintf("can't create subscription %s in %s project", so.PackageName, so.Namespace))
 			}
 		}
 	}
@@ -288,7 +327,7 @@ func (r resource) WaitForResourceToAppear(oc *exutil.CLI) {
 func (r resource) applyFromTemplate(oc *exutil.CLI, parameters ...string) error {
 	var configFile string
 	err := wait.Poll(3*time.Second, 15*time.Second, func() (bool, error) {
-		output, err := oc.AsAdmin().WithoutNamespace().Run("process").Args(parameters...).OutputToFile(getRandomString() + ".json")
+		output, err := oc.AsAdmin().Run("process").Args(parameters...).OutputToFile(getRandomString() + ".json")
 		if err != nil {
 			e2e.Logf("the err:%v, and try next round", err)
 			return false, nil
@@ -312,7 +351,7 @@ func (r resource) deleteClusterLogging(oc *exutil.CLI) {
 	}
 	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("could not delete %s/%s", r.kind, r.name))
 	//make sure other resources are removed
-	resources := []resource{{"elasticsearch", "elasticsearch", r.namespace}, {"kibana", "kibana", r.namespace}, {"daemonset", "fluentd", r.namespace}}
+	resources := []resource{{"elasticsearches.logging.openshift.io", "elasticsearch", r.namespace}, {"kibanas.logging.openshift.io", "kibana", r.namespace}, {"daemonset", "fluentd", r.namespace}}
 	for i := 0; i < len(resources); i++ {
 		err = resources[i].WaitUntilResourceIsGone(oc)
 		if err != nil {
@@ -434,4 +473,88 @@ func (r resource) assertCLStatus(oc *exutil.CLI, content string, exptdStatus str
 		}
 	})
 	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("%s %s value for %s is not %s", r.kind, r.name, content, exptdStatus))
+}
+
+type PrometheusQueryResult struct {
+	Data struct {
+		Result []struct {
+			Metric struct {
+				Name              string `json:"__name__"`
+				Cluster           string `json:"cluster"`
+				Container         string `json:"container"`
+				Endpoint          string `json:"endpoint"`
+				Instance          string `json:"instance"`
+				Job               string `json:"job"`
+				Namespace         string `json:"namespace"`
+				Pod               string `json:"pod"`
+				Service           string `json:"service"`
+				ExportedNamespace string `json:"exported_namespace,omitempty"`
+			} `json:"metric"`
+			Value []interface{} `json:"value"`
+		} `json:"result"`
+		ResultType string `json:"resultType"`
+	} `json:"data"`
+	Status string `json:"status"`
+}
+
+// queryPrometheus returns the promtheus metrics which match the query string
+// token: the user token used to run the http request, if it's not specified, it will use the token of sa/prometheus-k8s in openshift-monitoring project
+// path: the api path, for example: /api/v1/query?
+// query: the metric/alert you want to search, e.g.: es_index_namespaces_total
+// action: it can be "GET", "get", "Get", "POST", "post", "Post"
+func queryPrometheus(oc *exutil.CLI, token string, path string, query string, action string) (PrometheusQueryResult, error) {
+	var bearerToken string
+	if token == "" {
+		bearerToken, _ = oc.AsAdmin().WithoutNamespace().Run("sa").Args("get-token", "prometheus-k8s", "-n", "openshift-monitoring").Output()
+	} else {
+		bearerToken = token
+	}
+	route, err := oc.AdminRouteClient().RouteV1().Routes("openshift-monitoring").Get("prometheus-k8s", metav1.GetOptions{})
+	o.Expect(err).NotTo(o.HaveOccurred())
+	prometheusURL := "https://" + route.Spec.Host + path
+	if query != "" {
+		prometheusURL = prometheusURL + "query=" + url.QueryEscape(query)
+	}
+
+	var tr *http.Transport
+	if os.Getenv("http_proxy") != "" || os.Getenv("https_proxy") != "" {
+		var proxy string
+		if os.Getenv("http_proxy") != "" {
+			proxy = os.Getenv("http_proxy")
+		} else {
+			proxy = os.Getenv("https_proxy")
+		}
+		proxyURL, err := url.Parse(proxy)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		tr = &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			Proxy:           http.ProxyURL(proxyURL),
+		}
+	} else {
+		tr = &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		}
+	}
+
+	client := &http.Client{Transport: tr}
+	var request *http.Request
+	switch action {
+	case "GET", "get", "Get":
+		request, err = http.NewRequest("GET", prometheusURL, nil)
+		o.Expect(err).NotTo(o.HaveOccurred())
+	case "POST", "post", "Post":
+		request, err = http.NewRequest("POST", prometheusURL, nil)
+		o.Expect(err).NotTo(o.HaveOccurred())
+	default:
+		e2e.Failf("Unrecogonized action: %s", action)
+	}
+	request.Header.Add("Content-Type", "application/json")
+	request.Header.Add("Authorization", "Bearer "+bearerToken)
+	response, err := client.Do(request)
+	o.Expect(err).NotTo(o.HaveOccurred())
+	defer response.Body.Close()
+	responseData, err := ioutil.ReadAll(response.Body)
+	res := PrometheusQueryResult{}
+	json.Unmarshal(responseData, &res)
+	return res, err
 }

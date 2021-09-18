@@ -43,13 +43,13 @@ parameters:
   - name: NAMESPACE
     value: "openshift-logging"
   - name: ES_NODE_COUNT
-    value: "3"
+    value: "1"
   - name: STORAGE_CLASS
     value: "gp2"
   - name: PVC_SIZE
     value: "10Gi"
   - name: REDUNDANCY_POLICY
-    value: "SingleRedundancy"
+    value: "ZeroRedundancy"
   - name: APP_LOG_MAX_AGE
     value: "3h"
   - name: INFRA_LOG_MAX_AGE

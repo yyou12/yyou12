@@ -11,10 +11,10 @@ import (
 )
 
 var _ = g.Describe("[sig-openshift-logging] Logging", func() {
-	var oc = exutil.NewCLI("logging-json-log", exutil.KubeConfigPath())
 	defer g.GinkgoRecover()
 
 	var (
+		oc             = exutil.NewCLI("logging-json-log", exutil.KubeConfigPath())
 		eo             = "elasticsearch-operator"
 		clo            = "cluster-logging-operator"
 		cloPackageName = "cluster-logging"
