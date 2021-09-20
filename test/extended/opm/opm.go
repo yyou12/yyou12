@@ -48,6 +48,19 @@ var _ = g.Describe("[sig-operators] OLM opm should", func() {
 
 	})
 
+	// author: scolange@redhat.com
+	g.It("Author:scolange-Medium-43769-Remove opm alpha add command", func() {
+
+		g.By("step: opm alpha --help")
+		output1, err := opmCLI.Run("alpha").Args("--help").Output()
+		e2e.Logf(output1)
+
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output1).NotTo(o.ContainSubstring("add"))
+		g.By("test case 43769 SUCCESS")
+
+	})
+
 	// author: kuiwang@redhat.com
 	g.It("Author:kuiwang-Medium-43185-DC based opm subcommands out of alpha", func() {
 		g.By("check init, serve, render and validate under opm")
