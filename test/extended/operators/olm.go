@@ -3179,6 +3179,30 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		})
 	})
 
+	// author: scolange@redhat.com
+	g.It("Author:scolange-Medium-43057-Enable continuous heap profiling by default", func() {
+
+		g.By("get pod of marketplace")
+		configMaps := getResource(oc, asAdmin, withoutNamespace, "configmaps", "-l olm.openshift.io/pprof", "-n", "openshift-operator-lifecycle-manager")
+		o.Expect(configMaps).NotTo(o.BeEmpty())
+		e2e.Logf(configMaps)
+
+		linesconfigMaps := strings.Split(configMaps, "\n")
+		for i := 1; i < len(linesconfigMaps); i++ {
+			e2e.Logf("i: %v", i)
+			configMap := strings.Split(linesconfigMaps[i], " ")
+			e2e.Logf("configMap: %v", configMap[0])
+
+			binaryConfigMap, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("configmaps", configMap[0], "-n", "openshift-operator-lifecycle-manager", "-o=jsonpath={.binaryData.*}").OutputToFile("config-43057.json")
+			o.Expect(err).NotTo(o.HaveOccurred())
+			e2e.Logf("binaryConfigMap: %v", binaryConfigMap)
+            
+			resultBase64, err := exec.Command("bash", "-c", fmt.Sprintf("cat %s | base64 -d", binaryConfigMap)).Output()
+			o.Expect(resultBase64).NotTo(o.BeEmpty())
+		}
+
+	})
+
 	// author: jiazha@redhat.c
 	g.It("Author:jiazha-Medium-21126-OLM Subscription status says CSV is installed when it is not", func() {
 		g.By("1) Install the OperatorGroup in a random project")
