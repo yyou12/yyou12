@@ -56,7 +56,7 @@ func (mc *MachineConfig) create(oc *exutil.CLI) {
 	err := applyResourceFromTemplate(oc, params...)
 	o.Expect(err).NotTo(o.HaveOccurred())
 
-	wait.Poll(5*time.Second, 1*time.Minute, func() (bool, error) {
+	pollerr := wait.Poll(5*time.Second, 1*time.Minute, func() (bool, error) {
 		stdout, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("mc/"+mc.name, "-o", "jsonpath='{.metadata.name}'").Output()
 		if err != nil {
 			e2e.Logf("the err:%v, and try next round", err)
@@ -68,13 +68,15 @@ func (mc *MachineConfig) create(oc *exutil.CLI) {
 		}
 		return false, nil
 	})
+	exutil.AssertWaitPollNoErr(pollerr, fmt.Sprintf("create machine config %v failed", mc.name))
 
 	mcp := MachineConfigPool{name: mc.pool}
 	mcp.waitForComplete(oc)
 }
 
 func (mc *MachineConfig) delete(oc *exutil.CLI) {
-	oc.AsAdmin().WithoutNamespace().Run("delete").Args("mc", mc.name).Execute()
+	err := oc.AsAdmin().WithoutNamespace().Run("delete").Args("mc", mc.name, "--ignore-not-found=true").Execute()
+	o.Expect(err).NotTo(o.HaveOccurred())
 	mcp := MachineConfigPool{name: mc.pool}
 	mcp.waitForComplete(oc)
 }
@@ -88,7 +90,8 @@ func (kc *KubeletConfig) create(oc *exutil.CLI) {
 
 func (kc *KubeletConfig) delete(oc *exutil.CLI) {
 	e2e.Logf("deleting kubelet config: %s", kc.name)
-	oc.AsAdmin().WithoutNamespace().Run("delete").Args("kubeletconfig", kc.name).Execute()
+	err := oc.AsAdmin().WithoutNamespace().Run("delete").Args("kubeletconfig", kc.name, "--ignore-not-found=true").Execute()
+	o.Expect(err).NotTo(o.HaveOccurred())
 	mcp := MachineConfigPool{name: "worker"}
 	mcp.waitForComplete(oc)
 }
@@ -104,7 +107,8 @@ func (icsp *ImageContentSourcePolicy) create(oc *exutil.CLI) {
 
 func (icsp *ImageContentSourcePolicy) delete(oc *exutil.CLI) {
 	e2e.Logf("deleting icsp config: %s", icsp.name)
-	oc.AsAdmin().WithoutNamespace().Run("delete").Args("imagecontentsourcepolicy", icsp.name).Execute()
+	err := oc.AsAdmin().WithoutNamespace().Run("delete").Args("imagecontentsourcepolicy", icsp.name, "--ignore-not-found=true").Execute()
+	o.Expect(err).NotTo(o.HaveOccurred())
 	mcp := MachineConfigPool{name: "worker"}
 	mcp.waitForComplete(oc)
 	mcp.name = "master"
@@ -120,7 +124,8 @@ func (cr *ContainerRuntimeConfig) create(oc *exutil.CLI) {
 
 func (cr *ContainerRuntimeConfig) delete(oc *exutil.CLI) {
 	e2e.Logf("deleting container runtime config: %s", cr.name)
-	oc.AsAdmin().WithoutNamespace().Run("delete").Args("ctrcfg", cr.name).Execute()
+	err := oc.AsAdmin().WithoutNamespace().Run("delete").Args("ctrcfg", cr.name, "--ignore-not-found=true").Execute()
+	o.Expect(err).NotTo(o.HaveOccurred())
 	mcp := MachineConfigPool{name: "worker"}
 	mcp.waitForComplete(oc)
 }
@@ -133,7 +138,8 @@ func (mcp *MachineConfigPool) create(oc *exutil.CLI) {
 
 func (mcp *MachineConfigPool) delete(oc *exutil.CLI) {
 	e2e.Logf("deleting custom mcp: %s", mcp.name)
-	oc.AsAdmin().WithoutNamespace().Run("delete").Args("mcp", mcp.name).Execute()
+	err := oc.AsAdmin().WithoutNamespace().Run("delete").Args("mcp", mcp.name, "--ignore-not-found=true").Execute()
+	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
 func (mcp *MachineConfigPool) waitForComplete(oc *exutil.CLI) {

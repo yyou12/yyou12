@@ -111,7 +111,11 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 
 		g.By("Add label as infra to the existing node")
 		labelOutput, err := exutil.AddCustomLabelToNode(oc, workerNode, "infra")
-		defer exutil.DeleteCustomLabelFromNode(oc, workerNode, "infra")
+		defer func() {
+			// ignore output, just focus on error handling, if error is occurred, fail this case
+			_, deletefailure := exutil.DeleteCustomLabelFromNode(oc, workerNode, "infra")
+			o.Expect(deletefailure).NotTo(o.HaveOccurred())
+		}()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(labelOutput).Should(o.ContainSubstring(workerNode))
 		nodeLabel, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("nodes/" + workerNode).Output()
@@ -124,7 +128,11 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		mcp := MachineConfigPool{name: mcpName, template: mcpTemplate}
 		defer mcp.delete(oc)
 		defer waitForNodeDoesNotContain(oc, workerNode, mcpName)
-		defer exutil.DeleteCustomLabelFromNode(oc, workerNode, mcpName)
+		defer func() {
+			// ignore output, just focus on error handling, if error is occurred, fail this case
+			_, deletefailure := exutil.DeleteCustomLabelFromNode(oc, workerNode, mcpName)
+			o.Expect(deletefailure).NotTo(o.HaveOccurred())
+		}()
 		mcp.create(oc)
 		e2e.Logf("Custom mcp is created successfully!")
 
@@ -144,7 +152,7 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 
 		g.By("Check custom infra mcp is deleted")
 		mcpOut, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("mcp/" + mcpName).Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(err).Should(o.HaveOccurred())
 		o.Expect(mcpOut).Should(o.ContainSubstring("NotFound"))
 		e2e.Logf("Custom mcp is deleted successfully!")
 	})
@@ -349,7 +357,7 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 				o.ContainSubstring("example.io/example/ubi-minimal")))
 
 		g.By("Check MCD logs to make sure drain is skipped")
-		podLogs, err := exutil.GetSpecificPodLogs(oc, "openshift-machine-config-operator","machine-config-daemon", getMachineConfigDaemon(oc, workerNode), "drain")
+		podLogs, err := exutil.GetSpecificPodLogs(oc, "openshift-machine-config-operator", "machine-config-daemon", getMachineConfigDaemon(oc, workerNode), "drain")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		e2e.Logf("Pod logs to skip node drain :\n %v", podLogs)
 		o.Expect(podLogs).Should(
