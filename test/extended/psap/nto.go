@@ -24,7 +24,7 @@ var _ = g.Describe("[sig-node] PSAP should", func() {
 
 	g.BeforeEach(func() {
 		// ensure NTO operator is installed
-		isNTO = isNTOInstalled(oc, machineNTONamespace)
+		isNTO = isPodInstalled(oc, machineNTONamespace)
 	})
 
 	// author: nweinber@redhat.com
@@ -44,10 +44,11 @@ var _ = g.Describe("[sig-node] PSAP should", func() {
 		e2e.Logf("Tuned Pod: %v", tunedPod)
 
 		g.By("Check values set by /etc/sysctl on node and store the values")
-		inotify, err := oc.AsAdmin().WithoutNamespace().Run("debug").Args("-n", machineNTONamespace, "node/"+workerNodeName, "--", "chroot", "/host", "/bin/bash", "-c", "cat /etc/sysctl.d/inotify.conf").Output()
+		inotify, err := exutil.DebugNodeWithChroot(oc, workerNodeName, "cat", "/etc/sysctl.d/inotify.conf")
 		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(inotify).To(o.ContainSubstring("fs.inotify.max_user_watches"))
-		o.Expect(inotify).To(o.ContainSubstring("fs.inotify.max_user_instances"))
+		o.Expect(inotify).To(o.And(
+			o.ContainSubstring("fs.inotify.max_user_watches"),
+			o.ContainSubstring("fs.inotify.max_user_instances")))
 		max_user_watches_value := getMaxUserWatchesValue(inotify)
 		max_user_instances_value := getMaxUserInstancesValue(inotify)
 		e2e.Logf("fs.inotify.max_user_watches has value of: %v", max_user_watches_value)
@@ -58,7 +59,7 @@ var _ = g.Describe("[sig-node] PSAP should", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		g.By("Check sysctl kernel.pid_max on node and store the value")
-		kernel, err := oc.AsAdmin().WithoutNamespace().Run("debug").Args("-n", machineNTONamespace, "node/"+workerNodeName, "--", "chroot", "/host", "/bin/bash", "-c", "sysctl kernel.pid_max").Output()
+		kernel, err := exutil.DebugNodeWithChroot(oc, workerNodeName, "sysctl", "kernel.pid_max")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(kernel).To(o.ContainSubstring("kernel.pid_max"))
 		pid_max_value := getKernelPidMaxValue(kernel)
@@ -94,17 +95,17 @@ var _ = g.Describe("[sig-node] PSAP should", func() {
 		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("Profile was not applied to %v within timeout limit (30 seconds)", tunedPod))
 
 		g.By("Check value of fs.inotify.max_user_instances on node (set by sysctl, should be the same as before)")
-		instanceCheck, err := oc.AsAdmin().WithoutNamespace().Run("debug").Args("-n", machineNTONamespace, "node/"+workerNodeName, "--", "chroot", "/host", "/bin/bash", "-c", "sysctl fs.inotify.max_user_instances").Output()
+		instanceCheck, err := exutil.DebugNodeWithChroot(oc, workerNodeName, "sysctl", "fs.inotify.max_user_instances")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(instanceCheck).To(o.ContainSubstring(max_user_instances_value))
 
 		g.By("Check value of fs.inotify.max_user_watches on node (set by sysctl, should be the same as before)")
-		watchesCheck, err := oc.AsAdmin().WithoutNamespace().Run("debug").Args("-n", machineNTONamespace, "node/"+workerNodeName, "--", "chroot", "/host", "/bin/bash", "-c", "sysctl fs.inotify.max_user_watches").Output()
+		watchesCheck, err := exutil.DebugNodeWithChroot(oc, workerNodeName, "sysctl", "fs.inotify.max_user_watches")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(watchesCheck).To(o.ContainSubstring(max_user_watches_value))
 
 		g.By("Check value of kernel.pid_max on node (set by override tuned, should be different than before)")
-		pidCheck, err := oc.AsAdmin().WithoutNamespace().Run("debug").Args("-n", machineNTONamespace, "node/"+workerNodeName, "--", "chroot", "/host", "/bin/bash", "-c", "sysctl kernel.pid_max").Output()
+		pidCheck, err := exutil.DebugNodeWithChroot(oc, workerNodeName, "sysctl", "kernel.pid_max")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(pidCheck).To(o.ContainSubstring("kernel.pid_max = 1048576"))
 

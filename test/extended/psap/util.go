@@ -9,29 +9,16 @@ import (
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 )
 
-// isNFDInstalled will return false if NFD is not installed, and true otherwise
-func isNFDInstalled(oc *exutil.CLI, machineNFDNamespace string) bool {
-	e2e.Logf("Checking if NFD operator is installed ...")
-	podList, err := oc.AdminKubeClient().CoreV1().Pods(machineNFDNamespace).List(metav1.ListOptions{})
+// isPodInstalled will return true if any pod is found in the given namespace, and false otherwise
+func isPodInstalled(oc *exutil.CLI, namespace string) bool {
+	e2e.Logf("Checking if pod is found in namespace %s...", namespace)
+	podList, err := oc.AdminKubeClient().CoreV1().Pods(namespace).List(metav1.ListOptions{})
 	o.Expect(err).NotTo(o.HaveOccurred())
 	if len(podList.Items) == 0 {
-		e2e.Logf("NFD operator not found :(")
+		e2e.Logf("No pod found in namespace %s :(", namespace)
 		return false
 	}
-	e2e.Logf("NFD operator found!")
-	return true
-}
-
-// isNTOInstalled will return false if NTO is not installed, and true otherwise
-func isNTOInstalled(oc *exutil.CLI, machineNTONamespace string) bool {
-	e2e.Logf("Checking if NTO is installed ...")
-	podList, err := oc.AdminKubeClient().CoreV1().Pods(machineNTONamespace).List(metav1.ListOptions{})
-	o.Expect(err).NotTo(o.HaveOccurred())
-	if len(podList.Items) == 0 {
-		e2e.Logf("NTO not found :(")
-		return false
-	}
-	e2e.Logf("NTO found!")
+	e2e.Logf("Pod found in namespace %s!", namespace)
 	return true
 }
 

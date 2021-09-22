@@ -29,7 +29,7 @@ var _ = g.Describe("[sig-node] PSAP should", func() {
 		iaasPlatform = ci.CheckPlatform(oc)
 
 		// ensure NFD operator is installed
-		isNFD = isNFDInstalled(oc, machineNFDNamespace)
+		isNFD = isPodInstalled(oc, machineNFDNamespace)
 	})
 
 	// author: nweinber@redhat.com
