@@ -652,7 +652,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		})
 
 		// author: xiyuan@redhat.com
-		g.It("Author:xiyuan-High-37121-The ComplianceSuite generates through ScanSettingBinding CR with cis profile and default scansetting", func() {
+		g.It("Author:xiyuan-High-37121-The ComplianceSuite generates through ScanSettingBinding CR with cis profile and default scansetting [Slow]", func() {
 			var (
 				ssb = scanSettingBindingDescription{
 					name:            "cis-test",
@@ -677,14 +677,12 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			ssb.create(oc, itName, dr)
 			newCheck("expect", asAdmin, withoutNamespace, contain, ssb.name, ok, []string{"scansettingbinding", "-n", ssb.namespace,
 				"-o=jsonpath={.items[0].metadata.name}"}).check(oc)
-
 			g.By("Check ComplianceSuite status !!!\n")
-			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", ssb.name, "-n", ssb.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+			checkComplianceSuiteStatus(oc, ssb.name, subD.namespace, "DONE")
 
 			g.By("Check complianceSuite name and result.. !!!\n")
 			subD.complianceSuiteName(oc, ssb.name)
 			subD.complianceSuiteResult(oc, ssb.name, "NON-COMPLIANT INCONSISTENT")
-
 			g.By("Check complianceSuite result through exit-code.. !!!\n")
 			subD.getScanExitCodeFromConfigmap(oc, "2")
 
@@ -844,8 +842,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		})
 
 		// author: pdhamdhe@redhat.com
-		g.It("Author:pdhamdhe-Medium-27968-Perform scan only on a subset of nodes using ComplianceScan object", func() {
-
+		g.It("Author:pdhamdhe-Medium-27968-Perform scan only on a subset of nodes using ComplianceScan object [Slow]", func() {
 			var (
 				cscanMD = complianceScanDescription{
 					name:         "master-scan",
@@ -858,26 +855,22 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 					template:     cscanTemplate,
 				}
 			)
-
 			// These are special steps to overcome problem which are discussed in [1] so that namespace should not stuck in 'Terminating' state
 			// [1] https://bugzilla.redhat.com/show_bug.cgi?id=1858186
-			defer cleanupObjects(oc, objectTableRef{"compliancescan", subD.namespace, "master-scan"})
+			defer cleanupObjects(oc, objectTableRef{"compliancescan", subD.namespace, cscanMD.name})
 
 			cscanMD.namespace = subD.namespace
 			g.By("Create master-scan !!!\n")
 			cscanMD.create(oc, itName, dr)
-
-			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancescan", cscanMD.name, "-n",
-				subD.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+			checkComplianceScanStatus(oc, cscanMD.name, subD.namespace, "DONE")
 
 			g.By("Check master-scan name and result..!!!\n")
-			subD.complianceScanName(oc, "master-scan")
+			subD.complianceScanName(oc, cscanMD.name)
 			subD.complianceScanResult(oc, "NON-COMPLIANT")
-
 			g.By("Check master-scan result through exit-code ..!!!\n")
 			subD.getScanExitCodeFromConfigmap(oc, "2")
 
-			g.By("The ocp-27968 ComplianceScan has performed successfully... !!!! ")
+			g.By("The ocp-27968 ComplianceScan has performed successfully on a subset of nodes... !!!! ")
 
 		})
 
@@ -1961,7 +1954,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		})
 
 		// author: xiyuan@redhat.com
-		g.It("Author:xiyuan-Medium-37171-Check compliancesuite status when there are multiple rhcos4 profiles added in scansettingbinding object", func() {
+		g.It("Author:xiyuan-Medium-37171-Check compliancesuite status when there are multiple rhcos4 profiles added in scansettingbinding object [Slow]", func() {
 			var (
 				ssb = scanSettingBindingDescription{
 					name:            "rhcos4",
@@ -1982,18 +1975,16 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 
 			g.By("Create scansettingbinding !!!\n")
 			ssb.namespace = subD.namespace
-			defer cleanupObjects(oc, objectTableRef{"scansettingbinding", subD.namespace, ssb.name})
+			defer cleanupObjects(oc, objectTableRef{"scansettingbinding", ssb.namespace, ssb.name})
 			ssb.create(oc, itName, dr)
 			newCheck("expect", asAdmin, withoutNamespace, contain, ssb.name, ok, []string{"scansettingbinding", "-n", ssb.namespace,
 				"-o=jsonpath={.items[0].metadata.name}"}).check(oc)
-
 			g.By("Check ComplianceSuite status !!!\n")
-			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", ssb.name, "-n", ssb.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+			checkComplianceSuiteStatus(oc, ssb.name, ssb.namespace, "DONE")
 
 			g.By("Check complianceSuite name and result.. !!!\n")
 			subD.complianceSuiteName(oc, ssb.name)
 			subD.complianceSuiteResult(oc, ssb.name, "NON-COMPLIANT INCONSISTENT")
-
 			g.By("Check complianceSuite result through exit-code.. !!!\n")
 			subD.getScanExitCodeFromConfigmap(oc, "2")
 

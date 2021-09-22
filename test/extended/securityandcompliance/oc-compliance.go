@@ -355,7 +355,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The OC Compliance plugin m
 				objectTableRef{"scansetting", subD.namespace, ss.name})
 
 			g.By("Check default profiles name ocp4-cis.. !!!\n")
-			subD.getProfileName(oc, "ocp4-cis")
+			subD.getProfileName(oc, "ocp4-moderate")
 
 			_, err := OcComplianceCLI().Run("bind").Args("-N", "my-binding", "profile/ocp4-moderate", "-n", subD.namespace).Output()
 			o.Expect(err).NotTo(o.HaveOccurred())
@@ -381,15 +381,12 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The OC Compliance plugin m
 			ss.create(oc, itName, dr)
 			tp.namespace = subD.namespace
 			tp.create(oc, itName, dr)
-			_, err1 := OcComplianceCLI().Run("bind").Args("-N", "my-binding", "-S", "master-scansetting",
-				"profile/ocp4-cis-node", "tailoredprofile/ocp4-cis-custom", "-n", subD.namespace).Output()
+			_, err1 := OcComplianceCLI().Run("bind").Args("-N", "my-binding", "-S", "master-scansetting", "tailoredprofile/ocp4-cis-custom", "-n", subD.namespace).Output()
 			o.Expect(err1).NotTo(o.HaveOccurred())
 
 			g.By("Verify scansettingbinding, ScanSetting, profile objects created..!!!\n")
 			newCheck("expect", asAdmin, withoutNamespace, contain, "my-binding", ok, []string{"scansettingbinding", "-n", subD.namespace,
 				"-o=jsonpath={.items[0].metadata.name}"}).check(oc)
-			newCheck("expect", asAdmin, withoutNamespace, contain, "ocp4-cis-node", ok, []string{"scansettingbinding", "my-binding", "-n", subD.namespace,
-				"-o=jsonpath={.profiles}"}).check(oc)
 			newCheck("expect", asAdmin, withoutNamespace, contain, "ocp4-cis-custom", ok, []string{"scansettingbinding", "my-binding", "-n", subD.namespace,
 				"-o=jsonpath={.profiles}"}).check(oc)
 			newCheck("expect", asAdmin, withoutNamespace, contain, "master-scansetting", ok, []string{"scansettingbinding", "my-binding", "-n", subD.namespace,

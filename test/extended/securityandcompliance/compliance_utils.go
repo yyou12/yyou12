@@ -226,6 +226,18 @@ func checkComplianceSuiteStatus(oc *exutil.CLI, csuiteName string, nameSpace str
 	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("the status of %s is not expected %s", csuiteName, expected))
 }
 
+func checkComplianceScanStatus(oc *exutil.CLI, cscanName string, nameSpace string, expected string) {
+	err := wait.Poll(5*time.Second, 300*time.Second, func() (bool, error) {
+		output, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", nameSpace, "compliancescan", cscanName, "-o=jsonpath={.status.phase}").Output()
+		e2e.Logf("the result of complianceScan:%v", output)
+		if strings.Contains(output, expected) {
+			return true, nil
+		}
+		return false, nil
+	})
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("the status of %s is not expected %s", cscanName, expected))
+}
+
 func setLabelToNode(oc *exutil.CLI) {
 	nodeName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("nodes", "--selector=node-role.kubernetes.io/worker=,node.openshift.io/os_id=rhcos",
 		"-o=jsonpath={.items[*].metadata.name}").Output()
