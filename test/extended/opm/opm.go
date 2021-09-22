@@ -1439,4 +1439,49 @@ var _ = g.Describe("[sig-operators] OLM opm with podman", func() {
 		g.By("Finished")
 	})
 
+	// author: scolange@redhat.com
+	g.It("ConnectedOnly-Author:scolange-VMonly-Medium-30763-Bundles can include v1 CRDs", func() {
+		containerCLI := podmanCLI
+		containerTool := "podman"
+		opmBaseDir := exutil.FixturePath("testdata", "opm")
+		TestDataPath := filepath.Join(opmBaseDir, "v1Bundle")
+		TestManifest:= filepath.Join(TestDataPath, "manifests")
+		bundleImageTag := "quay.io/olmqe/lib-bucket-provisioner:1.0"
+
+		defer containerCLI.RemoveImage(bundleImageTag)
+		defer quayCLI.DeleteTag(strings.Replace(bundleImageTag, "quay.io/", "", 1))
+		defer DeleteDir(TestDataPath, "fixture-testdata")
+
+		g.By("step: opm alpha bundle generate")
+		output, err := opmCLI.Run("alpha").Args("bundle", "generate", "-d", TestManifest, "-p", "lib-bucket-provisioner", "-c", "alpha", "-e", "alpha").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf(output)
+		if !strings.Contains(output, "Writing annotations.yaml") || !strings.Contains(output, "Writing bundle.Dockerfile") {
+			e2e.Failf("Failed to execute opm alpha bundle generate : %s", output)
+		}
+
+		g.By("step: build bundle image ")
+		opmCLI.ExecCommandPath = TestDataPath
+		output, err = opmCLI.Run("alpha").Args("bundle", "build", "-d", TestManifest, "-b", containerTool, "-t", bundleImageTag, "-p", "lib-bucket-provisioner", "-c", "alpha", "-e", "alpha", "--overwrite").Output()
+		if err != nil {
+			e2e.Logf(output)
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}
+		o.Expect(string(output)).To(o.ContainSubstring("Writing annotations.yaml"))
+		o.Expect(string(output)).To(o.ContainSubstring("Writing bundle.Dockerfile"))
+
+		if output, err = containerCLI.Run("push").Args(bundleImageTag).Output(); 
+		err != nil {
+			e2e.Logf(output)
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}
+
+		g.By("opm validate it with warning")
+		output, err = opmCLI.Run("alpha").Args("bundle", "validate", "-t", bundleImageTag, "-b", "podman").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring("All validation tests have been completed successfully"))
+		
+		g.By("step: SUCCESS 30763")
+	})
+
 })
