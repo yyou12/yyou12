@@ -167,6 +167,31 @@ var _ = g.Describe("[sig-cli] Workloads", func() {
 		}
 
 	})
+
+	// author: yinzhou@redhat.com
+        g.It("Author:yinzhou-High-44797-Could define a Command for DC", func() {
+		g.By("create new namespace")
+		oc.SetupProject()
+
+		g.By("Create the dc with define command")
+		err := oc.WithoutNamespace().Run("create").Args("deploymentconfig","-n", oc.Namespace(), "dc44797", "--image="+"quay.io/openshifttest/busybox@sha256:afe605d272837ce1732f390966166c2afff5391208ddd57de10942748694049d", "--", "tail", "-f", "/dev/null").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Check the command should be defined")
+		comm, err := oc.Run("get").WithoutNamespace().Args("dc/dc44797","-n", oc.Namespace(), "-o=jsonpath={.spec.template.spec.containers[0].command[0]}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.ExpectEqual("tail", comm)
+
+		g.By("Create the deploy with define command")
+		err = oc.WithoutNamespace().Run("create").Args("deployment","-n", oc.Namespace(), "deploy44797", "--image="+"quay.io/openshifttest/busybox@sha256:afe605d272837ce1732f390966166c2afff5391208ddd57de10942748694049d", "--", "tail", "-f", "/dev/null").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Check the command should be defined")
+		comm1, err := oc.Run("get").WithoutNamespace().Args("deploy/deploy44797","-n", oc.Namespace(), "-o=jsonpath={.spec.template.spec.containers[0].command[0]}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.ExpectEqual("tail", comm1)
+
+	})
 })
 
 type ClientVersion struct {
