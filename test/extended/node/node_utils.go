@@ -5,8 +5,9 @@ import (
 	"math/rand"
 	"os/exec"
 	"strings"
+	"strconv"
 	"time"
-
+	"regexp"
 	o "github.com/onsi/gomega"
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -24,6 +25,16 @@ type podModifyDescription struct {
 	role          string
 	level         string
 	template      string
+}
+
+type podLivenessProbe struct {
+	name                  string
+	namespace             string 
+	overridelivenessgrace string 
+	terminationgrace      int
+	failurethreshold      int 
+	periodseconds         int
+	template              string
 }
 
 type ctrcfgDescription struct {
@@ -50,6 +61,22 @@ func getRandomString() string {
 		buffer[index] = chars[seed.Intn(len(chars))]
 	}
 	return string(buffer)
+}
+
+func (pod *podLivenessProbe) createPodLivenessProbe(oc *exutil.CLI) {
+	err := createResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", pod.template, "-p", "NAME="+pod.name, "NAMESPACE="+pod.namespace, "OVERRIDELIVENESSGRACE="+pod.overridelivenessgrace, "TERMINATIONGRACE="+strconv.Itoa(pod.terminationgrace), "FAILURETHRESHOLD="+strconv.Itoa(pod.failurethreshold), "PERIODSECONDS="+strconv.Itoa(pod.periodseconds))
+	if err != nil {
+		e2e.Logf("the err of createPodLivenessProbe:%v", err)
+	}
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+func (pod *podLivenessProbe) deletePodLivenessProbe(oc *exutil.CLI) {
+	err := oc.AsAdmin().WithoutNamespace().Run("delete").Args("-n", pod.namespace, "pod", pod.name).Execute()
+	if err != nil {
+		e2e.Logf("the err of deletePodLivenessProbe:%v", err)
+	}
+	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
 func (podModify *podModifyDescription) create(oc *exutil.CLI) {
@@ -122,6 +149,21 @@ func podStatus(oc *exutil.CLI) error {
 		}
 		if strings.Contains(status, "Running") {
 			e2e.Logf("Pod status is : %s", status)
+			return true, nil
+		}
+		return false, nil
+	})
+}
+
+func podEvent(oc *exutil.CLI, timeout int, keyword string) error{
+	return wait.Poll(10*time.Second, time.Duration(timeout)*time.Second, func() (bool, error) {
+		output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("events", "-n", oc.Namespace()).Output()
+		if err != nil {
+			e2e.Logf("Can't get events from test project, error: %s. Trying again", err)
+			return false, nil
+		}
+		if matched, _ := regexp.MatchString(keyword, output); matched {
+			e2e.Logf(keyword)
 			return true, nil
 		}
 		return false, nil
