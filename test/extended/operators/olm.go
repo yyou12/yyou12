@@ -6667,12 +6667,11 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 			subFile             = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
 			err                 error
 			errorText           = "This API may have been deprecated and removed"
-			// exists              bool
 			msg                 string
 			selector            string
 			ip                  string
 			snooze              time.Duration = 600
-			testCase            = "43291"
+			testCase                          = "43291"
 			waitErr             error
 		)
 
@@ -6696,7 +6695,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 				singleNamespace:        true,
 				template:               subFile,
 			}
-			catsrc = catalogSourceDescription {
+			catsrc = catalogSourceDescription{
 				name:        sub.catalogSourceName,
 				namespace:   sub.catalogSourceNamespace,
 				displayName: "qe-" + testCase + " Operators",
@@ -6707,7 +6706,6 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 				interval:    "10m0s",
 				template:    catsrcTemplate,
 			}
-
 		)
 
 		g.By("Create catalog with v1alpha1 api operator")
@@ -6730,7 +6728,6 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		o.Expect(msg).To(o.ContainSubstring(sub.operatorPackage))
 		exutil.AssertWaitPollNoErr(waitErr, "cannot get packagemanifest by label")
 		e2e.Logf("packagemanifest by label\n%v", msg)
-
 
 		g.By("Subscribe")
 		defer sub.delete(itName, dr)
@@ -6759,7 +6756,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 			o.Expect(err).NotTo(o.HaveOccurred())
 			if strings.Contains(msg, errorText) {
 				e2e.Logf("InstallPlan has the expected error")
-					return true, nil
+				return true, nil
 			}
 			return false, nil
 		})
@@ -7962,19 +7959,6 @@ var _ = g.Describe("[sig-operators] OLM on VM for an end user handle within a na
 		} else {
 			e2e.Logf("User is %s. the case should login as no-root account", user)
 		}
-	})
-
-	// OCP-43769 author: jitli@redhat.com
-	g.It("Author:jitli-Medium-43769-Remove opm alpha add command", func() {
-
-		g.By("step: opm alpha --help")
-		output1, err := opm.NewOpmCLI().Run("alpha").Args("--help").Output()
-		e2e.Logf(output1)
-
-		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(output1).NotTo(o.ContainSubstring("add"))
-		g.By("test case 43769 SUCCESS")
-
 	})
 
 	// author: xzha@redhat.com
