@@ -325,3 +325,21 @@ func (deploypts *deploypodtopologyspread) createPodTopologySpread(oc *exutil.CLI
 	})
 	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("fail to create %v", deploypts.dName))
 }
+
+func checkDeschedulerMetrics(oc *exutil.CLI, strategyname string, metricName string) {
+        olmToken, err := oc.AsAdmin().WithoutNamespace().Run("sa").Args("get-token", "prometheus-k8s", "-n", "openshift-monitoring").Output()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        err = wait.Poll(5*time.Second, 100*time.Second, func() (bool, error) {
+                output, _, err := oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-monitoring", "prometheus-k8s-0", "-c", "prometheus", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", olmToken), "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query="+metricName).Outputs()
+                if err != nil {
+                        e2e.Logf("Can't get descheduler metrics, error: %s. Trying again", err)
+                        return false, nil
+                }
+                if matched, _ := regexp.MatchString(strategyname, output); matched {
+                        e2e.Logf("Check the %s Strategy succeed\n", strategyname)
+                        return true, nil
+                }
+                return false, nil
+        })
+        exutil.AssertWaitPollNoErr(err, fmt.Sprintf("Cannot get metric %s via prometheus", strategyname))
+}
