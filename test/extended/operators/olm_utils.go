@@ -197,7 +197,20 @@ func (sub *subscriptionDescription) createWithoutCheck(oc *exutil.CLI, itName st
 //if it is AtLatestKnown, get installed csv from sub and save it to dr.
 //if it is not AtLatestKnown, raise error.
 func (sub *subscriptionDescription) findInstalledCSV(oc *exutil.CLI, itName string, dr describerResrouce) {
-	newCheck("expect", asAdmin, withoutNamespace, compare, "AtLatestKnown", ok, []string{"sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.state}"}).check(oc)
+	err := wait.Poll(3*time.Second, 180*time.Second, func() (bool, error) {
+		state := getResource(oc, asAdmin, withoutNamespace, "sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.state}")
+		if strings.Compare(state, "AtLatestKnown") == 0 {
+			return true, nil
+		}
+		e2e.Logf("sub %s state is %s, not AtLatestKnown", sub.subName, state)
+		return false, nil
+	})
+	if err != nil {
+		output := getResource(oc, asAdmin, withoutNamespace, "sub", sub.subName, "-n", sub.namespace, "-o", "yaml")
+		e2e.Logf(output)
+	}
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("sub %s stat is not AtLatestKnown", sub.subName))
+
 	installedCSV := getResource(oc, asAdmin, withoutNamespace, "sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.installedCSV}")
 	o.Expect(installedCSV).NotTo(o.BeEmpty())
 	if strings.Compare(sub.installedCSV, installedCSV) != 0 {
@@ -1043,7 +1056,7 @@ func applyResourceFromTemplate(oc *exutil.CLI, parameters ...string) error {
 		configFile = output
 		return true, nil
 	})
-	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("cat not process %v", parameters))
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("can not process %v", parameters))
 
 	e2e.Logf("the file of resource is %s", configFile)
 	return oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", configFile).Execute()
@@ -1097,7 +1110,7 @@ func execResource(oc *exutil.CLI, asAdmin bool, withoutNamespace bool, parameter
 		result = output
 		return true, nil
 	})
-	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("cat not exec %v", parameters))
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("can not exec %v", parameters))
 	e2e.Logf("the result of exec resource:%v", result)
 	return result
 }
@@ -1116,7 +1129,7 @@ func getResource(oc *exutil.CLI, asAdmin bool, withoutNamespace bool, parameters
 		}
 		return true, nil
 	})
-	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("cat not get %v", parameters))
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("can not get %v", parameters))
 	e2e.Logf("$oc get %v, the returned resource:%v", parameters, result)
 	return result
 }
@@ -1132,7 +1145,7 @@ func getResourceNoEmpty(oc *exutil.CLI, asAdmin bool, withoutNamespace bool, par
 		}
 		return true, nil
 	})
-	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("cat not get %v without empty", parameters))
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("can not get %v without empty", parameters))
 	e2e.Logf("$oc get %v, the returned resource:%v", parameters, result)
 	return result
 }
@@ -1208,7 +1221,7 @@ func removeResource(oc *exutil.CLI, asAdmin bool, withoutNamespace bool, paramet
 		}
 		return false, nil
 	})
-	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("cat not remove %v", parameters))
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("can not remove %v", parameters))
 }
 
 //the method is to do something with oc.
