@@ -5501,8 +5501,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		g.By("2) install sub")
 		sub.create(oc, itName, dr)
 		g.By("install operator SUCCESS")
-		deployment := getResource(oc, asAdmin, withoutNamespace, "deployment", fmt.Sprintf("--selector=olm.owner=%s", sub.installedCSV), "-n", sub.namespace, "-o", "yaml")
-		o.Expect(deployment).To(o.ContainSubstring("planetscale-operator"))
+		newCheck("expect", asAdmin, withoutNamespace, contain, "planetscale-operator", ok, []string{"deployment", fmt.Sprintf("--selector=olm.owner=%s", sub.installedCSV), "-n", sub.namespace, "-o", "yaml"}).check(oc)
 
 		if httpProxy == "" {
 			nodeHTTPProxy := getResource(oc, asAdmin, withoutNamespace, "deployment", fmt.Sprintf("--selector=olm.owner=%s", sub.installedCSV), "-n", sub.namespace, "-o=jsonpath={..spec.template.spec.containers[?(.name==\"planetscale-operator\")].env[?(.name==\"HTTP_PROXY\")].value}")
@@ -5530,6 +5529,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 
 			g.By("3) create subscription and set variables ( HTTP_PROXY, HTTPS_PROXY and NO_PROXY ) with non-empty values. ")
 			subProxyTest.create(oc, itName, dr)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "planetscale-operator", ok, []string{"deployment", fmt.Sprintf("--selector=olm.owner=%s", sub.installedCSV), "-n", sub.namespace, "-o", "yaml"}).check(oc)
 			nodeHTTPProxy = getResource(oc, asAdmin, withoutNamespace, "deployment", fmt.Sprintf("--selector=olm.owner=%s", sub.installedCSV), "-n", sub.namespace, "-o=jsonpath={..spec.template.spec.containers[?(.name==\"planetscale-operator\")].env[?(.name==\"HTTP_PROXY\")].value}")
 			o.Expect(nodeHTTPProxy).To(o.Equal("test_http_proxy"))
 			nodeHTTPSProxy = getResource(oc, asAdmin, withoutNamespace, "deployment", fmt.Sprintf("--selector=olm.owner=%s", sub.installedCSV), "-n", sub.namespace, "-o=jsonpath={..spec.template.spec.containers[?(.name==\"planetscale-operator\")].env[?(.name==\"HTTPS_PROXY\")].value}")
@@ -5541,6 +5541,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 
 			g.By("4) Create a new subscription and set variables ( HTTP_PROXY, HTTPS_PROXY and NO_PROXY ) with a fake value.")
 			subProxyFake.create(oc, itName, dr)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "planetscale-operator", ok, []string{"deployment", fmt.Sprintf("--selector=olm.owner=%s", sub.installedCSV), "-n", sub.namespace, "-o", "yaml"}).check(oc)
 			nodeHTTPProxy = getResource(oc, asAdmin, withoutNamespace, "deployment", fmt.Sprintf("--selector=olm.owner=%s", sub.installedCSV), "-n", sub.namespace, "-o=jsonpath={..spec.template.spec.containers[?(.name==\"planetscale-operator\")].env[?(.name==\"HTTP_PROXY\")].value}")
 			o.Expect(nodeHTTPProxy).To(o.Equal("fake_http_proxy"))
 			nodeHTTPSProxy = getResource(oc, asAdmin, withoutNamespace, "deployment", fmt.Sprintf("--selector=olm.owner=%s", sub.installedCSV), "-n", sub.namespace, "-o=jsonpath={..spec.template.spec.containers[?(.name==\"planetscale-operator\")].env[?(.name==\"HTTPS_PROXY\")].value}")
@@ -5552,6 +5553,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 
 			g.By("5) Create a new subscription and set variables ( HTTP_PROXY, HTTPS_PROXY and NO_PROXY ) with an empty value.")
 			subProxyEmpty.create(oc, itName, dr)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "planetscale-operator", ok, []string{"deployment", fmt.Sprintf("--selector=olm.owner=%s", sub.installedCSV), "-n", sub.namespace, "-o", "yaml"}).check(oc)
 			nodeHTTPProxy = getResource(oc, asAdmin, withoutNamespace, "deployment", fmt.Sprintf("--selector=marketplace.operatorSource=%s", sub.installedCSV), "-n", sub.namespace, "-o=jsonpath={.spec.template.spec.containers[?(.name==\"planetscale-operator\")].env[?(.name==\"HTTP_PROXY\")].value}")
 			o.Expect(nodeHTTPProxy).To(o.BeEmpty())
 			nodeHTTPSProxy = getResource(oc, asAdmin, withoutNamespace, "deployment", fmt.Sprintf("--selector=marketplace.operatorSource=%s", sub.installedCSV), "-n", sub.namespace, "-o=jsonpath={.spec.template.spec.containers[?(.name==\"planetscale-operator\")].env[?(.name==\"HTTPS_PROXY\")].value}")
