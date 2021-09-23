@@ -1484,4 +1484,42 @@ var _ = g.Describe("[sig-operators] OLM opm with podman", func() {
 		g.By("step: SUCCESS 30763")
 	})
 
+	// author: scolange@redhat.com
+	g.It("ConnectedOnly-Author:scolange-VMonly-Medium-25935-Ability to modify the contents of an existing registry database", func() {
+		containerCLI := podmanCLI
+		containerTool := "podman"
+		opmBaseDir := exutil.FixturePath("testdata", "opm")
+		TmpDataPath := filepath.Join(opmBaseDir, "tmp")
+
+		defer DeleteDir(TmpDataPath, "fixture-testdata")
+
+		bundleImageTag1 := "quay.io/operator-framework/operator-bundle-prometheus:0.14.0"
+		bundleImageTag2 := "quay.io/operator-framework/operator-bundle-prometheus:0.15.0"
+		bundleImageTag3 := "quay.io/operator-framework/operator-bundle-prometheus:0.22.2"
+		defer containerCLI.RemoveImage(bundleImageTag1)
+		defer containerCLI.RemoveImage(bundleImageTag2)
+		defer containerCLI.RemoveImage(bundleImageTag3)
+
+		g.By("step: build bundle.db")
+		dbFilePath := TmpDataPath + "bundles.db"
+		if output, err := opmCLI.Run("registry").Args("add", "-b", bundleImageTag1, "-d", dbFilePath, "-c", containerTool, "--mode", "semver").Output(); err != nil {
+			e2e.Logf(output)
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}
+
+		g.By("step1: modified the bundle.db already created")
+		if output, err := opmCLI.Run("registry").Args("add", "-b", bundleImageTag2, "-d", dbFilePath, "-c", containerTool, "--mode", "semver").Output(); err != nil {
+			e2e.Logf(output)
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}
+
+		g.By("step2: modified the bundle.db already created")
+		if output, err := opmCLI.Run("registry").Args("add", "-b", bundleImageTag3, "-d", dbFilePath, "-c", containerTool, "--mode", "semver").Output(); err != nil {
+			e2e.Logf(output)
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}
+		g.By("step: SUCCESS 25935")
+
+	})
+
 })
