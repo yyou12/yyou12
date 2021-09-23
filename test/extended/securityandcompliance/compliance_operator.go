@@ -278,8 +278,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		})
 
 		// author: pdhamdhe@redhat.com
-		g.It("Author:pdhamdhe-Critical-27649-The ComplianceSuite reports the scan result as Compliant or Non-Compliant", func() {
-
+		g.It("Author:pdhamdhe-Critical-27649-The ComplianceSuite reports the scan result as Compliant or Non-Compliant [Slow]", func() {
 			var (
 				csuiteD = complianceSuiteDescription{
 					name:         "worker-compliancesuite",
@@ -292,7 +291,6 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 					nodeSelector: "wscan",
 					template:     csuiteTemplate,
 				}
-
 				csuiteMD = complianceSuiteDescription{
 					name:         "master-compliancesuite",
 					namespace:    "",
@@ -309,8 +307,8 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			// These are special steps to overcome problem which are discussed in [1] so that namespace should not stuck in 'Terminating' state
 			// [1] https://bugzilla.redhat.com/show_bug.cgi?id=1858186
 			defer cleanupObjects(oc,
-				objectTableRef{"compliancesuite", subD.namespace, "worker-compliancesuite"},
-				objectTableRef{"compliancesuite", subD.namespace, "master-compliancesuite"})
+				objectTableRef{"compliancesuite", subD.namespace, csuiteD.name},
+				objectTableRef{"compliancesuite", subD.namespace, csuiteMD.name})
 
 			// adding label to rhcos worker node to skip rhel worker node if any
 			g.By("Label all rhcos worker nodes as wscan !!!\n")
@@ -320,28 +318,22 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			g.By("Create worker-compliancesuite !!!\n")
 			e2e.Logf("Here namespace : %v\n", catSrc.namespace)
 			csuiteD.create(oc, itName, dr)
-
 			csuiteMD.namespace = subD.namespace
 			g.By("Create master-compliancesuite !!!\n")
 			e2e.Logf("Here namespace : %v\n", catSrc.namespace)
 			csuiteMD.create(oc, itName, dr)
-
 			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", csuiteD.name, "-n",
 				subD.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
 			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", csuiteMD.name, "-n",
 				subD.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
 
 			g.By("Check master-compliancesuite name and result..!!!\n")
-			subD.complianceSuiteName(oc, "master-compliancesuite")
 			subD.complianceSuiteResult(oc, csuiteMD.name, "NON-COMPLIANT")
-
 			g.By("Check master-compliancesuite result through exit-code ..!!!\n")
 			subD.getScanExitCodeFromConfigmap(oc, "2")
 
 			g.By("Check worker-compliancesuite name and result..!!!\n")
-			subD.complianceSuiteName(oc, "worker-compliancesuite")
 			subD.complianceSuiteResult(oc, csuiteD.name, "COMPLIANT")
-
 			g.By("Check worker-compliancesuite result through exit-code ..!!!\n")
 			subD.getScanExitCodeFromConfigmap(oc, "0")
 
@@ -399,8 +391,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		})*/
 
 		// author: pdhamdhe@redhat.com
-		g.It("Author:pdhamdhe-High-33398-The Compliance Operator supports to variables in tailored profile", func() {
-
+		g.It("Author:pdhamdhe-High-33398-The Compliance Operator supports to variables in tailored profile [Slow]", func() {
 			var (
 				tprofileD = tailoredProfileDescription{
 					name:         "rhcos-tailoredprofile",
@@ -423,9 +414,8 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			g.By("Create tailoredprofile !!!\n")
 			e2e.Logf("Here namespace : %v\n", catSrc.namespace)
 			tprofileD.create(oc, itName, dr)
-
 			g.By("Check tailoredprofile name and status !!!\n")
-			subD.getTailoredProfileNameandStatus(oc, "rhcos-tailoredprofile")
+			subD.getTailoredProfileNameandStatus(oc, tprofileD.name)
 
 			g.By("Verify the tailoredprofile details through configmap ..!!!\n")
 			newCheck("expect", asAdmin, withoutNamespace, contain, "xccdf_org.ssgproject.content_rule_sshd_disable_root_login", ok,
@@ -442,8 +432,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		})
 
 		// author: pdhamdhe@redhat.com
-		g.It("Author:pdhamdhe-High-32840-The ComplianceSuite generates through ScanSetting CR", func() {
-
+		g.It("Author:pdhamdhe-High-32840-The ComplianceSuite generates through ScanSetting CR [Slow]", func() {
 			var (
 				tprofileD = tailoredProfileDescription{
 					name:         "rhcos-tp",
@@ -487,37 +476,32 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 				objectTableRef{"tailoredprofile", subD.namespace, ssb.profilename1})
 
 			g.By("Check default profiles name rhcos4-e8 .. !!!\n")
-			subD.getProfileName(oc, "rhcos4-e8")
+			subD.getProfileName(oc, tprofileD.extends)
 
 			tprofileD.namespace = subD.namespace
 			ssb.namespace = subD.namespace
 			ss.namespace = subD.namespace
 			ssb.scansettingname = ss.name
-
 			g.By("Create tailoredprofile rhcos-tp !!!\n")
 			tprofileD.create(oc, itName, dr)
-
 			g.By("Verify tailoredprofile name and status !!!\n")
-			subD.getTailoredProfileNameandStatus(oc, "rhcos-tp")
+			subD.getTailoredProfileNameandStatus(oc, ssb.profilename1)
 
 			g.By("Create scansetting !!!\n")
-
 			ss.create(oc, itName, dr)
-			newCheck("expect", asAdmin, withoutNamespace, contain, "myss", ok, []string{"scansetting", "-n", ss.namespace, ss.name,
+			newCheck("expect", asAdmin, withoutNamespace, contain, ss.name, ok, []string{"scansetting", "-n", ss.namespace, ss.name,
 				"-o=jsonpath={.metadata.name}"}).check(oc)
 
 			g.By("Create scansettingbinding !!!\n")
 			ssb.create(oc, itName, dr)
-			newCheck("expect", asAdmin, withoutNamespace, contain, "co-requirement", ok, []string{"scansettingbinding", "-n", subD.namespace,
+			newCheck("expect", asAdmin, withoutNamespace, contain, ssb.name, ok, []string{"scansettingbinding", "-n", subD.namespace,
 				"-o=jsonpath={.items[0].metadata.name}"}).check(oc)
 
 			g.By("Check ComplianceSuite status !!!\n")
 			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", ssb.name, "-n", subD.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
 
 			g.By("Check complianceSuite name and result.. !!!\n")
-			subD.complianceSuiteName(oc, "co-requirement")
 			subD.complianceSuiteResult(oc, ssb.name, "NON-COMPLIANT INCONSISTENT")
-
 			g.By("Check complianceSuite result through exit-code.. !!!\n")
 			subD.getScanExitCodeFromConfigmap(oc, "2")
 
@@ -529,8 +513,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		})
 
 		// author: pdhamdhe@redhat.com
-		g.It("Author:pdhamdhe-Medium-33381-Verify the ComplianceSuite could be generated from Tailored profiles", func() {
-
+		g.It("Author:pdhamdhe-Medium-33381-Verify the ComplianceSuite could be generated from Tailored profiles [Slow]", func() {
 			var (
 				tprofileD = tailoredProfileDescription{
 					name:         "rhcos-e8-tp",
@@ -556,21 +539,21 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 				}
 			)
 
-			// These are special steps to overcome problem which are discussed in [1] so that namespace should not stuck in 'Terminating' state
-			// [1] https://bugzilla.redhat.com/show_bug.cgi?id=1858186
 			defer cleanupObjects(oc,
-				objectTableRef{"compliancesuite", subD.namespace, "rhcos-csuite"},
-				objectTableRef{"tailoredprofile", subD.namespace, "rhcos-e8-tp"})
+				objectTableRef{"compliancesuite", subD.namespace, csuiteD.name},
+				objectTableRef{"tailoredprofile", subD.namespace, tprofileD.name})
+
+			// adding label to rhcos worker node to skip rhel worker node if any
+			g.By("Label all rhcos worker nodes as wscan !!!\n")
+			setLabelToNode(oc)
 
 			g.By("Check default profiles name rhcos4-e8 .. !!!\n")
-			subD.getProfileName(oc, "rhcos4-e8")
-
+			subD.getProfileName(oc, tprofileD.extends)
 			tprofileD.namespace = subD.namespace
 			g.By("Create tailoredprofile !!!\n")
 			tprofileD.create(oc, itName, dr)
-
 			g.By("Check tailoredprofile name and status !!!\n")
-			subD.getTailoredProfileNameandStatus(oc, "rhcos-e8-tp")
+			subD.getTailoredProfileNameandStatus(oc, tprofileD.name)
 
 			csuiteD.namespace = subD.namespace
 			g.By("Create compliancesuite !!!\n")
@@ -579,9 +562,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 				subD.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
 
 			g.By("Check rhcos-csuite name and result.. !!!\n")
-			subD.complianceSuiteName(oc, "rhcos-csuite")
 			subD.complianceSuiteResult(oc, csuiteD.name, "NON-COMPLIANT")
-
 			g.By("Check rhcos-csuite result through exit-code.. !!!\n")
 			subD.getScanExitCodeFromConfigmap(oc, "2")
 
@@ -1435,8 +1416,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		})
 
 		// author: pdhamdhe@redhat.com
-		g.It("Author:pdhamdhe-High-32120-The ComplianceSuite performs schedule scan for Platform scan type", func() {
-
+		g.It("Author:pdhamdhe-Longduration-High-32120-The ComplianceSuite performs schedule scan for Platform scan type [Slow]", func() {
 			var (
 				csuiteD = complianceSuiteDescription{
 					name:         "platform-compliancesuite",
@@ -1468,11 +1448,8 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 
 			g.By("Check platform scan pods status.. !!! \n")
 			subD.scanPodStatus(oc, "Succeeded")
-
 			g.By("Check platform-compliancesuite name and result.. !!!\n")
-			subD.complianceSuiteName(oc, "platform-compliancesuite")
 			subD.complianceSuiteResult(oc, csuiteD.name, "NON-COMPLIANT")
-
 			g.By("Check platform-compliancesuite result through exit-code.. !!!\n")
 			subD.getScanExitCodeFromConfigmap(oc, "2")
 
@@ -1481,6 +1458,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			newCheck("expect", asAdmin, withoutNamespace, contain, "*/3 * * * *", ok, []string{"cronjob", "platform-compliancesuite-rerunner",
 				"-n", subD.namespace, "-o=jsonpath={.spec.schedule}"}).check(oc)
 
+			checkComplianceSuiteStatus(oc, csuiteD.name, subD.namespace, "RUNNING")
 			newCheck("expect", asAdmin, withoutNamespace, contain, "1", ok, []string{"compliancesuite", csuiteD.name, "-n",
 				subD.namespace, "-o=jsonpath={.status.scanStatuses[*].currentIndex}"}).check(oc)
 			newCheck("expect", asAdmin, withoutNamespace, contain, "Succeeded", ok, []string{"pod", "-l=workload=suitererunner", "-n",
@@ -1489,9 +1467,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 				subD.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
 
 			g.By("Check platform-compliancesuite name and result.. !!!\n")
-			subD.complianceSuiteName(oc, "platform-compliancesuite")
 			subD.complianceSuiteResult(oc, csuiteD.name, "NON-COMPLIANT")
-
 			g.By("Check worker-compliancesuite result through exit-code.. !!!\n")
 			subD.getScanExitCodeFromConfigmap(oc, "2")
 
@@ -1527,14 +1503,11 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			g.By("Create worker-compliancesuite.. !!!\n")
 			e2e.Logf("Here namespace : %v\n", catSrc.namespace)
 			csuiteD.create(oc, itName, dr)
-
 			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", csuiteD.name, "-n",
 				subD.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
 
 			g.By("Check worker-compliancesuite name and result.. !!!\n")
-			subD.complianceSuiteName(oc, "worker-compliancesuite")
 			subD.complianceSuiteResult(oc, csuiteD.name, "COMPLIANT")
-
 			g.By("Check worker-compliancesuite result through exit-code.. !!!\n")
 			subD.getScanExitCodeFromConfigmap(oc, "0")
 
@@ -1564,7 +1537,6 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 				subD.namespace, "-o=jsonpath={.items[0].spec.containers[0].resources.requests}"}).check(oc)
 
 			g.By("Check worker-compliancesuite name and result.. !!!\n")
-			subD.complianceSuiteName(oc, "worker-compliancesuite")
 			subD.complianceSuiteResult(oc, csuiteD.name, "COMPLIANT")
 			g.By("Check worker-compliancesuite result through exit-code.. !!!\n")
 			subD.getScanExitCodeFromConfigmap(oc, "0")
@@ -1573,8 +1545,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		})
 
 		// author: xiyuan@redhat.com
-		g.It("Author:xiyuan-Medium-33456-The Compliance-Operator edits the scheduled cron job to scan from ComplianceSuite", func() {
-
+		g.It("Author:xiyuan-Longduration-Medium-33456-The Compliance-Operator edits the scheduled cron job to scan from ComplianceSuite [Slow]", func() {
 			var (
 				csuiteD = complianceSuiteDescription{
 					name:         "example-compliancesuite1",
@@ -1606,11 +1577,10 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 				subD.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
 
 			g.By("Check worker-compliancesuite name and result.. !!!\n")
-			subD.complianceSuiteName(oc, csuiteD.name)
 			subD.complianceSuiteResult(oc, csuiteD.name, "COMPLIANT")
-
 			g.By("Check worker-compliancesuite result through exit-code.. !!!\n")
 			subD.getScanExitCodeFromConfigmap(oc, "0")
+
 			newCheck("expect", asAdmin, withoutNamespace, contain, csuiteD.name+"-rerunner", ok, []string{"cronjob", "-n",
 				subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
 			newCheck("expect", asAdmin, withoutNamespace, contain, "*/3 * * * *", ok, []string{"cronjob", csuiteD.name + "-rerunner",
@@ -1622,6 +1592,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			newCheck("expect", asAdmin, withoutNamespace, contain, "*/4 * * * *", ok, []string{"cronjob", csuiteD.name + "-rerunner",
 				"-n", subD.namespace, "-o=jsonpath={.spec.schedule}"}).check(oc)
 
+			checkComplianceSuiteStatus(oc, csuiteD.name, subD.namespace, "RUNNING")
 			newCheck("expect", asAdmin, withoutNamespace, contain, "1", ok, []string{"compliancesuite", csuiteD.name, "-n",
 				subD.namespace, "-o=jsonpath={.status.scanStatuses[*].currentIndex}"}).check(oc)
 			newCheck("expect", asAdmin, withoutNamespace, contain, "Succeeded", ok, []string{"pod", "-l workload=suitererunner", "-n",
@@ -1630,9 +1601,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 				subD.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
 
 			g.By("Check worker-compliancesuite name and result.. !!!\n")
-			subD.complianceSuiteName(oc, csuiteD.name)
 			subD.complianceSuiteResult(oc, csuiteD.name, "COMPLIANT")
-
 			g.By("Check worker-compliancesuite result through exit-code.. !!!\n")
 			subD.getScanExitCodeFromConfigmap(oc, "0")
 
@@ -1640,8 +1609,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		})
 
 		// author: pdhamdhe@redhat.com
-		g.It("Author:pdhamdhe-High-33453-The Compliance Operator rotates the raw scan results", func() {
-
+		g.It("Author:pdhamdhe-Longduration-High-33453-The Compliance Operator rotates the raw scan results [Slow]", func() {
 			var (
 				csuiteD = complianceSuiteDescription{
 					name:         "worker-compliancesuite",
@@ -1659,7 +1627,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			)
 
 			defer cleanupObjects(oc,
-				objectTableRef{"compliancesuite", subD.namespace, "worker-compliancesuite"},
+				objectTableRef{"compliancesuite", subD.namespace, csuiteD.name},
 				objectTableRef{"pod", subD.namespace, "pv-extract"})
 
 			// adding label to rhcos worker node to skip rhel worker node if any
@@ -1670,12 +1638,10 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			g.By("Create worker-compliancesuite.. !!!\n")
 			e2e.Logf("Here namespace : %v\n", catSrc.namespace)
 			csuiteD.create(oc, itName, dr)
-
 			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", csuiteD.name, "-n",
 				subD.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
 
 			g.By("Check worker-compliancesuite name and result.. !!!\n")
-			subD.complianceSuiteName(oc, "worker-compliancesuite")
 			subD.complianceSuiteResult(oc, csuiteD.name, "COMPLIANT")
 			g.By("Check worker-compliancesuite result through exit-code.. !!!\n")
 			subD.getScanExitCodeFromConfigmap(oc, "0")
@@ -1689,6 +1655,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 				"-n", subD.namespace, "-o=jsonpath={.spec.schedule}"}).check(oc)
 
 			//Second round of scan and check
+			checkComplianceSuiteStatus(oc, csuiteD.name, subD.namespace, "RUNNING")
 			newCheck("expect", asAdmin, withoutNamespace, contain, "1", ok, []string{"compliancesuite", csuiteD.name, "-n",
 				subD.namespace, "-o=jsonpath={.status.scanStatuses[*].currentIndex}"}).check(oc)
 			newCheck("expect", asAdmin, withoutNamespace, contain, "Succeeded", ok, []string{"pod", "-l workload=suitererunner", "-n",
@@ -1697,12 +1664,12 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 				subD.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
 
 			g.By("Check worker-compliancesuite name and result.. !!!\n")
-			subD.complianceSuiteName(oc, "worker-compliancesuite")
 			subD.complianceSuiteResult(oc, csuiteD.name, "COMPLIANT")
 			g.By("Check worker-compliancesuite result through exit-code.. !!!\n")
 			subD.getScanExitCodeFromConfigmap(oc, "0")
 
 			//Third round of scan and check
+			checkComplianceSuiteStatus(oc, csuiteD.name, subD.namespace, "RUNNING")
 			newCheck("expect", asAdmin, withoutNamespace, contain, "2", ok, []string{"compliancesuite", csuiteD.name, "-n",
 				subD.namespace, "-o=jsonpath={.status.scanStatuses[*].currentIndex}"}).check(oc)
 			newCheck("expect", asAdmin, withoutNamespace, contain, "Succeeded", ok, []string{"pod", "-l workload=suitererunner", "-n",
@@ -1711,7 +1678,6 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 				subD.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
 
 			g.By("Check worker-compliancesuite name and result.. !!!\n")
-			subD.complianceSuiteName(oc, "worker-compliancesuite")
 			subD.complianceSuiteResult(oc, csuiteD.name, "COMPLIANT")
 			g.By("Check worker-compliancesuite result through exit-code.. !!!\n")
 			subD.getScanExitCodeFromConfigmap(oc, "0")
@@ -2237,7 +2203,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		})
 
 		// author: xiyuan@redhat.com
-		g.It("Author:xiyuan-High-33859-Verify if the profileparser enables to get content updates when the image digest updated", func() {
+		g.It("Author:xiyuan-High-33859-Verify if the profileparser enables to get content updates when the image digest updated [Slow]", func() {
 			var (
 				pb = profileBundleDescription{
 					name:         "test1",
