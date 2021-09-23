@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: sctpserver
+  labels:
+    name: sctpserver
+spec:
+  containers:
+    - name: sctpserver
+      image: quay.io/openshifttest/centos-network@sha256:48da37205f9b43424e0983d4c5e7e07f77b7ba1504bbe35e2f264c75dcb4cd15
+      ports:
+        - containerPort: 30102
+          name: sctpserver
+          protocol: SCTP

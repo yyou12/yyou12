@@ -411,3 +411,72 @@ func checkIpStackType(oc *exutil.CLI) string {
 	}
 	return ""
 }
+
+func installSctpModule(oc *exutil.CLI, configFile string) {
+	status, _ := oc.AsAdmin().Run("get").Args("machineconfigs").Output()
+        if !strings.Contains(status, "load-sctp-module") {
+	    err := oc.WithoutNamespace().AsAdmin().Run("create").Args("-f", configFile).Execute()
+	    o.Expect(err).NotTo(o.HaveOccurred())
+	}
+}
+
+func checkSctpModule(oc *exutil.CLI, nodeName string) {
+	err := wait.Poll(30*time.Second, 15*time.Minute, func() (bool, error) {
+		// Check nodes status to make sure all nodes are up after rebooting caused by load-sctp-module
+		nodes_status, err := oc.AsAdmin().Run("get").Args("node").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf("oc_get_nodes: %v", nodes_status)
+		status, _ := oc.AsAdmin().Run("debug").Args("node/"+nodeName, "--", "cat", "/sys/module/sctp/initstate").Output()
+		if strings.Contains(status, "live") {
+			e2e.Logf("stcp module is installed in the %s", nodeName)
+			return true, nil
+		}
+		return false, nil
+	})
+	exutil.AssertWaitPollNoErr(err, "stcp module is installed in the nodes")
+}
+
+func getPodIPv4(oc *exutil.CLI, namespace string, podName string) (string) {
+	podIPv4, err := oc.WithoutNamespace().Run("get").Args("pod", "-n", namespace, podName, "-o=jsonpath={.status.podIPs[0].ip}").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	e2e.Logf("The pod  %s IP in namespace %s is %q", podName, namespace, podIPv4)
+	return podIPv4
+}
+
+func getPodIPv6(oc *exutil.CLI, namespace string, podName string, ipStack string) (string) {
+	if ipStack == "ipv6single" {
+		podIPv6, err := oc.WithoutNamespace().Run("get").Args("pod", "-n", namespace, podName, "-o=jsonpath={.status.podIPs[0].ip}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf("The pod  %s IP in namespace %s is %q", podName, namespace, podIPv6)
+		return podIPv6
+	} else if ipStack == "dualstack" {
+		podIPv6, err := oc.WithoutNamespace().Run("get").Args("pod", "-n", namespace, podName, "-o=jsonpath={.status.podIPs[1].ip}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf("The pod  %s IP in namespace %s is %q", podName, namespace, podIPv6)
+		return podIPv6	
+	}
+	return ""
+}
+
+// For normal user to create resources in the specified namespace from the file (not template)
+func createResourceFromFile(oc *exutil.CLI, ns, file string) {
+	err := oc.WithoutNamespace().Run("create").Args("-f", file, "-n", ns).Execute()
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+func waitForPodWithLabelReady(oc *exutil.CLI, ns, label string) error {
+	return wait.Poll(5*time.Second, 3*time.Minute, func() (bool, error) {
+		status, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-n", ns, "-l", label, "-ojsonpath={.items[*].status.conditions[?(@.type==\"Ready\")].status}").Output()
+		e2e.Logf("the Ready status of pod is %v", status)
+		if err != nil || status == "" {
+			e2e.Logf("failed to get pod status: %v, retrying...", err)
+			return false, nil
+		}
+		if strings.Contains(status, "False") {
+			e2e.Logf("the pod Ready status not met; wanted True but got %v, retrying...", status)
+			return false, nil
+		}
+		return true, nil
+	})
+}
+

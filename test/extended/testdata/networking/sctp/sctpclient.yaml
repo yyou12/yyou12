@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: sctpclient
+  labels:
+    name: sctpclient
+spec:
+  containers:
+    - name: sctpclient
+      image: quay.io/openshifttest/centos-network@sha256:48da37205f9b43424e0983d4c5e7e07f77b7ba1504bbe35e2f264c75dcb4cd15
