@@ -20,6 +20,7 @@ import (
 
 	_ "github.com/openshift/openshift-tests-private/test/extended/apiserver_and_auth"
 	_ "github.com/openshift/openshift-tests-private/test/extended/cluster_operator/cloudcredential"
+	_ "github.com/openshift/openshift-tests-private/test/extended/cluster_operator/hive"
 	_ "github.com/openshift/openshift-tests-private/test/extended/clusterinfrastructure"
 	_ "github.com/openshift/openshift-tests-private/test/extended/container_engine_tools"
 	_ "github.com/openshift/openshift-tests-private/test/extended/etcd"
