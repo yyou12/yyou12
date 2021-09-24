@@ -2618,7 +2618,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 			}
 			return false, nil
 		})
-		exutil.AssertWaitPollNoErr(waitErr, "compoent found in log of pod of openshift-operator-lifecycle-manager")
+		exutil.AssertWaitPollWithErr(waitErr, "log 'component not found' is not debug level")
 
 	})
 
