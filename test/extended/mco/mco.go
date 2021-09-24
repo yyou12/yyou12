@@ -367,18 +367,11 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 	})
 
 	g.It("Author:rioliu-CPaasrunOnly-High-42218-add machine config without ignition version [Serial]", func() {
-		g.By("Create machine config with empty ign version")
-		mcName := "change-worker-ign-version-to-empty"
-		mcTemplate := generateTemplateAbsolutePath(mcName + ".yaml")
-		mc := MachineConfig{name: mcName, template: mcTemplate, pool: "worker"}
-		defer mc.delete(oc)
-		mc.create(oc)
-		g.By("Get mcp/worker status to check whether it is degraded")
-		datamap, err := getStatusCondition(oc, "mcp/worker", "RenderDegraded")
-		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(datamap).NotTo(o.BeNil())
-		o.Expect(datamap["status"].(string)).Should(o.Equal("True"))
-		o.Expect(datamap["message"].(string)).Should(o.ContainSubstring("parsing Ignition config failed: unknown version. Supported spec versions: 2.2, 3.0, 3.1, 3.2"))
+		createMcAndVerifyIgnitionVersion(oc, "empty ign version", "change-worker-ign-version-to-empty", "")
+	})
+
+	g.It("Author:mhanss-CPaasrunOnly-High-43124-add machine config with invalid ignition version [Serial]", func() {
+		createMcAndVerifyIgnitionVersion(oc, "invalid ign version", "change-worker-ign-version-to-invalid", "3.9.0")
 	})
 
 	g.It("Author:rioliu-CPaasrunOnly-High-42679-add new ssh authorized keys [Serial]", func() {
@@ -433,4 +426,26 @@ func skipTestIfOsIsNotCoreOs(oc *exutil.CLI) (string, error) {
 		g.Skip("CoreOs is required to execute this test case!")
 	}
 	return coreOs, err
+}
+
+func createMcAndVerifyIgnitionVersion(oc *exutil.CLI, stepText string, mcName string, ignitionVersion string) {
+	g.By(fmt.Sprintf("Create machine config with %s", stepText))
+	mcTemplate := generateTemplateAbsolutePath("change-worker-ign-version.yaml")
+	mc := MachineConfig{name: mcName, template: mcTemplate, pool: "worker", parameters: []string{"IGNITION_VERSION=" + ignitionVersion}}
+	defer mc.delete(oc)
+	mc.create(oc)
+
+	g.By("Get mcp/worker status to check whether it is degraded")
+	mcpDataMap, err := getStatusCondition(oc, "mcp/worker", "RenderDegraded")
+	o.Expect(err).NotTo(o.HaveOccurred())
+	o.Expect(mcpDataMap).NotTo(o.BeNil())
+	o.Expect(mcpDataMap["status"].(string)).Should(o.Equal("True"))
+	o.Expect(mcpDataMap["message"].(string)).Should(o.ContainSubstring("parsing Ignition config failed: unknown version. Supported spec versions: 2.2, 3.0, 3.1, 3.2"))
+
+	g.By("Get co machine config to verify status and reason for Upgradeable type")
+	mcDataMap, err := getStatusCondition(oc, "co/machine-config", "Upgradeable")
+	o.Expect(err).NotTo(o.HaveOccurred())
+	o.Expect(mcDataMap).NotTo(o.BeNil())
+	o.Expect(mcDataMap["status"].(string)).Should(o.Equal("False"))
+	o.Expect(mcDataMap["message"].(string)).Should(o.ContainSubstring("One or more machine config pools are degraded, please see `oc get mcp` for further details and resolve before upgrading"))
 }

@@ -12,9 +12,10 @@ objects:
     spec:
       config:
         ignition:
-          version:
+          version: ${IGNITION_VERSION}
     kernelArguments:
       - enforcing=0
 parameters:
   - name: NAME
   - name: POOL
+  - name: IGNITION_VERSION
