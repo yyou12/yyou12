@@ -5,10 +5,12 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"time"
 
 	g "github.com/onsi/ginkgo"
 	o "github.com/onsi/gomega"
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
+	"k8s.io/apimachinery/pkg/util/wait"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 )
 
@@ -388,6 +390,48 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		e2e.Logf("file content of authorized_keys: %v", sshKeyOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(sshKeyOut).Should(o.ContainSubstring("mco_test@redhat.com"))
+	})
+
+	g.It("Author:rioliu-Longduration-CPaasrunOnly-High-42704-disable auto reboot for mco [Disruptive]", func() {
+		g.By("pause mcp worker")
+		mcp := MachineConfigPool{name: "worker"}
+		defer mcp.pause(oc, false)
+		mcp.pause(oc, true)
+		g.By("create new mc")
+		mcName := "change-workers-chrony-configuration"
+		mcTemplate := generateTemplateAbsolutePath("change-workers-chrony-configuration.yaml")
+		mc := MachineConfig{name: mcName, template: mcTemplate, pool: "worker", skipWaitForMcp: true}
+		defer mc.delete(oc)
+		mc.create(oc)
+		g.By("compare config name b/w spec.configuration.name and status.configuration.name, they're different")
+		specConf, specErr := mcp.getConfigNameOfSpec(oc)
+		o.Expect(specErr).NotTo(o.HaveOccurred())
+		statusConf, statusErr := mcp.getConfigNameOfStatus(oc)
+		o.Expect(statusErr).NotTo(o.HaveOccurred())
+		o.Expect(specConf).ShouldNot(o.Equal(statusConf))
+		g.By("check mcp status condition, expected: UPDATED=False && UPDATING=False")
+		var updated, updating string
+		pollerr := wait.Poll(5*time.Second, 10*time.Second, func() (bool, error) {
+			stdouta, erra := oc.AsAdmin().WithoutNamespace().Run("get").Args("mcp/worker", "-o", "jsonpath='{.status.conditions[?(@.type==\"Updated\")].status}'").Output()
+			stdoutb, errb := oc.AsAdmin().WithoutNamespace().Run("get").Args("mcp/worker", "-o", "jsonpath='{.status.conditions[?(@.type==\"Updating\")].status}'").Output()
+			updated = strings.Trim(stdouta, "'")
+			updating = strings.Trim(stdoutb, "'")
+			if erra != nil || errb != nil {
+				e2e.Logf("error occurred %v%v", erra, errb)
+				return false, nil
+			}
+			if updated != "" && updating != "" {
+				e2e.Logf("updated: %v, updating: %v", updated, updating)
+				return true, nil
+			}
+			return false, nil
+		})
+		exutil.AssertWaitPollNoErr(pollerr, "polling status conditions of mcp: [Updated,Updating] failed")
+		o.Expect(updated).Should(o.Equal("False"))
+		o.Expect(updating).Should(o.Equal("False"))
+		g.By("unpause mcp worker, then verify whether the new mc can be applied on mcp/worker")
+		mcp.pause(oc, false)
+		mcp.waitForComplete(oc)
 	})
 })
 

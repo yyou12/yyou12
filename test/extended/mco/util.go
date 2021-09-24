@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -16,10 +17,11 @@ import (
 )
 
 type MachineConfig struct {
-	name       string
-	template   string
-	pool       string
-	parameters []string
+	name           string
+	template       string
+	pool           string
+	parameters     []string
+	skipWaitForMcp bool
 }
 
 type MachineConfigPool struct {
@@ -70,8 +72,11 @@ func (mc *MachineConfig) create(oc *exutil.CLI) {
 	})
 	exutil.AssertWaitPollNoErr(pollerr, fmt.Sprintf("create machine config %v failed", mc.name))
 
-	mcp := MachineConfigPool{name: mc.pool}
-	mcp.waitForComplete(oc)
+	if !mc.skipWaitForMcp {
+		mcp := MachineConfigPool{name: mc.pool}
+		mcp.waitForComplete(oc)
+	}
+
 }
 
 func (mc *MachineConfig) delete(oc *exutil.CLI) {
@@ -140,6 +145,24 @@ func (mcp *MachineConfigPool) delete(oc *exutil.CLI) {
 	e2e.Logf("deleting custom mcp: %s", mcp.name)
 	err := oc.AsAdmin().WithoutNamespace().Run("delete").Args("mcp", mcp.name, "--ignore-not-found=true").Execute()
 	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+func (mcp *MachineConfigPool) pause(oc *exutil.CLI, enable bool) {
+	e2e.Logf("patch mcp %v, change spec.paused to %v", mcp.name, enable)
+	err := oc.AsAdmin().Run("patch").Args("mcp", mcp.name, "--type=merge", "-p", `{"spec":{"paused": `+strconv.FormatBool(enable)+`}}`).Execute()
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+func (mcp *MachineConfigPool) getConfigNameOfSpec(oc *exutil.CLI) (string, error) {
+	output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("mcp", mcp.name, "-o", "jsonpath='{.spec.configuration.name}'").Output()
+	e2e.Logf("spec.configuration.name of mcp/%v is %v", mcp.name, output)
+	return output, err
+}
+
+func (mcp *MachineConfigPool) getConfigNameOfStatus(oc *exutil.CLI) (string, error) {
+	output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("mcp", mcp.name, "-o", "jsonpath='{.status.configuration.name}'").Output()
+	e2e.Logf("status.configuration.name of mcp/%v is %v", mcp.name, output)
+	return output, err
 }
 
 func (mcp *MachineConfigPool) waitForComplete(oc *exutil.CLI) {
