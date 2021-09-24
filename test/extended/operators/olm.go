@@ -5501,7 +5501,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		g.By("2) install sub")
 		sub.create(oc, itName, dr)
 		g.By("install operator SUCCESS")
-		newCheck("expect", asAdmin, withoutNamespace, contain, "planetscale-operator", ok, []string{"deployment", fmt.Sprintf("--selector=olm.owner=%s", sub.installedCSV), "-n", sub.namespace, "-o", "yaml"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, contain, "planetscale-operator", ok, []string{"deployment", fmt.Sprintf("--selector=olm.owner=%s", sub.installedCSV), "-n", sub.namespace, "-o=jsonpath={..metadata.name}"}).check(oc)
 
 		if httpProxy == "" {
 			nodeHTTPProxy := getResource(oc, asAdmin, withoutNamespace, "deployment", fmt.Sprintf("--selector=olm.owner=%s", sub.installedCSV), "-n", sub.namespace, "-o=jsonpath={..spec.template.spec.containers[?(.name==\"planetscale-operator\")].env[?(.name==\"HTTP_PROXY\")].value}")
@@ -5529,7 +5529,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 
 			g.By("3) create subscription and set variables ( HTTP_PROXY, HTTPS_PROXY and NO_PROXY ) with non-empty values. ")
 			subProxyTest.create(oc, itName, dr)
-			newCheck("expect", asAdmin, withoutNamespace, contain, "planetscale-operator", ok, []string{"deployment", fmt.Sprintf("--selector=olm.owner=%s", subProxyTest.installedCSV), "-n", subProxyTest.namespace, "-o", "yaml"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "planetscale-operator", ok, []string{"deployment", fmt.Sprintf("--selector=olm.owner=%s", subProxyTest.installedCSV), "-n", subProxyTest.namespace, "-o=jsonpath={..metadata.name}"}).check(oc)
 			nodeHTTPProxy = getResource(oc, asAdmin, withoutNamespace, "deployment", fmt.Sprintf("--selector=olm.owner=%s", sub.installedCSV), "-n", sub.namespace, "-o=jsonpath={..spec.template.spec.containers[?(.name==\"planetscale-operator\")].env[?(.name==\"HTTP_PROXY\")].value}")
 			o.Expect(nodeHTTPProxy).To(o.Equal("test_http_proxy"))
 			nodeHTTPSProxy = getResource(oc, asAdmin, withoutNamespace, "deployment", fmt.Sprintf("--selector=olm.owner=%s", sub.installedCSV), "-n", sub.namespace, "-o=jsonpath={..spec.template.spec.containers[?(.name==\"planetscale-operator\")].env[?(.name==\"HTTPS_PROXY\")].value}")
@@ -5541,7 +5541,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 
 			g.By("4) Create a new subscription and set variables ( HTTP_PROXY, HTTPS_PROXY and NO_PROXY ) with a fake value.")
 			subProxyFake.create(oc, itName, dr)
-			newCheck("expect", asAdmin, withoutNamespace, contain, "planetscale-operator", ok, []string{"deployment", fmt.Sprintf("--selector=olm.owner=%s", subProxyFake.installedCSV), "-n", subProxyFake.namespace, "-o", "yaml"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "planetscale-operator", ok, []string{"deployment", fmt.Sprintf("--selector=olm.owner=%s", subProxyFake.installedCSV), "-n", subProxyFake.namespace, "-o=jsonpath={..metadata.name}"}).check(oc)
 			nodeHTTPProxy = getResource(oc, asAdmin, withoutNamespace, "deployment", fmt.Sprintf("--selector=olm.owner=%s", sub.installedCSV), "-n", sub.namespace, "-o=jsonpath={..spec.template.spec.containers[?(.name==\"planetscale-operator\")].env[?(.name==\"HTTP_PROXY\")].value}")
 			o.Expect(nodeHTTPProxy).To(o.Equal("fake_http_proxy"))
 			nodeHTTPSProxy = getResource(oc, asAdmin, withoutNamespace, "deployment", fmt.Sprintf("--selector=olm.owner=%s", sub.installedCSV), "-n", sub.namespace, "-o=jsonpath={..spec.template.spec.containers[?(.name==\"planetscale-operator\")].env[?(.name==\"HTTPS_PROXY\")].value}")
@@ -5553,7 +5553,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 
 			g.By("5) Create a new subscription and set variables ( HTTP_PROXY, HTTPS_PROXY and NO_PROXY ) with an empty value.")
 			subProxyEmpty.create(oc, itName, dr)
-			newCheck("expect", asAdmin, withoutNamespace, contain, "planetscale-operator", ok, []string{"deployment", fmt.Sprintf("--selector=olm.owner=%s", subProxyEmpty.installedCSV), "-n", subProxyEmpty.namespace, "-o", "yaml"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "planetscale-operator", ok, []string{"deployment", fmt.Sprintf("--selector=olm.owner=%s", subProxyEmpty.installedCSV), "-n", subProxyEmpty.namespace, "-o=jsonpath={..metadata.name}"}).check(oc)
 			nodeHTTPProxy = getResource(oc, asAdmin, withoutNamespace, "deployment", fmt.Sprintf("--selector=marketplace.operatorSource=%s", sub.installedCSV), "-n", sub.namespace, "-o=jsonpath={.spec.template.spec.containers[?(.name==\"planetscale-operator\")].env[?(.name==\"HTTP_PROXY\")].value}")
 			o.Expect(nodeHTTPProxy).To(o.BeEmpty())
 			nodeHTTPSProxy = getResource(oc, asAdmin, withoutNamespace, "deployment", fmt.Sprintf("--selector=marketplace.operatorSource=%s", sub.installedCSV), "-n", sub.namespace, "-o=jsonpath={.spec.template.spec.containers[?(.name==\"planetscale-operator\")].env[?(.name==\"HTTPS_PROXY\")].value}")
@@ -5969,19 +5969,39 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		sub.create(oc, itName, dr)
 		e2e.Logf("approve the install plan")
 		sub.approveSpecificIP(oc, itName, dr, "etcdoperator.v0.9.2", "Complete")
-		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", "etcdoperator.v0.9.2", "-n", oc.Namespace(), "-o=jsonpath={.status.phase}"}).check(oc)
+		err := newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", "etcdoperator.v0.9.2", "-n", oc.Namespace(), "-o=jsonpath={.status.phase}"}).checkWithoutAssert(oc)
+		if err != nil {
+			output := getResource(oc, asAdmin, withoutNamespace, "csv", "etcdoperator.v0.9.2", "-n", namespaceName, "-o=jsonpath={.status.conditions}")
+			e2e.Logf(output)
+		}
+		exutil.AssertWaitPollNoErr(err, "state of csv etcdoperator.v0.9.2 is not Succeeded")
 
 		g.By("3: check OPERATOR_CONDITION_NAME")
 		// there are 3 containers in this pod
-		newCheck("expect", asAdmin, withoutNamespace, compare, "etcdoperator.v0.9.2 etcdoperator.v0.9.2 etcdoperator.v0.9.2", ok, []string{"deployment", "etcd-operator", "-n", namespaceName, "-o=jsonpath={.spec.template.spec.containers[*].env[?(@.name==\"OPERATOR_CONDITION_NAME\")].value}"}).check(oc)
+		err = newCheck("expect", asAdmin, withoutNamespace, compare, "etcdoperator.v0.9.2 etcdoperator.v0.9.2 etcdoperator.v0.9.2", ok, []string{"deployment", "etcd-operator", "-n", namespaceName, "-o=jsonpath={.spec.template.spec.containers[*].env[?(@.name==\"OPERATOR_CONDITION_NAME\")].value}"}).checkWithoutAssert(oc)
+		if err != nil {
+			output := getResource(oc, asAdmin, withoutNamespace, "deployment", "etcd-operator", "-n", namespaceName, "-o=jsonpath={..spec.template.spec.containers}")
+			e2e.Logf(output)
+		}
+		exutil.AssertWaitPollNoErr(err, "OPERATOR_CONDITION_NAME of etcd-operator is not correct")
 
 		g.By("4: approve the install plan")
 		sub.approveSpecificIP(oc, itName, dr, "etcdoperator.v0.9.4", "Complete")
-		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", "etcdoperator.v0.9.4", "-n", oc.Namespace(), "-o=jsonpath={.status.phase}"}).check(oc)
+		err = newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", "etcdoperator.v0.9.4", "-n", oc.Namespace(), "-o=jsonpath={.status.phase}"}).checkWithoutAssert(oc)
+		if err != nil {
+			output := getResource(oc, asAdmin, withoutNamespace, "csv", "etcdoperator.v0.9.4", "-n", namespaceName, "-o=jsonpath={.status.conditions}")
+			e2e.Logf(output)
+		}
+		exutil.AssertWaitPollNoErr(err, "state of csv etcdoperator.v0.9.4 is not Succeeded")
 
 		g.By("5: check OPERATOR_CONDITION_NAME")
 		// there are 3 containers in this pod
-		newCheck("expect", asAdmin, withoutNamespace, compare, "etcdoperator.v0.9.4 etcdoperator.v0.9.4 etcdoperator.v0.9.4", ok, []string{"deployment", "etcd-operator", "-n", namespaceName, "-o=jsonpath={.spec.template.spec.containers[*].env[?(@.name==\"OPERATOR_CONDITION_NAME\")].value}"}).check(oc)
+		err = newCheck("expect", asAdmin, withoutNamespace, compare, "etcdoperator.v0.9.4 etcdoperator.v0.9.4 etcdoperator.v0.9.4", ok, []string{"deployment", "etcd-operator", "-n", namespaceName, "-o=jsonpath={.spec.template.spec.containers[*].env[?(@.name==\"OPERATOR_CONDITION_NAME\")].value}"}).checkWithoutAssert(oc)
+		if err != nil {
+			output := getResource(oc, asAdmin, withoutNamespace, "deployment", "etcd-operator", "-n", namespaceName, "-o=jsonpath={..spec.template.spec.containers}")
+			e2e.Logf(output)
+		}
+		exutil.AssertWaitPollNoErr(err, "OPERATOR_CONDITION_NAME of etcd-operator is not correct")
 	})
 
 	// author: xzha@redhat.com, test case OCP-40534
@@ -6125,7 +6145,12 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		g.By("3) check ip status")
 		installPlan := sub.getIP(oc)
 		o.Expect(installPlan).NotTo(o.BeEmpty())
-		newCheck("expect", asAdmin, withoutNamespace, contain, "no operator group found", ok, []string{"installplan", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.conditions}"}).check(oc)
+		err := newCheck("expect", asAdmin, withoutNamespace, contain, "no operator group found", ok, []string{"installplan", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.conditions}"}).checkWithoutAssert(oc)
+		if err != nil {
+			output := getResource(oc, asAdmin, withoutNamespace, "installplan", installPlan, "-n", sub.namespace, "-o=jsonpath={.status}")
+			e2e.Logf(output)
+		}
+		exutil.AssertWaitPollNoErr(err, "status.conditions of installplan does not contain 'no operator group found'")
 		phase := getResource(oc, asAdmin, withoutNamespace, "installplan", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.phase}")
 		o.Expect(phase).To(o.Equal("Installing"))
 
@@ -6134,9 +6159,14 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 
 		g.By("check ip and csv")
 		newCheck("expect", asAdmin, withoutNamespace, compare, "Complete", ok, []string{"installplan", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+		if err != nil {
+			output := getResource(oc, asAdmin, withoutNamespace, "installplan", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.conditions}}")
+			e2e.Logf(output)
+		}
+		exutil.AssertWaitPollNoErr(err, "status.phase of installplan is not Complete")
 		sub.findInstalledCSV(oc, itName, dr)
-		err := wait.Poll(10*time.Second, 300*time.Second, func() (bool, error) {
-			status := getResource(oc, asAdmin, withoutNamespace, "csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={..status.phase}")
+		err = wait.Poll(10*time.Second, 300*time.Second, func() (bool, error) {
+			status := getResource(oc, asAdmin, withoutNamespace, "csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={.status.phase}")
 			if strings.Compare(status, "Succeeded") == 0 {
 				e2e.Logf("get installedCSV failed")
 				return true, nil
@@ -6462,7 +6492,12 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		_, err := oc.WithoutNamespace().AsAdmin().Run("create").Args("sa", sa, "-n", sub.namespace).Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		og.createwithCheck(oc, itName, dr)
-		newCheck("expect", asAdmin, withoutNamespace, compare, sa, ok, []string{"og", og.name, "-n", og.namespace, "-o=jsonpath={.status.serviceAccountRef.name}"}).check(oc)
+		err = newCheck("expect", asAdmin, withoutNamespace, compare, sa, ok, []string{"og", og.name, "-n", og.namespace, "-o=jsonpath={.status.serviceAccountRef.name}"}).checkWithoutAssert(oc)
+		if err != nil {
+			output := getResource(oc, asAdmin, withoutNamespace, "og", og.name, "-n", og.namespace, "-o=jsonpath={.status}")
+			e2e.Logf(output)
+		}
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("status.serviceAccountRef.name of og %s is not %s", og.name, sa))
 
 		g.By("2) Delete the service account")
 		_, err = oc.WithoutNamespace().AsAdmin().Run("delete").Args("sa", sa, "-n", sub.namespace).Output()
@@ -6478,29 +6513,59 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		sub.createWithoutCheck(oc, itName, dr)
 		installPlan := sub.getIP(oc)
 		o.Expect(installPlan).NotTo(o.BeEmpty())
-		newCheck("expect", asAdmin, withoutNamespace, contain, "retrying execution due to error: serviceaccounts", ok, []string{"installplan", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.message}"}).check(oc)
+		err = newCheck("expect", asAdmin, withoutNamespace, contain, "retrying execution due to error: serviceaccounts", ok, []string{"installplan", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.message}"}).checkWithoutAssert(oc)
+		if err != nil {
+			output := getResource(oc, asAdmin, withoutNamespace, "installplan", installPlan, "-n", sub.namespace, "-o=jsonpath={.status}")
+			e2e.Logf(output)
+		}
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("status.message of installplan %s does not contain 'retrying execution due to error: serviceaccounts'", installPlan))
 
 		g.By("4) Create the service account, check the installplan")
 		_, err = oc.WithoutNamespace().AsAdmin().Run("create").Args("sa", sa, "-n", namespace).Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
-		newCheck("expect", asAdmin, withoutNamespace, contain, "retrying execution due to error: error creating csv etcdoperator", ok, []string{"installplan", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.message}"}).check(oc)
+		err = newCheck("expect", asAdmin, withoutNamespace, contain, "retrying execution due to error: error creating csv etcdoperator", ok, []string{"installplan", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.message}"}).checkWithoutAssert(oc)
+		if err != nil {
+			output := getResource(oc, asAdmin, withoutNamespace, "installplan", installPlan, "-n", sub.namespace, "-o=jsonpath={.status}")
+			e2e.Logf(output)
+		}
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("status.message of installplan %s does not contain 'retrying execution due to error: error creating csv etcdoperator'", installPlan))
 
 		g.By("5) After retry timeout, the install plan is Failed")
-		newCheck("expect", asAdmin, withoutNamespace, compare, "Failed", ok, []string{"installplan", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+		err = newCheck("expect", asAdmin, withoutNamespace, compare, "Failed", ok, []string{"installplan", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).checkWithoutAssert(oc)
+		if err != nil {
+			output := getResource(oc, asAdmin, withoutNamespace, "installplan", installPlan, "-n", sub.namespace, "-o=jsonpath={.status}")
+			e2e.Logf(output)
+		}
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("status.phase of installplan %s is not Failed", installPlan))
 
 		g.By("6) delete sub, then create sub again")
 		sub.delete(itName, dr)
 		sub.createWithoutCheck(oc, itName, dr)
 		installPlan = sub.getIP(oc)
-		newCheck("expect", asAdmin, withoutNamespace, contain, "retrying execution due to error", ok, []string{"installplan", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.message}"}).check(oc)
+		err = newCheck("expect", asAdmin, withoutNamespace, contain, "retrying execution due to error", ok, []string{"installplan", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.message}"}).checkWithoutAssert(oc)
+		if err != nil {
+			output := getResource(oc, asAdmin, withoutNamespace, "installplan", installPlan, "-n", sub.namespace, "-o=jsonpath={.status}")
+			e2e.Logf(output)
+		}
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("status.message of installplan %s does not contain 'retrying execution due to error'", installPlan))
 
 		g.By("7) Grant the proper permissions to the service account")
 		role.create(oc)
 		rolebinding.create(oc)
 
 		g.By("8) Checking the state of CSV")
-		newCheck("expect", asAdmin, withoutNamespace, compare, "Complete", ok, []string{"installplan", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
-		newCheck("expect", asUser, withNamespace, compare, "Succeeded", ok, []string{"csv", csv, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+		err = newCheck("expect", asAdmin, withoutNamespace, compare, "Complete", ok, []string{"installplan", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).checkWithoutAssert(oc)
+		if err != nil {
+			output := getResource(oc, asAdmin, withoutNamespace, "installplan", installPlan, "-n", sub.namespace, "-o=jsonpath={.status}")
+			e2e.Logf(output)
+		}
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("status.phase of installplan %s is not Complete", installPlan))
+		err = newCheck("expect", asUser, withNamespace, compare, "Succeeded", ok, []string{"csv", csv, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).checkWithoutAssert(oc)
+		if err != nil {
+			output := getResource(oc, asAdmin, withoutNamespace, "csv", csv, "-n", sub.namespace, "-o=jsonpath={.status}")
+			e2e.Logf(output)
+		}
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("status.phase of csv %s is not Succeeded", csv))
 		err = wait.Poll(1*time.Second, 10*time.Second, func() (bool, error) {
 			installedCSV := getResource(oc, asAdmin, withoutNamespace, "sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.installedCSV}")
 			if strings.Compare(installedCSV, "") == 0 {
@@ -7219,9 +7284,14 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle to support", func
 		g.By("Create catalog source")
 		catsrc.create(oc, itName, dr)
 
-		g.By("Create sub and canot succeed")
+		g.By("Create sub and cannot succeed")
 		sub.createWithoutCheck(oc, itName, dr)
-		newCheck("expect", asAdmin, withoutNamespace, compare, "", ok, []string{"sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.state}"}).check(oc)
+		err := newCheck("expect", asAdmin, withoutNamespace, compare, "", ok, []string{"sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.state}"}).checkWithoutAssert(oc)
+		if err != nil {
+			output := getResource(oc, asAdmin, withoutNamespace, "sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status}")
+			e2e.Logf(output)
+		}
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("status.state of sub %s is not empty", sub.subName))
 
 		g.By("update cm to correct crd")
 		cm.template = cmReadyTestsTemplate
@@ -7229,7 +7299,12 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle to support", func
 
 		g.By("sub succeed and csv succeed")
 		sub.findInstalledCSV(oc, itName, dr)
-		newCheck("expect", asUser, withoutNamespace, compare, "Succeeded", ok, []string{"csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+		err = newCheck("expect", asUser, withoutNamespace, compare, "Succeeded", ok, []string{"csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).checkWithoutAssert(oc)
+		if err != nil {
+			output := getResource(oc, asAdmin, withoutNamespace, "csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={.status}")
+			e2e.Logf(output)
+		}
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("status.phase of csv %s is not Succeeded", sub.installedCSV))
 	})
 
 	// It will cover test case: OCP-43642, author: xzha@redhat.com
