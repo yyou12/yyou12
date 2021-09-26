@@ -6158,7 +6158,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		og.createwithCheck(oc, itName, dr)
 
 		g.By("check ip and csv")
-		newCheck("expect", asAdmin, withoutNamespace, compare, "Complete", ok, []string{"installplan", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+		err = newCheck("expect", asAdmin, withoutNamespace, compare, "Complete", ok, []string{"installplan", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).checkWithoutAssert(oc)
 		if err != nil {
 			output := getResource(oc, asAdmin, withoutNamespace, "installplan", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.conditions}}")
 			e2e.Logf(output)
