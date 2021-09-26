@@ -254,6 +254,15 @@ func applyResourceFromTemplate(oc *exutil.CLI, parameters ...string) error {
 	return oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", configFile).Execute()
 }
 
+func containsMultipleStrings(sourceString string, expectedStrings []string) {
+	o.Expect(sourceString).NotTo(o.BeEmpty())
+	o.Expect(expectedStrings).NotTo(o.BeEmpty())
+
+	for _, element := range expectedStrings {
+		o.Expect(sourceString).Should(o.ContainSubstring(element))
+	}
+}
+
 func getRandomString() string {
 	chars := "abcdefghijklmnopqrstuvwxyz0123456789"
 	seed := rand.New(rand.NewSource(time.Now().UnixNano()))

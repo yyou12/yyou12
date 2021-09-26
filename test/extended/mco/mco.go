@@ -433,6 +433,48 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		mcp.pause(oc, false)
 		mcp.waitForComplete(oc)
 	})
+
+	g.It("Author:rioliu-CPaasrunOnly-High-42681-rotate kubernetes certificate authority [Disruptive]", func() {
+		g.By("patch secret to trigger CA rotation")
+		patchErr := oc.AsAdmin().WithoutNamespace().Run("patch").Args("secret", "-p", `{"metadata": {"annotations": {"auth.openshift.io/certificate-not-after": null}}}`, "kube-apiserver-to-kubelet-signer", "-n", "openshift-kube-apiserver-operator").Execute()
+		o.Expect(patchErr).NotTo(o.HaveOccurred())
+		g.By("monitor update progress of mcp master and worker, new configs should be applied successfully")
+		mcpMaster := MachineConfigPool{name: "master"}
+		mcpWorker := MachineConfigPool{name: "worker"}
+		mcpMaster.waitForComplete(oc)
+		mcpWorker.waitForComplete(oc)
+		g.By("check new generated rendered configs for kuberlet CA")
+		renderedConfs, renderedErr := oc.AsAdmin().WithoutNamespace().Run("get").Args("mc", "--sort-by=metadata.creationTimestamp", "-o", "jsonpath='{.items[-2:].metadata.name}'").Output()
+		o.Expect(renderedErr).NotTo(o.HaveOccurred())
+		o.Expect(renderedConfs).NotTo(o.BeEmpty())
+		slices := strings.Split(strings.Trim(renderedConfs, "'"), " ")
+		var renderedMasterConf, renderedWorkerConf string
+		for _, conf := range slices {
+			if strings.Contains(conf, "master") {
+				renderedMasterConf = conf
+			} else if strings.Contains(conf, "worker") {
+				renderedWorkerConf = conf
+			}
+		}
+		e2e.Logf("new rendered config generated for master: %s", renderedMasterConf)
+		e2e.Logf("new rendered config generated for worker: %s", renderedWorkerConf)
+		g.By("check logs of machine-config-daemon on master-n-worker nodes, make sure CA change is detected, drain and reboot are skipped")
+		masterNode, masterErr := exutil.GetFirstMasterNode(oc)
+		workerNode, workerErr := exutil.GetFirstWorkerNode(oc)
+		o.Expect(masterErr).NotTo(o.HaveOccurred())
+		o.Expect(workerErr).NotTo(o.HaveOccurred())
+		commonExpectedStrings := []string{"File diff: detected change to /etc/kubernetes/kubelet-ca.crt", "Changes do not require drain, skipping"}
+		expectedStringsForMaster := append(commonExpectedStrings, "Node has Desired Config "+renderedMasterConf+", skipping reboot")
+		expectedStringsForWorker := append(commonExpectedStrings, "Node has Desired Config "+renderedWorkerConf+", skipping reboot")
+		masterMcdLogs, masterMcdLogErr := exutil.GetSpecificPodLogs(oc, "openshift-machine-config-operator", "machine-config-daemon", getMachineConfigDaemon(oc, masterNode), "")
+		o.Expect(masterMcdLogErr).NotTo(o.HaveOccurred())
+		workerMcdLogs, workerMcdLogErr := exutil.GetSpecificPodLogs(oc, "openshift-machine-config-operator", "machine-config-daemon", getMachineConfigDaemon(oc, workerNode), "")
+		o.Expect(workerMcdLogErr).NotTo(o.HaveOccurred())
+		containsMultipleStrings(masterMcdLogs, expectedStringsForMaster)
+		e2e.Logf("mcd log on master node %s contains expected strings: %v", masterNode, expectedStringsForMaster)
+		containsMultipleStrings(workerMcdLogs, expectedStringsForWorker)
+		e2e.Logf("mcd log on worker node %s contains expected strings: %v", workerNode, expectedStringsForWorker)
+	})
 })
 
 func createMcAndVerifyMCValue(oc *exutil.CLI, stepText string, mcName string, workerNode string, textToVerify TextToVerify, cmd ...string) {

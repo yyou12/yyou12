@@ -101,6 +101,10 @@ func GetSpecificPodLogs(oc *CLI, namespace string, container string, podName str
 		e2e.Logf("unable to get the pod (%s) logs", podName)
 		return podLogs, err
 	}
-	filteredLogs, err := exec.Command("bash", "-c", "cat "+podLogs+" | grep -i "+filter).Output()
+	var filterCmd string = ""
+	if len(filter) > 0 {
+		filterCmd = " | grep -i " + filter
+	}
+	filteredLogs, err := exec.Command("bash", "-c", "cat "+podLogs+filterCmd).Output()
 	return string(filteredLogs), err
 }
