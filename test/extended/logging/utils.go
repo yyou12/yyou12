@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -459,7 +460,7 @@ func getStorageClassName(oc *exutil.CLI) (string, error) {
 }
 
 //Assert the status of cluster logging components
-func (r resource) assertCLStatus(oc *exutil.CLI, content string, exptdStatus string) {
+func (r resource) assertResourceStatus(oc *exutil.CLI, content string, exptdStatus string) {
 	err := wait.Poll(10*time.Second, 180*time.Second, func() (done bool, err error) {
 		clStatus, err := oc.AsAdmin().WithoutNamespace().Run("get").Args(r.kind, r.name, "-n", r.namespace, "-o", content).Output()
 		if err != nil {
@@ -557,4 +558,41 @@ func queryPrometheus(oc *exutil.CLI, token string, path string, query string, ac
 	res := PrometheusQueryResult{}
 	json.Unmarshal(responseData, &res)
 	return res, err
+}
+
+//Wait for pods selected with labelselector to be removed
+func WaitUntilPodsAreGone(oc *exutil.CLI, namespace string, labelSelector string) {
+	err := wait.Poll(3*time.Second, 180*time.Second, func() (bool, error) {
+		output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "--selector="+labelSelector, "-n", namespace).Output()
+		if err != nil {
+			return false, err
+		} else {
+			errstring := fmt.Sprintf("%v", output)
+			if strings.Contains(errstring, "No resources found") {
+				return true, nil
+			} else {
+				return false, nil
+			}
+		}
+	})
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("Error waiting for pods to be removed using label selector %s", labelSelector))
+}
+
+//Check logs from resource
+func (r resource) checkLogsFromRs(oc *exutil.CLI, expected string) {
+	err := wait.Poll(5*time.Second, 180*time.Second, func() (bool, error) {
+		output, err := oc.AsAdmin().WithoutNamespace().Run("logs").Args(r.kind+`/`+r.name, "-n", r.namespace).Output()
+		if err != nil {
+			e2e.Logf("Can't get logs from resource, error: %s. Trying again", err)
+			return false, nil
+		}
+		if matched, _ := regexp.Match(expected, []byte(output)); !matched {
+			e2e.Logf("Can't find the expected string\n")
+			return false, nil
+		} else {
+			e2e.Logf("Check the logs succeed!!\n")
+			return true, nil
+		}
+	})
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("%s is not expected for %s", expected, r.name))
 }
