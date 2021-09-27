@@ -80,3 +80,11 @@ func (sc *storageClass) create(oc *exutil.CLI) {
 func (sc *storageClass) delete(oc *exutil.CLI) {
 	oc.AsAdmin().WithoutNamespace().Run("delete").Args("sc", sc.name).Execute()
 }
+
+//  Create a new customized storageclass with
+func (sc *storageClass) createWithExtraParameters(oc *exutil.CLI, extraParameters map[string]interface{}) {
+
+	err := applyResourceFromTemplateWithExtraParametersAsAdmin(oc, extraParameters, "--ignore-unknown-parameters=true", "-f", sc.template, "-p",
+		"SCNAME="+sc.name, "RECLAIMPOLICY="+sc.reclaimPolicy, "PROVISIONER="+sc.provisioner, "VOLUMEBINDINGMODE="+sc.volumeBindingMode)
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
