@@ -293,7 +293,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
     })
 
     // author: jfan@redhat.com
-    g.It("ConnectedOnly-Author:jfan-Medium-35443-SDK run bundle InstallMode for own namespace [Slow] [Serial]", func() {
+    g.It("ConnectedOnly-Author:jfan-Medium-35443-SDK run bundle InstallMode for own namespace [Slow]", func() {
         buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
         var operatorGroup = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
         operatorsdkCLI.showInfo = true
@@ -365,7 +365,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
     })
 
     // author: jfan@redhat.com
-    g.It("ConnectedOnly-Author:jfan-Medium-41064-SDK run bundle InstallMode for single namespace [Slow] [Serial]", func() {
+    g.It("ConnectedOnly-Author:jfan-Medium-41064-SDK run bundle InstallMode for single namespace [Slow]", func() {
         buildPruningBaseDir := exutil.FixturePath("testdata", "operatorsdk")
         var operatorGroup = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
         operatorsdkCLI.showInfo = true
@@ -374,60 +374,60 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
         err := oc.AsAdmin().WithoutNamespace().Run("create").Args("ns", "test-sdk-41064").Execute()
         o.Expect(err).NotTo(o.HaveOccurred())
         defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("ns", "test-sdk-41064").Execute()  
-        msg, err := operatorsdkCLI.Run("run").Args("bundle", "quay.io/olmqe/ownsingleallsupport-bundle:v4.9", "--install-mode", "SingleNamespace=test-sdk-41064", "-n", namespace, "--timeout", "5m").Output()
+        msg, err := operatorsdkCLI.Run("run").Args("bundle", "quay.io/olmqe/all1support-bundle:v4.9", "--install-mode", "SingleNamespace=test-sdk-41064", "-n", namespace, "--timeout", "5m").Output()
         o.Expect(err).NotTo(o.HaveOccurred())
         o.Expect(msg).To(o.ContainSubstring("OLM has successfully installed"))
         msg, _ = oc.AsAdmin().WithoutNamespace().Run("get").Args("og", "operator-sdk-og", "-n", namespace, "-o=jsonpath={.spec.targetNamespaces}").Output()
         o.Expect(msg).To(o.ContainSubstring("test-sdk-41064"))
-        output, err := operatorsdkCLI.Run("cleanup").Args("ownsingleallsupport", "-n", namespace).Output()
+        output, err := operatorsdkCLI.Run("cleanup").Args("all1support", "-n", namespace).Output()
         o.Expect(err).NotTo(o.HaveOccurred())
         o.Expect(output).To(o.ContainSubstring("uninstalled"))
         waitErr := wait.Poll(15*time.Second, 360*time.Second, func() (bool, error) {
-            msg, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "quay-io-olmqe-ownsingleallsupport-bundle-v4-9", "-n", namespace, "--no-headers").Output()
+            msg, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "quay-io-olmqe-all1support-bundle-v4-9", "-n", namespace, "--no-headers").Output()
             if strings.Contains(msg, "not found") {
-                e2e.Logf("not found pod quay-io-olmqe-ownsingleallsupport-bundle-v4-9")
+                e2e.Logf("not found pod quay-io-olmqe-all1support-bundle-v4-9")
                 return true, nil
             }
             return false, nil
         })
-        exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("pod quay-io-olmqe-ownsingleallsupport-bundle-v4-9 can't be deleted in %s", namespace))
+        exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("pod quay-io-olmqe-all1support-bundle-v4-9 can't be deleted in %s", namespace))
         // install the operator with og and installmode
         configFile, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", operatorGroup, "-p", "NAME=og-single", "NAMESPACE=" + namespace, "KAKA=test-sdk-41064",).OutputToFile("config-41064.json")
         o.Expect(err).NotTo(o.HaveOccurred())
         err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", configFile).Execute()
         o.Expect(err).NotTo(o.HaveOccurred())
-        msg, err = operatorsdkCLI.Run("run").Args("bundle", "quay.io/olmqe/ownsingleallsupport-bundle:v4.9", "--install-mode", "SingleNamespace=test-sdk-41064", "-n", namespace, "--timeout", "5m").Output()
+        msg, err = operatorsdkCLI.Run("run").Args("bundle", "quay.io/olmqe/all1support-bundle:v4.9", "--install-mode", "SingleNamespace=test-sdk-41064", "-n", namespace, "--timeout", "5m").Output()
         o.Expect(err).NotTo(o.HaveOccurred())
         o.Expect(msg).To(o.ContainSubstring("OLM has successfully installed"))
-        output, _ = operatorsdkCLI.Run("cleanup").Args("ownsingleallsupport", "-n", namespace).Output()
+        output, _ = operatorsdkCLI.Run("cleanup").Args("all1support", "-n", namespace).Output()
         o.Expect(output).To(o.ContainSubstring("uninstalled"))
         // install the operator with og without installmode
         waitErr = wait.Poll(15*time.Second, 360*time.Second, func() (bool, error) {
-            msg, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "quay-io-olmqe-ownsingleallsupport-bundle-v4-9", "-n", namespace, "--no-headers").Output()
+            msg, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "quay-io-olmqe-all1support-bundle-v4-9", "-n", namespace, "--no-headers").Output()
             if strings.Contains(msg, "not found") {
-                e2e.Logf("not found pod quay-io-olmqe-ownsingleallsupport-bundle-v4-9")
+                e2e.Logf("not found pod quay-io-olmqe-all1support-bundle-v4-9")
                 return true, nil
             }
             return false, nil
         })
-        exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("pod quay-io-olmqe-ownsingleallsupport-bundle-v4-9 can't be deleted in %s", namespace))
-        msg, err = operatorsdkCLI.Run("run").Args("bundle", "quay.io/olmqe/ownsingleallsupport-bundle:v4.9", "-n", namespace, "--timeout", "5m").Output()
+        exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("pod quay-io-olmqe-all1support-bundle-v4-9 can't be deleted in %s", namespace))
+        msg, err = operatorsdkCLI.Run("run").Args("bundle", "quay.io/olmqe/all1support-bundle:v4.9", "-n", namespace, "--timeout", "5m").Output()
         o.Expect(err).NotTo(o.HaveOccurred())
         o.Expect(msg).To(o.ContainSubstring("OLM has successfully installed"))
-        output, _ = operatorsdkCLI.Run("cleanup").Args("ownsingleallsupport", "-n", namespace).Output()
+        output, _ = operatorsdkCLI.Run("cleanup").Args("all1support", "-n", namespace).Output()
         o.Expect(output).To(o.ContainSubstring("uninstalled"))
         // delete the og
         _, err = oc.AsAdmin().WithoutNamespace().Run("delete").Args("og", "og-single", "-n", namespace).Output()
         o.Expect(err).NotTo(o.HaveOccurred())
         waitErr = wait.Poll(15*time.Second, 360*time.Second, func() (bool, error) {
-            msg, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "quay-io-olmqe-ownsingleallsupport-bundle-v4-9", "-n", namespace, "--no-headers").Output()
+            msg, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "quay-io-olmqe-all1support-bundle-v4-9", "-n", namespace, "--no-headers").Output()
             if strings.Contains(msg, "not found") {
-                e2e.Logf("not found pod quay-io-olmqe-ownsingleallsupport-bundle-v4-9")
+                e2e.Logf("not found pod quay-io-olmqe-all1support-bundle-v4-9")
                 return true, nil
             }
             return false, nil
         })
-        exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("pod quay-io-olmqe-ownsingleallsupport-bundle-v4-9 can't be deleted in %s", namespace))
+        exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("pod quay-io-olmqe-all1support-bundle-v4-9 can't be deleted in %s", namespace))
         // install the operator without og and installmode, the csv only support singlenamespace
         msg, _ = operatorsdkCLI.Run("run").Args("bundle", "quay.io/olmqe/singlesupport-bundle:v4.9", "-n", namespace, "--timeout", "5m").Output()
         o.Expect(msg).To(o.ContainSubstring("AllNamespaces InstallModeType not supported"))
@@ -437,108 +437,108 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
 
 
     // author: jfan@redhat.com
-    g.It("ConnectedOnly-Author:jfan-Medium-41065-SDK run bundle InstallMode for all namespace [Slow] [Serial]", func() {
+    g.It("ConnectedOnly-Author:jfan-Medium-41065-SDK run bundle InstallMode for all namespace [Slow]", func() {
         buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
         var operatorGroup = filepath.Join(buildPruningBaseDir, "og-allns.yaml")
         operatorsdkCLI.showInfo = true
         oc.SetupProject()
         namespace := oc.Namespace()
         // install the operator without og with installmode all namespace
-        msg, err := operatorsdkCLI.Run("run").Args("bundle", "quay.io/olmqe/ownsingleallsupport-bundle:v4.9", "--install-mode", "AllNamespaces", "-n", namespace, "--timeout", "5m").Output()
+        msg, err := operatorsdkCLI.Run("run").Args("bundle", "quay.io/olmqe/all2support-bundle:v4.9", "--install-mode", "AllNamespaces", "-n", namespace, "--timeout", "5m").Output()
         o.Expect(err).NotTo(o.HaveOccurred())
         o.Expect(msg).To(o.ContainSubstring("OLM has successfully installed"))
-        defer operatorsdkCLI.Run("cleanup").Args("ownsingleallsupport").Output()
+        defer operatorsdkCLI.Run("cleanup").Args("all2support").Output()
         msg, _ = oc.AsAdmin().WithoutNamespace().Run("get").Args("og", "operator-sdk-og", "-o=jsonpath={.spec.targetNamespaces}", "-n", namespace).Output()
         o.Expect(msg).To(o.ContainSubstring(""))
         waitErr := wait.Poll(15*time.Second, 360*time.Second, func() (bool, error) {
             msg, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", "-n", "openshift-operators").Output()
-            if strings.Contains(msg, "ownsingleallsupport.v0.0.1") {
-                e2e.Logf("csv ownsingleallsupport.v0.0.1")
+            if strings.Contains(msg, "all2support.v0.0.1") {
+                e2e.Logf("csv all2support.v0.0.1")
                 return true, nil
             }
             return false, nil
         })
-        exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("can't get csv ownsingleallsupport.v0.0.1 in %s", namespace))
-        output, err := operatorsdkCLI.Run("cleanup").Args("ownsingleallsupport", "-n", namespace).Output()
+        exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("can't get csv all2support.v0.0.1 in %s", namespace))
+        output, err := operatorsdkCLI.Run("cleanup").Args("all2support", "-n", namespace).Output()
         o.Expect(err).NotTo(o.HaveOccurred())
         o.Expect(output).To(o.ContainSubstring("uninstalled"))
         waitErr = wait.Poll(15*time.Second, 360*time.Second, func() (bool, error) {
-            msg, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "quay-io-olmqe-ownsingleallsupport-bundle-v4-9", "--no-headers", "-n", namespace).Output()
+            msg, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "quay-io-olmqe-all2support-bundle-v4-9", "--no-headers", "-n", namespace).Output()
             if strings.Contains(msg, "not found") {
-                e2e.Logf("not found pod quay-io-olmqe-ownsingleallsupport-bundle-v4-9")
+                e2e.Logf("not found pod quay-io-olmqe-all2support-bundle-v4-9")
                 return true, nil
             }
             return false, nil
         })
-        exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("pod quay-io-olmqe-ownsingleallsupport-bundle-v4-9 can't be deleted in %s", namespace))
+        exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("pod quay-io-olmqe-all2support-bundle-v4-9 can't be deleted in %s", namespace))
         // install the operator with og and installmode
         configFile, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", operatorGroup, "-p", "NAME=og-allnames", "NAMESPACE=" + namespace).OutputToFile("config-41065.json")
         o.Expect(err).NotTo(o.HaveOccurred())
         err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", configFile).Execute()
         o.Expect(err).NotTo(o.HaveOccurred())
-        msg, err = operatorsdkCLI.Run("run").Args("bundle", "quay.io/olmqe/ownsingleallsupport-bundle:v4.9", "--install-mode", "AllNamespaces", "-n", namespace, "--timeout", "5m").Output()
+        msg, err = operatorsdkCLI.Run("run").Args("bundle", "quay.io/olmqe/all2support-bundle:v4.9", "--install-mode", "AllNamespaces", "-n", namespace, "--timeout", "5m").Output()
         o.Expect(err).NotTo(o.HaveOccurred())
         o.Expect(msg).To(o.ContainSubstring("OLM has successfully installed"))
         waitErr = wait.Poll(15*time.Second, 360*time.Second, func() (bool, error) {
             msg, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", "-n", "openshift-operators").Output()
-            if strings.Contains(msg, "ownsingleallsupport.v0.0.1") {
-                e2e.Logf("csv ownsingleallsupport.v0.0.1")
+            if strings.Contains(msg, "all2support.v0.0.1") {
+                e2e.Logf("csv all2support.v0.0.1")
                 return true, nil
             }
             return false, nil
         })
-        exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("can't get csv ownsingleallsupport.v0.0.1 in %s", namespace))
-        output, _ = operatorsdkCLI.Run("cleanup").Args("ownsingleallsupport", "-n", namespace).Output()
+        exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("can't get csv all2support.v0.0.1 in %s", namespace))
+        output, _ = operatorsdkCLI.Run("cleanup").Args("all2support", "-n", namespace).Output()
         o.Expect(output).To(o.ContainSubstring("uninstalled"))
         // install the operator with og without installmode
         waitErr = wait.Poll(15*time.Second, 360*time.Second, func() (bool, error) {
-            msg, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "quay-io-olmqe-ownsingleallsupport-bundle-v4-9", "--no-headers", "-n", namespace).Output()
+            msg, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "quay-io-olmqe-all2support-bundle-v4-9", "--no-headers", "-n", namespace).Output()
             if strings.Contains(msg, "not found") {
-                e2e.Logf("not found pod quay-io-olmqe-ownsingleallsupport-bundle-v4-8")
+                e2e.Logf("not found pod quay-io-olmqe-all2support-bundle-v4-8")
                 return true, nil
             }
             return false, nil
         })
-        exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("pod quay-io-olmqe-ownsingleallsupport-bundle-v4-9 can't be deleted in %s", namespace))
-        msg, err = operatorsdkCLI.Run("run").Args("bundle", "quay.io/olmqe/ownsingleallsupport-bundle:v4.9", "-n", namespace, "--timeout", "5m").Output()
+        exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("pod quay-io-olmqe-all2support-bundle-v4-9 can't be deleted in %s", namespace))
+        msg, err = operatorsdkCLI.Run("run").Args("bundle", "quay.io/olmqe/all2support-bundle:v4.9", "-n", namespace, "--timeout", "5m").Output()
         o.Expect(err).NotTo(o.HaveOccurred())
         o.Expect(msg).To(o.ContainSubstring("OLM has successfully installed"))
         waitErr = wait.Poll(15*time.Second, 360*time.Second, func() (bool, error) {
             msg, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", "-n", "openshift-operators").Output()
-            if strings.Contains(msg, "ownsingleallsupport.v0.0.1") {
-                e2e.Logf("csv ownsingleallsupport.v0.0.1")
+            if strings.Contains(msg, "all2support.v0.0.1") {
+                e2e.Logf("csv all2support.v0.0.1")
                 return true, nil
             }
             return false, nil
         })
-        exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("can't get csv ownsingleallsupport.v0.0.1 in %s", namespace))
-        output, _ = operatorsdkCLI.Run("cleanup").Args("ownsingleallsupport", "-n", namespace).Output()
+        exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("can't get csv all2support.v0.0.1 in %s", namespace))
+        output, _ = operatorsdkCLI.Run("cleanup").Args("all2support", "-n", namespace).Output()
         o.Expect(output).To(o.ContainSubstring("uninstalled"))
         // delete the og
         _, err = oc.AsAdmin().WithoutNamespace().Run("delete").Args("og", "og-allnames", "-n", namespace).Output()
         o.Expect(err).NotTo(o.HaveOccurred())
         waitErr = wait.Poll(15*time.Second, 360*time.Second, func() (bool, error) {
-            msg, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "quay-io-olmqe-ownsingleallsupport-bundle-v4-9", "--no-headers", "-n", namespace).Output()
+            msg, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "quay-io-olmqe-all2support-bundle-v4-9", "--no-headers", "-n", namespace).Output()
             if strings.Contains(msg, "not found") {
-                e2e.Logf("not found pod quay-io-olmqe-ownsingleallsupport-bundle-v4-9")
+                e2e.Logf("not found pod quay-io-olmqe-all2support-bundle-v4-9")
                 return true, nil
             }
             return false, nil
         })
-        exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("pod quay-io-olmqe-ownsingleallsupport-bundle-v4-9 can't be deleted in %s", namespace))
+        exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("pod quay-io-olmqe-all2support-bundle-v4-9 can't be deleted in %s", namespace))
         // install the operator without og and installmode, the csv support allnamespace and ownnamespace
-        msg, _ = operatorsdkCLI.Run("run").Args("bundle", "quay.io/olmqe/ownsingleallsupport-bundle:v4.9", "-n", namespace, "--timeout", "5m").Output()
+        msg, _ = operatorsdkCLI.Run("run").Args("bundle", "quay.io/olmqe/all2support-bundle:v4.9", "-n", namespace, "--timeout", "5m").Output()
         o.Expect(msg).To(o.ContainSubstring("OLM has successfully installed"))
         waitErr = wait.Poll(15*time.Second, 360*time.Second, func() (bool, error) {
             msg, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", "-n", "openshift-operators").Output()
-            if strings.Contains(msg, "ownsingleallsupport.v0.0.1") {
-                e2e.Logf("csv ownsingleallsupport.v0.0.1")
+            if strings.Contains(msg, "all2support.v0.0.1") {
+                e2e.Logf("csv all2support.v0.0.1")
                 return true, nil
             }
             return false, nil
         })
-        exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("can't get csv ownsingleallsupport.v0.0.1 in %s", namespace))
-        output, _ = operatorsdkCLI.Run("cleanup").Args("ownsingleallsupport", "-n", namespace).Output()
+        exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("can't get csv all2support.v0.0.1 in %s", namespace))
+        output, _ = operatorsdkCLI.Run("cleanup").Args("all2support", "-n", namespace).Output()
         o.Expect(output).To(o.ContainSubstring("uninstalled"))
     })
 
