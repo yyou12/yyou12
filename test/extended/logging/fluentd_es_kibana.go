@@ -1,12 +1,16 @@
 package logging
 
 import (
+	"fmt"
+	"strconv"
+	"time"
+
 	g "github.com/onsi/ginkgo"
 	o "github.com/onsi/gomega"
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
-	"time"
 )
 
 var _ = g.Describe("[sig-openshift-logging] Logging", func() {
@@ -142,4 +146,142 @@ var _ = g.Describe("[sig-openshift-logging] Logging", func() {
 			o.Expect(LogCount).To(o.Equal(0), "The log count for the %s namespace should be 0", app_proj)
 		})
 	})
+})
+
+var _ = g.Describe("[sig-openshift-logging] Logging Elasticsearch should", func() {
+	defer g.GinkgoRecover()
+
+	var (
+		oc                = exutil.NewCLI("logging-es-"+getRandomString(), exutil.KubeConfigPath())
+		subTemplate       = exutil.FixturePath("testdata", "logging", "subscription", "sub-template.yaml")
+		SingleNamespaceOG = exutil.FixturePath("testdata", "logging", "subscription", "singlenamespace-og.yaml")
+		AllNamespaceOG    = exutil.FixturePath("testdata", "logging", "subscription", "allnamespace-og.yaml")
+		jsonLogFile       = exutil.FixturePath("testdata", "logging", "generatelog", "container_json_log_template.json")
+	)
+	cloNS := "openshift-logging"
+	eoNS := "openshift-operators-redhat"
+	CLO := SubscriptionObjects{"cluster-logging-operator", cloNS, SingleNamespaceOG, subTemplate, "cluster-logging", CatalogSourceObjects{}}
+	EO := SubscriptionObjects{"elasticsearch-operator", eoNS, AllNamespaceOG, subTemplate, "elasticsearch-operator", CatalogSourceObjects{}}
+	g.BeforeEach(func() {
+		g.By("deploy CLO and EO")
+		CLO.SubscribeLoggingOperators(oc)
+		EO.SubscribeLoggingOperators(oc)
+	})
+
+	// author qitang@redhat.com
+	g.It("CPaasrunOnly-Author:qitang-Medium-43444-Expose Index Level Metrics es_index_namespaces_total and es_index_document_count", func() {
+		// create clusterlogging instance
+		g.By("deploy EFK pods")
+		sc, err := getStorageClassName(oc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		instance := exutil.FixturePath("testdata", "logging", "clusterlogging", "cl-storage-template.yaml")
+		cl := resource{"clusterlogging", "instance", cloNS}
+		cl.applyFromTemplate(oc, "-n", cl.namespace, "-f", instance, "-p", "NAMESPACE="+cl.namespace, "-p", "STORAGE_CLASS="+sc)
+		g.By("waiting for the EFK pods to be ready...")
+		WaitForEFKPodsToBeReady(oc, cloNS)
+
+		g.By("check logs in ES pod")
+		podList, err := oc.AdminKubeClient().CoreV1().Pods(cloNS).List(metav1.ListOptions{LabelSelector: "es-node-master=true"})
+		o.Expect(err).NotTo(o.HaveOccurred())
+		waitForIndexAppear(oc, cloNS, podList.Items[0].Name, "infra-00", "")
+
+		g.By("check ES metric es_index_namespaces_total")
+		err = wait.Poll(5*time.Second, 120*time.Second, func() (done bool, err error) {
+			metricData1, err := queryPrometheus(oc, "", "/api/v1/query?", "es_index_namespaces_total", "GET")
+			if err != nil {
+				return false, err
+			} else {
+				if len(metricData1.Data.Result) == 0 {
+					return false, nil
+				} else {
+					namespaceCount, _ := strconv.Atoi(metricData1.Data.Result[0].Value[1].(string))
+					e2e.Logf("\nthe namespace count is: %d", namespaceCount)
+					if namespaceCount > 0 {
+						return true, nil
+					} else {
+						return false, nil
+					}
+				}
+			}
+		})
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("The value of metric %s isn't more than 0", "es_index_namespaces_total"))
+
+		g.By("check ES metric es_index_document_count")
+		metricData2, err := queryPrometheus(oc, "", "/api/v1/query?", "es_index_document_count", "GET")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		for _, content := range metricData2.Data.Result {
+			metricValue, _ := strconv.Atoi(content.Value[1].(string))
+			o.Expect(metricValue > 0).Should(o.BeTrue())
+		}
+	})
+
+	// author qitang@redhat.com
+	g.It("CPaasrunOnly-Author:qitang-Low-43081-remove JKS certificates", func() {
+		// create clusterlogging instance
+		g.By("deploy EFK pods")
+		sc, err := getStorageClassName(oc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		instance := exutil.FixturePath("testdata", "logging", "clusterlogging", "cl-storage-template.yaml")
+		cl := resource{"clusterlogging", "instance", cloNS}
+		cl.applyFromTemplate(oc, "-n", cl.namespace, "-f", instance, "-p", "NAMESPACE="+cl.namespace, "-p", "STORAGE_CLASS="+sc)
+		g.By("waiting for the EFK pods to be ready...")
+		WaitForEFKPodsToBeReady(oc, cloNS)
+
+		g.By("check certificates in ES")
+		podList, err := oc.AdminKubeClient().CoreV1().Pods(cloNS).List(metav1.ListOptions{LabelSelector: "es-node-master=true"})
+		o.Expect(err).NotTo(o.HaveOccurred())
+		cmd := "ls /etc/elasticsearch/secret/"
+		stdout, err := e2e.RunHostCmdWithRetries(cloNS, podList.Items[0].Name, cmd, 3*time.Second, 30*time.Second)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(stdout).ShouldNot(o.ContainSubstring("admin.jks"))
+	})
+
+	// author qitang@redhat.com
+	g.It("CPaasrunOnly-Author:qitang-Medium-42943-remove template org.ovirt.viaq-collectd.template.json", func() {
+		// create clusterlogging instance
+		g.By("deploy EFK pods")
+		sc, err := getStorageClassName(oc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		instance := exutil.FixturePath("testdata", "logging", "clusterlogging", "cl-storage-template.yaml")
+		cl := resource{"clusterlogging", "instance", cloNS}
+		cl.applyFromTemplate(oc, "-n", cl.namespace, "-f", instance, "-p", "NAMESPACE="+cl.namespace, "-p", "STORAGE_CLASS="+sc)
+		g.By("waiting for the EFK pods to be ready...")
+		WaitForEFKPodsToBeReady(oc, cloNS)
+
+		g.By("check templates in ES")
+		podList, err := oc.AdminKubeClient().CoreV1().Pods(cloNS).List(metav1.ListOptions{LabelSelector: "es-node-master=true"})
+		o.Expect(err).NotTo(o.HaveOccurred())
+		cmd := "ls /usr/share/elasticsearch/index_templates/"
+		stdout, err := e2e.RunHostCmdWithRetries(cloNS, podList.Items[0].Name, cmd, 3*time.Second, 30*time.Second)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(stdout).ShouldNot(o.ContainSubstring("org.ovirt.viaq-collectd.template.json"))
+	})
+
+	// author qitang@redhat.com
+	g.It("CPaasrunOnly-Author:qitang-Medium-43259-Access to the ES root url from a project pod on Openshift", func() {
+		// create clusterlogging instance
+		g.By("deploy EFK pods")
+		sc, err := getStorageClassName(oc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		instance := exutil.FixturePath("testdata", "logging", "clusterlogging", "cl-storage-template.yaml")
+		cl := resource{"clusterlogging", "instance", cloNS}
+		cl.applyFromTemplate(oc, "-n", cl.namespace, "-f", instance, "-p", "NAMESPACE="+cl.namespace, "-p", "STORAGE_CLASS="+sc)
+		g.By("waiting for the EFK pods to be ready...")
+		WaitForEFKPodsToBeReady(oc, cloNS)
+
+		g.By("deploy a pod and try to connect to ES")
+		oc.SetupProject()
+		app_proj := oc.Namespace()
+		err = oc.Run("new-app").Args("-n", app_proj, "-f", jsonLogFile).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		token, err := oc.Run("whoami").Args("-t").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		podList, err := oc.AdminKubeClient().CoreV1().Pods(app_proj).List(metav1.ListOptions{LabelSelector: "run=centos-logtest"})
+		o.Expect(err).NotTo(o.HaveOccurred())
+		cmd := "curl -tlsv1.2 --insecure -H \"Authorization: Bearer " + token + "\" https://elasticsearch.openshift-logging.svc:9200"
+		stdout, err := e2e.RunHostCmdWithRetries(app_proj, podList.Items[0].Name, cmd, 5*time.Second, 60*time.Second)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(stdout).Should(o.ContainSubstring("You Know, for Search"))
+	})
+
 })
