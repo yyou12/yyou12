@@ -57,15 +57,15 @@ var _ = g.Describe("[sig-openshift-logging] Logging cluster-logging-operator sho
 		cl := resource{"clusterlogging", "instance", cloNS}
 		defer cl.deleteClusterLogging(oc)
 		cl.createClusterLogging(oc, "-n", cl.namespace, "-f", instance, "-p", "NAMESPACE="+cl.namespace)
-		WaitForDaemonsetPodsToBeReady(oc, cloNS, "fluentd")
+		WaitForDaemonsetPodsToBeReady(oc, cloNS, "collector")
 
-		g.By("extract configmap/fluentd, and check if it is empty")
+		g.By("extract configmap/collector, and check if it is empty")
 		baseDir := exutil.FixturePath("testdata", "logging")
 		TestDataPath := filepath.Join(baseDir, "temp")
 		defer exec.Command("rm", "-r", TestDataPath).Output()
 		err = os.MkdirAll(TestDataPath, 0755)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		_, err = oc.AsAdmin().WithoutNamespace().Run("extract").Args("-n", cloNS, "cm/fluentd", "--confirm", "--to="+TestDataPath).Output()
+		_, err = oc.AsAdmin().WithoutNamespace().Run("extract").Args("-n", cloNS, "cm/collector", "--confirm", "--to="+TestDataPath).Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		file_stat, err := os.Stat(filepath.Join(TestDataPath, "fluent.conf"))
 		o.Expect(err).NotTo(o.HaveOccurred())

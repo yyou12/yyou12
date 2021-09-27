@@ -84,7 +84,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging", func() {
 			g.By("change clusterlogforwarder/instance")
 			err = clf.applyFromTemplate(oc, "-n", clf.namespace, "-f", clfTemplate, "-p", "DATA_PROJECT="+app_proj, "-p", "STRUCTURED_TYPE_KEY=openshift.labels.team")
 			o.Expect(err).NotTo(o.HaveOccurred())
-			WaitForDaemonsetPodsToBeReady(oc, cloNS, "fluentd")
+			WaitForDaemonsetPodsToBeReady(oc, cloNS, "collector")
 			// check data in ES
 			g.By("check indices in ES pod")
 			podList, err = oc.AdminKubeClient().CoreV1().Pods(cloNS).List(metav1.ListOptions{LabelSelector: "es-node-master=true"})
@@ -135,7 +135,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging", func() {
 			g.By("updating clusterlogforwarder")
 			err = clf.applyFromTemplate(oc, "-n", clf.namespace, "-f", clfTemplate, "-p", "DATA_PROJECT="+app_proj, "-p", "STRUCTURED_TYPE_KEY=kubernetes.namespace_name")
 			o.Expect(err).NotTo(o.HaveOccurred())
-			WaitForDaemonsetPodsToBeReady(oc, cloNS, "fluentd")
+			WaitForDaemonsetPodsToBeReady(oc, cloNS, "collector")
 			// check data in ES
 			g.By("check indices in ES pod")
 			podList, err = oc.AdminKubeClient().CoreV1().Pods(cloNS).List(metav1.ListOptions{LabelSelector: "es-node-master=true"})

@@ -61,7 +61,7 @@ func (so *SubscriptionObjects) getChannelName(oc *exutil.CLI) string {
 			e2e.Logf("clusterversion is: %v\n", clusterVersion.Status.Desired.Version)
 			channelName = strings.Join(strings.Split(clusterVersion.Status.Desired.Version, ".")[0:2], ".")
 		*/
-		channelName = "stable"
+		channelName = "stable-5.3"
 	}
 	e2e.Logf("the channel name is: %v\n", channelName)
 	return channelName
@@ -270,8 +270,8 @@ func WaitForEFKPodsToBeReady(oc *exutil.CLI, ns string) {
 	}
 	// wait for Kibana
 	WaitForDeploymentPodsToBeReady(oc, ns, "kibana")
-	// wait for fluentd
-	WaitForDaemonsetPodsToBeReady(oc, ns, "fluentd")
+	// wait for collector
+	WaitForDaemonsetPodsToBeReady(oc, ns, "collector")
 }
 
 type resource struct {
@@ -352,7 +352,7 @@ func (r resource) deleteClusterLogging(oc *exutil.CLI) {
 	}
 	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("could not delete %s/%s", r.kind, r.name))
 	//make sure other resources are removed
-	resources := []resource{{"elasticsearches.logging.openshift.io", "elasticsearch", r.namespace}, {"kibanas.logging.openshift.io", "kibana", r.namespace}, {"daemonset", "fluentd", r.namespace}}
+	resources := []resource{{"elasticsearches.logging.openshift.io", "elasticsearch", r.namespace}, {"kibanas.logging.openshift.io", "kibana", r.namespace}, {"daemonset", "collector", r.namespace}}
 	for i := 0; i < len(resources); i++ {
 		err = resources[i].WaitUntilResourceIsGone(oc)
 		if err != nil {
