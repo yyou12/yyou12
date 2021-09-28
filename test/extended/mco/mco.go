@@ -379,6 +379,38 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		o.Expect(sshKeyOut).Should(o.ContainSubstring("mco_test@redhat.com"))
 	})
 
+	g.It("Author:mhanss-Longduration-CPaasrunOnly-High-42682-change container registry config on ocp 4.6 [Disruptive]", func() {
+		clusterVersion, err := getClusterVersion(oc)
+		if !strings.Contains(clusterVersion, "4.6") {
+			g.Skip("Cluster version 4.6 is required to execute this test case!")
+		}
+
+		g.By("Create new machine config to add quay.io to unqualified-search-registries list")
+		mcName := "change-workers-container-reg"
+		mcTemplate := generateTemplateAbsolutePath(mcName + ".yaml")
+		mc := MachineConfig{name: mcName, template: mcTemplate, pool: "worker"}
+		defer mc.delete(oc)
+		mc.create(oc)
+
+		g.By("Check content of registries file to verify quay.io added to unqualified-search-registries list")
+		workerNode, err := exutil.GetFirstWorkerNode(oc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		regOut, err := exutil.DebugNodeWithChroot(oc, workerNode, "cat", "/etc/containers/registries.conf")
+		e2e.Logf("File content of registries conf: %v", regOut)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(regOut).Should(o.ContainSubstring("quay.io"))
+
+		g.By("Check MCD logs to make sure drain is successful and pods are evicted")
+		podLogs, err := exutil.GetSpecificPodLogs(oc, "openshift-machine-config-operator", "machine-config-daemon", getMachineConfigDaemon(oc, workerNode), "\"evicted\\|drain\"")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf("Pod logs for node drain and pods evicted :\n %v", podLogs)
+		o.Expect(podLogs).Should(
+			o.And(
+				o.ContainSubstring("Update prepared; beginning drain"),
+				o.ContainSubstring("Evicted pod openshift-image-registry/image-registry"),
+				o.ContainSubstring("drain complete")))
+	})
+
 	g.It("Author:rioliu-Longduration-CPaasrunOnly-High-42704-disable auto reboot for mco [Disruptive]", func() {
 		g.By("pause mcp worker")
 		mcp := MachineConfigPool{name: "worker"}

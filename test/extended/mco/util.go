@@ -208,6 +208,10 @@ func getKubeletConfigDetails(oc *exutil.CLI, kcName string) (string, error) {
 	return oc.AsAdmin().WithoutNamespace().Run("get").Args("kubeletconfig", kcName, "-o", "yaml").Output()
 }
 
+func getClusterVersion(oc *exutil.CLI) (string, error) {
+	return oc.AsAdmin().WithoutNamespace().Run("get").Args("clusterversion", "-o", "jsonpath={..desired.version}").Output()
+}
+
 func getMachineConfigDaemon(oc *exutil.CLI, node string) string {
 	args := []string{"pods", "-n", "openshift-machine-config-operator", "-l", "k8s-app=machine-config-daemon",
 		"--field-selector", "spec.nodeName=" + node, "-o", "jsonpath='{..metadata.name}'"}
