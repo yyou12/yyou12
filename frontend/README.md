@@ -23,13 +23,14 @@ node_modules/     -> dependencies will be installed at runtime here
 ```
 ### Export necessary variables
 ```bash
-export BRIDGE_BASE_ADDRESS=https://console-route
-export LOGIN_IDP=kubeadmin
+export BRIDGE_BASE_ADDRESS=https://<console_route_spec_host>
+export LOGIN_IDP=kube:admin
 export LOGIN_USERNAME=testuser
 export LOGIN_PASSWORD=testpassword
 ```
 ### Start Cypress and add/run/debug your tests
 ```bash
 ./node_modules/cypress/bin/cypress open
+./node_modules/cypress/bin/cypress run --env grep="Smoke"
 
 ```
