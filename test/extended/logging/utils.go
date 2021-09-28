@@ -579,9 +579,9 @@ func WaitUntilPodsAreGone(oc *exutil.CLI, namespace string, labelSelector string
 }
 
 //Check logs from resource
-func (r resource) checkLogsFromRs(oc *exutil.CLI, expected string) {
+func (r resource) checkLogsFromRs(oc *exutil.CLI, expected string, containerName string) {
 	err := wait.Poll(5*time.Second, 180*time.Second, func() (bool, error) {
-		output, err := oc.AsAdmin().WithoutNamespace().Run("logs").Args(r.kind+`/`+r.name, "-n", r.namespace).Output()
+		output, err := oc.AsAdmin().WithoutNamespace().Run("logs").Args(r.kind+`/`+r.name, "-n", r.namespace, "-c", containerName).Output()
 		if err != nil {
 			e2e.Logf("Can't get logs from resource, error: %s. Trying again", err)
 			return false, nil

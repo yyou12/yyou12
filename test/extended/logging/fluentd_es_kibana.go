@@ -118,7 +118,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging", func() {
 			o.Expect(err).NotTo(o.HaveOccurred())
 			pl := resource{"pods", appPodList.Items[0].Name, app_proj}
 			pl.assertResourceStatus(oc, "jsonpath={.status.phase}", "Running")
-			pl.checkLogsFromRs(oc, "foobar")
+			pl.checkLogsFromRs(oc, "foobar", "logging-centos-logtest")
 
 			g.By("Delete the logtest app namespace")
 			DeleteNamespace(oc, app_proj)
@@ -144,6 +144,54 @@ var _ = g.Describe("[sig-openshift-logging] Logging", func() {
 
 			g.By("Check if the logtest application logs are discarded")
 			o.Expect(LogCount).To(o.Equal(0), "The log count for the %s namespace should be 0", app_proj)
+		})
+
+		// author ikanse@redhat.com
+		g.It("CPaasrunOnly-Author:ikanse-High-42674-Elasticsearch log4j2 properties file and configuration test[Serial][Slow]", func() {
+			// create clusterlogging instance
+			g.By("deploy EFK pods")
+			sc, err := getStorageClassName(oc)
+			o.Expect(err).NotTo(o.HaveOccurred())
+			instance := exutil.FixturePath("testdata", "logging", "clusterlogging", "cl-storage-template.yaml")
+			cl := resource{"clusterlogging", "instance", cloNS}
+			defer cl.deleteClusterLogging(oc)
+			cl.createClusterLogging(oc, "-n", cl.namespace, "-f", instance, "-p", "NAMESPACE="+cl.namespace, "-p", "STORAGE_CLASS="+sc, "-p", "ES_NODE_COUNT=1", "-p", "REDUNDANCY_POLICY=ZeroRedundancy")
+
+			g.By("Waiting for the EFK pods to be ready...")
+			WaitForEFKPodsToBeReady(oc, cloNS)
+
+			g.By("Check if the log4j2 properties: file is mounted inside the elasticsearch pod.")
+			prePodList, err := oc.AdminKubeClient().CoreV1().Pods(cloNS).List(metav1.ListOptions{LabelSelector: "es-node-master=true"})
+			stat_file := "stat /usr/share/java/elasticsearch/config/log4j2.properties"
+			_, err = e2e.RunHostCmd(cloNS, prePodList.Items[0].Name, stat_file)
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			g.By("Check if log4j2 properties: file is loaded by elasticsearch pod")
+			el := resource{"pods", prePodList.Items[0].Name, cloNS}
+			el.checkLogsFromRs(oc, "-Dlog4j2.configurationFile=/usr/share/java/elasticsearch/config/log4j2.properties", "elasticsearch")
+
+			g.By("Set the Elasticsearch operator instance managementState to Unmanaged.")
+			err = oc.AsAdmin().WithoutNamespace().Run("patch").Args("es/elasticsearch", "-n", cloNS, "-p", "{\"spec\": {\"managementState\": \"Unmanaged\"}}", "--type=merge").Execute()
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			g.By("Change elasticsearch configmap to apply log4j2.properties file with log level set to debug")
+			esCMTemplate := exutil.FixturePath("testdata", "logging", "elasticsearch", "42674.yaml")
+			ecm := resource{"configmaps", "elasticsearch", cloNS}
+			err = ecm.applyFromTemplate(oc, "-n", ecm.namespace, "-f", esCMTemplate, "-p", "LOG_LEVEL=debug")
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			g.By("Delete Elasticsearch pods to pick the new configmap changes to the log4j2.properties file")
+			err = oc.AsAdmin().WithoutNamespace().Run("delete").Args("pods", "-n", cloNS, "-l", "component=elasticsearch").Execute()
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			g.By("Wait for EFK to be ready")
+			WaitForEFKPodsToBeReady(oc, cloNS)
+
+			g.By("Check the elasticsearch pod logs and confirm the logging level have changed.")
+			postPodList, err := oc.AdminKubeClient().CoreV1().Pods(cloNS).List(metav1.ListOptions{LabelSelector: "es-node-master=true"})
+			o.Expect(err).NotTo(o.HaveOccurred())
+			elp := resource{"pods", postPodList.Items[0].Name, cloNS}
+			elp.checkLogsFromRs(oc, "[DEBUG]", "elasticsearch")
 		})
 	})
 })
