@@ -22,8 +22,8 @@
             "metadata": {
                 "name": "logging-centos-logtest",
                 "labels": {
-                    "run": "centos-logtest",
-                    "test": "centos-logtest"
+                    "run": "${{LABELS}}",
+                    "test": "${{LABELS}}"
                 }
             },
             "spec": {
@@ -32,8 +32,8 @@
                     "metadata": {
                         "generateName": "centos-logtest-",
                         "labels": {
-                            "run": "centos-logtest",
-                            "test": "centos-logtest"
+                            "run": "${{LABELS}}",
+                            "test": "${{LABELS}}"
                         }
                     },
                     "spec": {
@@ -76,6 +76,11 @@
             "name": "REPLICAS",
             "displayName": "Replicas",
             "value": "1"
+        },
+        {
+            "name":"LABELS",
+            "displayName":"labels",
+            "value": "centos-logtest"
         }
     ]
 }
