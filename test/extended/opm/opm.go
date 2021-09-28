@@ -231,6 +231,34 @@ var _ = g.Describe("[sig-operators] OLM opm should", func() {
 
 	})
 
+	// author: jitli@redhat.com
+	g.It("Author:jitli-Medium-43768-Improve formatting of opm alpha validate", func() {
+
+		opmBase := exutil.FixturePath("testdata", "opm")
+		catalogdir := path.Join(opmBase, "render", "validate", "catalog")
+		catalogerrdir := path.Join(opmBase, "render", "validate", "catalog-error")
+
+		g.By("step: opm validate -h")
+		output1, err := opmCLI.Run("validate").Args("--help").Output()
+		e2e.Logf(output1)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output1).To(o.ContainSubstring("opm validate "))
+
+		g.By("opm validate catalog")
+		output, err := opmCLI.Run("validate").Args(catalogdir).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.BeEmpty())
+
+		g.By("opm validate catalog-error")
+		output, err = opmCLI.Run("validate").Args(catalogerrdir).Output()
+		o.Expect(err).To(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring("invalid package \\\"operator-1\\\""))
+		o.Expect(output).To(o.ContainSubstring("invalid channel \\\"alpha\\\""))
+		o.Expect(output).To(o.ContainSubstring("invalid bundle \\\"operator-1.v0.3.0\\\""))
+		e2e.Logf(output)
+
+	})
+
 	// author: kuiwang@redhat.com
 	g.It("ConnectedOnly-Author:kuiwang-Medium-43096-opm alpha diff support heads only", func() {
 
