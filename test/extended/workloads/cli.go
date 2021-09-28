@@ -192,6 +192,95 @@ var _ = g.Describe("[sig-cli] Workloads", func() {
 		e2e.ExpectEqual("tail", comm1)
 
 	})
+
+	// author: yinzhou@redhat.com
+	g.It("Author:yinzhou-High-43034-should not show signature verify error msgs while trying to mirror OCP image repository to", func() {
+		buildPruningBaseDir := exutil.FixturePath("testdata", "workloads")
+		podMirrorT := filepath.Join(buildPruningBaseDir, "pod_mirror.yaml")
+		g.By("create new namespace")
+		oc.SetupProject()
+
+		registry := registry{
+			dockerImage: "quay.io/openshifttest/registry:2",
+			namespace:   oc.Namespace(),
+		}
+
+		g.By("Trying to launch a registry app")
+		defer registry.deleteregistry(oc)
+		serInfo := registry.createregistry(oc)
+
+		g.By("Get the cli image from openshift")
+		cliImage := getCliImage(oc)
+
+		g.By("Create the  pull secret from the localfile")
+		defer oc.Run("delete").Args("secret/my-secret", "-n", oc.Namespace()).Execute()
+		createPullSecret(oc, oc.Namespace())
+		
+		g.By("Add the cluster admin role for the default sa")
+		defer oc.AsAdmin().WithoutNamespace().Run("adm").Args("policy", "remove-cluster-role-from-user", "cluster-admin", "-z", "default", "-n", oc.Namespace()).Execute()
+		err1 := oc.AsAdmin().WithoutNamespace().Run("adm").Args("policy", "add-cluster-role-to-user", "cluster-admin", "-z", "default", "-n", oc.Namespace()).Execute()
+		o.Expect(err1).NotTo(o.HaveOccurred())
+
+
+		imageSouceS := "--from=quay.io/openshift-release-dev/ocp-release:4.5.5-x86_64"
+		imageToS := "--to=" + serInfo.serviceUrl + "/zhouytest/test-release"
+		imageToReleaseS := "--apply-release-image-signature"
+		imagePullSecretS := "-a " + "/etc/foo/" + ".dockerconfigjson"
+
+		pod43034 := podMirror{
+			name:            "mypod43034",
+			namespace:       oc.Namespace(),
+			cliImageId:      cliImage,
+			imagePullSecret: imagePullSecretS,
+			imageSource:     imageSouceS,
+			imageTo:         imageToS,
+			imageToRelease:  imageToReleaseS,
+			template:        podMirrorT,
+		}
+
+		g.By("Trying to launch the mirror pod")
+		defer oc.Run("delete").Args("pod/mypod43034", "-n", oc.Namespace()).Execute()
+		pod43034.createPodMirror(oc)
+		g.By("check the mirror pod status")
+		err := wait.Poll(5*time.Second, 600*time.Second, func() (bool, error) {
+			out, err := oc.Run("get").Args("-n", oc.Namespace(), "pod", pod43034.name, "-o=jsonpath={.status.phase}").Output()
+			if err != nil {
+				e2e.Logf("Fail to get pod: %s, error: %s and try again", pod43034.name, err)
+			}
+			if matched, _ := regexp.MatchString("Succeeded", out); matched {
+				e2e.Logf("Mirror completed: %s", out)
+				return true, nil
+			}
+			return false, nil
+		})
+		exutil.AssertWaitPollNoErr(err, "Mirror is not completed")
+
+		g.By("Get the created configmap")
+		newConfigmapS, err := oc.Run("logs").Args("-n", oc.Namespace(), "pod/"+pod43034.name, "--tail=1").Output()
+		newConfigmapN := strings.Split(newConfigmapS, " ")[0]
+		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("-n", "openshift-config-managed", newConfigmapN).Execute()
+
+		g.By("Check the mirror result")
+		mirrorOutFile, err := oc.Run("logs").Args("-n", oc.Namespace(), "pod/"+pod43034.name).OutputToFile(getRandomString() + "workload-mirror.txt")
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		reg := regexp.MustCompile(`(unable to retrieve signature)`)
+		if reg == nil {
+			e2e.Failf("regexp err")
+		}
+		b, err := ioutil.ReadFile(mirrorOutFile)
+		if err != nil {
+			e2e.Failf("failed to read the file ")
+		}
+		s := string(b)
+		match := reg.FindString(s)
+		if match != "" {
+			e2e.Failf("Mirror failed %v", match)
+		} else {
+			e2e.Logf("Succeed with the apply-release-image-signature option")
+		}
+
+	})
 })
 
 type ClientVersion struct {
