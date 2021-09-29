@@ -38,7 +38,7 @@ var _ = g.Describe("[sig-updates] OTA osus should", func() {
 			channel:         "v1",
 			approval:        "Automatic",
 			operatorName:    "cincinnati-operator",
-			sourceName:      "redhat-operators",
+			sourceName:      "qe-app-registry",
 			sourceNamespace: "openshift-marketplace",
 			template:        subTemp,
 		}
