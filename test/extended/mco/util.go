@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -210,6 +211,24 @@ func getKubeletConfigDetails(oc *exutil.CLI, kcName string) (string, error) {
 
 func getClusterVersion(oc *exutil.CLI) (string, error) {
 	return oc.AsAdmin().WithoutNamespace().Run("get").Args("clusterversion", "-o", "jsonpath={..desired.version}").Output()
+}
+
+func getCommitId(oc *exutil.CLI, component string, clusterVersion string) (string, error) {
+	outFilePath, ocErr := oc.AsAdmin().WithoutNamespace().Run("adm").Args("release", "info", "--commits", clusterVersion).OutputToFile("commitIdLogs.txt")
+	if ocErr != nil {
+		return "", ocErr
+	}
+	commitId, cmdErr := exec.Command("bash", "-c", "cat "+outFilePath+" | grep "+component+" | awk '{print $3}'").Output()
+	return strings.TrimSuffix(string(commitId), "\n"), cmdErr
+}
+
+func getGoVersion(oc *exutil.CLI, component string, commitId string) (float64, error) {
+	curlOutput, curlErr := exec.Command("bash", "-c", "curl -Lks https://raw.githubusercontent.com/openshift/"+component+"/"+commitId+"/go.mod | egrep '^go'").Output()
+	if curlErr != nil {
+		return 0, curlErr
+	}
+	goVersion := string(curlOutput)[3:]
+	return strconv.ParseFloat(strings.TrimSuffix(goVersion, "\n"), 64)
 }
 
 func getMachineConfigDaemon(oc *exutil.CLI, node string) string {

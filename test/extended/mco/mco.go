@@ -381,6 +381,7 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 
 	g.It("Author:mhanss-Longduration-CPaasrunOnly-High-42682-change container registry config on ocp 4.6 [Disruptive]", func() {
 		clusterVersion, err := getClusterVersion(oc)
+		o.Expect(err).NotTo(o.HaveOccurred())
 		if !strings.Contains(clusterVersion, "4.6") {
 			g.Skip("Cluster version 4.6 is required to execute this test case!")
 		}
@@ -525,6 +526,36 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		foundOnWorker := containsMultipleStrings(workerMcdLogs, expectedStrings)
 		o.Expect(foundOnWorker).Should(o.BeFalse())
 		e2e.Logf("mcd log on worker node %s does not contain error messages: %v", workerNode, expectedStrings)
+	})
+
+	g.It("Author:rioliu-CPaasrunOnly-High-43278-security fix for unsafe cipher [Serial]", func() {
+		g.By("check go version >= 1.15")
+		clusterVersion, cvErr := getClusterVersion(oc)
+		o.Expect(cvErr).NotTo(o.HaveOccurred())
+		o.Expect(clusterVersion).NotTo(o.BeEmpty())
+		e2e.Logf("cluster version is %s", clusterVersion)
+		commitId, commitErr := getCommitId(oc, "machine-config", clusterVersion)
+		o.Expect(commitErr).NotTo(o.HaveOccurred())
+		o.Expect(commitId).NotTo(o.BeEmpty())
+		e2e.Logf("machine config commit id is %s", commitId)
+		goVersion, verErr := getGoVersion(oc, "machine-config-operator", commitId)
+		o.Expect(verErr).NotTo(o.HaveOccurred())
+		e2e.Logf("go version is: %f", goVersion)
+		o.Expect(float64(goVersion)).Should(o.BeNumerically(">", 1.15))
+
+		g.By("verify TLS protocol version is 1.3")
+		masterNode, nodeErr := exutil.GetFirstMasterNode(oc)
+		o.Expect(nodeErr).NotTo(o.HaveOccurred())
+		sslOutput, sslErr := exutil.DebugNodeWithChroot(oc, masterNode, "bash", "-c", "openssl s_client -connect localhost:6443 2>&1|grep -A3 SSL-Session")
+		e2e.Logf("ssl protocol version is:\n %s", sslOutput)
+		o.Expect(sslErr).NotTo(o.HaveOccurred())
+		o.Expect(sslOutput).Should(o.ContainSubstring("TLSv1.3"))
+
+		g.By("verify whether the unsafe cipher is disabled")
+		cipherOutput, cipherErr := exutil.DebugNodeWithOptions(oc, masterNode, []string{"--image=drwetter/testssl.sh", "-n", "openshift-machine-config-operator"}, "testssl.sh", "--quiet", "--sweet32", "localhost:6443")
+		e2e.Logf("test ssh script output:\n %s", cipherOutput)
+		o.Expect(cipherErr).NotTo(o.HaveOccurred())
+		o.Expect(cipherOutput).Should(o.ContainSubstring("not vulnerable (OK)"))
 	})
 })
 

@@ -24,20 +24,29 @@ func getClusterNodesBy(oc *CLI, role string) ([]string, error) {
 
 // DebugNodeWithChroot creates a debugging session of the node with chroot
 func DebugNodeWithChroot(oc *CLI, nodeName string, cmd ...string) (string, error) {
-	return debugNode(oc, nodeName, true, cmd...)
+	return debugNode(oc, nodeName, []string{}, true, cmd...)
+}
+
+// DebugNodeWithOptions launch debug container with options e.g. --image
+func DebugNodeWithOptions(oc *CLI, nodeName string, options []string, cmd ...string) (string, error) {
+	return debugNode(oc, nodeName, options, false, cmd...)
 }
 
 // DebugNode creates a debugging session of the node
 func DebugNode(oc *CLI, nodeName string, cmd ...string) (string, error) {
-	return debugNode(oc, nodeName, false, cmd...)
+	return debugNode(oc, nodeName, []string{}, false, cmd...)
 }
 
-func debugNode(oc *CLI, nodeName string, needChroot bool, cmd ...string) (string, error) {
+func debugNode(oc *CLI, nodeName string, cmdOptions []string, needChroot bool, cmd ...string) (string, error) {
 	var cargs []string
+	cargs = []string{"node/" + nodeName}
+	if len(cmdOptions) > 0 {
+		cargs = append(cargs, cmdOptions...)
+	}
 	if needChroot {
-		cargs = []string{"node/" + nodeName, "--", "chroot", "/host"}
+		cargs = append(cargs, "--", "chroot", "/host")
 	} else {
-		cargs = []string{"node/" + nodeName, "--"}
+		cargs = append(cargs, "--")
 	}
 	cargs = append(cargs, cmd...)
 	return oc.AsAdmin().Run("debug").Args(cargs...).Output()
