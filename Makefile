@@ -7,7 +7,7 @@ update-public:
 
 build:
 	mkdir -p "${OUT_DIR}"
-	export GO111MODULE="on" && export GOFLAGS="" && go build -mod=mod -o "${OUT_DIR}" "./cmd/extended-platform-tests"
+	export GO111MODULE="on" && export GOFLAGS="" && go build  -ldflags="-s -w" -mod=mod -o "${OUT_DIR}" "./cmd/extended-platform-tests"
 
 nightly-test: 
 	./hack/nightly_test.sh
