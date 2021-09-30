@@ -3,6 +3,7 @@ package mco
 import (
 	"fmt"
 	"os/exec"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -377,6 +378,36 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		e2e.Logf("file content of authorized_keys: %v", sshKeyOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(sshKeyOut).Should(o.ContainSubstring("mco_test@redhat.com"))
+	})
+
+	g.It("Author:mhanss-CPaasrunOnly-Medium-43084-shutdown machine config daemon with SIGTERM [Disruptive]", func() {
+		g.By("Create new machine config to add additional ssh key")
+		mcName := "add-additional-ssh-authorized-key"
+		mcTemplate := generateTemplateAbsolutePath(mcName + ".yaml")
+		mc := MachineConfig{name: mcName, template: mcTemplate, pool: "worker"}
+		defer mc.delete(oc)
+		mc.create(oc)
+
+		g.By("Check MCD logs to make sure shutdown machine config daemon with SIGTERM")
+		workerNode, err := exutil.GetFirstWorkerNode(oc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		podLogs, err := exutil.WaitAndGetSpecificPodLogs(oc, "openshift-machine-config-operator", "machine-config-daemon", getMachineConfigDaemon(oc, workerNode), "SIGTERM")
+		o.Expect(podLogs).Should(
+			o.And(
+				o.ContainSubstring("Adding SIGTERM protection"),
+				o.ContainSubstring("Removing SIGTERM protection")))
+
+		g.By("Kill MCD process")
+		mcdKillLogs, err := exutil.DebugNodeWithChroot(oc, workerNode, "pgrep", "-f", "machine-config-daemon_")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		mcpPid := regexp.MustCompile("(?m)^[0-9]+").FindString(mcdKillLogs)
+		_, err = exutil.DebugNodeWithChroot(oc, workerNode, "kill", mcpPid)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Check MCD logs to make sure machine config daemon without SIGTERM")
+		mcdLogs, err := exutil.GetSpecificPodLogs(oc, "openshift-machine-config-operator", "machine-config-daemon", getMachineConfigDaemon(oc, workerNode), "")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(mcdLogs).ShouldNot(o.ContainSubstring("SIGTERM"))
 	})
 
 	g.It("Author:mhanss-Longduration-CPaasrunOnly-High-42682-change container registry config on ocp 4.6 [Disruptive]", func() {

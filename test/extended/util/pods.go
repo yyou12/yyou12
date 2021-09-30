@@ -1,6 +1,8 @@
 package util
 
 import (
+	"fmt"
+	exutil "github.com/openshift/openshift-tests/test/extended/util"
 	"os/exec"
 	"strings"
 	"time"
@@ -94,14 +96,40 @@ func RemoteShPodWithBash(oc *CLI, namespace string, podName string, cmd ...strin
 	return remoteShPod(oc, namespace, podName, true, false, cmd...)
 }
 
+// WaitAndGetSpecificPodLogs wait and return the pod logs by the specific filter
+func WaitAndGetSpecificPodLogs(oc *CLI, namespace string, container string, podName string, filter string) (string, error) {
+	logs, err := GetSpecificPodLogs(oc, namespace, container, podName, filter)
+	if err != nil {
+		waitErr := wait.Poll(5*time.Second, 30*time.Second, func() (bool, error) {
+			stdout, err := GetSpecificPodLogs(oc, namespace, container, podName, filter)
+			if err != nil {
+				e2e.Logf("the err:%v, and try next round", err)
+				return false, nil
+			}
+			if strings.Contains(stdout, filter) {
+				return true, nil
+			}
+			return false, nil
+		})
+		exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("Pod logs does not contain %s", filter))
+	}
+	return logs, err
+}
+
 // GetSpecificPodLogs returns the pod logs by the specific filter
 func GetSpecificPodLogs(oc *CLI, namespace string, container string, podName string, filter string) (string, error) {
-	podLogs, err := oc.AsAdmin().WithoutNamespace().Run("logs").Args("-n", namespace, "-c", container, podName).OutputToFile("podLogs.txt")
+	var cargs []string
+	if len(container) > 0 {
+		cargs = []string{"-n", namespace, "-c", container, podName}
+	} else {
+		cargs = []string{"-n", namespace, podName}
+	}
+	podLogs, err := oc.AsAdmin().WithoutNamespace().Run("logs").Args(cargs...).OutputToFile("podLogs.txt")
 	if err != nil {
 		e2e.Logf("unable to get the pod (%s) logs", podName)
 		return podLogs, err
 	}
-	var filterCmd string = ""
+	var filterCmd = ""
 	if len(filter) > 0 {
 		filterCmd = " | grep -i " + filter
 	}
