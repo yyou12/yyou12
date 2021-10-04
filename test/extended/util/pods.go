@@ -136,3 +136,11 @@ func GetSpecificPodLogs(oc *CLI, namespace string, container string, podName str
 	filteredLogs, err := exec.Command("bash", "-c", "cat "+podLogs+filterCmd).Output()
 	return string(filteredLogs), err
 }
+
+// GetPodName returns the pod name
+func GetPodName(oc *CLI, namespace string, podLabel string, node string) (string, error) {
+	args := []string{"pods", "-n", namespace, "-l", podLabel,
+		"--field-selector", "spec.nodeName=" + node, "-o", "jsonpath='{..metadata.name}'"}
+	daemonPod, err := oc.AsAdmin().WithoutNamespace().Run("get").Args(args...).Output()
+	return strings.ReplaceAll(daemonPod, "'", ""), err
+}

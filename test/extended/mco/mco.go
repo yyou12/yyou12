@@ -411,9 +411,9 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 	})
 
 	g.It("Author:mhanss-Longduration-CPaasrunOnly-High-42682-change container registry config on ocp 4.6 [Disruptive]", func() {
-		clusterVersion, err := getClusterVersion(oc)
+		clusterVersion, _, err := exutil.GetClusterVersion(oc)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		if !strings.Contains(clusterVersion, "4.6") {
+		if clusterVersion != 4.6 {
 			g.Skip("Cluster version 4.6 is required to execute this test case!")
 		}
 
@@ -561,7 +561,7 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 
 	g.It("Author:rioliu-CPaasrunOnly-High-43278-security fix for unsafe cipher [Serial]", func() {
 		g.By("check go version >= 1.15")
-		clusterVersion, cvErr := getClusterVersion(oc)
+		_, clusterVersion, cvErr := exutil.GetClusterVersion(oc)
 		o.Expect(cvErr).NotTo(o.HaveOccurred())
 		o.Expect(clusterVersion).NotTo(o.BeEmpty())
 		e2e.Logf("cluster version is %s", clusterVersion)
@@ -569,7 +569,7 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		o.Expect(commitErr).NotTo(o.HaveOccurred())
 		o.Expect(commitId).NotTo(o.BeEmpty())
 		e2e.Logf("machine config commit id is %s", commitId)
-		goVersion, verErr := getGoVersion(oc, "machine-config-operator", commitId)
+		goVersion, verErr := getGoVersion("machine-config-operator", commitId)
 		o.Expect(verErr).NotTo(o.HaveOccurred())
 		e2e.Logf("go version is: %f", goVersion)
 		o.Expect(float64(goVersion)).Should(o.BeNumerically(">", 1.15))

@@ -209,10 +209,6 @@ func getKubeletConfigDetails(oc *exutil.CLI, kcName string) (string, error) {
 	return oc.AsAdmin().WithoutNamespace().Run("get").Args("kubeletconfig", kcName, "-o", "yaml").Output()
 }
 
-func getClusterVersion(oc *exutil.CLI) (string, error) {
-	return oc.AsAdmin().WithoutNamespace().Run("get").Args("clusterversion", "-o", "jsonpath={..desired.version}").Output()
-}
-
 func getCommitId(oc *exutil.CLI, component string, clusterVersion string) (string, error) {
 	outFilePath, ocErr := oc.AsAdmin().WithoutNamespace().Run("adm").Args("release", "info", "--commits", clusterVersion).OutputToFile("commitIdLogs.txt")
 	if ocErr != nil {
@@ -222,7 +218,7 @@ func getCommitId(oc *exutil.CLI, component string, clusterVersion string) (strin
 	return strings.TrimSuffix(string(commitId), "\n"), cmdErr
 }
 
-func getGoVersion(oc *exutil.CLI, component string, commitId string) (float64, error) {
+func getGoVersion(component string, commitId string) (float64, error) {
 	curlOutput, curlErr := exec.Command("bash", "-c", "curl -Lks https://raw.githubusercontent.com/openshift/"+component+"/"+commitId+"/go.mod | egrep '^go'").Output()
 	if curlErr != nil {
 		return 0, curlErr
@@ -232,11 +228,9 @@ func getGoVersion(oc *exutil.CLI, component string, commitId string) (float64, e
 }
 
 func getMachineConfigDaemon(oc *exutil.CLI, node string) string {
-	args := []string{"pods", "-n", "openshift-machine-config-operator", "-l", "k8s-app=machine-config-daemon",
-		"--field-selector", "spec.nodeName=" + node, "-o", "jsonpath='{..metadata.name}'"}
-	daemonPod, err := oc.AsAdmin().WithoutNamespace().Run("get").Args(args...).Output()
+	machineConfigDaemon, err := exutil.GetPodName(oc, "openshift-machine-config-operator", "k8s-app=machine-config-daemon", node)
 	o.Expect(err).NotTo(o.HaveOccurred())
-	return strings.ReplaceAll(daemonPod, "'", "")
+	return machineConfigDaemon
 }
 
 func getContainerRuntimeConfigDetails(oc *exutil.CLI, crName string) (string, error) {
