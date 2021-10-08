@@ -2530,7 +2530,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		})
 
 		// author: pdhamdhe@redhat.com
-		g.It("Author:pdhamdhe-High-41093-The instructions should be available for all rules in cis profiles [Slow]", func() {
+		g.It("Author:pdhamdhe-High-41093-Medium-44944-The instructions should be available for all rules in cis profiles and The nodeName shows in target and fact:identifier elements of complianceScan XCCDF format result [Slow]", func() {
 			var (
 				ssb = scanSettingBindingDescription{
 					name:            "cis-instruction",
@@ -2561,7 +2561,10 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			checkResourceNumber(oc, 25, "compliancecheckresult", "-l", "compliance.openshift.io/check-status=MANUAL", "--no-headers", "-n", subD.namespace)
 			checkCisRulesInstruction(oc)
 
-			g.By("ocp-41093 Successfully verify that all CIS rules has instructions ..!!!\n")
+			g.By("Verify the nodeName shows in target & fact:identifier elements of complianceScan XCCDF format result.. !!!\n")
+			extractResultFromConfigMap(oc, "worker", ssb.namespace)
+			extractResultFromConfigMap(oc, "master", ssb.namespace)
+			g.By("All CIS rules has instructions & nodeName is available in target & identifier elements of complianceScan XCCDF format result..!!!\n")
 		})
 
 		// author: pdhamdhe@redhat.com

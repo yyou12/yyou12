@@ -557,7 +557,6 @@ func checkKeyWordsForRspod(oc *exutil.CLI, podname string, keyword [3]string) {
 	var flag bool = true
 	var kw string
 	output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", podname, "-n", oc.Namespace(), "-o=json").Output()
-
 	o.Expect(err).NotTo(o.HaveOccurred())
 	for _, v := range keyword {
 		kw = fmt.Sprintf("%s", v)
@@ -786,4 +785,26 @@ func checkNodeStatus(oc *exutil.CLI) {
 		return true, nil
 	})
 	exutil.AssertWaitPollNoErr(err, "One or more nodes are NotReady state")
+}
+
+func extractResultFromConfigMap(oc *exutil.CLI, label string, namespace string) {
+	err := wait.Poll(5*time.Second, 30*time.Second, func() (bool, error) {
+		nodeName, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("nodes", "--selector=node-role.kubernetes.io/"+label+"=,node.openshift.io/os_id=rhcos", "-o=jsonpath={.items[0].metadata.name}", "-n", namespace).Output()
+		e2e.Logf("%s nodename : %s \n", label, nodeName)
+		cmNames, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("configmap", "-lcompliance.openshift.io/scan-name=ocp4-cis-node-"+label+",complianceoperator.openshift.io/scan-result=", "--no-headers", "-ojsonpath={.items[*].metadata.name}", "-n", namespace).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		cmName := strings.Fields(cmNames)
+		for _, v := range cmName {
+			cmResult, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("configmap", v, "-ojsonpath={.data.results}", "-n", namespace).OutputToFile(getRandomString() + "result.json")
+			o.Expect(err).NotTo(o.HaveOccurred())
+			result, _ := exec.Command("bash", "-c", "cat "+cmResult+" | grep -e \"<target>\" -e identifier ; rm -rf "+cmResult).Output()
+			tiResult := string(result)
+			if strings.Contains(tiResult, nodeName) {
+				e2e.Logf("Node name '%s' shows in ComplianceScan XCCDF format result \n\n %s \n", nodeName, tiResult)
+				return true, nil
+			}
+		}
+		return false, nil
+	})
+	exutil.AssertWaitPollNoErr(err, "Node name does not matches with the ComplianceScan XCCDF result output")
 }
