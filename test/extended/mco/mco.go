@@ -2,6 +2,7 @@ package mco
 
 import (
 	"fmt"
+	ci "github.com/openshift/openshift-tests-private/test/extended/util/clusterinfrastructure"
 	"os/exec"
 	"regexp"
 	"strconv"
@@ -145,14 +146,19 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 	})
 
 	g.It("Author:mhanss-Longduration-CPaasrunOnly-Critical-42365-add real time kernel argument [Disruptive]", func() {
-		workerNode, err := skipTestIfOsIsNotCoreOs(oc)
-		o.Expect(err).NotTo(o.HaveOccurred())
-		textToVerify := TextToVerify{
-			textToVerifyForMC:   "realtime",
-			textToVerifyForNode: "PREEMPT_RT",
-			needBash:            true,
+		platform := ci.CheckPlatform(oc)
+		if platform == "gcp" || platform == "aws" {
+			workerNode, err := skipTestIfOsIsNotCoreOs(oc)
+			o.Expect(err).NotTo(o.HaveOccurred())
+			textToVerify := TextToVerify{
+				textToVerifyForMC:   "realtime",
+				textToVerifyForNode: "PREEMPT_RT",
+				needBash:            true,
+			}
+			createMcAndVerifyMCValue(oc, "Kernel argument", "change-worker-kernel-argument", workerNode, textToVerify, "uname -a")
+		} else {
+			g.Skip("AWS or GCP platform is required to execute this test case as currently kernel real time argument is only supported by these platforms!")
 		}
-		createMcAndVerifyMCValue(oc, "Kernel argument", "change-worker-kernel-argument", workerNode, textToVerify, "uname -a")
 	})
 
 	g.It("Author:mhanss-Longduration-CPaasrunOnly-Critical-42364-add selinux kernel argument [Disruptive]", func() {
