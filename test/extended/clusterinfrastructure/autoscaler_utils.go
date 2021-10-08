@@ -45,14 +45,14 @@ func (clusterAutoscaler *clusterAutoscalerDescription) deleteClusterAutoscaler(o
 }
 
 func (machineAutoscaler *machineAutoscalerDescription) createMachineAutoscaler(oc *exutil.CLI) {
-	e2e.Logf("Creating machienautoscaler ...")
+	e2e.Logf("Creating machineautoscaler ...")
 	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", machineAutoscaler.template, "-p", "NAME="+machineAutoscaler.name, "NAMESPACE="+machineAPINamespace, "REPLICAS="+strconv.Itoa(machineAutoscaler.maxReplicas), "CLUSTERID="+strconv.Itoa(machineAutoscaler.maxReplicas))
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
 func (machineAutoscaler *machineAutoscalerDescription) deleteMachineAutoscaler(oc *exutil.CLI) error {
-	e2e.Logf("Deleting a machienautoscaler ...")
-	return oc.AsAdmin().WithoutNamespace().Run("delete").Args("machienautoscaler", machineAutoscaler.name, "-n", machineAPINamespace).Execute()
+	e2e.Logf("Deleting a machineautoscaler ...")
+	return oc.AsAdmin().WithoutNamespace().Run("delete").Args("machineautoscaler", machineAutoscaler.name, "-n", machineAPINamespace).Execute()
 }
 
 func applyResourceFromTemplate(oc *exutil.CLI, parameters ...string) error {
