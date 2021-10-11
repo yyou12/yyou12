@@ -1,11 +1,14 @@
 package cvo
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"os/exec"
 	"regexp"
 	"time"
 
+	"cloud.google.com/go/storage"
 	g "github.com/onsi/ginkgo"
 	o "github.com/onsi/gomega"
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
@@ -112,5 +115,141 @@ var _ = g.Describe("[sig-updates] OTA cvo should", func() {
 		appeared, _, err = waitForAlert(oc, "CannotRetrieveUpdates", 300, 600, "")
 		o.Expect(appeared).NotTo(o.BeTrue())
 		o.Expect(err.Error()).To(o.ContainSubstring("timed out waiting for the condition"))
+	})
+
+	//author: yanyang@redhat.com
+	g.It("ConnectedOnly-Author:yanyang-Medium-43178-manage channel by using oc adm upgrade channel [Serial]", func() {
+		projectID := "openshift-qe"
+		ctx := context.Background()
+		client, err := storage.NewClient(ctx)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		defer client.Close()
+
+		graphURL, bucket, object, err := buildGraph(client, oc, projectID)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		defer DeleteBucket(client, bucket)
+		defer DeleteObject(client, bucket, object)
+
+		orgUpstream, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("clusterversion", "-o=jsonpath={.items[].spec.upstream}").Output()
+		orgChannel, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("clusterversion", "-o=jsonpath={.items[].spec.channel}").Output()
+
+		defer func() {
+			oc.AsAdmin().WithoutNamespace().Run("adm").Args("upgrade", "channel", "--allow-explicit-channel", orgChannel).Execute()
+			exec.Command("bash", "-c", "sleep 5").Output()
+			if orgUpstream == "" {
+				oc.AsAdmin().WithoutNamespace().Run("patch").Args("clusterversion/version", "--type=json", "-p", "[{\"op\":\"remove\", \"path\":\"/spec/upstream\"}]").Execute()
+			} else {
+				oc.AsAdmin().WithoutNamespace().Run("patch").Args("clusterversion/version", "--type=merge", "--patch", fmt.Sprintf("{\"spec\":{\"upstream\":\"%s\"}}", orgUpstream)).Execute()
+			}
+		}()
+
+		// Prerequisite: the available channels are not present
+		g.By("The test requires the available channels are not present as a prerequisite")
+		cmdOut, _ := oc.AsAdmin().WithoutNamespace().Run("adm").Args("upgrade").Output()
+		o.Expect(cmdOut).NotTo(o.ContainSubstring("available channels:"))
+
+		version, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("clusterversion", "version", "-o=jsonpath={.status.desired.version}").Output()
+
+		g.By("Set to an unknown channel when available channels are not present")
+		cmdOut, err = oc.AsAdmin().WithoutNamespace().Run("adm").Args("upgrade", "channel", "unknown-channel").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(cmdOut).To(o.ContainSubstring(fmt.Sprintf("warning: No channels known to be compatible with the current version \"%s\"; unable to validate \"unknown-channel\". Setting the update channel to \"unknown-channel\" anyway.", version)))
+		cmdOut, err = oc.AsAdmin().WithoutNamespace().Run("adm").Args("upgrade").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(cmdOut).To(o.ContainSubstring("Channel: unknown-channel"))
+
+		g.By("Clear an unknown channel when available channels are not present")
+		cmdOut, err = oc.AsAdmin().WithoutNamespace().Run("adm").Args("upgrade", "channel").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(cmdOut).To(o.ContainSubstring("warning: Clearing channel \"unknown-channel\"; cluster will no longer request available update recommendations."))
+		cmdOut, err = oc.AsAdmin().WithoutNamespace().Run("adm").Args("upgrade").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(cmdOut).To(o.ContainSubstring("NoChannel"))
+
+		// Prerequisite: a dummy update server is ready and the available channels is present
+		g.By("Change to a dummy update server")
+		err = oc.AsAdmin().WithoutNamespace().Run("patch").Args("clusterversion/version", "--type=merge", "--patch", fmt.Sprintf("{\"spec\":{\"upstream\":\"%s\", \"channel\":\"channel-a\"}}", graphURL)).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		exec.Command("bash", "-c", "sleep 5").Output()
+		cmdOut, err = oc.AsAdmin().WithoutNamespace().Run("adm").Args("upgrade").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(cmdOut).To(o.ContainSubstring("Channel: channel-a (available channels: channel-a, channel-b)"))
+
+		g.By("Specify multiple channels")
+		cmdOut, err = oc.AsAdmin().WithoutNamespace().Run("adm").Args("upgrade", "channel", "channel-a", "channel-b").Output()
+		o.Expect(err).To(o.HaveOccurred())
+		o.Expect(cmdOut).To(o.ContainSubstring("error: multiple positional arguments given\nSee 'oc adm upgrade channel -h' for help and examples"))
+
+		g.By("Set a channel which is same as the current channel")
+		cmdOut, err = oc.AsAdmin().WithoutNamespace().Run("adm").Args("upgrade", "channel", "channel-a").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(cmdOut).To(o.ContainSubstring("info: Cluster is already in channel-a (no change)"))
+
+		g.By("Clear a known channel which is in the available channels without --allow-explicit-channel")
+		cmdOut, err = oc.AsAdmin().WithoutNamespace().Run("adm").Args("upgrade", "channel").Output()
+		o.Expect(err).To(o.HaveOccurred())
+		o.Expect(cmdOut).To(o.ContainSubstring("error: You are requesting to clear the update channel. The current channel \"channel-a\" is one of the available channels, you must pass --allow-explicit-channel to continue"))
+
+		g.By("Clear a known channel which is in the available channels with --allow-explicit-channel")
+		cmdOut, err = oc.AsAdmin().WithoutNamespace().Run("adm").Args("upgrade", "channel", "--allow-explicit-channel").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(cmdOut).To(o.ContainSubstring("warning: Clearing channel \"channel-a\"; cluster will no longer request available update recommendations."))
+		cmdOut, err = oc.AsAdmin().WithoutNamespace().Run("adm").Args("upgrade").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(cmdOut).To(o.ContainSubstring("NoChannel"))
+
+		g.By("Re-clear the channel")
+		cmdOut, err = oc.AsAdmin().WithoutNamespace().Run("adm").Args("upgrade", "channel").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(cmdOut).To(o.ContainSubstring("info: Cluster channel is already clear (no change)"))
+
+		g.By("Set to an unknown channel when the available channels are not present without --allow-explicit-channel")
+		cmdOut, err = oc.AsAdmin().WithoutNamespace().Run("adm").Args("upgrade", "channel", "channel-d").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		exec.Command("bash", "-c", "sleep 5").Output()
+		o.Expect(cmdOut).To(o.ContainSubstring(fmt.Sprintf("warning: No channels known to be compatible with the current version \"%s\"; unable to validate \"channel-d\". Setting the update channel to \"channel-d\" anyway.", version)))
+		cmdOut, err = oc.AsAdmin().WithoutNamespace().Run("adm").Args("upgrade").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(cmdOut).To(o.ContainSubstring("Channel: channel-d (available channels: channel-a, channel-b)"))
+
+		g.By("Set to an unknown channel which is not in the available channels without --allow-explicit-channel")
+		cmdOut, err = oc.AsAdmin().WithoutNamespace().Run("adm").Args("upgrade", "channel", "channel-f").Output()
+		o.Expect(err).To(o.HaveOccurred())
+		exec.Command("bash", "-c", "sleep 5").Output()
+		o.Expect(cmdOut).To(o.ContainSubstring("error: the requested channel \"channel-f\" is not one of the available channels (channel-a, channel-b), you must pass --allow-explicit-channel to continue"))
+
+		g.By("Set to an unknown channel which is not in the available channels with --allow-explicit-channel")
+		cmdOut, err = oc.AsAdmin().WithoutNamespace().Run("adm").Args("upgrade", "channel", "channel-f", "--allow-explicit-channel").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		exec.Command("bash", "-c", "sleep 5").Output()
+		o.Expect(cmdOut).To(o.ContainSubstring("warning: The requested channel \"channel-f\" is not one of the available channels (channel-a, channel-b). You have used --allow-explicit-channel to proceed anyway. Setting the update channel to \"channel-f\"."))
+		cmdOut, err = oc.AsAdmin().WithoutNamespace().Run("adm").Args("upgrade").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(cmdOut).To(o.ContainSubstring("Channel: channel-f (available channels: channel-a, channel-b)"))
+
+		g.By("Clear an unknown channel which is not in the available channels without --allow-explicit-channel")
+		cmdOut, err = oc.AsAdmin().WithoutNamespace().Run("adm").Args("upgrade", "channel").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(cmdOut).To(o.ContainSubstring("warning: Clearing channel \"channel-f\"; cluster will no longer request available update recommendations."))
+		cmdOut, err = oc.AsAdmin().WithoutNamespace().Run("adm").Args("upgrade").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(cmdOut).To(o.ContainSubstring("NoChannel"))
+
+		g.By("Set to a known channel when the available channels are not present")
+		cmdOut, err = oc.AsAdmin().WithoutNamespace().Run("adm").Args("upgrade", "channel", "channel-a").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		exec.Command("bash", "-c", "sleep 5").Output()
+		o.Expect(cmdOut).To(o.ContainSubstring(fmt.Sprintf("warning: No channels known to be compatible with the current version \"%s\"; unable to validate \"channel-a\". Setting the update channel to \"channel-a\" anyway.", version)))
+		cmdOut, err = oc.AsAdmin().WithoutNamespace().Run("adm").Args("upgrade").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(cmdOut).To(o.ContainSubstring("Channel: channel-a (available channels: channel-a, channel-b)"))
+
+		g.By("Set to a known channel without --allow-explicit-channel")
+		_, err = oc.AsAdmin().WithoutNamespace().Run("adm").Args("upgrade", "channel", "channel-b").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		exec.Command("bash", "-c", "sleep 5").Output()
+		cmdOut, err = oc.AsAdmin().WithoutNamespace().Run("adm").Args("upgrade").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(cmdOut).To(o.ContainSubstring("Channel: channel-b (available channels: channel-a, channel-b)"))
 	})
 })

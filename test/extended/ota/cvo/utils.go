@@ -1,11 +1,21 @@
 package cvo
 
 import (
+	"context"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
+	"os"
 	"os/exec"
+	"path/filepath"
+	"strconv"
+	"strings"
 	"time"
 
+	"cloud.google.com/go/storage"
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
 	"k8s.io/apimachinery/pkg/util/wait"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
@@ -120,4 +130,216 @@ func waitForAlert(oc *exutil.CLI, alertString string, interval time.Duration, ti
 	}
 
 	return true, annoMap, nil
+}
+
+// createBucket creates a new bucket in the gcs
+// projectID := "my-project-id"
+// bucketName := "bucket-name"
+// return value: error: any error
+func CreateBucket(client *storage.Client, projectID, bucketName string) error {
+	ctx := context.Background()
+
+	ctx, cancel := context.WithTimeout(ctx, time.Second*10)
+	defer cancel()
+	if err := client.Bucket(bucketName).Create(ctx, projectID, nil); err != nil {
+		return err
+	}
+	return nil
+}
+
+// uploadFile uploads a gcs object
+// bucket := "bucket-name"
+// object := "object-name"
+// return value: error: any error
+func UploadFile(client *storage.Client, bucket, object, file string) error {
+	// Open local file
+	f, err := os.Open(file)
+	if err != nil {
+		return fmt.Errorf("os.Open: %v", err)
+	}
+	defer f.Close()
+
+	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(ctx, time.Second*50)
+	defer cancel()
+
+	// Upload an object with storage.Writer.
+	wc := client.Bucket(bucket).Object(object).NewWriter(ctx)
+	if _, err = io.Copy(wc, f); err != nil {
+		return fmt.Errorf("io.Copy: %v", err)
+	}
+	if err := wc.Close(); err != nil {
+		return fmt.Errorf("Writer.Close: %v", err)
+	}
+	return nil
+}
+
+// makePublic makes a gcs object public
+// bucket := "bucket-name"
+// object := "object-name"
+// return value: error: any error
+func MakePublic(client *storage.Client, bucket, object string) error {
+	ctx := context.Background()
+
+	ctx, cancel := context.WithTimeout(ctx, time.Second*10)
+	defer cancel()
+	acl := client.Bucket(bucket).Object(object).ACL()
+	if err := acl.Set(ctx, storage.AllUsers, storage.RoleReader); err != nil {
+		return err
+	}
+	return nil
+}
+
+// Delete deletes the gcs object
+// return value: error: any error
+func DeleteObject(client *storage.Client, bucket, object string) error {
+	if object == "" {
+		return nil
+	}
+
+	ctx := context.Background()
+
+	ctx, cancel := context.WithTimeout(ctx, time.Second*10)
+	defer cancel()
+	o := client.Bucket(bucket).Object(object)
+	if err := o.Delete(ctx); err != nil {
+		return err
+	}
+	e2e.Logf("Object: %v deleted", object)
+	return nil
+}
+
+// DeleteBucket deletes gcs bucket
+// return value: error: any error
+func DeleteBucket(client *storage.Client, bucketName string) error {
+	if bucketName == "" {
+		return nil
+	}
+
+	ctx := context.Background()
+
+	ctx, cancel := context.WithTimeout(ctx, time.Second*10)
+	defer cancel()
+	if err := client.Bucket(bucketName).Delete(ctx); err != nil {
+		return err
+	}
+	e2e.Logf("Bucket: %v deleted", bucketName)
+	return nil
+}
+
+// GenerateReleaseVersion generates a fake release version based on source release version
+func GenerateReleaseVersion(oc *exutil.CLI) string {
+	sourceVersion, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("clusterversion/version", "-o=jsonpath={.status.desired.version}").Output()
+	if err != nil {
+		return ""
+	}
+	splits := strings.Split(sourceVersion, ".")
+	if len(splits) > 1 {
+		if sourceMinorNum, err := strconv.Atoi(splits[1]); err == nil {
+			targeMinorNum := sourceMinorNum + 1
+			splits[1] = strconv.Itoa(targeMinorNum)
+			return strings.Join(splits, ".")
+		}
+	}
+	return ""
+}
+
+// GenerateReleasePayload generates a fake release payload based on source release payload by default
+func GenerateReleasePayload(oc *exutil.CLI) string {
+	var targetDigest string
+	sourcePayload, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("clusterversion/version", "-o=jsonpath={.status.desired.image}").Output()
+	if err != nil {
+		return ""
+	}
+	data := make([]byte, 10)
+	if _, err := rand.Read(data); err == nil {
+		sh256Bytes := sha256.Sum256(data)
+		targetDigest = hex.EncodeToString(sh256Bytes[:])
+	} else {
+		return ""
+	}
+
+	splits := strings.Split(sourcePayload, ":")
+	if len(splits) > 1 {
+		splits[1] = targetDigest
+		return strings.Join(splits, ":")
+	}
+	return ""
+}
+
+// updateGraph updates the cincy.json
+// return value: string: filename
+// return value: error: any error
+func updateGraph(oc *exutil.CLI) (string, error) {
+	graphDataDir := exutil.FixturePath("testdata", "ota/cvo")
+	graphTemplate := filepath.Join(graphDataDir, "cincy.json")
+
+	e2e.Logf("Graph Template: %v", graphTemplate)
+
+	// Assume the cluster is not being upgraded, then desired version will be the current version
+	sourceVersion, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("clusterversion/version", "-o=jsonpath={.status.desired.version}").Output()
+	if err != nil {
+		return "", err
+	}
+	sourcePayload, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("clusterversion/version", "-o=jsonpath={.status.desired.image}").Output()
+	if err != nil {
+		return "", err
+	}
+
+	targetVersion := GenerateReleaseVersion(oc)
+	if targetVersion == "" {
+		return "", fmt.Errorf("Error get target version")
+	}
+	targetPayload := GenerateReleasePayload(oc)
+	if targetPayload == "" {
+		return "", fmt.Errorf("Error get target payload")
+	}
+
+	// Give the new graph a unique name
+	// graphFile := fmt.Sprintf("cincy-%d", time.Now().Unix())
+
+	sedCmd := fmt.Sprintf("sed -i -e 's|sourceversion|%s|; s|sourcepayload|%s|; s|targetversion|%s|; s|targetpayload|%s|' %s", sourceVersion, sourcePayload, targetVersion, targetPayload, graphTemplate)
+	//fmt.Println(sedCmd)
+	if err := exec.Command("bash", "-c", sedCmd).Run(); err == nil {
+		return graphTemplate, nil
+	} else {
+		e2e.Logf("Error on sed command: %v", err.Error())
+		return "", err
+	}
+}
+
+// buildGraph creates a gcs bucket, upload the graph file and make it public for CVO to use
+// projectID := "projectID"
+// return value: string: the public url of the object
+// return value: string: the bucket name
+// return value: string: the object name
+// return value: error: any error
+func buildGraph(client *storage.Client, oc *exutil.CLI, projectID string) (string, string, string, error) {
+	graphFile, err := updateGraph(oc)
+	if err != nil {
+		return "", "", "", err
+	}
+	e2e.Logf("Graph file: %v updated", graphFile)
+
+	// Give the bucket a unique name
+	bucket := fmt.Sprintf("ocp-ota-%d", time.Now().Unix())
+	if err := CreateBucket(client, projectID, bucket); err != nil {
+		return "", "", "", err
+	}
+	e2e.Logf("Bucket: %v created", bucket)
+
+	// Give the object a unique name
+	object := fmt.Sprintf("graph-%d", time.Now().Unix())
+	if err := UploadFile(client, bucket, object, graphFile); err != nil {
+		return "", bucket, "", err
+	}
+	e2e.Logf("Object: %v uploaded", object)
+
+	// Make the object public
+	if err := MakePublic(client, bucket, object); err != nil {
+		return "", bucket, object, err
+	}
+	e2e.Logf("Object: %v public", object)
+
+	return fmt.Sprintf("https://storage.googleapis.com/%s/%s", bucket, object), bucket, object, nil
 }
