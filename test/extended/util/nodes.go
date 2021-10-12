@@ -4,6 +4,12 @@ import (
 	"strings"
 )
 
+// GetAllNodes returns a list of the names of all nodes in the cluster
+func GetAllNodes(oc *CLI) ([]string, error) {
+	nodes, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("node", "-o", "jsonpath='{.items[*].metadata.name}'").Output()
+	return strings.Split(strings.Trim(nodes, "'"), " "), err
+}
+
 // GetFirstWorkerNode returns a first worker node
 func GetFirstWorkerNode(oc *CLI) (string, error) {
 	workerNodes, err := getClusterNodesBy(oc, "worker")

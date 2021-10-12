@@ -144,3 +144,13 @@ func GetPodName(oc *CLI, namespace string, podLabel string, node string) (string
 	daemonPod, err := oc.AsAdmin().WithoutNamespace().Run("get").Args(args...).Output()
 	return strings.ReplaceAll(daemonPod, "'", ""), err
 }
+
+// GetPodNodeName returns the name of the node the given pod is running on
+func GetPodNodeName(oc *CLI, namespace string, podName string) (string, error) {
+	return oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", podName, "-n", namespace, "-o=jsonpath={.spec.nodeName}").Output()
+}
+
+// LabelPod labels a given pod with a given label in a given namespace
+func LabelPod(oc *CLI, namespace string, podName string, label string) error {
+	return oc.AsAdmin().WithoutNamespace().Run("label").Args("-n", namespace, "pod", podName, label).Execute()
+}
