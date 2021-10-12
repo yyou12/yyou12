@@ -3,6 +3,7 @@ module github.com/openshift/openshift-tests-private
 go 1.16
 
 require (
+	cloud.google.com/go v0.38.0
 	github.com/RangelReale/osincli v0.0.0-20160924135400-fababb0555f2
 	github.com/aws/aws-sdk-go v1.16.26
 	github.com/davecgh/go-spew v1.1.1
