@@ -34,7 +34,7 @@ type podModify struct {
 
 func (fi1 *fileintegrity) checkFileintegrityStatus(oc *exutil.CLI, expected string) {
 	err := wait.Poll(5*time.Second, 120*time.Second, func() (bool, error) {
-		output, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-n", fi1.namespace, "-l app=aide-ds-example-fileintegrity",
+		output, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-n", fi1.namespace, "-l app=aide-example-fileintegrity",
 			"-o=jsonpath={.items[*].status.containerStatuses[*].state}").Output()
 		e2e.Logf("the result of checkFileintegrityStatus:%v", output)
 		if strings.Contains(output, expected) && (!(strings.Contains(strings.ToLower(output), "error"))) && (!(strings.Contains(strings.ToLower(output), "crashLoopbackOff"))) {
@@ -42,7 +42,7 @@ func (fi1 *fileintegrity) checkFileintegrityStatus(oc *exutil.CLI, expected stri
 		}
 		return false, nil
 	})
-	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("the state of pod with app=aide-ds-example-fileintegrity is not expected %s", expected))
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("the state of pod with app=aide-example-fileintegrity is not expected %s", expected))
 }
 
 func (fi1 *fileintegrity) getConfigmapFromFileintegritynodestatus(oc *exutil.CLI, nodeName string) string {
