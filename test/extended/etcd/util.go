@@ -3,15 +3,37 @@ package etcd
 import (
 	o "github.com/onsi/gomega"
 
+	"fmt"
 	"strings"
 	"time"
 	"math/rand"
 	"regexp"
 
+	"encoding/json"
+
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 )
 
+
+type PrometheusQueryResult struct {
+	Status string `json:"status"`
+	Data struct {
+		ResultType string `json:"resultType"`
+		Result []struct {
+			Metric struct {
+				To		string `json:"To"`
+				Endpoint	string `json:"endpoint"`
+				Instance	string `json:"instance"`
+				Job		string `json:"job"`
+				Namespace	string `json:"namespace"`
+				Pod		string `json:"pod"`
+				Service		string `json:"service"`
+			} `json:"metric"`
+			Value []interface{} `json:"value"`
+		} `json:"result"`
+	} `json:"data"`
+}
 
 func getRandomString() string {
         chars := "abcdefghijklmnopqrstuvwxyz0123456789"
@@ -54,4 +76,28 @@ func runDRBackup(oc *exutil.CLI, nodeNameList []string) (nodeName string, etcddb
 		}
 	}
 	return nodeN,etcdDb
+}
+
+func doPrometheusQuery(oc *exutil.CLI, token string, url string, query string) PrometheusQueryResult {
+	var data PrometheusQueryResult
+	msg, _, err := oc.AsAdmin().WithoutNamespace().Run("exec").Args(
+		"-n", "openshift-monitoring", "-c", "prometheus", "prometheus-k8s-0", "-i", "--",
+		"curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", token),
+		fmt.Sprintf("%s%s", url, query)).Outputs()
+	if err != nil {
+		e2e.Failf("Failed Prometheus query, error: %v", err)
+	}
+	o.Expect(msg).NotTo(o.BeEmpty())
+	json.Unmarshal([]byte(msg), &data)
+	logPrometheusResult(data)
+	return data
+}
+
+func logPrometheusResult(data PrometheusQueryResult) {
+	if len(data.Data.Result) > 0 {
+		e2e.Logf("Unexpected metric values.")
+		for i, v := range data.Data.Result {
+			e2e.Logf(fmt.Sprintf("index: %d value: %s", i, v.Value[1].(string)))
+		}
+	}
 }
