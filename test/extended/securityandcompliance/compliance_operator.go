@@ -3174,7 +3174,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 				nsName := "ns-42720-1"
 				cleanupObjects(oc, objectTableRef{"ns", nsName, nsName})
 				cleanupObjects(oc, objectTableRef{"scansettingbinding", subD.namespace, ssb.name})
-				nonControlNamespacesList := getNonControlNamespaces(oc)
+				nonControlNamespacesList := getNonControlNamespaces(oc, "Active")
 				for _, v := range nonControlNamespacesList {
 					cleanupObjects(oc, objectTableRef{"NetworkPolicy", v, "allow-same-namespace"})
 					newCheck("expect", asAdmin, withoutNamespace, contain, "allow-same-namespace", nok, []string{"NetworkPolicy", "-n", v, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
@@ -3183,52 +3183,88 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 
 			g.By("Check default profiles name ocp4-moderate .. !!!\n")
 			subD.getProfileName(oc, "ocp4-moderate")
+			ssb.namespace = subD.namespace
+
+			nonControlNamespacesTerList := getNonControlNamespaces(oc, "Terminating")
+			e2e.Logf("Terminating Non Control Namespaces List: %s", nonControlNamespacesTerList)
+			if len(nonControlNamespacesTerList) != 0 {
+				for _, v := range nonControlNamespacesTerList {
+					scanName, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("scan", "-n", v, "-ojsonpath={.items[*].metadata.name}").Output()
+					scans := strings.Fields(scanName)
+					patch := fmt.Sprintf("[{\"op\": \"remove\", \"path\": \"/metadata/finalizers\"}]")
+					if len(scans) != 0 {
+						for _, scanname := range scans {
+							e2e.Logf("The %s scan patched to remove finalizers from namespace %s \n", scanname, v)
+							patchResource(oc, asAdmin, withoutNamespace, "scan", scanname, "--type", "json", "-p", patch, "-n", v)
+						}
+					}
+					suiteName, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("suite", "-n", v, "-ojsonpath={.items[*].metadata.name}").Output()
+					suites := strings.Fields(suiteName)
+					if len(suites) != 0 {
+						for _, suitename := range suites {
+							e2e.Logf("The %s suite patched to remove finalizers from namespace %s \n", suitename, v)
+							patchResource(oc, asAdmin, withoutNamespace, "suite", suitename, "--type", "json", "-p", patch, "-n", v)
+						}
+					}
+					profbName, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("profilebundles", "-n", v, "-ojsonpath={.items[*].metadata.name}").Output()
+					profb := strings.Fields(profbName)
+					if len(profb) != 0 {
+						for _, profbname := range profb {
+							e2e.Logf("The %s profilebundle patched to remove finalizers from namespace %s \n", profbname, v)
+							patchResource(oc, asAdmin, withoutNamespace, "profilebundles", profbname, "--type", "json", "-p", patch, "-n", v)
+						}
+					}
+				}
+			}
 
 			g.By("Create scansettingbinding !!!\n")
-			ssb.namespace = subD.namespace
 			ssb.create(oc, itName, dr)
-			newCheck("expect", asAdmin, withoutNamespace, contain, "moderate-test", ok, []string{"scansettingbinding", "-n", subD.namespace,
+			newCheck("expect", asAdmin, withoutNamespace, contain, "moderate-test", ok, []string{"scansettingbinding", "-n", ssb.namespace,
 				"-o=jsonpath={.items[0].metadata.name}"}).check(oc)
 			g.By("Check ComplianceSuite status and result.. !!!\n")
-			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", ssb.name, "-n", subD.namespace,
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", ssb.name, "-n", ssb.namespace,
 				"-o=jsonpath={.status.phase}"}).check(oc)
 			subD.complianceSuiteResult(oc, ssb.name, "NON-COMPLIANT")
 			g.By("Verify ocp4-moderate-configure-network-policies-namespaces rule status through compliancecheck result.. !!!\n")
 			newCheck("expect", asAdmin, withoutNamespace, contain, "FAIL", ok, []string{"compliancecheckresult",
-				"ocp4-moderate-configure-network-policies-namespaces", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
+				"ocp4-moderate-configure-network-policies-namespaces", "-n", ssb.namespace, "-o=jsonpath={.status}"}).check(oc)
 
-			g.By("Create NetworkPolicy in all non-control plane namespace .. !!!\n")
-			nonControlNamespacesList := getNonControlNamespaces(oc)
-			e2e.Logf("Here namespace : %v\n", nonControlNamespacesList)
-			for _, v := range nonControlNamespacesList {
-				_, err := oc.AsAdmin().WithoutNamespace().Run("create").Args("-n", v, "-f", networkPolicyYAML).Output()
-				o.Expect(err).NotTo(o.HaveOccurred())
-				newCheck("expect", asAdmin, withoutNamespace, contain, "allow-same-namespace", ok, []string{"NetworkPolicy", "-n", v, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
+			nonControlNamespacesTerList1 := getNonControlNamespaces(oc, "Terminating")
+			if len(nonControlNamespacesTerList1) == 0 {
+				g.By("Create NetworkPolicy in all non-control plane namespace .. !!!\n")
+				nonControlNamespacesList := getNonControlNamespaces(oc, "Active")
+				e2e.Logf("Here namespace : %v\n", nonControlNamespacesList)
+				for _, v := range nonControlNamespacesList {
+					_, err := oc.AsAdmin().WithoutNamespace().Run("create").Args("-n", v, "-f", networkPolicyYAML).Output()
+					o.Expect(err).NotTo(o.HaveOccurred())
+					newCheck("expect", asAdmin, withoutNamespace, contain, "allow-same-namespace", ok, []string{"NetworkPolicy", "-n", v, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
+				}
 			}
 
 			g.By("Rerun scan using oc-compliance plugin.. !!")
-			_, err := OcComplianceCLI().Run("rerun-now").Args("scansettingbinding", ssb.name, "-n", subD.namespace).Output()
+			_, err := OcComplianceCLI().Run("rerun-now").Args("scansettingbinding", ssb.name, "-n", ssb.namespace).Output()
 			o.Expect(err).NotTo(o.HaveOccurred())
-			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", ssb.name, "-n", subD.namespace,
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", ssb.name, "-n", ssb.namespace,
 				"-o=jsonpath={.status.phase}"}).check(oc)
 			g.By("Verify ocp4-moderate-configure-network-policies-namespaces rule status through compliancecheck result.. !!!\n")
 			newCheck("expect", asAdmin, withoutNamespace, contain, "PASS", ok, []string{"compliancecheckresult",
-				"ocp4-moderate-configure-network-policies-namespaces", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
+				"ocp4-moderate-configure-network-policies-namespaces", "-n", ssb.namespace, "-o=jsonpath={.status}"}).check(oc)
 
 			g.By("Create one more non-control plane namespace .. !!!\n")
 			nsName := "ns-42720-1"
 			_, err1 := oc.AsAdmin().WithoutNamespace().Run("create").Args("ns", nsName).Output()
 			o.Expect(err1).NotTo(o.HaveOccurred())
 			g.By("Rerun scan using oc-compliance plugin.. !!")
-			_, err2 := OcComplianceCLI().Run("rerun-now").Args("scansettingbinding", ssb.name, "-n", subD.namespace).Output()
+			_, err2 := OcComplianceCLI().Run("rerun-now").Args("scansettingbinding", ssb.name, "-n", ssb.namespace).Output()
 			o.Expect(err2).NotTo(o.HaveOccurred())
-			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", ssb.name, "-n", subD.namespace,
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", ssb.name, "-n", ssb.namespace,
 				"-o=jsonpath={.status.phase}"}).check(oc)
 			g.By("Verify motd and banner or login rules status again through compliancecheck result.. !!!\n")
 			newCheck("expect", asAdmin, withoutNamespace, contain, "FAIL", ok, []string{"compliancecheckresult",
-				"ocp4-moderate-configure-network-policies-namespaces", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
+				"ocp4-moderate-configure-network-policies-namespaces", "-n", ssb.namespace, "-o=jsonpath={.status}"}).check(oc)
 
 			g.By("ocp-42720 The manual remediation works for network-policies-namespaces rule... !!!!\n ")
+
 		})
 
 		// author: pdhamdhe@redhat.com
