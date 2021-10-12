@@ -1,6 +1,7 @@
 package mco
 
 import (
+	"encoding/json"
 	"fmt"
 	ci "github.com/openshift/openshift-tests-private/test/extended/util/clusterinfrastructure"
 	"os/exec"
@@ -398,6 +399,7 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		workerNode, err := exutil.GetFirstWorkerNode(oc)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		podLogs, err := exutil.WaitAndGetSpecificPodLogs(oc, "openshift-machine-config-operator", "machine-config-daemon", getMachineConfigDaemon(oc, workerNode), "SIGTERM")
+		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(podLogs).Should(
 			o.And(
 				o.ContainSubstring("Adding SIGTERM protection"),
@@ -593,6 +595,35 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		e2e.Logf("test ssh script output:\n %s", cipherOutput)
 		o.Expect(cipherErr).NotTo(o.HaveOccurred())
 		o.Expect(cipherOutput).Should(o.ContainSubstring("not vulnerable (OK)"))
+	})
+
+	g.It("Author:sregidor-CPaasrunOnly-High-43726-Azure ControllerConfig Infrastructure does not match cluster Infrastructure resource [Serial]", func() {
+		g.By("Get machine-config-controller platform status.")
+		mccPlatformStatus, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("controllerconfig/machine-config-controller", "-o", "jsonpath='{.spec.infra.status.platformStatus}'").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf("test mccPlatformStatus:\n %s", mccPlatformStatus)
+
+		if ci.CheckPlatform(oc) == "azure" {
+			g.By("check cloudName field.")
+			trimMccPlatformStatus := strings.Trim(mccPlatformStatus, "'")
+			e2e.Logf("test trimMccPlatformStatus:\n %s", trimMccPlatformStatus)
+
+			var jsonMccPlatformStatus map[string]interface{}
+			errparseinfra := json.Unmarshal([]byte(trimMccPlatformStatus), &jsonMccPlatformStatus)
+			o.Expect(errparseinfra).NotTo(o.HaveOccurred())
+			o.Expect(jsonMccPlatformStatus).Should(o.HaveKey("azure"))
+
+			azure := jsonMccPlatformStatus["azure"].(map[string]interface{})
+			o.Expect(azure).Should(o.HaveKey("cloudName"))
+		}
+
+		g.By("Get infrastructure platform status.")
+		infraPlatformStatus, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("infrastructures/cluster", "-o", "jsonpath='{.status.platformStatus}'").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf("infraPlatformStatus:\n %s", infraPlatformStatus)
+
+		g.By("Check same status in infra and machine-config-controller.")
+		o.Expect(mccPlatformStatus).To(o.Equal(infraPlatformStatus))
 	})
 })
 
