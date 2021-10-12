@@ -162,6 +162,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging", func() {
 
 			g.By("Check if the log4j2 properties: file is mounted inside the elasticsearch pod.")
 			prePodList, err := oc.AdminKubeClient().CoreV1().Pods(cloNS).List(metav1.ListOptions{LabelSelector: "es-node-master=true"})
+			o.Expect(err).NotTo(o.HaveOccurred())
 			stat_file := "stat /usr/share/java/elasticsearch/config/log4j2.properties"
 			_, err = e2e.RunHostCmd(cloNS, prePodList.Items[0].Name, stat_file)
 			o.Expect(err).NotTo(o.HaveOccurred())

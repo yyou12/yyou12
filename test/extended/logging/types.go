@@ -241,3 +241,26 @@ type ESIndex struct {
 	StoreSize    string `json:"store.size"`
 	PriStoreSize string `json:"pri.store.size"`
 }
+
+// packagemanifest
+type PackageManifest struct {
+	Status struct {
+		CatalogSource          string `json:"catalogSource"`
+		CatalogSourceNamespace string `json:"catalogSourceNamespace"`
+		Channels               []struct {
+			CurrentCSV string `json:"currentCSV"`
+			Name       string `json:"name"`
+		} `json:"channels"`
+		DefaultChannel string `json:"defaultChannel"`
+	} `json:"status"`
+}
+
+type OperatorHub struct {
+	Status struct {
+		Sources []struct {
+			Disabled bool   `json:"disabled"`
+			Name     string `json:"name"`
+			Status   string `json:"status"`
+		} `json:"sources"`
+	} `json:"status"`
+}

@@ -1,6 +1,7 @@
 package logging
 
 import (
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"os"
@@ -156,5 +157,109 @@ var _ = g.Describe("[sig-openshift-logging] Logging elasticsearch-operator shoul
 			}
 		})
 		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("The EO doesn't remove %s from index setting", "index.blocks.read_only_allow_delete"))
+	})
+})
+
+var _ = g.Describe("[sig-openshift-logging] Logging operators upgrade testing", func() {
+	defer g.GinkgoRecover()
+	var (
+		oc                = exutil.NewCLI("logging-upgrade", exutil.KubeConfigPath())
+		cloNS             = "openshift-logging"
+		eoNS              = "openshift-operators-redhat"
+		eo                = "elasticsearch-operator"
+		clo               = "cluster-logging-operator"
+		cloPackageName    = "cluster-logging"
+		eoPackageName     = "elasticsearch-operator"
+		subTemplate       = exutil.FixturePath("testdata", "logging", "subscription", "sub-template.yaml")
+		SingleNamespaceOG = exutil.FixturePath("testdata", "logging", "subscription", "singlenamespace-og.yaml")
+		AllNamespaceOG    = exutil.FixturePath("testdata", "logging", "subscription", "allnamespace-og.yaml")
+	)
+
+	g.BeforeEach(func() {
+		CLO := SubscriptionObjects{clo, cloNS, SingleNamespaceOG, subTemplate, cloPackageName, CatalogSourceObjects{}}
+		EO := SubscriptionObjects{eo, eoNS, AllNamespaceOG, subTemplate, eoPackageName, CatalogSourceObjects{}}
+		g.By("uninstall CLO and EO")
+		CLO.uninstallLoggingOperator(oc)
+		EO.uninstallLoggingOperator(oc)
+	})
+
+	// author: qitang@redhat.com
+	g.It("CPaasrunOnly-Author:qitang-High-44983-Logging auto upgrade in minor version[Disruptive][Slow]", func() {
+		var targetchannel = "stable"
+		var collector string
+		var oh OperatorHub
+		g.By("check source/redhat-operators status in operatorhub")
+		output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("operatorhub/cluster", "-ojson").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		json.Unmarshal([]byte(output), &oh)
+		var disabled bool
+		for _, source := range oh.Status.Sources {
+			if source.Name == "redhat-operators" {
+				disabled = source.Disabled
+				break
+			}
+		}
+		o.Expect(disabled).ShouldNot(o.BeTrue())
+		g.By(fmt.Sprintf("Subscribe operators to %s channel", targetchannel))
+		source := CatalogSourceObjects{targetchannel, "redhat-operators", "openshift-marketplace"}
+		preCLO := SubscriptionObjects{clo, cloNS, SingleNamespaceOG, subTemplate, cloPackageName, source}
+		preEO := SubscriptionObjects{eo, eoNS, AllNamespaceOG, subTemplate, eoPackageName, source}
+		defer preCLO.uninstallLoggingOperator(oc)
+		preCLO.SubscribeLoggingOperators(oc)
+		defer preEO.uninstallLoggingOperator(oc)
+		preEO.SubscribeLoggingOperators(oc)
+
+		g.By("Deploy clusterlogging")
+		sc, err := getStorageClassName(oc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		instance := exutil.FixturePath("testdata", "logging", "clusterlogging", "cl-storage-template.yaml")
+		cl := resource{"clusterlogging", "instance", preCLO.Namespace}
+		defer cl.deleteClusterLogging(oc)
+		cl.createClusterLogging(oc, "-n", cl.namespace, "-f", instance, "-p", "NAMESPACE="+cl.namespace, "-p", "STORAGE_CLASS="+sc, "-p", "ES_NODE_COUNT=3", "-p", "REDUNDANCY_POLICY=SingleRedundancy")
+		collector = getCollectorName(oc, preCLO.PackageName, preCLO.Namespace)
+		esDeployNames := GetDeploymentsNameByLabel(oc, preCLO.Namespace, "cluster-name=elasticsearch")
+		for _, name := range esDeployNames {
+			WaitForDeploymentPodsToBeReady(oc, preCLO.Namespace, name)
+		}
+		WaitForDeploymentPodsToBeReady(oc, preCLO.Namespace, "kibana")
+		WaitForDaemonsetPodsToBeReady(oc, preCLO.Namespace, collector)
+
+		//get current csv version
+		preCloCSV := preCLO.getInstalledCSV(oc)
+		preEoCSV := preEO.getInstalledCSV(oc)
+
+		//disable source/redhat-operators if it's not disabled
+		if !disabled {
+			defer oc.AsAdmin().WithoutNamespace().Run("patch").Args("operatorhub/cluster", "-p", "{\"spec\": {\"sources\": [{\"name\": \"redhat-operators\", \"disabled\": false}]}}", "--type=merge").Execute()
+			err = oc.AsAdmin().WithoutNamespace().Run("patch").Args("operatorhub/cluster", "-p", "{\"spec\": {\"sources\": [{\"name\": \"redhat-operators\", \"disabled\": true}]}}", "--type=merge").Execute()
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}
+
+		// get currentCSV in packagemanifests
+		currentCloCSV := getCurrentCSVFromPackage(oc, targetchannel, cloPackageName)
+		currentEoCSV := getCurrentCSVFromPackage(oc, targetchannel, eoPackageName)
+		var upgraded = false
+		//change source to qe-app-registry if needed, and wait for the new operators to be ready
+		if preCloCSV != currentCloCSV {
+			g.By(fmt.Sprintf("upgrade CLO to %s", currentCloCSV))
+			err = oc.AsAdmin().WithoutNamespace().Run("patch").Args("-n", cloNS, "sub/"+preCLO.PackageName, "-p", "{\"spec\": {\"source\": \"qe-app-registry\"}}", "--type=merge").Execute()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			resource{"subscription", preCLO.PackageName, preCLO.Namespace}.assertResourceStatus(oc, "jsonpath={.status.currentCSV}", currentCloCSV)
+			WaitForDeploymentPodsToBeReady(oc, preCLO.Namespace, preCLO.OperatorName)
+			upgraded = true
+		}
+		if preEoCSV != currentEoCSV {
+			g.By(fmt.Sprintf("upgrade EO to %s", currentEoCSV))
+			err = oc.AsAdmin().WithoutNamespace().Run("patch").Args("-n", eoNS, "sub/"+preEO.PackageName, "-p", "{\"spec\": {\"source\": \"qe-app-registry\"}}", "--type=merge").Execute()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			resource{"subscription", preEO.PackageName, preEO.Namespace}.assertResourceStatus(oc, "jsonpath={.status.currentCSV}", currentEoCSV)
+			WaitForDeploymentPodsToBeReady(oc, preEO.Namespace, preEO.OperatorName)
+			upgraded = true
+		}
+
+		if upgraded {
+			g.By("waiting for the EFK pods to be ready after upgrade")
+			WaitForEFKPodsToBeReady(oc, cloNS)
+		}
 	})
 })

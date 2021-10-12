@@ -133,7 +133,7 @@ func (so *SubscriptionObjects) SubscribeLoggingOperators(oc *exutil.CLI) {
 	msg := fmt.Sprintf("%v", og)
 	if strings.Contains(msg, "No resources found") {
 		// create operator group
-		ogFile, err := oc.AsAdmin().Run("process").Args("-n", so.Namespace, "-f", so.OperatorGroup, "-p", "OG_NAME="+so.PackageName, "NAMESPACE="+so.Namespace).OutputToFile(getRandomString() + ".json")
+		ogFile, err := oc.AsAdmin().WithoutNamespace().Run("process").Args("-n", so.Namespace, "-f", so.OperatorGroup, "-p", "OG_NAME="+so.PackageName, "NAMESPACE="+so.Namespace).OutputToFile(getRandomString() + ".json")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		err = wait.Poll(5*time.Second, 60*time.Second, func() (done bool, err error) {
 			output, err := oc.AsAdmin().Run("apply").Args("-f", ogFile, "-n", so.Namespace).Output()
@@ -187,6 +187,19 @@ func (so *SubscriptionObjects) SubscribeLoggingOperators(oc *exutil.CLI) {
 	WaitForDeploymentPodsToBeReady(oc, so.Namespace, so.OperatorName)
 }
 
+func (so *SubscriptionObjects) uninstallLoggingOperator(oc *exutil.CLI) {
+	resource{"subscription", so.PackageName, so.Namespace}.clear(oc)
+	_ = oc.AsAdmin().WithoutNamespace().Run("delete").Args("-n", so.Namespace, "csv", "--all").Execute()
+	resource{"operatorgroup", so.PackageName, so.Namespace}.clear(oc)
+	DeleteNamespace(oc, so.Namespace)
+}
+
+func (so *SubscriptionObjects) getInstalledCSV(oc *exutil.CLI) string {
+	installedCSV, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", so.Namespace, "sub", so.PackageName, "-ojsonpath={.status.installedCSV}").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	return installedCSV
+}
+
 //WaitForDeploymentPodsToBeReady waits for the specific deployment to be ready
 func WaitForDeploymentPodsToBeReady(oc *exutil.CLI, namespace string, name string) {
 	err := wait.Poll(3*time.Second, 180*time.Second, func() (done bool, err error) {
@@ -225,7 +238,7 @@ func WaitForDaemonsetPodsToBeReady(oc *exutil.CLI, ns string, name string) {
 		if int(daemonset.Status.NumberReady) == int(daemonset.Status.DesiredNumberScheduled) {
 			return true, nil
 		}
-		e2e.Logf("Waiting for full availability of %s daemonset (%d/%d)\n", name, int(daemonset.Status.NumberReady), int(daemonset.Status.DesiredNumberScheduled))
+		e2e.Logf("Waiting for full availability of %s daemonset (%d/%d)\n", name, daemonset.Status.NumberReady, daemonset.Status.DesiredNumberScheduled)
 		return false, nil
 	})
 	e2e.Logf("Daemonset %s is available\n", name)
@@ -379,6 +392,19 @@ func DeleteNamespace(oc *exutil.CLI, ns string) {
 		}
 	}
 	o.Expect(err).NotTo(o.HaveOccurred())
+	err = wait.Poll(3*time.Second, 120*time.Second, func() (bool, error) {
+		_, err := oc.AdminKubeClient().CoreV1().Namespaces().Get(ns, metav1.GetOptions{})
+		if err != nil {
+			if apierrors.IsNotFound(err) {
+				return true, nil
+			} else {
+				return false, err
+			}
+		} else {
+			return false, nil
+		}
+	})
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("Namespace %s is not deleted in 2 minutes", ns))
 }
 
 func WaitForIMCronJobToAppear(oc *exutil.CLI, ns string, name string) {
@@ -595,4 +621,33 @@ func (r resource) checkLogsFromRs(oc *exutil.CLI, expected string, containerName
 		}
 	})
 	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("%s is not expected for %s", expected, r.name))
+}
+
+func getCurrentCSVFromPackage(oc *exutil.CLI, channel string, packagemanifest string) string {
+	var currentCSV string
+	output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("packagemanifest", packagemanifest, "-ojson").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	PM := PackageManifest{}
+	json.Unmarshal([]byte(output), &PM)
+	for _, channels := range PM.Status.Channels {
+		if channels.Name == channel {
+			currentCSV = channels.CurrentCSV
+			break
+		}
+	}
+	return currentCSV
+}
+
+//get collector name by CLO's version
+func getCollectorName(oc *exutil.CLI, subname string, ns string) string {
+	var collector string
+	output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("subscription", subname, "-n", ns, "-ojsonpath={.status.installedCSV}").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	version := strings.SplitAfterN(output, ".", 2)[1]
+	if strings.Compare(version, "5.3") > 0 {
+		collector = "collector"
+	} else {
+		collector = "fluentd"
+	}
+	return collector
 }
