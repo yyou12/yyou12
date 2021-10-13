@@ -36,6 +36,7 @@ import (
 	_ "github.com/openshift/openshift-tests-private/test/extended/ota/cvo"
 	_ "github.com/openshift/openshift-tests-private/test/extended/ota/osus"
 	_ "github.com/openshift/openshift-tests-private/test/extended/psap"
+	_ "github.com/openshift/openshift-tests-private/test/extended/psap/sro"
 	_ "github.com/openshift/openshift-tests-private/test/extended/router"
 	_ "github.com/openshift/openshift-tests-private/test/extended/securityandcompliance"
 	_ "github.com/openshift/openshift-tests-private/test/extended/storage"
