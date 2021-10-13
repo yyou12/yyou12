@@ -92,6 +92,76 @@ var _ = g.Describe("[sig-openshift-logging] Logging", func() {
 
 		})
 
+		g.It("CPaasrunOnly-Author:kbharti-High-41599-Forward Logs from specified pods combining namespaces and label selectors[Serial]", func() {
+
+			var (
+				loglabeltemplate = exutil.FixturePath("testdata", "logging", "generatelog", "container_non_json_log_template.json")
+			)
+
+			g.By("create application for logs with dev1 label")
+			app_proj_dev := oc.Namespace()
+			err := oc.WithoutNamespace().Run("new-app").Args("-n", app_proj_dev, "-f", loglabeltemplate, "-p", "LABELS=centos-logtest-dev-1", "-p", "REPLICATIONCONTROLLER=logging-centos-logtest-dev1", "-p", "CONFIGMAP=logtest-config-dev1").Execute()
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			g.By("create application for logs with dev2 label")
+			err = oc.WithoutNamespace().Run("new-app").Args("-n", app_proj_dev, "-f", loglabeltemplate, "-p", "LABELS=centos-logtest-dev-2", "-p", "REPLICATIONCONTROLLER=logging-centos-logtest-dev2", "-p", "CONFIGMAP=logtest-config-dev2").Execute()
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			g.By("create application for logs with qa1 label")
+			oc.SetupProject()
+			app_proj_qa := oc.Namespace()
+			err = oc.WithoutNamespace().Run("new-app").Args("-n", app_proj_qa, "-f", loglabeltemplate, "-p", "LABELS=centos-logtest-qa-1", "-p", "REPLICATIONCONTROLLER=logging-centos-logtest-qa1", "-p", "CONFIGMAP=logtest-config-qa1").Execute()
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			g.By("create application for logs with qa2 label")
+			err = oc.WithoutNamespace().Run("new-app").Args("-n", app_proj_qa, "-f", loglabeltemplate, "-p", "LABELS=centos-logtest-qa-2", "-p", "REPLICATIONCONTROLLER=logging-centos-logtest-qa2", "-p", "CONFIGMAP=logtest-config-qa2").Execute()
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			//Create ClusterLogForwarder instance
+			g.By("create clusterlogforwarder/instance")
+			clfTemplate := exutil.FixturePath("testdata", "logging", "clusterlogforwarder", "41599.yaml")
+			clf := resource{"clusterlogforwarder", "instance", cloNS}
+			defer clf.clear(oc)
+			err = clf.applyFromTemplate(oc, "-n", clf.namespace, "-f", clfTemplate, "-p", "APP_NAMESPACE_QA="+app_proj_qa, "-p", "APP_NAMESPACE_DEV="+app_proj_dev)
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			//Create ClusterLogging instance
+			g.By("deploy EFK pods")
+			instance := exutil.FixturePath("testdata", "logging", "clusterlogging", "cl-template.yaml")
+			cl := resource{"clusterlogging", "instance", cloNS}
+			defer cl.deleteClusterLogging(oc)
+			cl.createClusterLogging(oc, "-n", cl.namespace, "-f", instance, "-p", "NAMESPACE="+cl.namespace)
+			g.By("waiting for the EFK pods to be ready...")
+			WaitForEFKPodsToBeReady(oc, cloNS)
+
+			//check app index in ES
+			g.By("check indices in ES pod")
+			podList, err := oc.AdminKubeClient().CoreV1().Pods(cloNS).List(metav1.ListOptions{LabelSelector: "es-node-master=true"})
+			o.Expect(err).NotTo(o.HaveOccurred())
+			waitForIndexAppear(oc, cloNS, podList.Items[0].Name, "app-00", "")
+
+			//Waiting for the app index to be populated
+			waitForProjectLogsAppear(oc, cloNS, podList.Items[0].Name, app_proj_qa, "app-00")
+			waitForProjectLogsAppear(oc, cloNS, podList.Items[0].Name, app_proj_dev, "app-00")
+
+			g.By("check doc count in ES pod for QA1 namespace in CLF")
+			logCount, err := getDocCountByK8sLabel(oc, cloNS, podList.Items[0].Name, "app-00", "run=centos-logtest-qa-1")
+			o.Expect(logCount).ShouldNot(o.Equal(0))
+
+			g.By("check doc count in ES pod for QA2 namespace in CLF")
+			logCount, err = getDocCountByK8sLabel(oc, cloNS, podList.Items[0].Name, "app-00", "run=centos-logtest-qa-2")
+			o.Expect(logCount).Should(o.Equal(0))
+
+			g.By("check doc count in ES pod for DEV1 namespace in CLF")
+			logCount, err = getDocCountByK8sLabel(oc, cloNS, podList.Items[0].Name, "app-00", "run=centos-logtest-dev-1")
+			o.Expect(logCount).ShouldNot(o.Equal(0))
+
+			g.By("check doc count in ES pod for DEV2 namespace in CLF")
+			logCount, err = getDocCountByK8sLabel(oc, cloNS, podList.Items[0].Name, "app-00", "run=centos-logtest-dev-2")
+			o.Expect(logCount).Should(o.Equal(0))
+
+		})
+
 	})
 
 })

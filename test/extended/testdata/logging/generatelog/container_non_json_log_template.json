@@ -13,14 +13,14 @@
             },
             "kind": "ConfigMap",
             "metadata": {
-                "name": "logtest-config"
+                "name": "${{CONFIGMAP}}"
             }
         },
         {
             "apiVersion": "v1",
             "kind": "ReplicationController",
             "metadata": {
-                "name": "logging-centos-logtest",
+                "name": "${{REPLICATIONCONTROLLER}}",
                 "labels": {
                     "run": "${{LABELS}}",
                     "test": "${{LABELS}}"
@@ -57,7 +57,7 @@
                             {
                                 "name": "config",
                                 "configMap": {
-                                    "name": "logtest-config"
+                                    "name": "${{CONFIGMAP}}"
                                 }
                             }
                         ]
@@ -81,7 +81,15 @@
             "name":"LABELS",
             "displayName":"labels",
             "value": "centos-logtest"
+        },{
+            "name":"REPLICATIONCONTROLLER",
+            "displayName":"ReplicationController",
+            "value":"logging-centos-logtest"
+        },
+        {
+            "name":"CONFIGMAP",
+            "displayName":"ConfigMap",
+            "value":"logtest-config"
         }
     ]
 }
-

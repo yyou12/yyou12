@@ -88,3 +88,11 @@ func searchInES(oc *exutil.CLI, ns string, pod string, searchCMD string) SearchR
 	json.Unmarshal([]byte(stdout), &res)
 	return res
 }
+
+func getDocCountByK8sLabel(oc *exutil.CLI, ns string, pod string, indexName string, labelName string) (int, error) {
+	cmd := "es_util --query=" + indexName + "*/_count?pretty -d '{\"query\": {\"terms\": {\"kubernetes.flat_labels\": [\"" + labelName + "\"]}}}'"
+	stdout, err := e2e.RunHostCmdWithRetries(ns, pod, cmd, 3*time.Second, 30*time.Second)
+	res := CountResult{}
+	json.Unmarshal([]byte(stdout), &res)
+	return res.Count, err
+}
