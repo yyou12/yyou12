@@ -52,7 +52,9 @@ func DePodLogs(pods []corev1.Pod, oc *exutil.CLI, matchlogs string) bool {
 	for _, pod := range pods {
 		depOutput, err := oc.AsAdmin().Run("logs").WithoutNamespace().Args("pod/"+pod.Name, "-n", pod.Namespace).Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
-		return strings.Contains(depOutput, matchlogs)
+		if strings.Contains(depOutput, matchlogs) {
+			return true
+		}
 	}
 	return false
 }
