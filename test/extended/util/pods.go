@@ -68,8 +68,10 @@ func CreateCentosExecPodOrFail(client kubernetes.Interface, ns, generateName str
 	})
 }
 
-func remoteShPod(oc *CLI, namespace string, podName string, needBash bool, needChroot bool, cmd ...string) (string, error) {
+// If no container is provided (empty string "") it will default to the first container
+func remoteShPod(oc *CLI, namespace string, podName string, needBash bool, needChroot bool, container string, cmd ...string) (string, error) {
 	var cargs []string
+	var containerArgs []string
 	if needBash {
 		cargs = []string{"-n", namespace, podName, "bash", "-c"}
 	} else if needChroot {
@@ -77,23 +79,36 @@ func remoteShPod(oc *CLI, namespace string, podName string, needBash bool, needC
 	} else {
 		cargs = []string{"-n", namespace, podName}
 	}
-	cargs = append(cargs, cmd...)
-	return oc.AsAdmin().WithoutNamespace().Run("rsh").Args(cargs...).Output()
+
+	if container != "" {
+		containerArgs = []string{"-c", container}
+	} else {
+		containerArgs = []string{}
+	}
+
+	allArgs := append(containerArgs, cargs...)
+	allArgs = append(allArgs, cmd...)
+	return oc.AsAdmin().WithoutNamespace().Run("rsh").Args(allArgs...).Output()
+}
+
+// RemoteShContainer creates a remote shell of the given container inside the pod
+func RemoteShContainer(oc *CLI, namespace string, podName string, container string, cmd ...string) (string, error) {
+	return remoteShPod(oc, namespace, podName, false, false, container, cmd...)
 }
 
 // RemoteShPod creates a remote shell of the pod
 func RemoteShPod(oc *CLI, namespace string, podName string, cmd ...string) (string, error) {
-	return remoteShPod(oc, namespace, podName, false, false, cmd...)
+	return remoteShPod(oc, namespace, podName, false, false, "", cmd...)
 }
 
 // RemoteShPodWithChroot creates a remote shell of the pod with chroot
 func RemoteShPodWithChroot(oc *CLI, namespace string, podName string, cmd ...string) (string, error) {
-	return remoteShPod(oc, namespace, podName, false, true, cmd...)
+	return remoteShPod(oc, namespace, podName, false, true, "", cmd...)
 }
 
 // RemoteShPodWithBash creates a remote shell of the pod with bash
 func RemoteShPodWithBash(oc *CLI, namespace string, podName string, cmd ...string) (string, error) {
-	return remoteShPod(oc, namespace, podName, true, false, cmd...)
+	return remoteShPod(oc, namespace, podName, true, false, "", cmd...)
 }
 
 // WaitAndGetSpecificPodLogs wait and return the pod logs by the specific filter

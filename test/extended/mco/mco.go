@@ -597,6 +597,43 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		o.Expect(cipherOutput).Should(o.ContainSubstring("not vulnerable (OK)"))
 	})
 
+	g.It("Author:sregidor-CPaasrunOnly-High-43151-add node label to service monitor [Serial]", func() {
+		g.By("Get current mcd_ metrics from machine-config-daemon service")
+
+		clusterIp := getServiceClusterIP(oc, "machine-config-daemon", "openshift-machine-config-operator")
+		port := getServicePort(oc, "machine-config-daemon", "openshift-machine-config-operator", "metrics")
+		token := getSATokenFromContainer(oc, "prometheus-k8s-0", "openshift-monitoring", "prometheus")
+
+		statsCmd := fmt.Sprintf("curl -s -k  -H 'Authorization: Bearer %s' https://%s:%s/metrics | grep 'mcd_' | grep -v '#'", token, clusterIp, port)
+		e2e.Logf("stats output:\n %s", statsCmd)
+		statsOut, err := exutil.RemoteShPod(oc, "openshift-monitoring", "prometheus-k8s-0", "sh", "-c", statsCmd)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(statsOut).Should(o.ContainSubstring("mcd_drain_err"))
+		o.Expect(statsOut).Should(o.ContainSubstring("mcd_host_os_and_version"))
+		o.Expect(statsOut).Should(o.ContainSubstring("mcd_kubelet_state"))
+		o.Expect(statsOut).Should(o.ContainSubstring("mcd_pivot_err"))
+		o.Expect(statsOut).Should(o.ContainSubstring("mcd_reboot_err"))
+		o.Expect(statsOut).Should(o.ContainSubstring("mcd_state"))
+		o.Expect(statsOut).Should(o.ContainSubstring("mcd_update_state"))
+		o.Expect(statsOut).Should(o.ContainSubstring("mcd_update_state"))
+
+		g.By("Check relabeling section in machine-config-daemon")
+		sourceLabels, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("servicemonitor/machine-config-daemon", "-n", "openshift-machine-config-operator",
+			"-o", "jsonpath='{.spec.endpoints[*].relabelings[*].sourceLabels}'").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(sourceLabels).Should(o.ContainSubstring("__meta_kubernetes_pod_node_name"))
+
+		g.By("Check node label in mcd_state metrics")
+		stateQuery := getPrometheusQueryResults(oc, "mcd_state")
+		e2e.Logf("metrics:\n %s", stateQuery)
+		firstMasterName, err := exutil.GetFirstMasterNode(oc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		firstWorkerName, err := exutil.GetFirstWorkerNode(oc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(stateQuery).Should(o.ContainSubstring(`"node":"` + firstMasterName + `"`))
+		o.Expect(stateQuery).Should(o.ContainSubstring(`"node":"` + firstWorkerName + `"`))
+	})
+
 	g.It("Author:sregidor-CPaasrunOnly-High-43726-Azure ControllerConfig Infrastructure does not match cluster Infrastructure resource [Serial]", func() {
 		g.By("Get machine-config-controller platform status.")
 		mccPlatformStatus, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("controllerconfig/machine-config-controller", "-o", "jsonpath='{.spec.infra.status.platformStatus}'").Output()

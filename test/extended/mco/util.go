@@ -298,3 +298,50 @@ func generateTemplateAbsolutePath(fileName string) string {
 	mcoBaseDir := exutil.FixturePath("testdata", "mco")
 	return filepath.Join(mcoBaseDir, fileName)
 }
+
+func getServiceClusterIP(oc *exutil.CLI, svcName string, svcNamespace string) string {
+	stdout, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("svc", svcName, "-n", svcNamespace, "-o", "jsonpath='{.spec.clusterIP}'").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	return stdout
+}
+
+func getServicePort(oc *exutil.CLI, svcName string, svcNamespace string, portName string) string {
+	jsonPathArg := fmt.Sprintf("jsonpath='{.spec.ports[?(@.name==\"%s\")].port}'", portName)
+	stdout, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("svc", svcName, "-n", svcNamespace, "-o", jsonPathArg).Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	return stdout
+}
+
+func getSATokenFromContainer(oc *exutil.CLI, podName string, podNamespace string, container string) string {
+	podOut, err := exutil.RemoteShContainer(oc, podNamespace, podName, container, "cat", "/var/run/secrets/kubernetes.io/serviceaccount/token")
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	return podOut
+}
+
+func getHostFromRoute(oc *exutil.CLI, routeName string, routeNamespace string) string {
+	stdout, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("route", routeName, "-n", routeNamespace, "-o", "jsonpath='{.spec.host}'").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	return stdout
+}
+
+func getPrometheusQueryResults(oc *exutil.CLI, query string) string {
+
+	token := getSATokenFromContainer(oc, "prometheus-k8s-0", "openshift-monitoring", "prometheus")
+
+	routeHost := getHostFromRoute(oc, "prometheus-k8s", "openshift-monitoring")
+	url := fmt.Sprintf("https://%s/api/v1/query?query=%s", routeHost, query)
+	headers := fmt.Sprintf("Authorization: Bearer %s", token)
+
+	curlCmd := fmt.Sprintf("curl -ks -H '%s' %s", headers, url)
+	e2e.Logf("curl cmd:\n %s", curlCmd)
+
+	curlOutput, cmdErr := exec.Command("bash", "-c", curlCmd).Output()
+	e2e.Logf("curl output:\n%s", curlOutput)
+	o.Expect(cmdErr).NotTo(o.HaveOccurred())
+
+	return string(curlOutput)
+}
