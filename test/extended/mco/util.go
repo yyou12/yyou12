@@ -3,9 +3,9 @@ package mco
 import (
 	"encoding/json"
 	"fmt"
-	"math/rand"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -28,6 +28,12 @@ type MachineConfig struct {
 type MachineConfigPool struct {
 	name     string
 	template string
+}
+
+type PodDisruptionBudget struct {
+	name      string
+	namespace string
+	template  string
 }
 
 type KubeletConfig struct {
@@ -53,11 +59,10 @@ type TextToVerify struct {
 }
 
 func (mc *MachineConfig) create(oc *exutil.CLI) {
-	mc.name = mc.name + "-" + getRandomString()
+	mc.name = mc.name + "-" + exutil.GetRandomString()
 	params := []string{"--ignore-unknown-parameters=true", "-f", mc.template, "-p", "NAME=" + mc.name, "POOL=" + mc.pool}
 	params = append(params, mc.parameters...)
-	err := applyResourceFromTemplate(oc, params...)
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.CreateClusterResourceFromTemplate(oc, params...)
 
 	pollerr := wait.Poll(5*time.Second, 1*time.Minute, func() (bool, error) {
 		stdout, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("mc/"+mc.name, "-o", "jsonpath='{.metadata.name}'").Output()
@@ -88,8 +93,7 @@ func (mc *MachineConfig) delete(oc *exutil.CLI) {
 }
 
 func (kc *KubeletConfig) create(oc *exutil.CLI) {
-	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", kc.template, "-p", "NAME="+kc.name)
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.CreateClusterResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", kc.template, "-p", "NAME="+kc.name)
 	mcp := MachineConfigPool{name: "worker"}
 	mcp.waitForComplete(oc)
 }
@@ -102,9 +106,19 @@ func (kc *KubeletConfig) delete(oc *exutil.CLI) {
 	mcp.waitForComplete(oc)
 }
 
-func (icsp *ImageContentSourcePolicy) create(oc *exutil.CLI) {
-	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", icsp.template, "-p", "NAME="+icsp.name)
+func (pdb *PodDisruptionBudget) create(oc *exutil.CLI) {
+	e2e.Logf("Creating pod disruption budget: %s", pdb.name)
+	exutil.CreateNsResourceFromTemplate(oc, pdb.namespace, "--ignore-unknown-parameters=true", "-f", pdb.template, "-p", "NAME="+pdb.name)
+}
+
+func (pdb *PodDisruptionBudget) delete(oc *exutil.CLI) {
+	e2e.Logf("Deleting pod disruption budget: %s", pdb.name)
+	err := oc.AsAdmin().WithoutNamespace().Run("delete").Args("pdb", pdb.name, "-n", pdb.namespace, "--ignore-not-found=true").Execute()
 	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+func (icsp *ImageContentSourcePolicy) create(oc *exutil.CLI) {
+	exutil.CreateClusterResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", icsp.template, "-p", "NAME="+icsp.name)
 	mcp := MachineConfigPool{name: "worker"}
 	mcp.waitForComplete(oc)
 	mcp.name = "master"
@@ -122,8 +136,7 @@ func (icsp *ImageContentSourcePolicy) delete(oc *exutil.CLI) {
 }
 
 func (cr *ContainerRuntimeConfig) create(oc *exutil.CLI) {
-	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", cr.template, "-p", "NAME="+cr.name)
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.CreateClusterResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", cr.template, "-p", "NAME="+cr.name)
 	mcp := MachineConfigPool{name: "worker"}
 	mcp.waitForComplete(oc)
 }
@@ -137,8 +150,7 @@ func (cr *ContainerRuntimeConfig) delete(oc *exutil.CLI) {
 }
 
 func (mcp *MachineConfigPool) create(oc *exutil.CLI) {
-	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", mcp.template, "-p", "NAME="+mcp.name)
-	o.Expect(err).NotTo(o.HaveOccurred())
+	exutil.CreateClusterResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", mcp.template, "-p", "NAME="+mcp.name)
 	mcp.waitForComplete(oc)
 }
 
@@ -201,6 +213,47 @@ func waitForNodeDoesNotContain(oc *exutil.CLI, node string, value string) {
 	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("node contains %s", value))
 }
 
+func getTimeDifferenceInMinute(oldTimestamp string, newTimestamp string) float64 {
+	oldTimeValues := strings.Split(oldTimestamp, ":")
+	oldTimeHour, _ := strconv.Atoi(oldTimeValues[0])
+	oldTimeMinute, _ := strconv.Atoi(oldTimeValues[1])
+	oldTimeSecond, _ := strconv.Atoi(strings.Split(oldTimeValues[2], ".")[0])
+	oldTimeNanoSecond, _ := strconv.Atoi(strings.Split(oldTimeValues[2], ".")[1])
+	newTimeValues := strings.Split(newTimestamp, ":")
+	newTimeHour, _ := strconv.Atoi(newTimeValues[0])
+	newTimeMinute, _ := strconv.Atoi(newTimeValues[1])
+	newTimeSecond, _ := strconv.Atoi(strings.Split(newTimeValues[2], ".")[0])
+	newTimeNanoSecond, _ := strconv.Atoi(strings.Split(newTimeValues[2], ".")[1])
+	y, m, d := time.Now().Date()
+	oldTime := time.Date(y, m, d, oldTimeHour, oldTimeMinute, oldTimeSecond, oldTimeNanoSecond, time.UTC)
+	newTime := time.Date(y, m, d, newTimeHour, newTimeMinute, newTimeSecond, newTimeNanoSecond, time.UTC)
+	return newTime.Sub(oldTime).Minutes()
+}
+
+func filterTimestampFromLogs(logs string, numberOfTimestamp int) []string {
+	return regexp.MustCompile("(?m)[0-9]{1,2}:[0-9]{1,2}:[0-9]{1,2}.[0-9]{1,6}").FindAllString(logs, numberOfTimestamp)
+}
+
+// WaitForNumberOfLinesInPodLogs wait and return the pod logs by the specific filter and number of lines
+func waitForNumberOfLinesInPodLogs(oc *exutil.CLI, namespace string, container string, podName string, filter string, numberOfLines int) string {
+	var logs string
+	var err error
+	waitErr := wait.Poll(30*time.Second, 20*time.Minute, func() (bool, error) {
+		logs, err = exutil.WaitAndGetSpecificPodLogs(oc, namespace, container, podName, filter)
+		if err != nil {
+			e2e.Logf("the err:%v, and try next round", err)
+			return false, nil
+		}
+		if strings.Count(logs, strings.Trim(filter, "'")) >= numberOfLines {
+			e2e.Logf("Filtered pod logs: %v", logs)
+			return true, nil
+		}
+		return false, nil
+	})
+	exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("Number of lines in the logs is less than %v", numberOfLines))
+	return logs
+}
+
 func getMachineConfigDetails(oc *exutil.CLI, mcName string) (string, error) {
 	return oc.AsAdmin().WithoutNamespace().Run("get").Args("mc", mcName, "-o", "yaml").Output()
 }
@@ -254,23 +307,6 @@ func getStatusCondition(oc *exutil.CLI, resource string, ctype string) (map[stri
 	}
 }
 
-func applyResourceFromTemplate(oc *exutil.CLI, parameters ...string) error {
-	var configFile string
-	err := wait.Poll(3*time.Second, 15*time.Second, func() (bool, error) {
-		output, err := oc.AsAdmin().Run("process").Args(parameters...).OutputToFile(getRandomString() + "config.json")
-		if err != nil {
-			e2e.Logf("the err:%v, and try next round", err)
-			return false, nil
-		}
-		configFile = output
-		return true, nil
-	})
-	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("fail to process %v", parameters))
-
-	e2e.Logf("the file of resource is %s", configFile)
-	return oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", configFile).Execute()
-}
-
 func containsMultipleStrings(sourceString string, expectedStrings []string) bool {
 	o.Expect(sourceString).NotTo(o.BeEmpty())
 	o.Expect(expectedStrings).NotTo(o.BeEmpty())
@@ -282,16 +318,6 @@ func containsMultipleStrings(sourceString string, expectedStrings []string) bool
 		}
 	}
 	return len(expectedStrings) == count
-}
-
-func getRandomString() string {
-	chars := "abcdefghijklmnopqrstuvwxyz0123456789"
-	seed := rand.New(rand.NewSource(time.Now().UnixNano()))
-	buffer := make([]byte, 8)
-	for index := range buffer {
-		buffer[index] = chars[seed.Intn(len(chars))]
-	}
-	return string(buffer)
 }
 
 func generateTemplateAbsolutePath(fileName string) string {

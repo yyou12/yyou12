@@ -567,6 +567,42 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		e2e.Logf("mcd log on worker node %s does not contain error messages: %v", workerNode, expectedStrings)
 	})
 
+	g.It("Author:mhanss-Longduration-CPaasrunOnly-Medium-43245-bump initial drain sleeps down to 1min [Disruptive]", func() {
+		g.By("Create a pod disruption budget to set minAvailable to 1")
+		oc.SetupProject()
+		nsName := oc.Namespace()
+		pdbName := "dont-evict-43245"
+		pdbTemplate := generateTemplateAbsolutePath("pod-disruption-budget.yaml")
+		pdb := PodDisruptionBudget{name: pdbName, namespace: nsName, template: pdbTemplate}
+		defer pdb.delete(oc)
+		pdb.create(oc)
+
+		g.By("Create new pod for pod disruption budget")
+		workerNode, err := exutil.GetFirstWorkerNode(oc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		hostname, err := exutil.GetNodeHostname(oc, workerNode)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		podName := "dont-evict-43245"
+		podTemplate := generateTemplateAbsolutePath("create-pod.yaml")
+		pod := exutil.Pod{Name: podName, Namespace: nsName, Template: podTemplate, Parameters: []string{"HOSTNAME=" + hostname}}
+		defer func() { o.Expect(pod.Delete(oc)).NotTo(o.HaveOccurred()) }()
+		pod.Create(oc)
+
+		g.By("Create new mc to add new file on the node and trigger node drain")
+		mcName := "test-file"
+		mcTemplate := generateTemplateAbsolutePath("add-mc-to-trigger-node-drain.yaml")
+		mc := MachineConfig{name: mcName, template: mcTemplate, pool: "worker", skipWaitForMcp: true}
+		defer mc.delete(oc)
+		defer func() { o.Expect(pod.Delete(oc)).NotTo(o.HaveOccurred()) }()
+		mc.create(oc)
+
+		g.By("Check mcd logs to see the sleep interval b/w failed drains")
+		podLogs := waitForNumberOfLinesInPodLogs(oc, "openshift-machine-config-operator", "machine-config-daemon", getMachineConfigDaemon(oc, workerNode), "Draining", 6)
+		timestamps := filterTimestampFromLogs(podLogs, 6)
+		o.Expect(getTimeDifferenceInMinute(timestamps[0], timestamps[1])).Should(o.BeNumerically("<=", 2.7))
+		o.Expect(getTimeDifferenceInMinute(timestamps[4], timestamps[5])).Should(o.BeNumerically("<=", 6.7))
+	})
+
 	g.It("Author:rioliu-CPaasrunOnly-High-43278-security fix for unsafe cipher [Serial]", func() {
 		g.By("check go version >= 1.15")
 		_, clusterVersion, cvErr := exutil.GetClusterVersion(oc)

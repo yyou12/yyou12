@@ -89,3 +89,9 @@ func getFirstNodeByOsId(oc *CLI, role string, osId string) (string, error) {
 	}
 	return "", err
 }
+
+// GetNodeHostname returns the cluster node hostname
+func GetNodeHostname(oc *CLI, node string) (string, error) {
+	hostname, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("node", node, "-o", "jsonpath='{..kubernetes\\.io/hostname}'").Output()
+	return strings.Trim(hostname, "'"), err
+}

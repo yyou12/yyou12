@@ -115,7 +115,7 @@ func RemoteShPodWithBash(oc *CLI, namespace string, podName string, cmd ...strin
 func WaitAndGetSpecificPodLogs(oc *CLI, namespace string, container string, podName string, filter string) (string, error) {
 	logs, err := GetSpecificPodLogs(oc, namespace, container, podName, filter)
 	if err != nil {
-		waitErr := wait.Poll(5*time.Second, 30*time.Second, func() (bool, error) {
+		waitErr := wait.Poll(20*time.Second, 5*time.Minute, func() (bool, error) {
 			stdout, err := GetSpecificPodLogs(oc, namespace, container, podName, filter)
 			if err != nil {
 				e2e.Logf("the err:%v, and try next round", err)
@@ -129,6 +129,44 @@ func WaitAndGetSpecificPodLogs(oc *CLI, namespace string, container string, podN
 		exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("Pod logs does not contain %s", filter))
 	}
 	return logs, err
+}
+
+type Pod struct {
+	Name       string
+	Namespace  string
+	Template   string
+	Parameters []string
+}
+
+// Create creates a pod on the basis of Pod struct
+func (pod *Pod) Create(oc *CLI) {
+	e2e.Logf("Creating pod: %s", pod.Name)
+	params := []string{"--ignore-unknown-parameters=true", "-f", pod.Template, "-p", "NAME=" + pod.Name}
+	CreateNsResourceFromTemplate(oc, pod.Namespace, append(params, pod.Parameters...)...)
+	assertPodToBeReady(oc, pod.Name, pod.Namespace)
+}
+
+// Delete pod
+func (pod *Pod) Delete(oc *CLI) error {
+	e2e.Logf("Deleting pod: %s", pod.Name)
+	return oc.AsAdmin().WithoutNamespace().Run("delete").Args("pod", pod.Name, "-n", pod.Namespace, "--ignore-not-found=true").Execute()
+
+}
+
+func assertPodToBeReady(oc *CLI, podName string, namespace string) {
+	err := wait.Poll(30*time.Second, 3*time.Minute, func() (bool, error) {
+		stdout, err := oc.AsAdmin().Run("get").Args("pod", podName, "-n", namespace, "-o", "jsonpath='{.status.conditions[?(@.type==\"Ready\")].status}'").Output()
+		if err != nil {
+			e2e.Logf("the err:%v, and try next round", err)
+			return false, nil
+		}
+		if strings.Contains(stdout, "True") {
+			e2e.Logf("Pod %s is ready!", podName)
+			return true, nil
+		}
+		return false, nil
+	})
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("Pod %s status is not ready!", podName))
 }
 
 // GetSpecificPodLogs returns the pod logs by the specific filter

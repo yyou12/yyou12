@@ -1,0 +1,25 @@
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: create-pod
+objects:
+  - kind: Pod
+    apiVersion: v1
+    metadata:
+      labels:
+        app: "${NAME}"
+      name: "${NAME}"
+    spec:
+      containers:
+        - args:
+            - sleep
+            - 4h
+          image: quay.io/prometheus/busybox
+          imagePullPolicy: Always
+          name: "${NAME}"
+      nodeSelector:
+        kubernetes.io/hostname: "${HOSTNAME}"
+      restartPolicy: Never
+parameters:
+  - name: NAME
+  - name: HOSTNAME
