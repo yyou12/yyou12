@@ -113,6 +113,7 @@ func (fi1 *fileintegrity) checkKeywordExistInLog(oc *exutil.CLI, podName string,
 		o.Expect(err1).NotTo(o.HaveOccurred())
 		e2e.Logf("the result of logs:%v", logs)
 		if strings.Contains(logs, expected) {
+			e2e.Logf("The pod '%s' logs include '%s'", podName, expected)
 			return true, nil
 		}
 		return false, nil

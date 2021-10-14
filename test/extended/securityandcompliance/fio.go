@@ -24,6 +24,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 		configFile          string
 		configErrFile       string
 		configFile1         string
+		md5configFile       string
 		catsrc              catalogSourceDescription
 		og                  operatorGroupDescription
 		sub                 subscriptionDescription
@@ -41,6 +42,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 		configFile = filepath.Join(buildPruningBaseDir, "aide.conf.rhel8")
 		configErrFile = filepath.Join(buildPruningBaseDir, "aide.conf.rhel8.err")
 		configFile1 = filepath.Join(buildPruningBaseDir, "aide.conf.rhel8.1")
+		md5configFile = filepath.Join(buildPruningBaseDir, "md5aide.conf.rhel8")
 
 		catsrc = catalogSourceDescription{
 			name:        "file-integrity-operator",
@@ -671,7 +673,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 	})
 
 	//author: xiyuan@redhat.com
-	g.It("Author:xiyuan-High-29782-aide config change will trigger a re-initialization of the aide database [Serial]", func() {
+	g.It("Author:xiyuan-High-42026-aide config change will trigger a re-initialization of the aide database [Serial]", func() {
 		var itName = g.CurrentGinkgoTestDescription().TestText
 		oc.SetupProject()
 		catsrc.namespace = oc.Namespace()
@@ -733,5 +735,64 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 		fi1.checkFileintegrityStatus(oc, "running")
 		fi1.checkFileintegritynodestatus(oc, nodeName, "Failed")
 		fi1.expectedStringNotExistInConfigmap(oc, cmName, "/hostroot/root/test29782")
+	})
+
+	//author: pdhamdhe@redhat.com
+	g.It("Author:pdhamdhe-CPaasrunOnly-High-29782-check md5 algorithm could not work for a fips enabled cluster while working well for a fips disabled cluster [Serial][Slow]", func() {
+		var itName = g.CurrentGinkgoTestDescription().TestText
+		oc.SetupProject()
+		catsrc.namespace = oc.Namespace()
+		og.namespace = oc.Namespace()
+		sub.namespace = oc.Namespace()
+		sub.catalogSourceName = catsrc.name
+		sub.catalogSourceNamespace = catsrc.namespace
+		fi1.namespace = oc.Namespace()
+		fi1.debug = false
+
+		g.By("Create catsrc")
+		catsrc.create(oc, itName, dr)
+		newCheck("expect", asAdmin, withoutNamespace, contain, catsrc.displayName, ok, []string{"packagemanifest", catsrc.displayName, "-n", catsrc.namespace}).check(oc)
+		g.By("Create og")
+		og.create(oc, itName, dr)
+		og.checkOperatorgroup(oc, og.name)
+		g.By("Create subscription")
+		sub.create(oc, itName, dr)
+		g.By("check csv")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+		sub.checkPodFioStatus(oc, "running")
+
+		g.By("Create fileintegrity with md5 aide config")
+		fi1.configname = "myconf"
+		fi1.configkey = "aide-conf"
+		fi1.createConfigmapFromFile(oc, itName, dr, fi1.configname, fi1.configkey, md5configFile, "created")
+		fi1.createFIOWithConfig(oc, itName, dr)
+		fi1.checkFileintegrityStatus(oc, "running")
+		nodeName := getOneRhcosWorkerNodeName(oc)
+
+		fips_out := checkFipsStatus(oc)
+		if strings.Contains(fips_out, "FIPS mode is enabled.") {
+			fi1.checkFileintegritynodestatus(oc, nodeName, "Errored")
+			var podName = fi1.getOneFioPodName(oc)
+			fi1.checkKeywordExistInLog(oc, podName, "Use of FIPS disallowed algorithm under FIPS mode exit status 255")
+		} else {
+			fi1.checkFileintegritynodestatus(oc, nodeName, "Succeeded")
+			var podName = fi1.getOneFioPodName(oc)
+			fi1.checkKeywordExistInLog(oc, podName, "running aide check")
+			var pod = podModifyD
+			pod.namespace = oc.Namespace()
+			pod.name = "pod-modify"
+			pod.nodeName = nodeName
+			pod.args = "echo \"testAAAAAAAAA\" >> /hostroot/etc/kubernetes/cloud.conf"
+			defer func() {
+				pod.name = "pod-recover"
+				pod.nodeName = nodeName
+				pod.args = "sed -i '/testAAAAAAAAA/d' /hostroot/etc/kubernetes/cloud.conf"
+				pod.doActionsOnNode(oc, "Succeeded", dr)
+			}()
+			pod.doActionsOnNode(oc, "Succeeded", dr)
+			fi1.checkFileintegritynodestatus(oc, nodeName, "Failed")
+			cmName := fi1.getConfigmapFromFileintegritynodestatus(oc, nodeName)
+			fi1.getDataFromConfigmap(oc, cmName, "/hostroot/etc/kubernetes/cloud.conf")
+		}
 	})
 })
