@@ -54,4 +54,34 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 			checkAlertRaised(oc, "CSIWithOldVSphereHWVersion")
 		}
 	})
+
+	// author:wduan@redhat.com
+	g.It("Author:wduan-Medium-44664-The vSphere cluster is marked as unupgradable if vcenter, esxi versions or HW versions are unsupported", func() {
+		g.By("# Get log from vsphere-problem-detector-operator")
+		podlog, err := oc.AsAdmin().WithoutNamespace().Run("logs").Args("deployment/vsphere-problem-detector-operator", "-n", "openshift-cluster-storage-operator").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		mes := map[string]string{
+			"HW version":      "Marking cluster un-upgradeable because one or more VMs are on hardware version",
+			"esxi version":    "Marking cluster un-upgradeable because host .* is on esxi version",
+			"vCenter version": "Marking cluster un-upgradeable because connected vcenter is on",
+		}
+		for kind, expected_mes := range mes {
+			g.By("# Check upgradeable status and reason is expected from clusterversion")
+			e2e.Logf("%s: Check upgradeable status and reason is expected from clusterversion if %s not support", kind, kind)
+			matched, _ := regexp.MatchString(expected_mes, podlog)
+			if matched {
+				reason, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("clusterversion", "-o=jsonpath={.items[].status.conditions[?(.type=='Upgradeable')].reason}").Output()
+				o.Expect(err).NotTo(o.HaveOccurred())
+				o.Expect(reason).To(o.Equal("VSphereProblemDetectorController_VSphereOlderVersionDetected"))
+				status, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("clusterversion", "-o=jsonpath={.items[].status.conditions[?(.type=='Upgradeable')].status}").Output()
+				o.Expect(err).NotTo(o.HaveOccurred())
+				o.Expect(status).To(o.Equal("False"))
+				e2e.Logf("The cluster is marked as unupgradeable due to %s", kind)
+			} else {
+				e2e.Logf("The %s is supported", kind)
+			}
+
+		}
+	})
 })
