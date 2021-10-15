@@ -131,6 +131,7 @@ func WaitAndGetSpecificPodLogs(oc *CLI, namespace string, container string, podN
 	return logs, err
 }
 
+// Pod Parameters can be used to set the template parameters except PodName as PodName can be provided using pod.Name
 type Pod struct {
 	Name       string
 	Namespace  string
@@ -139,6 +140,9 @@ type Pod struct {
 }
 
 // Create creates a pod on the basis of Pod struct
+// For Ex: pod := Pod{Name: "PodName", Namespace: "NSName", Template: "PodTemplateLocation", Parameters: []string{"HOSTNAME=NODE_IP"}}
+// pod.Create(oc)
+// The pod name parameter must be NAME in the template file
 func (pod *Pod) Create(oc *CLI) {
 	e2e.Logf("Creating pod: %s", pod.Name)
 	params := []string{"--ignore-unknown-parameters=true", "-f", pod.Template, "-p", "NAME=" + pod.Name}
