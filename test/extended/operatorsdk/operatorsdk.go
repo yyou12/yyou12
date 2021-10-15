@@ -854,7 +854,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
  
         exec.Command("bash", "-c", "cd /tmp/ocp-34366/memcached-operator && make install").Output()
         exec.Command("bash", "-c", "cd /tmp/ocp-34366/memcached-operator && make deploy IMG=quay.io/olmqe/memcached-operator-max-worker:v4.9").Output()
-        _, err := oc.AsAdmin().WithoutNamespace().Run("adm").Args( "policy", "add-cluster-role-to-user", "cluster-admin", "system:serviceaccount:nginx-operator-system-ocp34366:default").Output()
+        _, err := oc.AsAdmin().WithoutNamespace().Run("adm").Args( "policy", "add-cluster-role-to-user", "cluster-admin", "system:serviceaccount:memcached-operator-system-ocp34366:default").Output()
         waitErr := wait.Poll(30*time.Second, 300*time.Second, func() (bool, error) {
 			msg, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-n", "memcached-operator-system-ocp34366").Output()
 			o.Expect(err).NotTo(o.HaveOccurred())
