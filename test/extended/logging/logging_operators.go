@@ -244,6 +244,8 @@ var _ = g.Describe("[sig-openshift-logging] Logging operators upgrade testing", 
 			g.By(fmt.Sprintf("upgrade CLO to %s", currentCloCSV))
 			err = oc.AsAdmin().WithoutNamespace().Run("patch").Args("-n", cloNS, "sub/"+preCLO.PackageName, "-p", "{\"spec\": {\"source\": \"qe-app-registry\"}}", "--type=merge").Execute()
 			o.Expect(err).NotTo(o.HaveOccurred())
+			//add workaround for bz 2002276
+			_ = oc.AsAdmin().WithoutNamespace().Run("delete").Args("pod", "-n", "openshift-marketplace", "-l", "olm.catalogSource=qe-app-registry").Execute()
 			resource{"subscription", preCLO.PackageName, preCLO.Namespace}.assertResourceStatus(oc, "jsonpath={.status.currentCSV}", currentCloCSV)
 			WaitForDeploymentPodsToBeReady(oc, preCLO.Namespace, preCLO.OperatorName)
 			upgraded = true
@@ -252,6 +254,8 @@ var _ = g.Describe("[sig-openshift-logging] Logging operators upgrade testing", 
 			g.By(fmt.Sprintf("upgrade EO to %s", currentEoCSV))
 			err = oc.AsAdmin().WithoutNamespace().Run("patch").Args("-n", eoNS, "sub/"+preEO.PackageName, "-p", "{\"spec\": {\"source\": \"qe-app-registry\"}}", "--type=merge").Execute()
 			o.Expect(err).NotTo(o.HaveOccurred())
+			//add workaround for bz 2002276
+			_ = oc.AsAdmin().WithoutNamespace().Run("delete").Args("pod", "-n", "openshift-marketplace", "-l", "olm.catalogSource=qe-app-registry").Execute()
 			resource{"subscription", preEO.PackageName, preEO.Namespace}.assertResourceStatus(oc, "jsonpath={.status.currentCSV}", currentEoCSV)
 			WaitForDeploymentPodsToBeReady(oc, preEO.Namespace, preEO.OperatorName)
 			upgraded = true
