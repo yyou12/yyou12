@@ -439,4 +439,69 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 			g.Skip("Skip for other clusters!")
 		}
 	})
+
+	//author: xiuwang@redhat.com
+	g.It("Author:xiuwang-Critial-34680-Image registry storage cannot be removed if set to Unamanaged when image registry is set to Removed [Disruptive]", func() {
+		g.By("Get registry storage info")
+		var storageinfo1, storageinfo2, storageinfo3 string
+		storageinfo1 = restoreRegistryStorageConfig(oc)
+		g.By("Set image registry storage to Unmanaged, image registry operator to Removed")
+		err := oc.WithoutNamespace().AsAdmin().Run("patch").Args("configs.imageregistry/cluster", "-p", `{"spec":{"managementState":"Removed","storage":{"managementState":"Unmanaged"}}}`, "--type=merge").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		defer func() {
+			g.By("Recover image registry change")
+			err = oc.WithoutNamespace().AsAdmin().Run("patch").Args("configs.imageregistry/cluster", "-p", `{"spec":{"managementState":"Managed","storage":{"managementState":"Managed"}}}`, "--type=merge").Execute()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			err = wait.Poll(25*time.Second, 2*time.Minute, func() (bool, error) {
+				podList, err1 := oc.AdminKubeClient().CoreV1().Pods("openshift-image-registry").List(metav1.ListOptions{LabelSelector: "docker-registry=default"})
+				if err1 != nil {
+					e2e.Logf("Error listing pods: %v", err)
+					return false, nil
+				}
+				if len(podList.Items) == 0 {
+					e2e.Logf("Continue to next round")
+					return false, nil
+				}
+				return true, nil
+			})
+			exutil.AssertWaitPollNoErr(err, "Image registry is not recovered")
+		}()
+		err = wait.Poll(25*time.Second, 2*time.Minute, func() (bool, error) {
+			podList, err1 := oc.AdminKubeClient().CoreV1().Pods("openshift-image-registry").List(metav1.ListOptions{LabelSelector: "docker-registry=default"})
+			if err1 != nil {
+				e2e.Logf("Error listing pods: %v", err)
+				return false, nil
+			}
+			if len(podList.Items) != 0 {
+				e2e.Logf("Continue to next round")
+				return false, nil
+			}
+			return true, nil
+		})
+		exutil.AssertWaitPollNoErr(err, "Image registry is not removed")
+		storageinfo2 = restoreRegistryStorageConfig(oc)
+		if strings.Compare(storageinfo1, storageinfo2) != 0 {
+			e2e.Failf("Image stroage has changed")
+		}
+		g.By("Set image registry operator to Managed again")
+		err = oc.WithoutNamespace().AsAdmin().Run("patch").Args("configs.imageregistry/cluster", "-p", `{"spec":{"managementState":"Managed"}}`, "--type=merge").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = wait.Poll(25*time.Second, 2*time.Minute, func() (bool, error) {
+			podList, err1 := oc.AdminKubeClient().CoreV1().Pods("openshift-image-registry").List(metav1.ListOptions{LabelSelector: "docker-registry=default"})
+			if err1 != nil {
+				e2e.Logf("Error listing pods: %v", err)
+				return false, nil
+			}
+			if len(podList.Items) == 0 {
+				e2e.Logf("Continue to next round")
+				return false, nil
+			}
+			return true, nil
+		})
+		exutil.AssertWaitPollNoErr(err, "Image registry is not recovered")
+		storageinfo3 = restoreRegistryStorageConfig(oc)
+		if strings.Compare(storageinfo1, storageinfo3) != 0 {
+			e2e.Failf("Image stroage has changed")
+		}
+	})
 })

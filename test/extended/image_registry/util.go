@@ -290,3 +290,34 @@ func recoverRegistryDefaultReplicas(oc *exutil.CLI) {
 		}
 	}
 }
+
+func restoreRegistryStorageConfig(oc *exutil.CLI) string {
+	var storageinfo string
+	g.By("Get image registry storage info")
+	platformtype, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("infrastructure", "cluster", "-o=jsonpath={.spec.platformSpec.type}").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	switch platformtype {
+	case "AWS":
+		storageinfo, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("config.image", "cluster", "-o=jsonpath={.spec.storage.s3.bucket}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+	case "Azure":
+		storageinfo, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("config.image", "cluster", "-o=jsonpath={.spec.storage.azure.container}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+	case "GCP":
+		storageinfo, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("config.image", "cluster", "-o=jsonpath={.spec.storage.gcs.bucket}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+	case "Openstack":
+		storageinfo, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("config.image", "cluster", "-o=jsonpath={.spec.storage.swift.container").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+	case "None", "Vsphere":
+		storageinfo, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("config.image", "cluster", "-o=jsonpath={.spec.storage.pvc.claim").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		if storageinfo == "" {
+			storageinfo, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("config.image", "cluster", "-o=jsonpath={.spec.storage.emptyDir").Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}
+	default:
+		e2e.Logf("Image Registry is using unknown storage type")
+	}
+	return storageinfo
+}
