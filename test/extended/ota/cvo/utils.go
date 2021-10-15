@@ -288,11 +288,11 @@ func updateGraph(oc *exutil.CLI) (string, error) {
 
 	targetVersion := GenerateReleaseVersion(oc)
 	if targetVersion == "" {
-		return "", fmt.Errorf("Error get target version")
+		return "", fmt.Errorf("error get target version")
 	}
 	targetPayload := GenerateReleasePayload(oc)
 	if targetPayload == "" {
-		return "", fmt.Errorf("Error get target payload")
+		return "", fmt.Errorf("error get target payload")
 	}
 
 	// Give the new graph a unique name
@@ -342,4 +342,23 @@ func buildGraph(client *storage.Client, oc *exutil.CLI, projectID string) (strin
 	e2e.Logf("Object: %v public", object)
 
 	return fmt.Sprintf("https://storage.googleapis.com/%s/%s", bucket, object), bucket, object, nil
+}
+
+//restoreCVSpec restores upstream and channel of clusterversion
+func restoreCVSpec(upstream string, channel string, oc *exutil.CLI) {
+	oc.AsAdmin().WithoutNamespace().Run("adm").Args("upgrade", "channel", "--allow-explicit-channel", channel).Execute()
+	exec.Command("bash", "-c", "sleep 5").Output()
+	currChannel, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("clusterversion", "-o=jsonpath={.items[].spec.channel}").Output()
+	if currChannel != channel {
+		e2e.Logf("Error on channel recovery, expected %s, but got %s", channel, currChannel)
+	}
+	if upstream == "" {
+		oc.AsAdmin().WithoutNamespace().Run("patch").Args("clusterversion/version", "--type=json", "-p", "[{\"op\":\"remove\", \"path\":\"/spec/upstream\"}]").Execute()
+	} else {
+		oc.AsAdmin().WithoutNamespace().Run("patch").Args("clusterversion/version", "--type=merge", "--patch", fmt.Sprintf("{\"spec\":{\"upstream\":\"%s\"}}", upstream)).Execute()
+	}
+	currUpstream, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("clusterversion", "-o=jsonpath={.items[].spec.upstream}").Output()
+	if currUpstream != upstream {
+		e2e.Logf("Error on upstream recovery, expected %s, but got %s", upstream, currUpstream)
+	}
 }

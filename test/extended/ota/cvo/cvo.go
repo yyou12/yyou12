@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os/exec"
 	"regexp"
+	"strings"
 	"time"
 
 	"cloud.google.com/go/storage"
@@ -133,15 +134,7 @@ var _ = g.Describe("[sig-updates] OTA cvo should", func() {
 		orgUpstream, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("clusterversion", "-o=jsonpath={.items[].spec.upstream}").Output()
 		orgChannel, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("clusterversion", "-o=jsonpath={.items[].spec.channel}").Output()
 
-		defer func() {
-			oc.AsAdmin().WithoutNamespace().Run("adm").Args("upgrade", "channel", "--allow-explicit-channel", orgChannel).Execute()
-			exec.Command("bash", "-c", "sleep 5").Output()
-			if orgUpstream == "" {
-				oc.AsAdmin().WithoutNamespace().Run("patch").Args("clusterversion/version", "--type=json", "-p", "[{\"op\":\"remove\", \"path\":\"/spec/upstream\"}]").Execute()
-			} else {
-				oc.AsAdmin().WithoutNamespace().Run("patch").Args("clusterversion/version", "--type=merge", "--patch", fmt.Sprintf("{\"spec\":{\"upstream\":\"%s\"}}", orgUpstream)).Execute()
-			}
-		}()
+		defer restoreCVSpec(orgUpstream, orgChannel, oc)
 
 		// Prerequisite: the available channels are not present
 		g.By("The test requires the available channels are not present as a prerequisite")
@@ -251,5 +244,90 @@ var _ = g.Describe("[sig-updates] OTA cvo should", func() {
 		cmdOut, err = oc.AsAdmin().WithoutNamespace().Run("adm").Args("upgrade").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(cmdOut).To(o.ContainSubstring("Channel: channel-b (available channels: channel-a, channel-b)"))
+	})
+
+	//author: yanyang@redhat.com
+	g.It("Author:yanyang-High-42543-the removed resources are not created in a fresh installed cluster", func() {
+		manifestDir := fmt.Sprintf("manifest-%d", time.Now().Unix())
+		err := oc.AsAdmin().WithoutNamespace().Run("adm").Args("release", "extract", "--to", manifestDir).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		out, _ := exec.Command("bash", "-c", fmt.Sprintf("grep -rl \"name: hello-openshift\" %s", manifestDir)).Output()
+		o.Expect(string(out)).NotTo(o.BeEmpty())
+		file := strings.TrimSpace(string(out))
+		cmd := fmt.Sprintf("grep -A5 'name: hello-openshift' %s | grep 'release.openshift.io/delete: \"true\"'", file)
+		result, _ := exec.Command("bash", "-c", cmd).Output()
+		o.Expect(string(result)).NotTo(o.BeEmpty())
+
+		g.By("Check imagestream hello-openshift not present in a fresh installed cluster")
+		cmdOut, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("imagestream", "hello-openshift", "-n", "openshift").Output()
+		o.Expect(err).To(o.HaveOccurred())
+		o.Expect(cmdOut).To(o.ContainSubstring("Error from server (NotFound): imagestreams.image.openshift.io \"hello-openshift\" not found"))
+	})
+
+	//author: yanyang@redhat.com
+	g.It("ConnectedOnly-Author:yanyang-Medium-43172-get the upstream and channel info by using oc adm upgrade [Serial]", func() {
+		orgUpstream, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("clusterversion", "-o=jsonpath={.items[].spec.upstream}").Output()
+		orgChannel, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("clusterversion", "-o=jsonpath={.items[].spec.channel}").Output()
+
+		defer restoreCVSpec(orgUpstream, orgChannel, oc)
+
+		g.By("Check when upstream is unset")
+		if orgUpstream != "" {
+			err := oc.AsAdmin().WithoutNamespace().Run("patch").Args("clusterversion/version", "--type=json", "-p", "[{\"op\":\"remove\", \"path\":\"/spec/upstream\"}]").Execute()
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}
+
+		cmdOut, err := oc.AsAdmin().WithoutNamespace().Run("adm").Args("upgrade").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(cmdOut).To(o.ContainSubstring("Upstream is unset, so the cluster will use an appropriate default."))
+		o.Expect(cmdOut).To(o.ContainSubstring(fmt.Sprintf("Channel: %s", orgChannel)))
+
+		desiredChannel, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("clusterversion/version", "-o=jsonpath={.status.desired.channels}").Output()
+
+		o.Expect(err).NotTo(o.HaveOccurred())
+		if desiredChannel == "" {
+			o.Expect(cmdOut).NotTo(o.ContainSubstring("available channels:"))
+		} else {
+			msg := "available channels: "
+			desiredChannel = desiredChannel[1 : len(desiredChannel)-1]
+			splits := strings.Split(desiredChannel, ",")
+			for _, split := range splits {
+				split = strings.Trim(split, "\"")
+				msg = msg + split + ", "
+			}
+			msg = msg[:len(msg)-2]
+
+			o.Expect(cmdOut).To(o.ContainSubstring(msg))
+		}
+
+		g.By("Check when upstream is set")
+		projectID := "openshift-qe"
+		ctx := context.Background()
+		client, err := storage.NewClient(ctx)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		defer client.Close()
+
+		graphURL, bucket, object, err := buildGraph(client, oc, projectID)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		defer DeleteBucket(client, bucket)
+		defer DeleteObject(client, bucket, object)
+
+		err = oc.AsAdmin().WithoutNamespace().Run("patch").Args("clusterversion/version", "--type=merge", "--patch", fmt.Sprintf("{\"spec\":{\"upstream\":\"%s\", \"channel\":\"channel-a\"}}", graphURL)).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		exec.Command("bash", "-c", "sleep 5").Output()
+		cmdOut, err = oc.AsAdmin().WithoutNamespace().Run("adm").Args("upgrade").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(cmdOut).To(o.ContainSubstring(fmt.Sprintf("Upstream: %s", graphURL)))
+		o.Expect(cmdOut).To(o.ContainSubstring("Channel: channel-a (available channels: channel-a, channel-b)"))
+
+		g.By("Check when channel is unset")
+		_, err = oc.AsAdmin().WithoutNamespace().Run("adm").Args("upgrade", "channel", "--allow-explicit-channel").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		cmdOut, err = oc.AsAdmin().WithoutNamespace().Run("adm").Args("upgrade").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(cmdOut).NotTo(o.ContainSubstring("Upstream:"))
+		o.Expect(cmdOut).NotTo(o.ContainSubstring("Channel:"))
+		o.Expect(cmdOut).To(o.ContainSubstring("Reason: NoChannel"))
+		o.Expect(cmdOut).To(o.ContainSubstring("Message: The update channel has not been configured."))
 	})
 })
