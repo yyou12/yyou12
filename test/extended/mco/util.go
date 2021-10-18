@@ -263,7 +263,11 @@ func getKubeletConfigDetails(oc *exutil.CLI, kcName string) (string, error) {
 }
 
 func getCommitId(oc *exutil.CLI, component string, clusterVersion string) (string, error) {
-	outFilePath, ocErr := oc.AsAdmin().WithoutNamespace().Run("adm").Args("release", "info", "--commits", clusterVersion).OutputToFile("commitIdLogs.txt")
+	secretFile, secretErr := oc.AsAdmin().WithoutNamespace().Run("get").Args("secret/pull-secret", "-n", "openshift-config", `--template={{index .data ".dockerconfigjson" | base64decode}}`).OutputToFile("auth.json")
+	if secretErr != nil {
+		return "", secretErr
+	}
+	outFilePath, ocErr := oc.AsAdmin().WithoutNamespace().Run("adm").Args("release", "info", "--registry-config="+secretFile, "--commits", clusterVersion).OutputToFile("commitIdLogs.txt")
 	if ocErr != nil {
 		return "", ocErr
 	}
