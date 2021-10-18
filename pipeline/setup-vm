@@ -74,6 +74,7 @@ if echo $INSTALL_TOOLS | grep -i 'operatorSDK' > /dev/null; then
     ls -lrt build/
     sudo mv -f build/* $WORKDIR
     sudo rm -fr ../osdk
+    sudo chown -R cloud-user:cloud-user $WORKDIR
     operator-sdk version
     cd $WORKDIR
 else
