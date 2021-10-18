@@ -2665,6 +2665,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 			i                   int
 			msgCsv              string
 			msgSub              string
+			s                   string
 			waitErr             error
 		)
 
@@ -2729,27 +2730,30 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		for i = 2; i < 6; i++ {
 			e2e.Logf("Cycle #%v starts", i)
 
-			// g.By("subscribe")
+			g.By("subscribe")
 			sub.create(oc, itName, dr)
 			newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", finalCSV, "-n", oc.Namespace(), "-o=jsonpath={.status.phase}"}).check(oc)
 
-			// g.By("unsubscribe")
-			msgCsv, err = oc.AsAdmin().WithoutNamespace().Run("delete").Args("csv", "-n", oc.Namespace(), sub.installedCSV).Output()
-			o.Expect(err).NotTo(o.HaveOccurred())
-			// sub.deleteCSV(itName, dr) // this doesn't seem to work for multiple cycles
+			g.By("unsubscribe")
 			sub.delete(itName, dr)
+			msgCsv, err = oc.AsAdmin().WithoutNamespace().Run("delete").Args("csv", "-n", oc.Namespace(), sub.installedCSV).Output()
+			// o.Expect(err).NotTo(o.HaveOccurred())
+			// sub.deleteCSV(itName, dr) // this doesn't seem to work for multiple cycles
 			// Need to ensure its deleted before proceeding
-			waitErr = wait.Poll(3*time.Second, 180*time.Second, func() (bool, error) {
+			waitErr = wait.Poll(5*time.Second, 180*time.Second, func() (bool, error) {
 				msgSub, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("sub", "-n", oc.Namespace()).Output()
+				e2e.Logf("STEP %v sub msg: %v", i, msgSub)
 				o.Expect(err).NotTo(o.HaveOccurred())
 				msgCsv, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", "-n", oc.Namespace()).Output()
+				e2e.Logf("STEP %v csv msg: %v", i, msgCsv)
 				o.Expect(err).NotTo(o.HaveOccurred())
 				if strings.Contains(msgSub, "No resources found") && (strings.Contains(msgCsv, "No resources found") || !strings.Contains(msgCsv, finalCSV)) {
 					return true, nil
 				}
 				return false, nil
 			})
-			exutil.AssertWaitPollNoErr(waitErr, "sub or csv found")
+			s = fmt.Sprintf("STEP error sub or csv not deleted on cycle #%v:\nsub %v\ncsv", i, msgSub, msgCsv)
+			exutil.AssertWaitPollNoErr(waitErr, s)
 		}
 
 		g.By("6 FINISH")
