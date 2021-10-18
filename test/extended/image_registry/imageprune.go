@@ -143,7 +143,7 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 		defer oc.AsAdmin().Run("patch").Args("imagepruner/cluster", "-p", `{"spec":{"schedule":""}}`, "--type=merge").Execute()
 
 		g.By("Check log when imagerpruner loglevel is Normal")
-		time.Sleep(1 * time.Minute)
+		time.Sleep(90 * time.Second)
 		foundPruneLog := false
 		foundPruneLog = imagePruneLog(oc, normalInfo)
 		o.Expect(foundPruneLog).To(o.BeTrue())
@@ -152,7 +152,7 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 		err = oc.AsAdmin().Run("patch").Args("imagepruner/cluster", "-p", `{"spec":{"logLevel":"Debug"}}`, "--type=merge").Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		defer oc.AsAdmin().Run("patch").Args("imagepruner/cluster", "-p", `{"spec":{"logLevel":"Normal"}}`, "--type=merge").Execute()
-		time.Sleep(1 * time.Minute)
+		time.Sleep(90 * time.Second)
 		foundPruneLog = false
 		foundPruneLog = imagePruneLog(oc, debugInfo)
 		o.Expect(foundPruneLog).To(o.BeTrue())
@@ -160,7 +160,8 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 		g.By("Check log when imagerpruner loglevel is Trace")
 		err = oc.AsAdmin().Run("patch").Args("imagepruner/cluster", "-p", `{"spec":{"logLevel":"Trace"}}`, "--type=merge").Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
-		time.Sleep(1 * time.Minute)
+		time.Sleep(90 * time.Second)
+
 		foundPruneLog = false
 		foundPruneLog = imagePruneLog(oc, traceInfo)
 		o.Expect(foundPruneLog).To(o.BeTrue())
@@ -168,7 +169,7 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 		g.By("Check log when imagerpruner loglevel is TraceAll")
 		err = oc.AsAdmin().Run("patch").Args("imagepruner/cluster", "-p", `{"spec":{"logLevel":"TraceAll"}}`, "--type=merge").Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
-		time.Sleep(1 * time.Minute)
+		time.Sleep(90 * time.Second)
 		foundPruneLog = false
 		foundPruneLog = imagePruneLog(oc, traceAllInfo)
 		o.Expect(foundPruneLog).To(o.BeTrue())
