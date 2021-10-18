@@ -94,16 +94,31 @@ func (mc *MachineConfig) delete(oc *exutil.CLI) {
 
 func (kc *KubeletConfig) create(oc *exutil.CLI) {
 	exutil.CreateClusterResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", kc.template, "-p", "NAME="+kc.name)
-	mcp := MachineConfigPool{name: "worker"}
-	mcp.waitForComplete(oc)
 }
 
 func (kc *KubeletConfig) delete(oc *exutil.CLI) {
 	e2e.Logf("deleting kubelet config: %s", kc.name)
 	err := oc.AsAdmin().WithoutNamespace().Run("delete").Args("kubeletconfig", kc.name, "--ignore-not-found=true").Execute()
 	o.Expect(err).NotTo(o.HaveOccurred())
-	mcp := MachineConfigPool{name: "worker"}
-	mcp.waitForComplete(oc)
+}
+
+func (kc *KubeletConfig) waitUntilSuccess(oc *exutil.CLI, timeout string) {
+	e2e.Logf("wait for %s to report success", kc.name)
+	o.Eventually(func() map[string]interface{} {
+		successCond, _ := getStatusCondition(oc, "kubeletconfig/"+kc.name, "Success")
+		return successCond
+	},
+		timeout).Should(o.SatisfyAll(o.HaveKeyWithValue("status", "True"),
+		o.HaveKeyWithValue("message", "Success")))
+}
+
+func (kc *KubeletConfig) waitUntilFailure(oc *exutil.CLI, expectedMsg, timeout string) {
+	e2e.Logf("wait for %s to report failure", kc.name)
+	o.Eventually(func() map[string]interface{} {
+		successCond, _ := getStatusCondition(oc, "kubeletconfig/"+kc.name, "Failure")
+		return successCond
+	},
+		timeout).Should(o.SatisfyAll(o.HaveKeyWithValue("status", "False"), o.HaveKeyWithValue("message", o.ContainSubstring(expectedMsg))))
 }
 
 func (pdb *PodDisruptionBudget) create(oc *exutil.CLI) {
