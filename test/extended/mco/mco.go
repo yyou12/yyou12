@@ -413,7 +413,9 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		g.By("Check MCD logs to make sure machine config daemon without SIGTERM")
-		mcdLogs, err := exutil.GetSpecificPodLogs(oc, "openshift-machine-config-operator", "machine-config-daemon", getMachineConfigDaemon(oc, workerNode), "")
+		mcDaemon := getMachineConfigDaemon(oc, workerNode)
+		exutil.AssertPodToBeReady(oc, mcDaemon, "openshift-machine-config-operator")
+		mcdLogs, err := exutil.GetSpecificPodLogs(oc, "openshift-machine-config-operator", "machine-config-daemon", mcDaemon, "")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(mcdLogs).ShouldNot(o.ContainSubstring("SIGTERM"))
 	})

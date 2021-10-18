@@ -147,7 +147,7 @@ func (pod *Pod) Create(oc *CLI) {
 	e2e.Logf("Creating pod: %s", pod.Name)
 	params := []string{"--ignore-unknown-parameters=true", "-f", pod.Template, "-p", "NAME=" + pod.Name}
 	CreateNsResourceFromTemplate(oc, pod.Namespace, append(params, pod.Parameters...)...)
-	assertPodToBeReady(oc, pod.Name, pod.Namespace)
+	AssertPodToBeReady(oc, pod.Name, pod.Namespace)
 }
 
 // Delete pod
@@ -157,7 +157,7 @@ func (pod *Pod) Delete(oc *CLI) error {
 
 }
 
-func assertPodToBeReady(oc *CLI, podName string, namespace string) {
+func AssertPodToBeReady(oc *CLI, podName string, namespace string) {
 	err := wait.Poll(30*time.Second, 3*time.Minute, func() (bool, error) {
 		stdout, err := oc.AsAdmin().Run("get").Args("pod", podName, "-n", namespace, "-o", "jsonpath='{.status.conditions[?(@.type==\"Ready\")].status}'").Output()
 		if err != nil {
