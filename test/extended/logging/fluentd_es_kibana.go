@@ -194,6 +194,42 @@ var _ = g.Describe("[sig-openshift-logging] Logging", func() {
 			elp := resource{"pods", postPodList.Items[0].Name, cloNS}
 			elp.checkLogsFromRs(oc, "[DEBUG]", "elasticsearch")
 		})
+
+		// author: ikanse@redhat.com
+		g.It("CPaasrunOnly-Author:ikanse-Medium-40168-oc adm must-gather can collect logging data [Slow][Disruptive]", func() {
+			g.By("Deploy Logging with Fluentd only instance")
+			instance := exutil.FixturePath("testdata", "logging", "clusterlogging", "fluentd_only.yaml")
+			cl := resource{"clusterlogging", "instance", cloNS}
+			defer cl.deleteClusterLogging(oc)
+			cl.createClusterLogging(oc, "-n", cl.namespace, "-f", instance, "-p", "NAMESPACE="+cl.namespace)
+
+			g.By("Check must-gather can collect cluster logging data")
+			chkMustGather(oc, cloNS)
+
+			g.By("Create external Elasticsearch instance")
+			oc.SetupProject()
+			es_proj := oc.Namespace()
+			es := resource{"deployment", "elasticsearch-server", es_proj}
+			esTemplate := exutil.FixturePath("testdata", "logging", "external-log-stores", "40168.yaml")
+			err := es.applyFromTemplate(oc, "-n", es.namespace, "-f", esTemplate, "-p", "NAMESPACE="+es.namespace)
+			o.Expect(err).NotTo(o.HaveOccurred())
+			WaitForDeploymentPodsToBeReady(oc, es_proj, es.name)
+
+			g.By("Create CLF")
+			clf := resource{"clusterlogforwarder", "instance", cloNS}
+			defer clf.clear(oc)
+			clfTemplate := exutil.FixturePath("testdata", "logging", "clusterlogforwarder", "40168.yaml")
+			err = clf.applyFromTemplate(oc, "-n", clf.namespace, "-f", clfTemplate, "-p", "ESNAMESPACE="+es_proj)
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			g.By("Deploy EFK pods")
+			instance = exutil.FixturePath("testdata", "logging", "clusterlogging", "cl-template.yaml")
+			cl = resource{"clusterlogging", "instance", cloNS}
+			cl.createClusterLogging(oc, "-n", cl.namespace, "-f", instance, "-p", "NAMESPACE="+cl.namespace)
+
+			g.By("Check must-gather can collect cluster logging data")
+			chkMustGather(oc, cloNS)
+		})
 	})
 })
 

@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -650,4 +652,47 @@ func getCollectorName(oc *exutil.CLI, subname string, ns string) string {
 		collector = "fluentd"
 	}
 	return collector
+}
+
+func chkMustGather(oc *exutil.CLI, ns string) {
+	cloImg, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", ns, "deployment.apps/cluster-logging-operator", "-o", "jsonpath={.spec.template.spec.containers[?(@.name == \"cluster-logging-operator\")].image}").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	e2e.Logf("The cloImg is: " + cloImg)
+
+	cloPodList, err := oc.AdminKubeClient().CoreV1().Pods(ns).List(metav1.ListOptions{LabelSelector: "name=cluster-logging-operator"})
+	o.Expect(err).NotTo(o.HaveOccurred())
+	cloImgID, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", ns, "pods", cloPodList.Items[0].Name, "-o", "jsonpath={.status.containerStatuses[0].imageID}").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	e2e.Logf("The cloImgID is: " + cloImgID)
+
+	mgDest := "must-gather-" + getRandomString()
+	baseDir := exutil.FixturePath("testdata", "logging")
+	TestDataPath := filepath.Join(baseDir, mgDest)
+	defer exec.Command("rm", "-r", TestDataPath).Output()
+	err = oc.AsAdmin().WithoutNamespace().Run("adm").Args("-n", ns, "must-gather", "--image="+cloImg, "--dest-dir="+TestDataPath).Execute()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	replacer := strings.NewReplacer(".", "-", "/", "-", ":", "-", "@", "-")
+	cloImgDir := replacer.Replace(cloImgID)
+	checkPath := []string{
+		"timestamp",
+		"event-filter.html",
+		cloImgDir + "/gather-debug.log",
+		cloImgDir + "/cluster-scoped-resources",
+		cloImgDir + "/namespaces",
+		cloImgDir + "/cluster-logging/clo",
+		cloImgDir + "/cluster-logging/collector",
+		cloImgDir + "/cluster-logging/eo",
+		cloImgDir + "/cluster-logging/eo/elasticsearch-operator.logs",
+		cloImgDir + "/cluster-logging/es",
+		cloImgDir + "/cluster-logging/install",
+		cloImgDir + "/cluster-logging/kibana/",
+		cloImgDir + "/cluster-logging/clo/clf-events.yaml",
+		cloImgDir + "/cluster-logging/clo/clo-events.yaml",
+	}
+
+	for _, v := range checkPath {
+		path_stat, err := os.Stat(filepath.Join(TestDataPath, v))
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(path_stat.Size() > 0).To(o.BeTrue(), "The path %s is empty", v)
+	}
 }
