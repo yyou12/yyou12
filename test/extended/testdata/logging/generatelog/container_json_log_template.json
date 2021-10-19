@@ -20,21 +20,15 @@
             "apiVersion": "v1",
             "kind": "ReplicationController",
             "metadata": {
-                "name": "logging-centos-logtest",
-                "labels": {
-                    "run": "centos-logtest",
-                    "test": "centos-logtest"
-                }
+                "name": "${{REPLICATIONCONTROLLER}}",
+                "labels": "${{LABELS}}"
             },
             "spec": {
                 "replicas": "${{REPLICAS}}",
                 "template": {
                     "metadata": {
                         "generateName": "centos-logtest-",
-                        "labels": {
-                            "run": "centos-logtest",
-                            "test": "centos-logtest"
-                        }
+                        "labels": "${{LABELS}}"
                     },
                     "spec": {
                         "containers": [
@@ -57,7 +51,7 @@
                             {
                                 "name": "config",
                                 "configMap": {
-                                    "name": "logtest-config"
+                                    "name": "${{CONFIGMAP}}"
                                 }
                             }
                         ]
@@ -76,7 +70,21 @@
             "name": "REPLICAS",
             "displayName": "Replicas",
             "value": "1"
+        },
+        {
+            "name":"LABELS",
+            "displayName":"labels",
+            "value": "{\"run\": \"centos-logtest\", \"test\": \"centos-logtest\"}"
+        },
+        {
+            "name":"REPLICATIONCONTROLLER",
+            "displayName":"ReplicationController",
+            "value":"logging-centos-logtest"
+        },
+        {
+            "name":"CONFIGMAP",
+            "displayName":"ConfigMap",
+            "value":"logtest-config"
         }
     ]
 }
-
