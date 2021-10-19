@@ -1,15 +1,18 @@
 package image_registry
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"math/rand"
+	"os/exec"
 	"strings"
 	"time"
 
 	g "github.com/onsi/ginkgo"
 	o "github.com/onsi/gomega"
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
+	container "github.com/openshift/openshift-tests-private/test/extended/util/container"
 	"github.com/prometheus/common/model"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -320,4 +323,38 @@ func restoreRegistryStorageConfig(oc *exutil.CLI) string {
 		e2e.Logf("Image Registry is using unknown storage type")
 	}
 	return storageinfo
+}
+
+func loginRegistryDefaultRoute(oc *exutil.CLI, defroute string, ns string) {
+	var podmanCLI = container.NewPodmanCLI()
+	containerCLI := podmanCLI
+
+	g.By("Trust ca for default registry route on your client platform")
+	crt, err := oc.WithoutNamespace().AsAdmin().Run("get").Args("secret", "-n", "openshift-ingress", "router-certs-default", "-o", `go-template={{index .data "tls.crt"}}`).Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	sDec, err := base64.StdEncoding.DecodeString(crt)
+	if err != nil {
+		e2e.Logf("Error decoding string: %s ", err.Error())
+	}
+	fileName := "/etc/pki/ca-trust/source/anchors/" + defroute + ".crt"
+	sDecode := string(sDec)
+	cmd := " echo \"" + sDecode + "\"|sudo tee " + fileName + "> /dev/null"
+	_, err = exec.Command("bash", "-c", cmd).Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	caCmd := "sudo update-ca-trust enable"
+	_, err = exec.Command("bash", "-c", caCmd).Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	g.By("Get admin permission to push image to your project")
+	err = oc.Run("create").Args("serviceaccount", "registry", "-n", ns).Execute()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	err = oc.WithoutNamespace().AsAdmin().Run("adm").Args("policy", "add-cluster-role-to-user", "admin", "-z", "registry", "-n", ns).Execute()
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	g.By("Login to route")
+	token, err := oc.WithoutNamespace().AsAdmin().Run("sa").Args("get-token", "registry", "-n", ns).Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	if output, err := containerCLI.Run("login").Args(defroute, "-u", "registry", "-p", token).Output(); err != nil {
+		e2e.Logf(output)
+	}
 }

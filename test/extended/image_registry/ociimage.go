@@ -5,8 +5,10 @@ import (
 	g "github.com/onsi/ginkgo"
 	o "github.com/onsi/gomega"
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
+	container "github.com/openshift/openshift-tests-private/test/extended/util/container"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
+	"time"
 )
 
 var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
@@ -47,5 +49,129 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 		g.By("Display oci image info")
 		e2e.Logf(out)
 		o.Expect(out).To(o.ContainSubstring(manifestType))
+	})
+})
+
+var _ = g.Describe("[sig-imageregistry] Image_Registry Vmonly", func() {
+	defer g.GinkgoRecover()
+	var (
+		oc = exutil.NewCLI("default-image-oci-vm", exutil.KubeConfigPath())
+	)
+	// author: wewang@redhat.com
+	g.It("Author:wewang-ConnectedOnly-VMonly-High-37498-Push image with OCI format directly to the internal registry", func() {
+		var podmanCLI = container.NewPodmanCLI()
+		containerCLI := podmanCLI
+		//quay.io does not support oci image, so using docker image temporarily, https://issues.redhat.com/browse/PROJQUAY-2300
+		// ociImage := "quay.io/openshifttest/ociimage"
+		ociImage := "docker.io/wzheng/ociimage"
+
+		g.By("Expose default route of internal registry")
+		err := oc.AsAdmin().Run("patch").Args("configs.imageregistry/cluster", "-p", `{"spec":{"defaultRoute":true}}`, "--type=merge").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		defer oc.AsAdmin().Run("patch").Args("configs.imageregistry/cluster", "-p", `{"spec":{"defaultRoute":false}}`, "--type=merge").Execute()
+		oc.SetupProject()
+		g.By("Log into the default route")
+		time.Sleep(time.Second * 5)
+		defroute, err := oc.WithoutNamespace().AsAdmin().Run("get").Args("route/default-route", "-n", "openshift-image-registry", "-o=jsonpath={.spec.host}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		loginRegistryDefaultRoute(oc, defroute, oc.Namespace())
+		defer func() {
+			g.By("Logout registry route")
+			if output, err := containerCLI.Run("logout").Args(defroute).Output(); err != nil {
+				e2e.Logf(output)
+				o.Expect(err).NotTo(o.HaveOccurred())
+			}
+		}()
+
+		g.By("podman tag an image")
+		output, err := containerCLI.Run("pull").Args(ociImage).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		if err != nil {
+			e2e.Logf(output)
+		}
+		defer containerCLI.RemoveImage(ociImage)
+		output, err = containerCLI.Run("tag").Args(ociImage, defroute+"/"+oc.Namespace()+"/myimage:latest").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		if err != nil {
+			e2e.Logf(output)
+		}
+
+		g.By(" Push it with oci format")
+		out := defroute + "/" + oc.Namespace() + "/myimage:latest"
+		output, err = containerCLI.Run("push").Args("--format=oci", out).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		if err != nil {
+			e2e.Logf(output)
+		}
+
+		g.By("Check the manifest type")
+		output, err = containerCLI.Run("inspect").Args(out).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		if err != nil {
+			e2e.Logf(output)
+		}
+		defer containerCLI.RemoveImage(out)
+		o.Expect(output).To(o.ContainSubstring("application/vnd.oci.image.manifest.v1+json"))
+	})
+
+	// author: wewang@redhat.com
+	g.It("Author:wewang-ConnectedOnly-VMonly-Critical-35998-OCI images layers configs can be pruned completely [Exclusive]", func() {
+		var podmanCLI = container.NewPodmanCLI()
+		containerCLI := podmanCLI
+		ociImage := "docker.io/wzheng/ociimage"
+
+		g.By("Tag the image to internal registry")
+		oc.SetupProject()
+		err := oc.Run("tag").Args("--source=docker", ociImage, "35998-image:latest").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		g.By("Check if new imagestreamtag created")
+		out := getResource(oc, true, withoutNamespace, "istag", "-n", oc.Namespace())
+		o.Expect(out).To(o.ContainSubstring("35998-image:latest"))
+
+		g.By("Log into the default route")
+		err = oc.AsAdmin().Run("patch").Args("configs.imageregistry/cluster", "-p", `{"spec":{"defaultRoute":true}}`, "--type=merge").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		defer oc.AsAdmin().Run("patch").Args("configs.imageregistry/cluster", "-p", `{"spec":{"defaultRoute":false}}`, "--type=merge").Execute()
+		time.Sleep(time.Second * 5)
+		defroute, err := oc.WithoutNamespace().AsAdmin().Run("get").Args("route/default-route", "-n", "openshift-image-registry", "-o=jsonpath={.spec.host}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		loginRegistryDefaultRoute(oc, defroute, oc.Namespace())
+		defer func() {
+			g.By("Logout registry route")
+			if output, err := containerCLI.Run("logout").Args(defroute).Output(); err != nil {
+				e2e.Logf(output)
+				o.Expect(err).NotTo(o.HaveOccurred())
+			}
+		}()
+
+		g.By("Pull internal image locally")
+		imageInfo := defroute + "/" + oc.Namespace() + "/35998-image:latest"
+		output, err := containerCLI.Run("pull").Args(imageInfo).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		if err != nil {
+			e2e.Logf(output)
+		}
+		defer containerCLI.RemoveImage(imageInfo)
+
+		g.By("Mark down the config/layer info of oci image")
+		output, err = containerCLI.Run("run").Args("--rm", "quay.io/rh-obulatov/boater", "boater", "get-manifest", "-a", ociImage).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		if err != nil {
+			e2e.Logf(output)
+		}
+		defer containerCLI.RemoveImage("quay.io/rh-obulatov/boater")
+		o.Expect(output).To(o.ContainSubstring("schemaVersion\":2,\"config"))
+		o.Expect(output).To(o.ContainSubstring("layers"))
+		err = oc.AsAdmin().WithoutNamespace().Run("delete").Args("-n", oc.Namespace(), "all", "--all").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Prune image")
+		token, err := oc.Run("whoami").Args("-t").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		output, err = oc.WithoutNamespace().AsAdmin().Run("adm").Args("prune", "images", "--keep-tag-revisions=0", "--keep-younger-than=0m", "--token="+token).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring("Deleting layer link"))
+		o.Expect(output).To(o.ContainSubstring("Deleting blob"))
+		o.Expect(output).To(o.ContainSubstring("Deleting image"))
 	})
 })

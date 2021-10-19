@@ -197,7 +197,7 @@ func (c *PodmanCLI) RemoveImage(imageIndex string) (bool, error) {
 		return true, nil
 	}
 	e2e.Logf("imageID is %s\n", imageID)
-	_, err = c.Run("image").Args("rm", imageID).Output()
+	_, err = c.Run("image").Args("rm", "-f", imageID).Output()
 	if err != nil {
 		e2e.Logf("remove image %s failed", imageID)
 		return false, err
