@@ -19,31 +19,24 @@ var _ = g.Describe("[sig-node] PSAP should", func() {
 	var (
 		oc                  = exutil.NewCLI("nfd-test", exutil.KubeConfigPath())
 		machineAPINamespace = "openshift-machine-api"
-		machineNFDNamespace = "openshift-nfd"
 		iaasPlatform        string
-		isNFD               bool
 	)
 
 	g.BeforeEach(func() {
 		// get IaaS platform
 		iaasPlatform = ci.CheckPlatform(oc)
-
-		// ensure NFD operator is installed
-		isNFD = isPodInstalled(oc, machineNFDNamespace)
 	})
 
 	// author: nweinber@redhat.com
-	g.It("Author:nweinber-Medium-43461-Add a new worker node on an NFD-enabled OCP cluster", func() {
-
-		// test requires NFD to be installed
-		if !isNFD {
-			g.Skip("NFD is not installed - skipping test ...")
-		}
+	g.It("Author:nweinber-Medium-43461-Add a new worker node on an NFD-enabled OCP cluster [Slow]", func() {
 
 		// currently test is only supported on AWS, GCP, and Azure
 		if iaasPlatform != "aws" && iaasPlatform != "gcp" && iaasPlatform != "azure" {
 			g.Skip("IAAS platform: " + iaasPlatform + " is not automated yet - skipping test ...")
 		}
+
+		// test requires NFD to be installed and an instance to be runnning
+		installNFD(oc)
 
 		g.By("Get existing machinesets in cluster")
 		oc_get_machineset := ci.ListWorkerMachineSets(oc)
@@ -60,7 +53,7 @@ var _ = g.Describe("[sig-node] PSAP should", func() {
 
 		defer func() {
 			g.By("Destroy newly created machineset and node once check is complete")
-			err := oc.AsAdmin().WithoutNamespace().Run("delete").Args("machineset", new_machineset_name, "-n", machineAPINamespace).Execute()
+			err := deleteMachineSet(oc, machineAPINamespace, new_machineset_name)
 			o.Expect(err).NotTo(o.HaveOccurred())
 		}()
 
