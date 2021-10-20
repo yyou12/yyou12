@@ -1,0 +1,40 @@
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: deploy-template
+objects:
+- kind: Deployment
+  apiVersion: apps/v1
+  metadata:
+    name: ${DNAME}
+    namespace: ${DNAMESPACE}
+  spec:
+    replicas: ${{REPLICASNUM}}
+    selector:
+      matchLabels:
+        app: mydep
+    template:
+      metadata:
+        labels:
+          app: mydep
+      spec:
+        containers:
+        - name: ${DNAME}
+          image: quay.io/openshifttest/storage@sha256:a05b96d373be86f46e76817487027a7f5b8b5f87c0ac18a246b018df11529b40
+          ports:
+            - containerPort: 80
+          volumeMounts:
+          - name: local
+            mountPath: ${MPATH}
+        volumes:
+        - name: local
+          persistentVolumeClaim:
+            claimName: ${PVCNAME}    
+
+parameters:
+- name: DNAME
+- name: DNAMESPACE
+- name: REPLICASNUM
+- name: MPATH
+- name: PVCNAME
+
