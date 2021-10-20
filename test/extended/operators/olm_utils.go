@@ -1260,6 +1260,29 @@ func clusterPackageExists(oc *exutil.CLI, sub subscriptionDescription) (bool, er
 	return found, err
 }
 
+func clusterPackageExistsInNamespace(oc *exutil.CLI, sub subscriptionDescription, namespace string) (bool, error) {
+	found := false
+	var v []string
+	var msg string
+	var err error
+	if namespace == "all" {
+		msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("packagemanifest", "--all-namespaces", "-o=jsonpath={range .items[*]}{@.metadata.name}{\",\"}{@.metadata.labels.catalog}{\"\\n\"}{end}").Output()
+	} else {
+		msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("packagemanifest", "-n", namespace, "-o=jsonpath={range .items[*]}{@.metadata.name}{\",\"}{@.metadata.labels.catalog}{\"\\n\"}{end}").Output()
+	}
+	if err == nil {
+		for _, s := range strings.Fields(msg) {
+			v = strings.Split(s, ",")
+			if v[0] == sub.operatorPackage && v[1] == sub.catalogSourceName {
+				found = true
+				e2e.Logf("%v matches: %v", s, sub.operatorPackage)
+				break
+			}
+		}
+	}
+	return found, err
+}
+
 // Return a github client
 func githubClient() (context.Context, *http.Client) {
 	ctx := context.Background()

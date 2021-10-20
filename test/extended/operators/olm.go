@@ -8435,7 +8435,7 @@ var _ = g.Describe("[sig-operators] OLM on VM for an end user handle within a na
 		g.By("Create catalog source")
 		catsrc.create(oc, itName, dr)
 		err = wait.Poll(3*time.Second, 120*time.Second, func() (bool, error) {
-			exists, error := clusterPackageExists(oc, sub)
+			exists, error := clusterPackageExistsInNamespace(oc, sub, catsrc.namespace)
 			if !exists || error != nil {
 				return false, nil
 			}
