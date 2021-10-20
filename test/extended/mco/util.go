@@ -277,8 +277,16 @@ func getKubeletConfigDetails(oc *exutil.CLI, kcName string) (string, error) {
 	return oc.AsAdmin().WithoutNamespace().Run("get").Args("kubeletconfig", kcName, "-o", "yaml").Output()
 }
 
+func getPullSecret(oc *exutil.CLI) (string, error) {
+	return oc.AsAdmin().WithoutNamespace().Run("get").Args("secret/pull-secret", "-n", "openshift-config", `--template={{index .data ".dockerconfigjson" | base64decode}}`).OutputToFile("auth.dockerconfigjson")
+}
+
+func setDataForPullSecret(oc *exutil.CLI, configFile string) (string, error) {
+	return oc.AsAdmin().WithoutNamespace().Run("set").Args("data", "secret/pull-secret", "-n", "openshift-config", "--from-file=.dockerconfigjson="+configFile).Output()
+}
+
 func getCommitId(oc *exutil.CLI, component string, clusterVersion string) (string, error) {
-	secretFile, secretErr := oc.AsAdmin().WithoutNamespace().Run("get").Args("secret/pull-secret", "-n", "openshift-config", `--template={{index .data ".dockerconfigjson" | base64decode}}`).OutputToFile("auth.json")
+	secretFile, secretErr := getPullSecret(oc)
 	if secretErr != nil {
 		return "", secretErr
 	}
@@ -371,6 +379,10 @@ func getHostFromRoute(oc *exutil.CLI, routeName string, routeNamespace string) s
 	o.Expect(err).NotTo(o.HaveOccurred())
 
 	return stdout
+}
+
+func generateTmpFile(oc *exutil.CLI, fileName string) string {
+	return filepath.Join(e2e.TestContext.OutputDir, oc.Namespace()+"-"+fileName)
 }
 
 func getPrometheusQueryResults(oc *exutil.CLI, query string) string {

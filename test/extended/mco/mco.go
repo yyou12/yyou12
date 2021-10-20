@@ -708,6 +708,60 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		o.Expect(mccPlatformStatus).To(o.Equal(infraPlatformStatus))
 	})
 
+	g.It("Author:mhanss-CPaasrunOnly-high-42680-change pull secret in the openshift-config namespace [Serial]", func() {
+		g.By("Add a dummy credential in pull secret")
+		secretFile, err := getPullSecret(oc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		newSecretFile := generateTmpFile(oc, "pull-secret.dockerconfigjson")
+		_, copyErr := exec.Command("bash", "-c", "cp "+secretFile+" "+newSecretFile).Output()
+		o.Expect(copyErr).NotTo(o.HaveOccurred())
+		newPullSecret, err := oc.AsAdmin().WithoutNamespace().Run("registry").Args("login", `--registry="quay.io"`, `--auth-basic="mhans-redhat:redhat123"`, "--to="+newSecretFile, "--skip-check").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(newPullSecret).Should(o.Equal(`Saved credentials for "quay.io"`))
+		setData, err := setDataForPullSecret(oc, newSecretFile)
+		defer func() {
+			_, err := setDataForPullSecret(oc, secretFile)
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(setData).Should(o.Equal("secret/pull-secret data updated"))
+
+		g.By("Check new generated rendered configs for newly added pull secret")
+		renderedConfs, renderedErr := oc.AsAdmin().WithoutNamespace().Run("get").Args("mc", "--sort-by=metadata.creationTimestamp", "-o", "jsonpath='{.items[-2:].metadata.name}'").Output()
+		o.Expect(renderedErr).NotTo(o.HaveOccurred())
+		o.Expect(renderedConfs).NotTo(o.BeEmpty())
+		slices := strings.Split(strings.Trim(renderedConfs, "'"), " ")
+		var renderedMasterConf, renderedWorkerConf string
+		for _, conf := range slices {
+			if strings.Contains(conf, "master") {
+				renderedMasterConf = conf
+			} else if strings.Contains(conf, "worker") {
+				renderedWorkerConf = conf
+			}
+		}
+		e2e.Logf("New rendered config generated for master: %s", renderedMasterConf)
+		e2e.Logf("New rendered config generated for worker: %s", renderedWorkerConf)
+
+		g.By("Check logs of machine-config-daemon on master-n-worker nodes, make sure pull secret changes are detected, drain and reboot are skipped")
+		masterNode, masterErr := exutil.GetFirstMasterNode(oc)
+		workerNode, workerErr := exutil.GetFirstWorkerNode(oc)
+		o.Expect(masterErr).NotTo(o.HaveOccurred())
+		o.Expect(workerErr).NotTo(o.HaveOccurred())
+		commonExpectedStrings := []string{"File diff: detected change to /var/lib/kubelet/config.json", "Changes do not require drain, skipping"}
+		expectedStringsForMaster := append(commonExpectedStrings, "Node has Desired Config "+renderedMasterConf+", skipping reboot")
+		expectedStringsForWorker := append(commonExpectedStrings, "Node has Desired Config "+renderedWorkerConf+", skipping reboot")
+		masterMcdLogs, masterMcdLogErr := exutil.GetSpecificPodLogs(oc, "openshift-machine-config-operator", "machine-config-daemon", getMachineConfigDaemon(oc, masterNode), "")
+		o.Expect(masterMcdLogErr).NotTo(o.HaveOccurred())
+		workerMcdLogs, workerMcdLogErr := exutil.GetSpecificPodLogs(oc, "openshift-machine-config-operator", "machine-config-daemon", getMachineConfigDaemon(oc, workerNode), "")
+		o.Expect(workerMcdLogErr).NotTo(o.HaveOccurred())
+		foundOnMaster := containsMultipleStrings(masterMcdLogs, expectedStringsForMaster)
+		o.Expect(foundOnMaster).Should(o.BeTrue())
+		e2e.Logf("MCD log on master node %s contains expected strings: %v", masterNode, expectedStringsForMaster)
+		foundOnWorker := containsMultipleStrings(workerMcdLogs, expectedStringsForWorker)
+		o.Expect(foundOnWorker).Should(o.BeTrue())
+		e2e.Logf("MCD log on worker node %s contains expected strings: %v", workerNode, expectedStringsForWorker)
+	})
+
 	g.It("Author:sregidor-CPaasrunOnly-High-45239-KubeletConfig has a limit of 10 per cluster [Disruptive]", func() {
 		g.By("Pause mcp worker")
 		mcp := MachineConfigPool{name: "worker"}
@@ -827,7 +881,7 @@ func verifyKcRenderedMcs(oc *exutil.CLI, allKcs []KubeletConfig) []string {
 	o.Expect(renderedErr).NotTo(o.HaveOccurred())
 	o.Expect(renderedConfs).NotTo(o.BeEmpty())
 	slices := strings.Split(strings.Trim(renderedConfs, "'"), " ")
-	for index, _ := range allKcs {
+	for index := range allKcs {
 		suffix := ""
 		if index > 0 {
 			suffix = fmt.Sprintf("-%d", index)
