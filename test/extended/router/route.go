@@ -40,9 +40,11 @@ var _ = g.Describe("[sig-network-edge] Network_Edge should", func() {
 		o.Expect(output).To(o.ContainSubstring("haproxy.router.openshift.io/ip_whitelist"))
 
 		g.By("Verify the acl whitelist parameter inside router pod")
-		err = readHaproxyConfig(oc)
-		exutil.AssertWaitPollNoErr(err, "acl whitelist is not found")
-
+		podName := getRouterPod(oc, "default")
+		//backendName is the leading context of the route
+		backendName := "be_http:"+oc.Namespace()+":service-unsecure"
+		output = readHaproxyConfig(oc, podName, backendName, "-A10", "acl whitelist")
+		o.Expect(output).To(o.ContainSubstring(`acl whitelist src`))
+		o.Expect(output).To(o.ContainSubstring(`tcp-request content reject if !whitelist`))
 	})
-
 })

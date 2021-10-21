@@ -177,24 +177,28 @@ func readRouterPodEnv(oc *exutil.CLI, routername, envname string) string {
 	return output
 }
 
-// to collect pod name and check parameter related to OCP-42230
-func readHaproxyConfig(oc *exutil.CLI) error {
-	e2e.Logf("check Haproxy config file")
-	return wait.Poll(5*time.Second, 3*time.Minute, func() (bool, error) {
-		e2e.Logf("Get podname")
-		podName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-l", "ingresscontroller.operator.openshift.io/deployment-ingresscontroller=default", "-o=jsonpath={.items[0].metadata.name}", "-n", "openshift-ingress").Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		final, err1 := oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-ingress", podName, "--", "grep", "-w", `backend be_http:`+oc.Namespace()+`:service-unsecure`, "-A7", "/var/lib/haproxy/conf/haproxy.config").Output()
-		if err1 != nil {
-			e2e.Logf("Something went wrong, string search failed")
+// to check the route data in haproxy.config
+// grepOptions can specify the lines of the context, e.g. "-A20" or "-C10"
+// searchString2 is the config to be checked, since it might exists in multiple routes so use
+// searchString1 to locate the specified route config
+// after configuring the route the searchString2 need some time to be updated in haproxy.config so wait.Poll is required
+func readHaproxyConfig(oc *exutil.CLI, routerPodName, searchString1, grepOption, searchString2 string) string {
+	e2e.Logf("Polling and search haproxy config file")
+	cmd1 := fmt.Sprintf("grep \"%s\" haproxy.config %s | grep \"%s\"", searchString1, grepOption, searchString2)
+	cmd2 := fmt.Sprintf("grep \"%s\" haproxy.config %s", searchString1, grepOption)
+	waitErr := wait.Poll(5*time.Second, 60*time.Second, func() (bool, error) {
+		_, err := oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-ingress", routerPodName, "--", "bash", "-c", cmd1).Output()
+		if err != nil {
+			e2e.Logf("string not found, wait and try again...")
 			return false, nil
 		}
-		if strings.Contains(final, "acl whitelist") {
-			e2e.Logf("string search successful")
-			return true, nil
-		}
-		return false, nil
+		return true, nil
 	})
+	exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("reached max time allowed but config not found"))
+	output, err := oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-ingress", routerPodName, "--", "bash", "-c", cmd2).Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	e2e.Logf("the part of haproxy.config that matching \"%s\" is: %v", searchString1, output)
+	return output
 }
 
 func getImagePullSpecFromPayload(oc *exutil.CLI, image string) string {
