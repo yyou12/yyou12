@@ -15,6 +15,7 @@ import (
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
 	container "github.com/openshift/openshift-tests-private/test/extended/util/container"
 	db "github.com/openshift/openshift-tests-private/test/extended/util/db"
+	"k8s.io/apimachinery/pkg/util/wait"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 )
 
@@ -1548,6 +1549,73 @@ var _ = g.Describe("[sig-operators] OLM opm with podman", func() {
 		}
 		g.By("step: SUCCESS 25935")
 
+	})
+
+	// author: scolange@redhat.com
+	g.It("ConnectedOnly-Author:scolange-VMonly-Medium-25934-Reference non-latest versions of bundles by image digests", func() {
+		containerCLI := podmanCLI
+		containerTool := "podman"
+		opmBaseDir := exutil.FixturePath("testdata", "opm")
+		TmpDataPath := filepath.Join(opmBaseDir, "tmp")
+		err := os.MkdirAll(TmpDataPath, 0755)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		
+		bundleImageTag1 := "quay.io/olmqe/etcd-bundle:0.9.0"
+		bundleImageTag2 := "quay.io/olmqe/etcd-bundle:0.9.0-25934"
+		defer DeleteDir(TmpDataPath, "fixture-testdata")
+		defer containerCLI.RemoveImage(bundleImageTag2)
+		defer containerCLI.RemoveImage(bundleImageTag1)
+		defer exec.Command("kill", "-9", "$(lsof -t -i:25934)").Output()
+
+		if output, err := containerCLI.Run("pull").Args(bundleImageTag1).Output(); err != nil {
+			e2e.Logf(output)
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}
+
+		if output, err := containerCLI.Run("tag").Args(bundleImageTag1,bundleImageTag2).Output(); err != nil {
+			e2e.Logf(output)
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}
+
+		if output, err := containerCLI.Run("push").Args(bundleImageTag2).Output(); err != nil {
+			e2e.Logf(output)
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}
+
+		g.By("step: build bundle.db")
+		dbFilePath := TmpDataPath + "bundles.db"
+		if output, err := opmCLI.Run("registry").Args("add", "-b", bundleImageTag2, "-d", dbFilePath, "-c", containerTool, "--mode", "semver").Output(); err != nil {
+			e2e.Logf(output)
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}
+
+		g.By("step: Run the opm registry server binary to load manifest and serves a grpc API to query it.")
+		e2e.Logf("step: Run the registry-server ")
+		cmd := exec.Command("opm", "registry", "serve", "-d", dbFilePath, "-p", "25934")
+		e2e.Logf("cmd %v:", cmd)
+		cmd.Dir = TmpDataPath
+		err = cmd.Start()
+		e2e.Logf("cmd %v raise error: %v", cmd, err)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		e2e.Logf("step: check api.Registry/ListPackages")
+		err = wait.Poll(20*time.Second, 240*time.Second, func() (bool, error) {
+			outputCurl, err := exec.Command("grpcurl", "-plaintext", "localhost:25934", "api.Registry/ListPackages").Output()
+			o.Expect(err).NotTo(o.HaveOccurred())	
+			if strings.Contains(string(outputCurl), "etcd"){
+				return true, nil
+			}
+			return false, nil
+		})
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("grpcurl %s not listet package", dbFilePath))
+				
+		e2e.Logf("step: check api.Registry/GetBundleForChannel")
+		outputCurl, err  := exec.Command("grpcurl", "-plaintext", "localhost:25934", "api.Registry/ListBundles").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(string(outputCurl)).To(o.ContainSubstring("bundlePath"))
+		cmd.Process.Kill()
+		g.By("step: SUCCESS 25934")
+		
 	})
 
 })
