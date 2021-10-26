@@ -1474,7 +1474,7 @@ var _ = g.Describe("[sig-operators] OLM opm with podman", func() {
 		containerTool := "podman"
 		opmBaseDir := exutil.FixturePath("testdata", "opm")
 		TestDataPath := filepath.Join(opmBaseDir, "v1Bundle")
-		TestManifest:= filepath.Join(TestDataPath, "manifests")
+		TestManifest := filepath.Join(TestDataPath, "manifests")
 		bundleImageTag := "quay.io/olmqe/lib-bucket-provisioner:1.0"
 
 		defer containerCLI.RemoveImage(bundleImageTag)
@@ -1499,8 +1499,7 @@ var _ = g.Describe("[sig-operators] OLM opm with podman", func() {
 		o.Expect(string(output)).To(o.ContainSubstring("Writing annotations.yaml"))
 		o.Expect(string(output)).To(o.ContainSubstring("Writing bundle.Dockerfile"))
 
-		if output, err = containerCLI.Run("push").Args(bundleImageTag).Output(); 
-		err != nil {
+		if output, err = containerCLI.Run("push").Args(bundleImageTag).Output(); err != nil {
 			e2e.Logf(output)
 			o.Expect(err).NotTo(o.HaveOccurred())
 		}
@@ -1509,7 +1508,7 @@ var _ = g.Describe("[sig-operators] OLM opm with podman", func() {
 		output, err = opmCLI.Run("alpha").Args("bundle", "validate", "-t", bundleImageTag, "-b", "podman").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(output).To(o.ContainSubstring("All validation tests have been completed successfully"))
-		
+
 		g.By("step: SUCCESS 30763")
 	})
 
@@ -1559,7 +1558,7 @@ var _ = g.Describe("[sig-operators] OLM opm with podman", func() {
 		TmpDataPath := filepath.Join(opmBaseDir, "tmp")
 		err := os.MkdirAll(TmpDataPath, 0755)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		
+
 		bundleImageTag1 := "quay.io/olmqe/etcd-bundle:0.9.0"
 		bundleImageTag2 := "quay.io/olmqe/etcd-bundle:0.9.0-25934"
 		defer DeleteDir(TmpDataPath, "fixture-testdata")
@@ -1572,7 +1571,7 @@ var _ = g.Describe("[sig-operators] OLM opm with podman", func() {
 			o.Expect(err).NotTo(o.HaveOccurred())
 		}
 
-		if output, err := containerCLI.Run("tag").Args(bundleImageTag1,bundleImageTag2).Output(); err != nil {
+		if output, err := containerCLI.Run("tag").Args(bundleImageTag1, bundleImageTag2).Output(); err != nil {
 			e2e.Logf(output)
 			o.Expect(err).NotTo(o.HaveOccurred())
 		}
@@ -1601,21 +1600,21 @@ var _ = g.Describe("[sig-operators] OLM opm with podman", func() {
 		e2e.Logf("step: check api.Registry/ListPackages")
 		err = wait.Poll(20*time.Second, 240*time.Second, func() (bool, error) {
 			outputCurl, err := exec.Command("grpcurl", "-plaintext", "localhost:25934", "api.Registry/ListPackages").Output()
-			o.Expect(err).NotTo(o.HaveOccurred())	
-			if strings.Contains(string(outputCurl), "etcd"){
+			o.Expect(err).NotTo(o.HaveOccurred())
+			if strings.Contains(string(outputCurl), "etcd") {
 				return true, nil
 			}
 			return false, nil
 		})
 		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("grpcurl %s not listet package", dbFilePath))
-				
+
 		e2e.Logf("step: check api.Registry/GetBundleForChannel")
-		outputCurl, err  := exec.Command("grpcurl", "-plaintext", "localhost:25934", "api.Registry/ListBundles").Output()
+		outputCurl, err := exec.Command("grpcurl", "-plaintext", "localhost:25934", "api.Registry/ListBundles").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(string(outputCurl)).To(o.ContainSubstring("bundlePath"))
 		cmd.Process.Kill()
 		g.By("step: SUCCESS 25934")
-		
+
 	})
 
 })
