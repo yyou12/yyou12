@@ -387,6 +387,46 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	})
 
 	// author: jiazha@redhat.com
+	g.It("Author:jiazha-High-45411-packageserver isn't following the OpenShift HA conventions", func() {
+		g.By("1) get the cluster infrastructure")
+		infra, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("infrastructures", "cluster", "-o=jsonpath={.status.infrastructureTopology}").Output()
+		if err != nil {
+			e2e.Failf("Fail to get the cluster infra")
+		}
+		num, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", "openshift-operator-lifecycle-manager", "deployment", "packageserver", "-o=jsonpath={.status.replicas}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		if infra == "HighlyAvailable" {
+			e2e.Logf("This is a HA cluster!")
+			g.By("2) check if there are two packageserver pods")
+			if num != "2" {
+				e2e.Failf("!!!Fail, should have 2 packageserver pod, but get %s!", num)
+			}
+			g.By("3) check if the two packageserver pods running on different nodes")
+			names, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-n", "openshift-operator-lifecycle-manager", "-l", "app=packageserver", "-o", "name").Output()
+			if err != nil {
+				e2e.Failf("Fail to get the Packageserver pods' name")
+			}
+			podNames := strings.Split(names, "\n")
+			name := ""
+			for _, podName := range podNames {
+				e2e.Logf("get the packageserver pod name: %s", podName)
+				nodeName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", "openshift-operator-lifecycle-manager", podName, "-o=jsonpath={.spec.nodeName}").Output()
+				if err != nil {
+					e2e.Failf("Fail to get the node name")
+				}
+				e2e.Logf("get the node name: %s", nodeName)
+				if name != "" && name == nodeName {
+					e2e.Failf("!!!Fail, the two packageserver pods running on the same node: %s!", nodeName)
+				}
+				name = nodeName
+			}
+		} else {
+			e2e.Logf("This is a SNO cluster, skip!")
+		}
+	})
+
+	// author: jiazha@redhat.com
 	g.It("Author:jiazha-High-43135-PackageServer respects single-node configuration [Disruptive]", func() {
 		g.By("1) get the cluster infrastructure")
 		infra, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("infrastructures", "cluster", "-o=jsonpath={.status.infrastructureTopology}").Output()
