@@ -11,6 +11,7 @@ declare global {
 }
 
 Cypress.Commands.add("switchPerspective", (perspective: string) => {
+    cy.get('#nav-toggle').click()
     nav.sidenav.switcher.changePerspectiveTo(perspective);
     nav.sidenav.switcher.shouldHaveText(perspective);
 });

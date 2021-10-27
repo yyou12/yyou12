@@ -11,8 +11,20 @@
     "experimentalDecorators": true,
     "sourceMap": true,
     "noUnusedLocals": true,
-    "typeRoots": ["node_modules/@types", "@types"],
-    "types": ["node", "jest", "cypress", "cypress-axe", "cypress-file-upload", "console"]
+    "typeRoots": [
+      "node_modules/@types",
+      "@types"
+    ],
+    "types": [
+      "node",
+      "jest",
+      "cypress",
+      "cypress-axe",
+      "cypress-file-upload",
+      "console"
+    ],
+    "resolveJsonModule": true,
+    "allowSyntheticDefaultImports": true
   },
   "exclude": [
     ".yarn",
@@ -21,6 +33,11 @@
     "dynamic-demo-plugin",
     "packages/console-dynamic-plugin-sdk/scripts"
   ],
-  "include": ["**/*.js", "**/*.jsx", "**/*.ts", "**/*.tsx", "**/*.json"]
+  "include": [
+    "**/*.js",
+    "**/*.jsx",
+    "**/*.ts",
+    "**/*.tsx",
+    "**/*.json"
+  ]
 }
-

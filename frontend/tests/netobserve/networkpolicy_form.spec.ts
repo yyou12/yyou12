@@ -1,183 +1,417 @@
 import { checkErrors } from '../../upstream/support';
-import { podsList } from '../../data/networkpolicy_form_pods';
 import { nwpolicyPage, nwpolicyPageSelectors } from '../../views/nwpolicy-page';
+import { OCCreds, OCCli } from '../../views/cluster-cliops';
+import { podsPageUtils } from '../../views/pods';
+import testFixture from '../../fixtures/network_policy_form_test.json'
+import * as utils from '../../views/utils'
+import { helperfuncs, VerifyPolicyForm } from '../../views/nwpolicy-utils'
 
-const nProjects = 3;
+const projects: string[] = ['test0', 'test1', 'test2']
+const podLabels: string[] = ["test-pods", 'test-pods2']
+const pod_label_key = 'name';
+const ns_label_key = 'kubernetes.io/metadata.name'
+const fixtureFile = 'network_policy_form_test'
 
-const createPods = (obj, project) => {
-    const filename = [
-        Cypress.config('screenshotsFolder')
-            .toString()
-            .replace('/cypress/screenshots', ''),
-        `${obj.metadata.name}.${obj.kind.toLowerCase()}.json`,
-    ].join('/');
-    cy.writeFile(filename, JSON.stringify(obj));
-    cy.log(Cypress.env('KUBECONFIG'))
-    cy.exec(`oc create -f ${filename} -n ${project} --kubeconfig=${Cypress.env('KUBECONFIG')}`);
-    cy.exec(`rm ${filename}`);
-};
+before('root-level: any test suite', function () {
+    let tmpFile = `/tmp/${utils.getRandomName()}`
+    cy.writeFile(tmpFile, JSON.stringify(testFixture))
 
-// generate 10 character random string for policy name
-function getRandomPolicyName() {
-    return [...Array(10)].map(i => (~~(Math.random() * 36)).toString(36)).join('')
-};
+    let creds: OCCreds = { idp: Cypress.env('LOGIN_IDP'), user: Cypress.env('LOGIN_USERNAME'), password: Cypress.env('LOGIN_PASSWORD') }
+    cy.login(creds.idp, creds.user, creds.password);
+    cy.switchPerspective('Administrator');
+    this.cli = new OCCli(creds)
+    this.creds = creds
 
-// alias names will be set as "pod0Name", "pod0IP" (corresponding to first pod in list)
-// where 0 is the index of pod shown in UI.
-// currently this is not used anywhere but created generic function for future use.
-function setPodNamesIPAsCypressAlias(project, podsCount) {
-    for (let i = 0; i < podsCount; i++) {
-        cy.visit(`./k8s/ns/${project}/pods`).get('[data-test-id="resource-title"]').should('exist')
+    helperfuncs.setNetworkProviderAlias()
 
-        //get Pod names and IP of pods to be used as an alias.
-        cy.get(`tr[data-index="${i}"] > td[id=name] > span > a`).invoke('text').as(`pod${i}Name`)
-        cy.get(`tr[data-index="${i}"] > td[id=name] > span > a`).click()
-        cy.byTestSelector('details-item-value__Pod IP').should('exist').invoke('text').as(`pod${i}IP`)
-
+    // create projects and deploy pods.
+    for (let i = 0; i < projects.length; i++) {
+        cy.createProject(projects[i])
+        this.cli.createPods(tmpFile, projects[i])
     }
-}
 
-const verifyConnection = (project, fromPodName, toPodIP, expectedResult) => {
-    cy.exec(`oc login -u kubeadmin -p ${Cypress.env('LOGIN_PASSWORD')}`)
-    cy.exec(`oc project ${project}`)
-    cy.exec(`oc rsh ${fromPodName} curl ${toPodIP}:8080 -m 5`, { failOnNonZeroExit: expectedResult }).then(result => {
-        if (expectedResult) {
-            cy.log("expecting stdout")
-            expect(result.stdout).to.contain('Hello OpenShift')
-        }
-        else {
-            cy.log("expecting stderr")
-            expect(result.stderr).to.contain('timed out')
-        }
+    cy.fixture(fixtureFile).as('testData')
+    cy.exec(`rm ${tmpFile}`);
+
+});
+
+describe('Console Network Policies (OCP-41858, NETOBSERV)', function () {
+    before('any test', function () {
+
+        /* set pod names aliases */
+        projects.forEach((project) => {
+            podLabels.forEach(label => {
+                let modLabel = label.replace('-', '')
+                let aliasPrefix = `${project}_${modLabel}`
+                podsPageUtils.setProjectPodNamesAlias(project, label, aliasPrefix)
+            })
+        })
 
     })
-}
 
-describe('Console Network Policies (OCP-41858, NETOBSERV)', () => {
-    before(() => {
-        cy.login(Cypress.env('LOGIN_IDP'), Cypress.env('LOGIN_USERNAME'), Cypress.env('LOGIN_PASSWORD'));
-
-        cy.switchPerspective('Administrator');
-
-        // create projects and deploy pods.
-        for (let i = 0; i < nProjects; i++) {
-            cy.createProject('test' + i);
-            createPods(podsList, 'test' + i)
-        }
-        cy.visit('/k8s/all-namespaces/networkpolicies')
-    });
-
-    beforeEach(() => {
-        const projectName = 'test0'
+    beforeEach('test', function () {
         cy.visit('/k8s/all-namespaces/networkpolicies')
         cy.get('span.pf-c-menu-toggle__text').should('have.text', 'Project: All Projects').click()
-        cy.get('span.pf-c-menu__item-text').contains(projectName).click()
+        cy.get('span.pf-c-menu__item-text').contains('test0').click()
 
-        // get podName and pod IP for project test0 and create aliases to be used later in each test
-        const nPods = 2
-        const podsUrl = '/k8s/ns/' + projectName + '/pods'
-        for (let i = 0; i < nPods; i++) {
-            cy.visit(podsUrl).get('[data-test-id="resource-title"]').should('exist')
-            cy.get(`tr[data-index="${i}"] > td[id=name] > span > a`).invoke('text').as(`pod${i}Name`)
-            cy.get(`tr[data-index="${i}"] > td[id=name] > span > a`).click()
-            cy.byTestSelector('details-item-value__Pod IP').should('exist').invoke('text').as(`pod${i}IP`)
-        }
-        cy.visit(`/k8s/ns/${projectName}/networkpolicies`)
-    });
-
+    })
 
     afterEach(() => {
         checkErrors();
-        cy.visit('/k8s/all-namespaces/networkpolicies').its('yaml-create').then(content => {
-            expect(content).to.be.visible
-        })
-
-        // delete all network policies after each test
-        const deleteAllPolicies = () => {
-            cy.get('body').then($body => {
-                if ($body.find('tr[data-id]').length > 0) {
-                    cy.get('tr[data-id="0-0"]').find('button[data-test-id]').should('exist').then($rrow => {
-                        cy.wrap($rrow).click()
-                        cy.wrap($rrow).get('button[data-test-action="Delete NetworkPolicy"]').click().then($conf => {
-                            cy.wrap($conf).get('button[data-test="confirm-action"]').should('exist').click()
-                        })
-                    })
-                    cy.reload()
-                    deleteAllPolicies()
-                }
-            })
-        }
-        deleteAllPolicies()
     });
 
-    after(() => {
-        for (let i = 0; i < nProjects; i++) {
-            cy.deleteProject('test' + i);
-        }
+    after(function () {
+        projects.forEach((project) => {
+            cy.deleteProject(project);
+        })
         cy.logout();
-    });
-
-    it('should validate network policy form', () => {
-        nwpolicyPage.creatPolicyForm()
-
-        cy.get('input').should('have.id', 'name')
-        cy.byTestID('Deny all ingress traffic__checkbox').should('not.be.checked')
-        cy.byTestID('Deny all egress traffic__checkbox').should('not.be.checked')
-        cy.get('button').contains('Add ingress rule').click()
-
-        // verify ingress sources.
-        var src_dest_options = ['Allow pods from the same namespace', 'Allow pods from inside the cluster', 'Allow peers by IP block']
-
-        const buttonCount = 3;
-        for (let i = 0; i < buttonCount; i++) {
-            cy.get('button.pf-c-dropdown__toggle.pf-c-button.pf-m-secondary').should('have.text', 'Add allowed source').click()
-            cy.get(nwpolicyPageSelectors.srcDestOptions[i]).then(($elem) => {
-                cy.wrap($elem).should('have.text', src_dest_options[i]).click()
-            })
-        }
-        cy.get('button').contains('Remove')
-
-        // not verifying egress fields since it depends on network provider.
-        // currently there is no way to figure out from UI who's the network provider.
-
-        // verify create and cancel button.
-        cy.get(nwpolicyPageSelectors.savePolicy).should('exist')
-        cy.get(nwpolicyPageSelectors.cancelButton).should('exist')
     })
 
-    it('should verify deny all ingress policy in same ns', () => {
-        // verify ingress traffic from one pod to another pod is not allowed in same project (test0) 
+    describe("UI validating tests", function () {
 
-        nwpolicyPage.creatPolicyForm()
-        cy.get(nwpolicyPageSelectors.nwPolicyName).type(getRandomPolicyName())
-        cy.byTestID('Deny all ingress traffic__checkbox').should('not.be.checked').click()
-        cy.get(nwpolicyPageSelectors.savePolicy).click()
+        it('should validate network policy form', function () {
+            nwpolicyPage.goToNetworkPolicy()
+            nwpolicyPage.creatPolicyForm()
 
-        // verify all incoming traffic is rejected to pod 2 from pod 1
-        cy.get('@pod0Name').then(pod0Name => {
-            cy.get('@pod1IP').then(pod1IP => {
-                verifyConnection('test0', pod0Name, pod1IP, false)
+            cy.get('input[id="name"]').should('have.attr', 'name')
+            cy.byTestID('Deny all ingress traffic__checkbox').should('not.be.checked')
+            cy.get('button').contains('Add ingress rule').click()
+
+            // verify ingress sources.
+            var src_dest_options = ['Allow pods from the same namespace', 'Allow pods from inside the cluster', 'Allow peers by IP block']
+
+            const buttonCount = 3;
+            for (let i = 0; i < buttonCount; i++) {
+                cy.get('button.pf-c-dropdown__toggle.pf-c-button.pf-m-secondary').should('have.text', 'Add allowed source').click()
+                cy.get(nwpolicyPageSelectors.srcDestOptions[i]).then(($elem) => {
+                    cy.wrap($elem).should('have.text', src_dest_options[i]).click()
+                })
+            }
+            cy.get('button').contains('Remove')
+
+            // verify create and cancel button.
+            cy.get(nwpolicyPageSelectors.savePolicy).should('exist')
+            cy.get(nwpolicyPageSelectors.cancelButton).should('exist')
+        })
+    })
+
+    describe("network policy end-to-end tests", function () {
+        before('any end-to-end test', function () {
+            /* map labels to number replicas for pods to those labels */
+            var labels_npods = new Map()
+            this.testData.items.filter(item => (item.kind == 'ReplicationController')).forEach((item) => { labels_npods.set(item.spec.template.metadata.labels.name, item.spec.replicas) })
+
+            /* set aliases for pod IP */
+            for (let p = 0; p < projects.length - 1; p++) {
+                let project = projects[p]
+                podLabels.forEach(label => {
+                    let modLabel = label.replace('-', '')
+                    let aliasPrefix = `${project}_${modLabel}`
+                    for (let np = 0; np < labels_npods.get(label); np++) {
+                        let podNameAlias = `${aliasPrefix}_pod${np}Name`
+                        podsPageUtils.setPodIPAlias(project, this[podNameAlias])
+                    }
+                })
+            }
+        })
+
+        beforeEach('end-to-end test', function () {
+            if (this.currentTest.parent.fullTitle().includes('OVN') && this.networkprovider.includes('OpenShiftSDN')) {
+                this.skip()
+            }
+
+            cy.visit('/k8s/all-namespaces/networkpolicies')
+            cy.get('span.pf-c-menu-toggle__text').should('have.text', 'Project: All Projects').click()
+            cy.get('span.pf-c-menu__item-text').contains('test0').click()
+        })
+
+        describe("ingress policies tests", function () {
+            beforeEach('ingress tests', function () {
+                nwpolicyPage.creatPolicyForm()
+                cy.get(nwpolicyPageSelectors.nwPolicyName).type(utils.getRandomName())
+
+                if (this.currentTest.title.includes('deny all')) {
+                    return
+                }
+                cy.get('button').contains('Add ingress rule').click()
+                cy.get('button.pf-c-dropdown__toggle.pf-c-button.pf-m-secondary').should('have.text', 'Add allowed source').click()
+            })
+
+            it('ingress: should verify deny all', function () {
+                /* verify ingress traffic from one pod to another pod is not allowed in same project (test0)  */
+                cy.byTestID('Deny all ingress traffic__checkbox').should('not.be.checked').click()
+                cy.get(nwpolicyPageSelectors.savePolicy).click()
+
+                /* verify all incoming traffic is rejected to pod 2 from pod 1 in NS test0 */
+                let mod_label1 = podLabels[0].replace('-', '')
+                let project0_label1_prefix = `${projects[0]}_${mod_label1}`
+                let project0_label1_pod1Name = this[`${project0_label1_prefix}_pod1Name`]
+                let verify = new VerifyPolicyForm(this.cli)
+                verify.connection(projects[0], this[`${project0_label1_prefix}_pod0Name`], this[`${project0_label1_pod1Name}IP`], 'timed out', false)
+            })
+
+            it('ingress: should allow pods from the same NS', function () {
+                /*  apply policy to all pods in namespace only allow traffic from pods with label name=test-pods2 */
+                cy.get(nwpolicyPageSelectors.srcDestOptions[0]).click()
+                cy.get('#peer-header-0').should('have.text', 'Allow traffic from pods in the same namespace')
+
+                cy.get(nwpolicyPageSelectors.addPod).eq(1).within(() => {
+                    cy.get('button').should('have.text', "Add pod selector").click()
+                    cy.get(nwpolicyPageSelectors.label).type(pod_label_key)
+                    cy.get(nwpolicyPageSelectors.selector).type(podLabels[1])
+                })
+
+                cy.get(nwpolicyPageSelectors.savePolicy).click()
+                let mod_label1 = podLabels[0].replace('-', '')
+                let mod_label2 = podLabels[1].replace('-', '')
+                let project0_label1_prefix = `${projects[0]}_${mod_label1}`
+                let project0_label2_prefix = `${projects[0]}_${mod_label2}`
+                let project1_label1_prefix = `${projects[1]}_${mod_label1}`
+
+                let verify = new VerifyPolicyForm(this.cli)
+
+                /* connection from NS test0 with label:name=test-pods  to other pod with same label in same NS - should fail */
+
+                let project0_label1_pod1Name = this[`${project0_label1_prefix}_pod1Name`]
+                verify.connection(projects[0], this[`${project0_label1_prefix}_pod0Name`], this[`${project0_label1_pod1Name}IP`], 'timed out', false)
+
+                /* connection from NS test0 from pod with label:name=test-pods2 to pod with label:name=test-pods in same NS - should pass */
+                verify.connection(projects[0], this[`${project0_label2_prefix}_pod0Name`], this[`${project0_label1_pod1Name}IP`], "Hello OpenShift")
+
+                /* connection from NS test0 with label:name=test-pods to pod with label:name=test-pods2 - should fail */
+                let project0_label2_pod0Name = this[`${project0_label2_prefix}_pod0Name`]
+                verify.connection(projects[0], this[`${project0_label1_prefix}_pod0Name`], this[`${project0_label2_pod0Name}IP`], 'timed out', false)
+
+                /* connection from NS test1 from pod with label:name=test-pods2 to pod with label:name=test-pods in NS test0 - should fail */
+                verify.connection(projects[1], this[`${project1_label1_prefix}_pod1Name`], this[`${project0_label1_pod1Name}IP`], 'timed out', false)
+            })
+
+            it('ingress: should allow pods from different NS', function () {
+                cy.get(nwpolicyPageSelectors.srcDestOptions[1]).click()
+
+                cy.get('#peer-header-0').should('have.text', 'Allow traffic from pods inside the cluster')
+
+                cy.get(nwpolicyPageSelectors.addNamespace).parent().within(() => {
+
+                    cy.get(nwpolicyPageSelectors.addNamespace).within(() => {
+                        cy.get('button').should('have.text', "Add namespace selector").click()
+                        cy.get(nwpolicyPageSelectors.label).type(ns_label_key)
+                        cy.get(nwpolicyPageSelectors.selector).type(projects[1])
+                    })
+
+                    cy.get(nwpolicyPageSelectors.addPod).within(() => {
+                        cy.get('button').should('have.text', "Add pod selector").click()
+                        cy.get(nwpolicyPageSelectors.label).type(pod_label_key)
+                        cy.get(nwpolicyPageSelectors.selector).type(podLabels[1])
+                    })
+                })
+
+                cy.get(nwpolicyPageSelectors.savePolicy).click()
+                let mod_label1 = podLabels[0].replace('-', '')
+                let mod_label2 = podLabels[1].replace('-', '')
+                let project0_label1_prefix = `${projects[0]}_${mod_label1}`
+                let project0_label2_prefix = `${projects[0]}_${mod_label2}`
+                let project1_label2_prefix = `${projects[1]}_${mod_label2}`
+                let project2_label2_prefix = `${projects[2]}_${mod_label2}`
+
+                let project0label1pod1Name = this[`${project0_label1_prefix}_pod1Name`]
+                let verify = new VerifyPolicyForm(this.cli)
+
+                /* connection from pods with l:name=test-pods2 from NS test1 to pods in NS test0 should succeed. */
+                verify.connection(projects[1], this[`${project1_label2_prefix}_pod1Name`], this[`${project0label1pod1Name}IP`], "Hello OpenShift")
+
+                /* connection from pods with l:name=test-pods2 from NS test2 to pods in NS test0 should fail. */
+                verify.connection(projects[2], this[`${project2_label2_prefix}_pod0Name`], this[`${project0label1pod1Name}IP`], 'timed out', false)
+
+                /* connection from pods with l:name=test-pods2 in same NS test0 should fail */
+                verify.connection(projects[0], this[`${project0_label2_prefix}_pod0Name`], this[`${project0label1pod1Name}IP`], 'timed out', false)
+
+            })
+
+            it("ingress: should validate peers by IP block", function () {
+                cy.get(nwpolicyPageSelectors.srcDestOptions[2]).click()
+                cy.get('#peer-header-0').should('have.text', 'Allow traffic from peers by IP block')
+
+                let [mod_label1, mod_label2] = [podLabels[0].replace('-', ''), podLabels[1].replace('-', '')]
+
+                let project0_label1_prefix = `${projects[0]}_${mod_label1}`
+                let project1_label1_prefix = `${projects[1]}_${mod_label1}`
+                let project2_label2_prefix = `${projects[2]}_${mod_label2}`
+
+                let project0label1pod0Name = this[`${project0_label1_prefix}_pod0Name`]
+                let project1label1pod0Name = this[`${project1_label1_prefix}_pod0Name`]
+                let project2label2pod0Name = this[`${project2_label2_prefix}_pod0Name`]
+
+                let project1label1pod0IP = this[`${project1label1pod0Name}IP`]
+                cy.get('#cidr').type(`${project1label1pod0IP}/32`)
+                cy.get(nwpolicyPageSelectors.addPort).click()
+                cy.get('#port-0-port').type('8080')
+
+                cy.get(nwpolicyPageSelectors.savePolicy).click()
+
+                let project0label1pod0IP = this[`${project0label1pod0Name}IP`]
+                let verify = new VerifyPolicyForm(this.cli)
+
+                /* connection to pod in NS: test0 from NS: test1 pod0 IP should pass on port 8080 */
+                verify.connection(projects[1], project1label1pod0Name, project0label1pod0IP, "Hello OpenShift")
+
+                /* connection to pod in NS: test0 from NS: test1 pod0 IP should fail on port 8888 */
+                verify.connection(projects[1], project1label1pod0Name, project0label1pod0IP, "timed out", false, "8888")
+
+                /* connection to pod in NS: test0 from NS: test2 pod0 IP should fail on port 8080 */
+                verify.connection(projects[2], project2label2pod0Name, project0label1pod0IP, "timed out", false)
             })
         })
 
-    })
+        describe('egress policies tests (OVN)', function () {
+            beforeEach('egress test', function () {
+                nwpolicyPage.creatPolicyForm()
+                cy.get(nwpolicyPageSelectors.nwPolicyName).type(utils.getRandomName())
 
-    it('should verify deny all egress policy in same ns', () => {
-        // verify egress traffic from one pod to another pod is allowed in same project (test0)
-        // despite having egress policy.
-        nwpolicyPage.creatPolicyForm()
-        cy.get(nwpolicyPageSelectors.nwPolicyName).type(getRandomPolicyName())
-        cy.byTestID('Deny all egress traffic__checkbox').should('not.be.checked').click()
-        cy.get(nwpolicyPageSelectors.savePolicy).click()
+                if (this.currentTest.title.includes('deny all')) {
+                    return
+                }
 
-        // verify all incoming traffic is rejected to pod 2 from pod 1
-        cy.get('@pod0Name').then(pod0Name => {
-            cy.get('@pod1IP').then(pod1IP => {
-                // if the project is set with just deny egress policy
-                // it doesn't take effect by design therefore
-                // curl must request suceed here.
-                verifyConnection('test0', pod0Name, pod1IP, true)
+                cy.get('button').contains('Add egress rule').click()
+                cy.get('button.pf-c-dropdown__toggle.pf-c-button.pf-m-secondary').should('have.text', 'Add allowed destination').click()
+            })
+
+            it('egress: should verify deny all', function () {
+                cy.byTestID('Deny all egress traffic__checkbox').should('not.be.checked').click()
+                cy.get(nwpolicyPageSelectors.savePolicy).click()
+
+                let mod_label1 = podLabels[0].replace('-', '')
+                let project0_label1_prefix = `${projects[0]}_${mod_label1}`
+                let project0_label1_pod1Name = this[`${project0_label1_prefix}_pod1Name`]
+
+                let verify = new VerifyPolicyForm(this.cli)
+
+                // verify connection can't be made from pod1 to pod0 in same NS.
+                verify.connection(projects[0], this[`${project0_label1_prefix}_pod0Name`], this[`${project0_label1_pod1Name}IP`], 'timed out', false)
+            })
+
+            it('egress: should allow traffic to pods in the same namespace', function () {
+                cy.get(nwpolicyPageSelectors.srcDestOptions[0]).click()
+                cy.get('#peer-header-0').should('have.text', 'Allow traffic to pods in the same namespace')
+
+                cy.get(nwpolicyPageSelectors.addPod).eq(1).within(() => {
+                    cy.get('button').should('have.text', "Add pod selector").click()
+                    cy.get(nwpolicyPageSelectors.label).type(pod_label_key)
+                    cy.get(nwpolicyPageSelectors.selector).type(podLabels[1])
+                })
+
+                cy.get(nwpolicyPageSelectors.savePolicy).click()
+                let mod_label1 = podLabels[0].replace('-', '')
+                let mod_label2 = podLabels[1].replace('-', '')
+                let project0_label1_prefix = `${projects[0]}_${mod_label1}`
+                let project0_label2_prefix = `${projects[0]}_${mod_label2}`
+                let project1_label2_prefix = `${projects[1]}_${mod_label2}`
+
+                let verify = new VerifyPolicyForm(this.cli)
+
+
+                let project0_label1_pod1Name = this[`${project0_label1_prefix}_pod1Name`]
+                let project0_label2_pod0Name = this[`${project0_label2_prefix}_pod0Name`]
+
+                /* connection from NS test0 with label:name=test-pods  to other pod with same label in same NS - should fail */
+
+                verify.connection(projects[0], this[`${project0_label1_prefix}_pod0Name`], this[`${project0_label1_pod1Name}IP`], 'timed out', false)
+
+                /* connection from NS test0 from pod with label:name=test-pods2 to other pod with same label and in same NS - should pass */
+                verify.connection(projects[0], this[`${project0_label2_prefix}_pod1Name`], this[`${project0_label2_pod0Name}IP`], "Hello OpenShift")
+
+                /* connection from NS test0 with label:name=test-pods2 to pod with label:name=test-pods - should fail */
+                let project0_label1_pod0Name = this[`${project0_label1_prefix}_pod0Name`]
+                verify.connection(projects[0], this[`${project0_label2_prefix}_pod0Name`], this[`${project0_label1_pod0Name}IP`], 'timed out', false)
+
+                /* connection from NS test1 from pod with label:name=test-pods to pod with label:name=test-pods in NS test1 - should pass */
+                verify.connection(projects[1], this[`${project1_label2_prefix}_pod1Name`], this[`${project0_label1_pod0Name}IP`], 'Hello OpenShift')
+
+            })
+
+            it('egress: should allow traffic to different NS', function () {
+                cy.get(nwpolicyPageSelectors.srcDestOptions[1]).click()
+
+                cy.get('#peer-header-0').should('have.text', 'Allow traffic to pods inside the cluster')
+
+                cy.get(nwpolicyPageSelectors.addNamespace).parent().within(() => {
+
+                    cy.get(nwpolicyPageSelectors.addNamespace).within(() => {
+                        cy.get('button').should('have.text', "Add namespace selector").click()
+                        cy.get(nwpolicyPageSelectors.label).type(ns_label_key)
+                        cy.get(nwpolicyPageSelectors.selector).type(projects[1])
+                    })
+
+                    cy.get(nwpolicyPageSelectors.addPod).within(() => {
+                        cy.get('button').should('have.text', "Add pod selector").click()
+                        cy.get(nwpolicyPageSelectors.label).type(pod_label_key)
+                        cy.get(nwpolicyPageSelectors.selector).type(podLabels[1])
+                    })
+                })
+
+                cy.get(nwpolicyPageSelectors.savePolicy).click()
+                let mod_label1 = podLabels[0].replace('-', '')
+                let mod_label2 = podLabels[1].replace('-', '')
+                let project0_label1_prefix = `${projects[0]}_${mod_label1}`
+                let project0_label2_prefix = `${projects[0]}_${mod_label2}`
+                let project1_label1_prefix = `${projects[1]}_${mod_label1}`
+                let project1_label2_prefix = `${projects[1]}_${mod_label2}`
+
+                let project0_label2_pod1Name = this[`${project0_label2_prefix}_pod1Name`]
+                let project1_label1_pod1Name = this[`${project1_label1_prefix}_pod1Name`]
+                let project1_label2_pod1Name = this[`${project1_label2_prefix}_pod1Name`]
+
+                let verify = new VerifyPolicyForm(this.cli)
+
+                /* connection from NS test0 pods should only succeed to pods in NS test1 pods with label name=test-pods2.
+                   connections to all other pods should fail.
+                */
+                verify.connection(projects[0], this[`${project0_label1_prefix}_pod1Name`], this[`${project1_label1_pod1Name}IP`], "timed out", false)
+
+                verify.connection(projects[0], this[`${project0_label1_prefix}_pod1Name`], this[`${project1_label2_pod1Name}IP`], "Hello OpenShift")
+
+                verify.connection(projects[0], this[`${project0_label1_prefix}_pod0Name`], this[`${project0_label2_pod1Name}IP`], 'timed out', false)
+            })
+
+            it('egress: should allow traffic to peers by CIDR', function () {
+                cy.get(nwpolicyPageSelectors.srcDestOptions[2]).click()
+                cy.get('#peer-header-0').should('have.text', 'Allow traffic to peers by IP block')
+
+                let [mod_label1, mod_label2] = [podLabels[0].replace('-', ''), podLabels[1].replace('-', '')]
+
+                let project0_label1_prefix = `${projects[0]}_${mod_label1}`
+                let project0_label2_prefix = `${projects[0]}_${mod_label2}`
+                let project1_label1_prefix = `${projects[1]}_${mod_label1}`
+
+                let project0_label1_pod0Name = this[`${project0_label1_prefix}_pod0Name`]
+                let project0_label2_pod0Name = this[`${project0_label2_prefix}_pod0Name`]
+
+                let project0_label1_pod0IP = this[`${project0_label1_pod0Name}IP`]
+
+                cy.get('#cidr').type(`${project0_label1_pod0IP}/32`)
+                cy.get(nwpolicyPageSelectors.addPort).click()
+                cy.get('#port-0-port').type('8080')
+
+                cy.get(nwpolicyPageSelectors.savePolicy).click()
+
+
+                let verify = new VerifyPolicyForm(this.cli)
+
+                /* pods in same NS test0 can only reach to pod whose CIDR and port matches; no other pod can be reached in NS test0 by other pods in same NS */
+                verify.connection(projects[0], this[`${project0_label2_prefix}_pod0Name`], project0_label1_pod0IP, "Hello OpenShift")
+
+                verify.connection(projects[0], this[`${project0_label2_prefix}_pod0Name`], project0_label1_pod0IP, "timed out", false, '8888')
+
+                verify.connection(projects[0], this[`${project0_label1_prefix}_pod1Name`], this[`${project0_label2_pod0Name}IP`], "timed out", false)
+
+                /* however pods from different NS can reach to any pods of NS test0 */
+                verify.connection(projects[1], this[`${project1_label1_prefix}_pod1Name`], this[`${project0_label2_pod0Name}IP`], "Hello OpenShift")
             })
         })
+
+
+        afterEach(() => {
+            nwpolicyPage.deleteAllPolicies()
+        });
     })
 })
