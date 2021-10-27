@@ -2,11 +2,12 @@ package util
 
 import (
 	"fmt"
+	"math/rand"
+	"time"
+
 	exutil "github.com/openshift/openshift-tests/test/extended/util"
 	"k8s.io/apimachinery/pkg/util/wait"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
-	"math/rand"
-	"time"
 )
 
 // ApplyClusterResourceFromTemplate apply the changes to the cluster resource.
@@ -64,7 +65,7 @@ func resourceFromTemplate(oc *CLI, create bool, namespace string, parameters ...
 			resourceErr = oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", configFile).Execute()
 		}
 	}
-	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("fail to create/apply resource %v", resourceErr))
+	exutil.AssertWaitPollNoErr(resourceErr, fmt.Sprintf("fail to create/apply resource %v", resourceErr))
 }
 
 func GetRandomString() string {

@@ -64,8 +64,13 @@ func installNFD(oc *exutil.CLI) {
 	e2e.Logf("Channel: %v", channel)
 	exutil.ApplyNsResourceFromTemplate(oc, machineNFDNamespace, "--ignore-unknown-parameters=true", "-f", nfd_sub_file, "-p", "CHANNEL="+channel)
 
-	// create NFD instance from template
-	exutil.ApplyNsResourceFromTemplate(oc, machineNFDNamespace, "--ignore-unknown-parameters=true", "-f", nfd_instance_file)
+	// get cluster version and create NFD instance from template
+	_, clusterBuild, err := exutil.GetClusterVersion(oc)
+	o.Expect(err).NotTo(o.HaveOccurred())
+	splitValues := strings.Split(clusterBuild, ".")
+	clusterVersion := splitValues[0] + "." + splitValues[1]
+	e2e.Logf("Cluster Version: %v", clusterVersion)
+	exutil.ApplyNsResourceFromTemplate(oc, machineNFDNamespace, "--ignore-unknown-parameters=true", "-f", nfd_instance_file, "-p", "IMAGE=quay.io/openshift/origin-node-feature-discovery:"+clusterVersion)
 
 	// wait for NFD pods to come online to verify installation was successful
 	err = wait.Poll(30*time.Second, 3*time.Minute, func() (bool, error) {

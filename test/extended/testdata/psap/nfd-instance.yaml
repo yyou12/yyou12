@@ -11,7 +11,7 @@ objects:
       instance: "" # instance is empty by default
       operand:
         namespace: openshift-nfd
-        image: quay.io/openshift/origin-node-feature-discovery:4.8
+        image: "${IMAGE}"
         imagePullPolicy: Always
       workerConfig:
         configData: |
@@ -129,3 +129,5 @@ objects:
           #      value: customValue
           #      matchOn:
           #      - nodename: ["special-.*-node-.*"]
+parameters:
+  - name: IMAGE
