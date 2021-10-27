@@ -696,3 +696,9 @@ func chkMustGather(oc *exutil.CLI, ns string) {
 		o.Expect(path_stat.Size() > 0).To(o.BeTrue(), "The path %s is empty", v)
 	}
 }
+
+func checkNetworkType(oc *exutil.CLI) string {
+	output, err := oc.WithoutNamespace().AsAdmin().Run("get").Args("network.operator", "cluster", "-o=jsonpath={.spec.defaultNetwork.type}").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	return strings.ToLower(output)
+}

@@ -1,6 +1,7 @@
 package logging
 
 import (
+	"strings"
 	"time"
 
 	g "github.com/onsi/ginkgo"
@@ -166,6 +167,12 @@ var _ = g.Describe("[sig-openshift-logging] Logging", func() {
 		})
 
 		g.It("CPaasrunOnly-Author:ikanse-High-42981-Collect OVN audit logs [Serial]", func() {
+
+			g.By("Check the network type for the test")
+			networkType := checkNetworkType(oc)
+			if !strings.Contains(networkType, "ovnkubernetes") {
+				g.Skip("Skip for non-supported network type, type is not OVNKubernetes!!!")
+			}
 
 			g.By("Create clusterlogforwarder instance to forward OVN audit logs to default Elasticsearch instance")
 			clfTemplate := exutil.FixturePath("testdata", "logging", "clusterlogforwarder", "42981.yaml")
