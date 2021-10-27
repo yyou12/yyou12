@@ -260,6 +260,35 @@ var _ = g.Describe("[sig-operators] OLM opm should", func() {
 
 	})
 
+	// author: xzha@redhat.com
+	g.It("Author:xzha-Medium-45401-opm validate should detect cycles in channels", func() {
+		opmBase := exutil.FixturePath("testdata", "opm")
+		catalogerrdir := path.Join(opmBase, "render", "validate", "catalog-error", "operator-1")
+
+		g.By("opm validate catalog-error/operator-1")
+		output, err := opmCLI.Run("validate").Args(catalogerrdir).Output()
+		if err != nil {
+			e2e.Logf(output)
+		}
+		o.Expect(err).To(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring("invalid channel \\\"45401-1\\\""))
+		o.Expect(output).To(o.ContainSubstring("invalid channel \\\"45401-2\\\""))
+		o.Expect(output).To(o.ContainSubstring("invalid channel \\\"45401-3\\\""))
+		channelInfoList := strings.Split(output, "invalid channel")
+		for _, channelInfo := range channelInfoList {
+			if strings.Contains(channelInfo, "45401-1") {
+				o.Expect(channelInfo).To(o.ContainSubstring("detected cycle in replaces chain of upgrade graph"))
+			}
+			if strings.Contains(channelInfo, "45401-2") {
+				o.Expect(output).To(o.ContainSubstring("multiple channel heads found in graph"))
+			}
+			if strings.Contains(channelInfo, "45401-3") {
+				o.Expect(output).To(o.ContainSubstring("no channel head found in graph"))
+			}
+		}
+		g.By("45401 SUCCESS")
+	})
+
 	// author: kuiwang@redhat.com
 	g.It("ConnectedOnly-Author:kuiwang-Medium-43096-opm alpha diff support heads only", func() {
 
@@ -1548,6 +1577,52 @@ var _ = g.Describe("[sig-operators] OLM opm with podman", func() {
 		}
 		g.By("step: SUCCESS 25935")
 
+	})
+
+	// author: xzha@redhat.com
+	g.It("Author:xzha-Medium-45407-opm and oc should print sqlite deprecation warnings", func() {
+		g.By("opm render --help")
+		output, err := opmCLI.Run("render").Args("--help").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring("DEPRECATION NOTICE:"))
+
+		g.By("opm index --help")
+		output, err = opmCLI.Run("index").Args("--help").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring("DEPRECATION NOTICE:"))
+
+		g.By("opm registry --help")
+		output, err = opmCLI.Run("registry").Args("--help").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring("DEPRECATION NOTICE:"))
+
+		g.By("oc adm catalog mirror --help")
+		output, err = oc.AsAdmin().WithoutNamespace().Run("adm").Args("catalog", "mirror", "--help").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring("DEPRECATION NOTICE:"))
+
+		g.By("45407 SUCCESS")
+	})
+
+	// author: xzha@redhat.com
+	g.It("Author:xzha-ConnectedOnly-VMonly-Medium-45403-opm index prune should report error if the working directory does not have write permissions", func() {
+		opmBaseDir := exutil.FixturePath("testdata", "opm")
+		tmpPath := filepath.Join(opmBaseDir, "temp"+getRandomString())
+		defer DeleteDir(tmpPath, "fixture-testdata")
+		g.By("step: mkdir with mode 0555")
+		err := os.MkdirAll(tmpPath, 0555)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		opmCLI.ExecCommandPath = tmpPath
+
+		g.By("step: opm index prune")
+		containerTool := "podman"
+		sourceImageTag := "quay.io/olmqe/multi-index:2.0"
+		imageTag := "quay.io/olmqe/multi-index:45403-" + getRandomString()
+		defer podmanCLI.RemoveImage(imageTag)
+		output, err := opmCLI.Run("index").Args("prune", "-f", sourceImageTag, "-p", "planetscale", "-t", imageTag, "-c", containerTool).Output()
+		o.Expect(err).To(o.HaveOccurred())
+		o.Expect(output).To(o.MatchRegexp("(?i)mkdir .* permission denied(?i)"))
+		g.By("45403 SUCCESS")
 	})
 
 	// author: scolange@redhat.com

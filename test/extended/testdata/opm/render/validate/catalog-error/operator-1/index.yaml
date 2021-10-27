@@ -5,6 +5,36 @@ defaultChannel: beta
 ---
 entries:
 - name: operator-1.v0.1.0
+  replaces: operator-1.v0.2.0
+- name: operator-1.v0.2.0
+  replaces: operator-1.v0.1.0
+- name: operator-1.v0.4.0
+  replaces: operator-1.v0.2.0
+name: 45401-1
+package: operator-1
+schema: olm.channel
+---
+entries:
+- name: operator-1.v0.1.0
+- name: operator-1.v0.2.0
+- name: operator-1.v0.4.0
+name: 45401-2
+package: operator-1
+schema: olm.channel
+---
+entries:
+- name: operator-1.v0.1.0
+  replaces: operator-1.v0.2.0
+- name: operator-1.v0.2.0
+  replaces: operator-1.v0.4.0
+- name: operator-1.v0.4.0
+  replaces: operator-1.v0.1.0
+name: 45401-3
+package: operator-1
+schema: olm.channel
+---
+entries:
+- name: operator-1.v0.1.0
 - name: operator-1.v0.2.0
   replaces: operator-1.v0.1.1
 name: alpha
