@@ -8239,6 +8239,25 @@ var _ = g.Describe("[sig-operators] OLM on VM for an end user handle within a na
 		}
 	})
 
+	// OCP-45359 author: jitli@redhat.com
+	g.It("Author:jitli-ConnectedOnly-VMonly-Medium-45359-Default catalogs need to use the correct tags", func() {
+
+		g.By("step: oc get catalogsource")
+		catsrcs, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("catalogsource", "-n", "openshift-marketplace").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(catsrcs).NotTo(o.BeEmpty())
+		e2e.Logf(catsrcs)
+		defaultCatsrcs := []string{"certified-operators", "community-operators", "redhat-marketplace", "redhat-operators"}
+		for _, catalogSource := range defaultCatsrcs {
+			o.Expect(catsrcs).To(o.ContainSubstring(catalogSource))
+
+			g.By("step: get catalog image tag")
+			output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("catalogsource", catalogSource, "-n", "openshift-marketplace", "-o=jsonpath={.spec.image}").Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			o.Expect(output).To(o.HaveSuffix("v4.10"))
+		}
+	})
+
 	// author: xzha@redhat.com
 	g.It("Author:xzha-ConnectedOnly-VMonly-Medium-25920-Expose bundle data from bundle image container", func() {
 		var (
