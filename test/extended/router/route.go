@@ -5,7 +5,6 @@ import (
 
 	g "github.com/onsi/ginkgo"
 	o "github.com/onsi/gomega"
-
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
 )
 
@@ -42,9 +41,45 @@ var _ = g.Describe("[sig-network-edge] Network_Edge should", func() {
 		g.By("Verify the acl whitelist parameter inside router pod")
 		podName := getRouterPod(oc, "default")
 		//backendName is the leading context of the route
-		backendName := "be_http:"+oc.Namespace()+":service-unsecure"
+		backendName := "be_http:" + oc.Namespace() + ":service-unsecure"
 		output = readHaproxyConfig(oc, podName, backendName, "-A10", "acl whitelist")
 		o.Expect(output).To(o.ContainSubstring(`acl whitelist src`))
 		o.Expect(output).To(o.ContainSubstring(`tcp-request content reject if !whitelist`))
+	})
+
+	// author: mjoseph@redhat.com
+	g.It("Author:mjoseph-High-45399-ingress controller continue to function normally with unexpected high timeout value", func() {
+		var (
+			buildPruningBaseDir = exutil.FixturePath("testdata", "router")
+			output              string
+			testPodSvc          = filepath.Join(buildPruningBaseDir, "web-server-rc.yaml")
+		)
+		g.By("create project, pod, svc resources")
+		oc.SetupProject()
+		createResourceFromFile(oc, oc.Namespace(), testPodSvc)
+		err := waitForPodWithLabelReady(oc, oc.Namespace(), "name=web-server-rc")
+		exutil.AssertWaitPollNoErr(err, "the pod with name=web-server-rc Ready status not met")
+
+		g.By("expose a service in the project")
+		exposeRoute(oc, oc.Namespace(), "svc/service-secure")
+		output, err = oc.Run("get").Args("route").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring("service-secure"))
+
+		g.By("annotate the route with haproxy.router.openshift.io/timeout annotation to high value and verify")
+		setAnnotation(oc, oc.Namespace(), "route/service-secure", "haproxy.router.openshift.io/timeout=9999d")
+		output, err = oc.Run("get").Args("route", "service-secure", "-o=jsonpath={.metadata.annotations}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring(`haproxy.router.openshift.io/timeout":"9999d`))
+
+		g.By("Verify the haproxy configuration for the set timeout value")
+		podName := getRouterPod(oc, "default")
+		output = readHaproxyConfig(oc, podName, oc.Namespace(), "-A6", `timeout`)
+		o.Expect(output).To(o.ContainSubstring(`timeout server  2147483647ms`))
+
+		g.By("Verify the pod logs to see any timer overflow error messages")
+		log, err := oc.AsAdmin().WithoutNamespace().Run("logs").Args("-n", "openshift-ingress", podName, "-c", "router").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(log).NotTo(o.ContainSubstring(`timer overflow`))
 	})
 })
