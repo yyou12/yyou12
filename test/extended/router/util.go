@@ -279,3 +279,24 @@ func checkConfigMap(oc *exutil.CLI, ns, configmapName string) error {
 		return false, nil
 	})
 }
+
+// To Collect ingresscontroller domain name
+func getIngressctlDomain(oc *exutil.CLI, icname string) string {
+	var ingressctldomain string
+	ingressctldomain, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("ingresscontroller", icname, "--namespace=openshift-ingress-operator", "-o=jsonpath={.spec.domain}").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	e2e.Logf("the domain for the ingresscontroller is : %v", ingressctldomain)
+	return ingressctldomain
+}
+
+// Function to deploy Edge termniated route
+func exposeEdgeRoute(oc *exutil.CLI, ns, route, service, edgecert, edgekey, hostname string) {
+	_, err := oc.WithoutNamespace().Run("create").Args("-n", ns, "route", "edge", route, "--service="+service, "--cert="+edgecert, "--key="+edgekey, "--hostname="+hostname).Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+// To patch global resources as Admin. Can used for patching resources such as ingresses or CVO
+func patchGlobalResourceAsAdmin(oc *exutil.CLI, resource, patch string) {
+	err := oc.AsAdmin().WithoutNamespace().Run("patch").Args(resource, "--patch="+patch, "--type=json").Execute()
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
