@@ -73,11 +73,11 @@ var _ = g.Describe("[sig-openshift-logging] Logging", func() {
 			g.By("check indices in ES pod")
 			podList, err := oc.AdminKubeClient().CoreV1().Pods(cloNS).List(metav1.ListOptions{LabelSelector: "es-node-master=true"})
 			o.Expect(err).NotTo(o.HaveOccurred())
-			waitForIndexAppear(oc, cloNS, podList.Items[0].Name, "app-centos-logtest", "")
+			waitForIndexAppear(oc, cloNS, podList.Items[0].Name, "app-centos-logtest")
 
 			//check if the JSON logs are parsed
-			check_log := "es_util --query=app-centos-logtest*/_search?format=JSON -d '{\"size\": 1, \"sort\": [{\"@timestamp\": {\"order\":\"desc\"}}], \"query\": {\"match\": {\"kubernetes.namespace_name\": \"" + app_proj + "\"}}}'"
-			logs := searchInES(oc, cloNS, podList.Items[0].Name, check_log)
+			check_log := "{\"size\": 1, \"sort\": [{\"@timestamp\": {\"order\":\"desc\"}}], \"query\": {\"match\": {\"kubernetes.namespace_name\": \"" + app_proj + "\"}}}"
+			logs := searchDocByQuery(oc, cloNS, podList.Items[0].Name, "app-centos-logtest", check_log)
 			o.Expect(logs.Hits.DataHits[0].Source.Structured.Message).Should(o.Equal("MERGE_JSON_LOG=true"))
 
 			//update clusterlogforwarder instance
@@ -90,10 +90,10 @@ var _ = g.Describe("[sig-openshift-logging] Logging", func() {
 			g.By("check indices in ES pod")
 			podList, err = oc.AdminKubeClient().CoreV1().Pods(cloNS).List(metav1.ListOptions{LabelSelector: "es-node-master=true"})
 			o.Expect(err).NotTo(o.HaveOccurred())
-			waitForIndexAppear(oc, cloNS, podList.Items[0].Name, "app-qa-openshift-label", "")
+			waitForIndexAppear(oc, cloNS, podList.Items[0].Name, "app-qa-openshift-label")
 			//check if the JSON logs are parsed
-			check_log_2 := "es_util --query=app-qa-openshift-label*/_search?format=JSON -d '{\"size\": 1, \"sort\": [{\"@timestamp\": {\"order\":\"desc\"}}], \"query\": {\"match\": {\"kubernetes.namespace_name\": \"" + app_proj + "\"}}}'"
-			logs_2 := searchInES(oc, cloNS, podList.Items[0].Name, check_log_2)
+			check_log_2 := "{\"size\": 1, \"sort\": [{\"@timestamp\": {\"order\":\"desc\"}}], \"query\": {\"match\": {\"kubernetes.namespace_name\": \"" + app_proj + "\"}}}"
+			logs_2 := searchDocByQuery(oc, cloNS, podList.Items[0].Name, "app-qa-openshift-label", check_log_2)
 			o.Expect(logs_2.Hits.DataHits[0].Source.Structured.Message).Should(o.Equal("MERGE_JSON_LOG=true"))
 		})
 
@@ -126,10 +126,10 @@ var _ = g.Describe("[sig-openshift-logging] Logging", func() {
 			g.By("check indices in ES pod")
 			podList, err := oc.AdminKubeClient().CoreV1().Pods(cloNS).List(metav1.ListOptions{LabelSelector: "es-node-master=true"})
 			o.Expect(err).NotTo(o.HaveOccurred())
-			waitForIndexAppear(oc, cloNS, podList.Items[0].Name, "app-logging-centos-logtest", "")
+			waitForIndexAppear(oc, cloNS, podList.Items[0].Name, "app-logging-centos-logtest")
 			//check if the JSON logs are parsed
-			check_log := "es_util --query=app-logging-centos-logtest*/_search?format=JSON -d '{\"size\": 1, \"sort\": [{\"@timestamp\": {\"order\":\"desc\"}}], \"query\": {\"match\": {\"kubernetes.namespace_name\": \"" + app_proj + "\"}}}'"
-			logs := searchInES(oc, cloNS, podList.Items[0].Name, check_log)
+			check_log := "{\"size\": 1, \"sort\": [{\"@timestamp\": {\"order\":\"desc\"}}], \"query\": {\"match\": {\"kubernetes.namespace_name\": \"" + app_proj + "\"}}}"
+			logs := searchDocByQuery(oc, cloNS, podList.Items[0].Name, "app-logging-centos-logtest", check_log)
 			o.Expect(logs.Hits.DataHits[0].Source.Structured.Message).Should(o.Equal("MERGE_JSON_LOG=true"))
 
 			e2e.Logf("start testing OCP-42386")
@@ -141,10 +141,10 @@ var _ = g.Describe("[sig-openshift-logging] Logging", func() {
 			g.By("check indices in ES pod")
 			podList, err = oc.AdminKubeClient().CoreV1().Pods(cloNS).List(metav1.ListOptions{LabelSelector: "es-node-master=true"})
 			o.Expect(err).NotTo(o.HaveOccurred())
-			waitForIndexAppear(oc, cloNS, podList.Items[0].Name, "app-"+app_proj, "")
+			waitForIndexAppear(oc, cloNS, podList.Items[0].Name, "app-"+app_proj)
 			//check if the JSON logs are parsed
-			check_log_2 := "es_util --query=app-" + app_proj + "*/_search?format=JSON -d '{\"size\": 1, \"sort\": [{\"@timestamp\": {\"order\":\"desc\"}}], \"query\": {\"match\": {\"kubernetes.namespace_name\": \"" + app_proj + "\"}}}'"
-			logs_2 := searchInES(oc, cloNS, podList.Items[0].Name, check_log_2)
+			check_log_2 := "{\"size\": 1, \"sort\": [{\"@timestamp\": {\"order\":\"desc\"}}], \"query\": {\"match\": {\"kubernetes.namespace_name\": \"" + app_proj + "\"}}}"
+			logs_2 := searchDocByQuery(oc, cloNS, podList.Items[0].Name, "app-"+app_proj, check_log_2)
 			o.Expect(logs_2.Hits.DataHits[0].Source.Structured.Message).Should(o.Equal("MERGE_JSON_LOG=true"))
 		})
 
@@ -183,19 +183,19 @@ var _ = g.Describe("[sig-openshift-logging] Logging", func() {
 			podList, err := oc.AdminKubeClient().CoreV1().Pods(cloNS).List(metav1.ListOptions{LabelSelector: "es-node-master=true"})
 			o.Expect(err).NotTo(o.HaveOccurred())
 			for _, indexName := range []string{"app-" + app_proj_1, "app-00", "infra-00", "audit-00"} {
-				waitForIndexAppear(oc, cloNS, podList.Items[0].Name, indexName, "")
+				waitForIndexAppear(oc, cloNS, podList.Items[0].Name, indexName)
 			}
 
 			// check log in ES
 			// logs in proj_1 should be stored in index "app-${app_proj_1}" and json logs should be parsed
 			// logs in proj_2,proj_1 should be stored in index "app-000xxx", no json structured logs
-			check_log_1 := "es_util --query=app-" + app_proj_1 + "*/_search?format=JSON -d '{\"size\": 1, \"sort\": [{\"@timestamp\": {\"order\":\"desc\"}}], \"query\": {\"match\": {\"kubernetes.namespace_name\": \"" + app_proj_1 + "\"}}}'"
-			logs_1 := searchInES(oc, cloNS, podList.Items[0].Name, check_log_1)
+			check_log_1 := "{\"size\": 1, \"sort\": [{\"@timestamp\": {\"order\":\"desc\"}}], \"query\": {\"match\": {\"kubernetes.namespace_name\": \"" + app_proj_1 + "\"}}}"
+			logs_1 := searchDocByQuery(oc, cloNS, podList.Items[0].Name, "app-"+app_proj_1, check_log_1)
 			o.Expect(logs_1.Hits.DataHits[0].Source.Structured.Message).Should(o.Equal("MERGE_JSON_LOG=true"))
 
 			for _, proj := range []string{app_proj_1, app_proj_2} {
-				check_log_2 := "es_util --query=app-00*/_search?format=JSON -d '{\"size\": 1, \"sort\": [{\"@timestamp\": {\"order\":\"desc\"}}], \"query\": {\"match\": {\"kubernetes.namespace_name\": \"" + proj + "\"}}}'"
-				logs_2 := searchInES(oc, cloNS, podList.Items[0].Name, check_log_2)
+				check_log_2 := "{\"size\": 1, \"sort\": [{\"@timestamp\": {\"order\":\"desc\"}}], \"query\": {\"match\": {\"kubernetes.namespace_name\": \"" + proj + "\"}}}"
+				logs_2 := searchDocByQuery(oc, cloNS, podList.Items[0].Name, "app-00", check_log_2)
 				o.Expect(logs_2.Hits.DataHits[0].Source.Structured.Message).Should(o.BeEmpty())
 			}
 
@@ -257,10 +257,10 @@ var _ = g.Describe("[sig-openshift-logging] Logging", func() {
 			g.By("check logs in ES pod")
 			podList, err := oc.AdminKubeClient().CoreV1().Pods(cloNS).List(metav1.ListOptions{LabelSelector: "es-node-master=true"})
 			o.Expect(err).NotTo(o.HaveOccurred())
-			waitForIndexAppear(oc, cloNS, podList.Items[0].Name, "app-00", "")
+			waitForIndexAppear(oc, cloNS, podList.Items[0].Name, "app-00")
 			waitForProjectLogsAppear(oc, cloNS, podList.Items[0].Name, app_proj, "app-00")
-			check_log := "es_util --query=app-00*/_search?format=JSON -d '{\"size\": 1, \"sort\": [{\"@timestamp\": {\"order\":\"desc\"}}], \"query\": {\"match\": {\"kubernetes.namespace_name\": \"" + app_proj + "\"}}}'"
-			logs := searchInES(oc, cloNS, podList.Items[0].Name, check_log)
+			check_log := "{\"size\": 1, \"sort\": [{\"@timestamp\": {\"order\":\"desc\"}}], \"query\": {\"match\": {\"kubernetes.namespace_name\": \"" + app_proj + "\"}}}"
+			logs := searchDocByQuery(oc, cloNS, podList.Items[0].Name, "app-00", check_log)
 			o.Expect(logs.Hits.DataHits[0].Source.Structured.Message).Should(o.BeEmpty())
 		})
 
@@ -298,15 +298,15 @@ var _ = g.Describe("[sig-openshift-logging] Logging", func() {
 			g.By("check indices in ES pod")
 			podList, err := oc.AdminKubeClient().CoreV1().Pods(cloNS).List(metav1.ListOptions{LabelSelector: "es-node-master=true"})
 			o.Expect(err).NotTo(o.HaveOccurred())
-			waitForIndexAppear(oc, cloNS, podList.Items[0].Name, "app-centos-logtest", "")
-			waitForIndexAppear(oc, cloNS, podList.Items[0].Name, "app-00", "")
-			waitForIndexAppear(oc, cloNS, podList.Items[0].Name, "infra", "")
-			waitForIndexAppear(oc, cloNS, podList.Items[0].Name, "audit", "")
+			waitForIndexAppear(oc, cloNS, podList.Items[0].Name, "app-centos-logtest")
+			waitForIndexAppear(oc, cloNS, podList.Items[0].Name, "app-00")
+			waitForIndexAppear(oc, cloNS, podList.Items[0].Name, "infra")
+			waitForIndexAppear(oc, cloNS, podList.Items[0].Name, "audit")
 
 			//check if the JSON logs are parsed
 			waitForProjectLogsAppear(oc, cloNS, podList.Items[0].Name, app_1, "app-centos-logtest")
-			check_log := "es_util --query=app-centos-logtest*/_search?format=JSON -d '{\"size\": 1, \"sort\": [{\"@timestamp\": {\"order\":\"desc\"}}], \"query\": {\"match\": {\"kubernetes.namespace_name\": \"" + app_1 + "\"}}}'"
-			logs_1 := searchInES(oc, cloNS, podList.Items[0].Name, check_log)
+			check_log := "{\"size\": 1, \"sort\": [{\"@timestamp\": {\"order\":\"desc\"}}], \"query\": {\"match\": {\"kubernetes.namespace_name\": \"" + app_1 + "\"}}}"
+			logs_1 := searchDocByQuery(oc, cloNS, podList.Items[0].Name, "app-centos-logtest", check_log)
 			o.Expect(logs_1.Hits.DataHits[0].Source.Structured.Message).Should(o.Equal("MERGE_JSON_LOG=true"))
 
 			waitForProjectLogsAppear(oc, cloNS, podList.Items[0].Name, app_1, "app-00")
@@ -358,11 +358,11 @@ var _ = g.Describe("[sig-openshift-logging] Logging", func() {
 			g.By("check indices in ES pod")
 			podList, err := oc.AdminKubeClient().CoreV1().Pods(cloNS).List(metav1.ListOptions{LabelSelector: "es-node-master=true"})
 			o.Expect(err).NotTo(o.HaveOccurred())
-			waitForIndexAppear(oc, cloNS, podList.Items[0].Name, "app-qa-openshift-label", "")
+			waitForIndexAppear(oc, cloNS, podList.Items[0].Name, "app-qa-openshift-label")
 
 			//check if the JSON logs are parsed
-			check_log := "es_util --query=app-qa-openshift-label*/_search?format=JSON -d '{\"size\": 1, \"sort\": [{\"@timestamp\": {\"order\":\"desc\"}}], \"query\": {\"match\": {\"kubernetes.namespace_name\": \"" + app + "\"}}}'"
-			logs := searchInES(oc, cloNS, podList.Items[0].Name, check_log)
+			check_log := "{\"size\": 1, \"sort\": [{\"@timestamp\": {\"order\":\"desc\"}}], \"query\": {\"match\": {\"kubernetes.namespace_name\": \"" + app + "\"}}}"
+			logs := searchDocByQuery(oc, cloNS, podList.Items[0].Name, "app-qa-openshift-label", check_log)
 			o.Expect(logs.Hits.DataHits[0].Source.Structured.Message).Should(o.Equal("MERGE_JSON_LOG=true"))
 		})
 
@@ -391,11 +391,11 @@ var _ = g.Describe("[sig-openshift-logging] Logging", func() {
 			g.By("check indices in ES pod")
 			podList, err := oc.AdminKubeClient().CoreV1().Pods(cloNS).List(metav1.ListOptions{LabelSelector: "es-node-master=true"})
 			o.Expect(err).NotTo(o.HaveOccurred())
-			waitForIndexAppear(oc, cloNS, podList.Items[0].Name, "app-ocp-41729", "")
+			waitForIndexAppear(oc, cloNS, podList.Items[0].Name, "app-ocp-41729")
 
 			//check if the JSON logs are parsed
-			check_log := "es_util --query=app-ocp-41729*/_search?format=JSON -d '{\"size\": 1, \"sort\": [{\"@timestamp\": {\"order\":\"desc\"}}], \"query\": {\"match\": {\"kubernetes.namespace_name\": \"" + app + "\"}}}'"
-			logs := searchInES(oc, cloNS, podList.Items[0].Name, check_log)
+			check_log := "{\"size\": 1, \"sort\": [{\"@timestamp\": {\"order\":\"desc\"}}], \"query\": {\"match\": {\"kubernetes.namespace_name\": \"" + app + "\"}}}"
+			logs := searchDocByQuery(oc, cloNS, podList.Items[0].Name, "app-ocp-41729", check_log)
 			o.Expect(logs.Hits.DataHits[0].Source.Structured.Message).Should(o.Equal("MERGE_JSON_LOG=true"))
 		})
 
@@ -424,21 +424,21 @@ var _ = g.Describe("[sig-openshift-logging] Logging", func() {
 			g.By("check indices in ES pod")
 			podList, err := oc.AdminKubeClient().CoreV1().Pods(cloNS).List(metav1.ListOptions{LabelSelector: "es-node-master=true"})
 			o.Expect(err).NotTo(o.HaveOccurred())
-			waitForIndexAppear(oc, cloNS, podList.Items[0].Name, "app-"+app, "")
+			waitForIndexAppear(oc, cloNS, podList.Items[0].Name, "app-"+app)
 			//check if the JSON logs are parsed
-			check_log := "es_util --query=app-" + app + "*/_search?format=JSON -d '{\"size\": 1, \"sort\": [{\"@timestamp\": {\"order\":\"desc\"}}], \"query\": {\"match\": {\"kubernetes.namespace_name\": \"" + app + "\"}}}'"
-			logs := searchInES(oc, cloNS, podList.Items[0].Name, check_log)
+			check_log := "{\"size\": 1, \"sort\": [{\"@timestamp\": {\"order\":\"desc\"}}], \"query\": {\"match\": {\"kubernetes.namespace_name\": \"" + app + "\"}}}"
+			logs := searchDocByQuery(oc, cloNS, podList.Items[0].Name, "app-"+app, check_log)
 			o.Expect(logs.Hits.DataHits[0].Source.Structured.Message).Should(o.Equal("MERGE_JSON_LOG=true"))
 
 			g.By("update CLF to test OCP-41732")
 			err = clf.applyFromTemplate(oc, "-n", clf.namespace, "-f", clfTemplate, "-p", "DATA_PROJECTS="+string(projects), "-p", "STRUCTURED_TYPE_KEY=kubernetes.labels.test")
 			o.Expect(err).NotTo(o.HaveOccurred())
 			WaitForEFKPodsToBeReady(oc, cloNS)
-			waitForIndexAppear(oc, cloNS, podList.Items[0].Name, "app-centos-logtest", "")
+			waitForIndexAppear(oc, cloNS, podList.Items[0].Name, "app-centos-logtest")
 			waitForProjectLogsAppear(oc, cloNS, podList.Items[0].Name, app, "app-centos-logtest")
 			//check if the JSON logs are parsed
-			check_log2 := "es_util --query=app-centos-logtest*/_search?format=JSON -d '{\"size\": 1, \"sort\": [{\"@timestamp\": {\"order\":\"desc\"}}], \"query\": {\"match\": {\"kubernetes.namespace_name\": \"" + app + "\"}}}'"
-			logs2 := searchInES(oc, cloNS, podList.Items[0].Name, check_log2)
+			check_log2 := "{\"size\": 1, \"sort\": [{\"@timestamp\": {\"order\":\"desc\"}}], \"query\": {\"match\": {\"kubernetes.namespace_name\": \"" + app + "\"}}}"
+			logs2 := searchDocByQuery(oc, cloNS, podList.Items[0].Name, "app-centos-logtest", check_log2)
 			o.Expect(logs2.Hits.DataHits[0].Source.Structured.Message).Should(o.Equal("MERGE_JSON_LOG=true"))
 		})
 
@@ -466,11 +466,11 @@ var _ = g.Describe("[sig-openshift-logging] Logging", func() {
 			g.By("check indices in ES pod")
 			podList, err := oc.AdminKubeClient().CoreV1().Pods(cloNS).List(metav1.ListOptions{LabelSelector: "es-node-master=true"})
 			o.Expect(err).NotTo(o.HaveOccurred())
-			waitForIndexAppear(oc, cloNS, podList.Items[0].Name, "app-000", "")
+			waitForIndexAppear(oc, cloNS, podList.Items[0].Name, "app-000")
 
 			//check if the JSON logs are parsed
-			check_log := "es_util --query=app-000*/_search?format=JSON -d '{\"size\": 1, \"sort\": [{\"@timestamp\": {\"order\":\"desc\"}}], \"query\": {\"match\": {\"kubernetes.namespace_name\": \"" + app + "\"}}}'"
-			logs := searchInES(oc, cloNS, podList.Items[0].Name, check_log)
+			check_log := "{\"size\": 1, \"sort\": [{\"@timestamp\": {\"order\":\"desc\"}}], \"query\": {\"match\": {\"kubernetes.namespace_name\": \"" + app + "\"}}}"
+			logs := searchDocByQuery(oc, cloNS, podList.Items[0].Name, "app-000", check_log)
 			o.Expect(logs.Hits.DataHits[0].Source.Structured.Message).Should(o.BeEmpty())
 		})
 
@@ -498,11 +498,11 @@ var _ = g.Describe("[sig-openshift-logging] Logging", func() {
 			g.By("check indices in ES pod")
 			podList, err := oc.AdminKubeClient().CoreV1().Pods(cloNS).List(metav1.ListOptions{LabelSelector: "es-node-master=true"})
 			o.Expect(err).NotTo(o.HaveOccurred())
-			waitForIndexAppear(oc, cloNS, podList.Items[0].Name, "app-00", "")
+			waitForIndexAppear(oc, cloNS, podList.Items[0].Name, "app-00")
 
 			//check if the JSON logs are parsed
-			check_log := "es_util --query=app-00*/_search?format=JSON -d '{\"size\": 1, \"sort\": [{\"@timestamp\": {\"order\":\"desc\"}}], \"query\": {\"match\": {\"kubernetes.namespace_name\": \"" + app + "\"}}}'"
-			logs := searchInES(oc, cloNS, podList.Items[0].Name, check_log)
+			check_log := "{\"size\": 1, \"sort\": [{\"@timestamp\": {\"order\":\"desc\"}}], \"query\": {\"match\": {\"kubernetes.namespace_name\": \"" + app + "\"}}}"
+			logs := searchDocByQuery(oc, cloNS, podList.Items[0].Name, "app-00", check_log)
 			o.Expect(logs.Hits.DataHits[0].Source.Structured.Message).Should(o.Equal("MERGE_JSON_LOG=true"))
 
 			g.By("update clusterlogforwarder/instance to test OCP-41787")
@@ -511,11 +511,11 @@ var _ = g.Describe("[sig-openshift-logging] Logging", func() {
 			err = clf.applyFromTemplate(oc, "-n", clf.namespace, "-f", newclfTemplate, "-p", "DATA_PROJECTS="+string(projects), "-p", "STRUCTURED_TYPE_KEY=kubernetes.labels.none", "-p", "STRUCTURED_TYPE_NAME=test-41787")
 			o.Expect(err).NotTo(o.HaveOccurred())
 			WaitForEFKPodsToBeReady(oc, cloNS)
-			waitForIndexAppear(oc, cloNS, podList.Items[0].Name, "app-test-41787", "")
+			waitForIndexAppear(oc, cloNS, podList.Items[0].Name, "app-test-41787")
 			waitForProjectLogsAppear(oc, cloNS, podList.Items[0].Name, app, "app-test-41787")
 			//check if the JSON logs are parsed
-			check_log_2 := "es_util --query=app-test-41787*/_search?format=JSON -d '{\"size\": 1, \"sort\": [{\"@timestamp\": {\"order\":\"desc\"}}], \"query\": {\"match\": {\"kubernetes.namespace_name\": \"" + app + "\"}}}'"
-			logs_2 := searchInES(oc, cloNS, podList.Items[0].Name, check_log_2)
+			check_log_2 := "{\"size\": 1, \"sort\": [{\"@timestamp\": {\"order\":\"desc\"}}], \"query\": {\"match\": {\"kubernetes.namespace_name\": \"" + app + "\"}}}"
+			logs_2 := searchDocByQuery(oc, cloNS, podList.Items[0].Name, "app-test-41787", check_log_2)
 			o.Expect(logs_2.Hits.DataHits[0].Source.Structured.Message).Should(o.Equal("MERGE_JSON_LOG=true"))
 		})
 
@@ -549,15 +549,51 @@ var _ = g.Describe("[sig-openshift-logging] Logging", func() {
 			g.By("check indices in ES pod")
 			podList, err := oc.AdminKubeClient().CoreV1().Pods(cloNS).List(metav1.ListOptions{LabelSelector: "es-node-master=true"})
 			o.Expect(err).NotTo(o.HaveOccurred())
-			waitForIndexAppear(oc, cloNS, podList.Items[0].Name, "app-centos-logtest", "")
-			waitForIndexAppear(oc, cloNS, podList.Items[0].Name, "app-ocp-41790", "")
+			waitForIndexAppear(oc, cloNS, podList.Items[0].Name, "app-centos-logtest")
+			waitForIndexAppear(oc, cloNS, podList.Items[0].Name, "app-ocp-41790")
 
 			//check if the JSON logs are parsed
-			check_log := "es_util --query=app-centos-logtest*/_search?format=JSON -d '{\"size\": 1, \"sort\": [{\"@timestamp\": {\"order\":\"desc\"}}], \"query\": {\"match\": {\"kubernetes.namespace_name\": \"" + app_1 + "\"}}}'"
-			logs := searchInES(oc, cloNS, podList.Items[0].Name, check_log)
+			check_log := "{\"size\": 1, \"sort\": [{\"@timestamp\": {\"order\":\"desc\"}}], \"query\": {\"match\": {\"kubernetes.namespace_name\": \"" + app_1 + "\"}}}"
+			logs := searchDocByQuery(oc, cloNS, podList.Items[0].Name, "app-centos-logtest", check_log)
 			o.Expect(logs.Hits.DataHits[0].Source.Structured.Message).Should(o.Equal("MERGE_JSON_LOG=true"))
 
 			waitForProjectLogsAppear(oc, cloNS, podList.Items[0].Name, app_2, "app-ocp-41790")
+		})
+
+		// author: qitang@redhat.com
+		g.It("CPaasrunOnly-Author:qitang-Medium-41302-structuredTypeKey for external ES which doesn't enabled ingress plugin[Serial]", func() {
+			app := oc.Namespace()
+			err := oc.WithoutNamespace().Run("new-app").Args("-f", jsonLogFile, "-n", app).Execute()
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			oc.SetupProject()
+			es_proj := oc.Namespace()
+			ees := externalES{es_proj, "6.8", "elasticsearch-server", true, false, false, "", "", "external-es", cloNS}
+			defer ees.remove(oc)
+			ees.deploy(oc)
+
+			g.By("create clusterlogforwarder/instance")
+			clfTemplate := exutil.FixturePath("testdata", "logging", "clusterlogforwarder", "41729.yaml")
+			clf := resource{"clusterlogforwarder", "instance", cloNS}
+			defer clf.clear(oc)
+			projects, _ := json.Marshal([]string{app})
+			eesURL := "https://" + ees.serverName + "." + ees.namespace + ".svc:9200"
+			err = clf.applyFromTemplate(oc, "-n", clf.namespace, "-f", clfTemplate, "-p", "DATA_PROJECTS="+string(projects), "-p", "STRUCTURED_TYPE_KEY=kubernetes.namespace_name", "-p", "URL="+eesURL, "-p", "SECRET_NAME="+ees.secretName)
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			g.By("deploy fluentd pods")
+			instance := exutil.FixturePath("testdata", "logging", "clusterlogging", "fluentd_only.yaml")
+			cl := resource{"clusterlogging", "instance", cloNS}
+			defer cl.deleteClusterLogging(oc)
+			cl.createClusterLogging(oc, "-n", cl.namespace, "-f", instance, "-p", "NAMESPACE="+cl.namespace)
+			WaitForDaemonsetPodsToBeReady(oc, cloNS, "collector")
+
+			g.By("check indices in external ES pod")
+			ees.waitForIndexAppear(oc, "app-"+app+"-write")
+
+			//check if the JSON logs are parsed
+			logs := ees.searchDocByQuery(oc, "app-"+app, "{\"size\": 1, \"sort\": [{\"@timestamp\": {\"order\":\"desc\"}}], \"query\": {\"match_phrase\": {\"kubernetes.namespace_name\": \""+app+"\"}}}")
+			o.Expect(logs.Hits.DataHits[0].Source.Structured.Message).Should(o.Equal("MERGE_JSON_LOG=true"))
 		})
 
 	})

@@ -1,6 +1,7 @@
 package logging
 
 import (
+	"encoding/json"
 	"strings"
 	"time"
 
@@ -27,6 +28,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging", func() {
 			subTemplate       = exutil.FixturePath("testdata", "logging", "subscription", "sub-template.yaml")
 			SingleNamespaceOG = exutil.FixturePath("testdata", "logging", "subscription", "singlenamespace-og.yaml")
 			AllNamespaceOG    = exutil.FixturePath("testdata", "logging", "subscription", "allnamespace-og.yaml")
+			jsonLogFile       = exutil.FixturePath("testdata", "logging", "generatelog", "container_json_log_template.json")
 		)
 		cloNS := "openshift-logging"
 		eoNS := "openshift-operators-redhat"
@@ -78,20 +80,19 @@ var _ = g.Describe("[sig-openshift-logging] Logging", func() {
 			g.By("check indices in ES pod")
 			podList, err := oc.AdminKubeClient().CoreV1().Pods(cloNS).List(metav1.ListOptions{LabelSelector: "es-node-master=true"})
 			o.Expect(err).NotTo(o.HaveOccurred())
-			waitForIndexAppear(oc, cloNS, podList.Items[0].Name, "app-000001", "")
+			waitForIndexAppear(oc, cloNS, podList.Items[0].Name, "app-000")
 
 			//Waiting for the app index to be populated
-			waitForProjectLogsAppear(oc, cloNS, podList.Items[0].Name, app_proj_qa, "app-000001")
+			waitForProjectLogsAppear(oc, cloNS, podList.Items[0].Name, app_proj_qa, "app-000")
 
 			// check data in ES for QA namespace
 			g.By("check logs in ES pod for QA namespace in CLF")
-			check_log := "es_util --query=app-*/_search?format=JSON -d '{\"size\": 1, \"sort\": [{\"@timestamp\": {\"order\":\"desc\"}}], \"query\": {\"match\": {\"kubernetes.namespace_name\": \"" + app_proj_qa + "\"}}}'"
-			logs := searchInES(oc, cloNS, podList.Items[0].Name, check_log)
+			logs := searchDocByQuery(oc, cloNS, podList.Items[0].Name, "app", "{\"size\": 1, \"sort\": [{\"@timestamp\": {\"order\":\"desc\"}}], \"query\": {\"match_phrase\": {\"kubernetes.namespace_name\": \""+app_proj_qa+"\"}}}")
 			o.Expect(logs.Hits.DataHits[0].Source.Kubernetes.NamespaceLabels.KubernetesIOMetadataName).Should(o.Equal(app_proj_qa))
 
 			//check that no data exists for the other Dev namespace - Negative test
 			g.By("check logs in ES pod for Dev namespace in CLF")
-			count, err := getDocCountPerNamespace(oc, cloNS, podList.Items[0].Name, app_proj_dev, "app-000001")
+			count, _ := getDocCountByQuery(oc, cloNS, podList.Items[0].Name, "app-0000", "{\"query\": {\"match_phrase\": {\"kubernetes.namespace_name\": \""+app_proj_dev+"\"}}}")
 			o.Expect(count).Should(o.Equal(0))
 
 		})
@@ -142,26 +143,26 @@ var _ = g.Describe("[sig-openshift-logging] Logging", func() {
 			g.By("check indices in ES pod")
 			podList, err := oc.AdminKubeClient().CoreV1().Pods(cloNS).List(metav1.ListOptions{LabelSelector: "es-node-master=true"})
 			o.Expect(err).NotTo(o.HaveOccurred())
-			waitForIndexAppear(oc, cloNS, podList.Items[0].Name, "app-00", "")
+			waitForIndexAppear(oc, cloNS, podList.Items[0].Name, "app-00")
 
 			//Waiting for the app index to be populated
 			waitForProjectLogsAppear(oc, cloNS, podList.Items[0].Name, app_proj_qa, "app-00")
 			waitForProjectLogsAppear(oc, cloNS, podList.Items[0].Name, app_proj_dev, "app-00")
 
 			g.By("check doc count in ES pod for QA1 namespace in CLF")
-			logCount, err := getDocCountByK8sLabel(oc, cloNS, podList.Items[0].Name, "app-00", "run=centos-logtest-qa-1")
+			logCount, _ := getDocCountByQuery(oc, cloNS, podList.Items[0].Name, "app-00", "{\"query\": {\"terms\": {\"kubernetes.flat_labels\": [\"run=centos-logtest-qa-1\"]}}}")
 			o.Expect(logCount).ShouldNot(o.Equal(0))
 
 			g.By("check doc count in ES pod for QA2 namespace in CLF")
-			logCount, err = getDocCountByK8sLabel(oc, cloNS, podList.Items[0].Name, "app-00", "run=centos-logtest-qa-2")
+			logCount, _ = getDocCountByQuery(oc, cloNS, podList.Items[0].Name, "app-00", "{\"query\": {\"terms\": {\"kubernetes.flat_labels\": [\"run=centos-logtest-qa-2\"]}}}")
 			o.Expect(logCount).Should(o.Equal(0))
 
 			g.By("check doc count in ES pod for DEV1 namespace in CLF")
-			logCount, err = getDocCountByK8sLabel(oc, cloNS, podList.Items[0].Name, "app-00", "run=centos-logtest-dev-1")
+			logCount, _ = getDocCountByQuery(oc, cloNS, podList.Items[0].Name, "app-00", "{\"query\": {\"terms\": {\"kubernetes.flat_labels\": [\"run=centos-logtest-dev-1\"]}}}")
 			o.Expect(logCount).ShouldNot(o.Equal(0))
 
 			g.By("check doc count in ES pod for DEV2 namespace in CLF")
-			logCount, err = getDocCountByK8sLabel(oc, cloNS, podList.Items[0].Name, "app-00", "run=centos-logtest-dev-2")
+			logCount, _ = getDocCountByQuery(oc, cloNS, podList.Items[0].Name, "app-00", "{\"query\": {\"terms\": {\"kubernetes.flat_labels\": [\"run=centos-logtest-dev-2\"]}}}")
 			o.Expect(logCount).Should(o.Equal(0))
 
 		})
@@ -192,7 +193,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging", func() {
 			g.By("Check audit index in ES pod")
 			podList, err := oc.AdminKubeClient().CoreV1().Pods(cloNS).List(metav1.ListOptions{LabelSelector: "es-node-master=true"})
 			o.Expect(err).NotTo(o.HaveOccurred())
-			waitForIndexAppear(oc, cloNS, podList.Items[0].Name, "audit-00", "")
+			waitForIndexAppear(oc, cloNS, podList.Items[0].Name, "audit-00")
 
 			g.By("Create a test project, enable OVN network log collection on it, add the OVN log app and network policies for the project")
 			oc.SetupProject()
@@ -220,9 +221,72 @@ var _ = g.Describe("[sig-openshift-logging] Logging", func() {
 			g.By("Check for the generated OVN audit logs in Elasticsearch")
 			podList, err = oc.AdminKubeClient().CoreV1().Pods(cloNS).List(metav1.ListOptions{LabelSelector: "es-node-master=true"})
 			o.Expect(err).NotTo(o.HaveOccurred())
-			check_log := "es_util --query=audit*/_search?format=JSON -d '{\"query\":{\"query_string\":{\"query\":\"verdict=allow AND severity=alert AND tcp,vlan_tci AND tcp_flags=ack\",\"default_field\":\"message\"}}}'"
-			logs := searchInES(oc, cloNS, podList.Items[0].Name, check_log)
+			logs := searchDocByQuery(oc, cloNS, podList.Items[0].Name, "audit", "{\"query\":{\"query_string\":{\"query\":\"verdict=allow AND severity=alert AND tcp,vlan_tci AND tcp_flags=ack\",\"default_field\":\"message\"}}}")
 			o.Expect(logs.Hits.Total).Should(o.BeNumerically(">", 0))
+		})
+
+		// author qitang@redhat.com
+		g.It("CPaasrunOnly-Author:qitang-Medium-41134-Forward Log under different namespaces to different external Elasticsearch[Serial][Slow]", func() {
+			app_proj_1 := oc.Namespace()
+			err := oc.WithoutNamespace().Run("new-app").Args("-n", app_proj_1, "-f", jsonLogFile).Execute()
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			oc.SetupProject()
+			app_proj_2 := oc.Namespace()
+			err = oc.WithoutNamespace().Run("new-app").Args("-n", app_proj_2, "-f", jsonLogFile).Execute()
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			oc.SetupProject()
+			app_proj_3 := oc.Namespace()
+			err = oc.WithoutNamespace().Run("new-app").Args("-n", app_proj_3, "-f", jsonLogFile).Execute()
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			g.By("deploy 2 external ES servers")
+			oc.SetupProject()
+			es_proj_1 := oc.Namespace()
+			ees1 := externalES{es_proj_1, "6.8", "elasticsearch-server-1", false, false, false, "", "", "", cloNS}
+			defer ees1.remove(oc)
+			ees1.deploy(oc)
+
+			oc.SetupProject()
+			es_proj_2 := oc.Namespace()
+			ees2 := externalES{es_proj_2, "7.12", "elasticsearch-server-2", false, false, false, "", "", "", cloNS}
+			defer ees2.remove(oc)
+			ees2.deploy(oc)
+
+			g.By("create clusterlogforwarder/instance")
+			clfTemplate := exutil.FixturePath("testdata", "logging", "clusterlogforwarder", "41134.yaml")
+			clf := resource{"clusterlogforwarder", "instance", cloNS}
+			defer clf.clear(oc)
+			qa := []string{app_proj_1, app_proj_2}
+			qaProjects, _ := json.Marshal(qa)
+			dev := []string{app_proj_1, app_proj_3}
+			devProjects, _ := json.Marshal(dev)
+			err = clf.applyFromTemplate(oc, "-n", clf.namespace, "-f", clfTemplate, "-p", "QA_NS="+string(qaProjects), "-p", "DEV_NS="+string(devProjects), "-p", "URL_QA=http://"+ees1.serverName+"."+es_proj_1+".svc:9200", "-p", "URL_DEV=http://"+ees2.serverName+"."+es_proj_2+".svc:9200")
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			g.By("deploy fluentd pods")
+			instance := exutil.FixturePath("testdata", "logging", "clusterlogging", "fluentd_only.yaml")
+			cl := resource{"clusterlogging", "instance", cloNS}
+			defer cl.deleteClusterLogging(oc)
+			cl.createClusterLogging(oc, "-n", cl.namespace, "-f", instance, "-p", "NAMESPACE="+cl.namespace)
+			WaitForDaemonsetPodsToBeReady(oc, cloNS, "collector")
+
+			g.By("check logs in external ES")
+			ees1.waitForIndexAppear(oc, "app")
+			for _, proj := range qa {
+				ees1.waitForProjectLogsAppear(oc, proj, "app")
+			}
+			count1, _ := ees1.getDocCount(oc, "app", "{\"query\": {\"match_phrase\": {\"kubernetes.namespace_name\": \""+app_proj_3+"\"}}}")
+			o.Expect(count1 == 0).Should(o.BeTrue())
+
+			ees2.waitForIndexAppear(oc, "app")
+			for _, proj := range dev {
+				ees2.waitForProjectLogsAppear(oc, proj, "app")
+			}
+			count2, _ := ees2.getDocCount(oc, "app", "{\"query\": {\"match_phrase\": {\"kubernetes.namespace_name\": \""+app_proj_2+"\"}}}")
+			o.Expect(count2 == 0).Should(o.BeTrue())
+
 		})
 	})
 })

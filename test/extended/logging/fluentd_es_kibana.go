@@ -93,7 +93,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging", func() {
 			cl.assertResourceStatus(oc, "jsonpath={.status.logStore.elasticsearchStatus[0].cluster.status}", "green")
 			prePodList, err := oc.AdminKubeClient().CoreV1().Pods(cloNS).List(metav1.ListOptions{LabelSelector: "es-node-master=true"})
 			o.Expect(err).NotTo(o.HaveOccurred())
-			waitForIndexAppear(oc, cloNS, prePodList.Items[0].Name, "infra-00", "")
+			waitForIndexAppear(oc, cloNS, prePodList.Items[0].Name, "infra-00")
 
 			g.By("Set the Elasticsearch operator instance managementState to Unmanaged.")
 			err = oc.AsAdmin().WithoutNamespace().Run("patch").Args("es/elasticsearch", "-n", cloNS, "-p", "{\"spec\": {\"managementState\": \"Unmanaged\"}}", "--type=merge").Execute()
@@ -137,8 +137,8 @@ var _ = g.Describe("[sig-openshift-logging] Logging", func() {
 			g.By("Get the log count for logtest app namespace")
 			postPodList, err := oc.AdminKubeClient().CoreV1().Pods(cloNS).List(metav1.ListOptions{LabelSelector: "es-node-master=true"})
 			o.Expect(err).NotTo(o.HaveOccurred())
-			waitForIndexAppear(oc, cloNS, postPodList.Items[0].Name, "infra-00", "")
-			LogCount, err := getDocCountPerNamespace(oc, cloNS, postPodList.Items[0].Name, app_proj, "app")
+			waitForIndexAppear(oc, cloNS, postPodList.Items[0].Name, "infra-00")
+			LogCount, err := getDocCountByQuery(oc, cloNS, postPodList.Items[0].Name, "app", "{\"query\": {\"match_phrase\": {\"kubernetes.namespace_name\": \""+app_proj+"\"}}}")
 			o.Expect(err).NotTo(o.HaveOccurred())
 			e2e.Logf("Logcount for the logtest app in %s project is %d", app_proj, LogCount)
 
@@ -268,7 +268,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging Elasticsearch should", func(
 		g.By("check logs in ES pod")
 		podList, err := oc.AdminKubeClient().CoreV1().Pods(cloNS).List(metav1.ListOptions{LabelSelector: "es-node-master=true"})
 		o.Expect(err).NotTo(o.HaveOccurred())
-		waitForIndexAppear(oc, cloNS, podList.Items[0].Name, "infra-00", "")
+		waitForIndexAppear(oc, cloNS, podList.Items[0].Name, "infra-00")
 
 		g.By("check ES metric es_index_namespaces_total")
 		err = wait.Poll(5*time.Second, 120*time.Second, func() (done bool, err error) {

@@ -19,9 +19,9 @@ objects:
         structuredTypeName: ${STRUCTURED_TYPE_NAME}
       name: custom-es-a
       secret:
-        name: collector
+        name: ${SECRET_NAME}
       type: elasticsearch
-      url: https://elasticsearch.openshift-logging.svc:9200
+      url: ${URL}
     pipelines:
     - inputRefs:
       - input-qa
@@ -39,4 +39,8 @@ parameters:
   value: openshift.labels.team
 - name: STRUCTURED_TYPE_NAME
   value: qa-index-name
+- name: URL
+  value: https://elasticsearch.openshift-logging.svc:9200
+- name: SECRET_NAME
+  value: collector
 

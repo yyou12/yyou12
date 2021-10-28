@@ -446,9 +446,7 @@ func waitForIMJobsToComplete(oc *exutil.CLI, ns string, timeout time.Duration) {
 	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("jobs %s with is not availabile", "component=indexManagement"))
 	// wait for jobs to complete
 	jobList, err := oc.AdminKubeClient().BatchV1().Jobs(ns).List(metav1.ListOptions{LabelSelector: "component=indexManagement"})
-	if err != nil {
-		panic(err)
-	}
+	o.Expect(err).NotTo(o.HaveOccurred())
 	for _, job := range jobList.Items {
 		err := wait.Poll(2*time.Second, 60*time.Second, func() (bool, error) {
 			job, err := oc.AdminKubeClient().BatchV1().Jobs(ns).Get(job.Name, metav1.GetOptions{})
@@ -701,4 +699,15 @@ func checkNetworkType(oc *exutil.CLI) string {
 	output, err := oc.WithoutNamespace().AsAdmin().Run("get").Args("network.operator", "cluster", "-o=jsonpath={.spec.defaultNetwork.type}").Output()
 	o.Expect(err).NotTo(o.HaveOccurred())
 	return strings.ToLower(output)
+}
+
+type certsConf struct {
+	serverName string
+	namespace  string
+}
+
+func (certs certsConf) generateCerts(keysPath string) {
+	generateCertsSH := exutil.FixturePath("testdata", "logging", "external-log-stores", "cert_generation.sh")
+	err := exec.Command("sh", generateCertsSH, keysPath, certs.namespace, certs.serverName).Run()
+	o.Expect(err).NotTo(o.HaveOccurred())
 }
