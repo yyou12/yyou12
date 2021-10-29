@@ -12,18 +12,18 @@ func GetAllNodes(oc *CLI) ([]string, error) {
 
 // GetFirstWorkerNode returns a first worker node
 func GetFirstWorkerNode(oc *CLI) (string, error) {
-	workerNodes, err := getClusterNodesBy(oc, "worker")
+	workerNodes, err := GetClusterNodesBy(oc, "worker")
 	return workerNodes[0], err
 }
 
 // GetFirstMasterNode returns a first master node
 func GetFirstMasterNode(oc *CLI) (string, error) {
-	masterNodes, err := getClusterNodesBy(oc, "master")
+	masterNodes, err := GetClusterNodesBy(oc, "master")
 	return masterNodes[0], err
 }
 
-// getClusterNodesBy returns the cluster nodes by role
-func getClusterNodesBy(oc *CLI, role string) ([]string, error) {
+// GetClusterNodesBy returns the cluster nodes by role
+func GetClusterNodesBy(oc *CLI, role string) ([]string, error) {
 	nodes, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("node", "-l", "node-role.kubernetes.io/"+role, "-o", "jsonpath='{.items[*].metadata.name}'").Output()
 	return strings.Split(strings.Trim(nodes, "'"), " "), err
 }
@@ -80,7 +80,7 @@ func GetFirstRhelWorkerNode(oc *CLI) (string, error) {
 
 // getFirstNodeByOsId returns the cluster node by role and os id
 func getFirstNodeByOsId(oc *CLI, role string, osId string) (string, error) {
-	nodes, err := getClusterNodesBy(oc, role)
+	nodes, err := GetClusterNodesBy(oc, role)
 	for _, node := range nodes {
 		stdout, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("node/"+node, "-o", "jsonpath=\"{.metadata.labels.node\\.openshift\\.io/os_id}\"").Output()
 		if strings.Trim(stdout, "\"") == osId {
