@@ -504,4 +504,49 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 			e2e.Failf("Image stroage has changed")
 		}
 	})
+
+	// author: wewang@redhat.com
+	g.It("Author:wewang-Critical-21593-Check registry status by changing managementState for image-registry [Disruptive]", func() {
+		g.By("Check platforms")
+		platformtype, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("infrastructure", "cluster", "-o=jsonpath={.spec.platformSpec.type}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		platforms := map[string]bool{
+			"AWS":       true,
+			"Azure":     true,
+			"GCP":       true,
+			"OpenStack": true,
+		}
+		if !platforms[platformtype] {
+			g.Skip("Skip for non-supported platform")
+		}
+
+		g.By("Change managementSet from Managed -> Removed")
+		defer func() {
+			g.By("Set image registry cluster Managed")
+			oc.AsAdmin().Run("patch").Args("configs.imageregistry/cluster", "-p", `{"spec":{"managementState":"Managed"}}`, "--type=merge").Execute()
+			recoverRegistryDefaultPods(oc)
+		}()
+		err = oc.AsAdmin().Run("patch").Args("configs.imageregistry/cluster", "-p", `{"spec":{"managementState":"Removed"}}`, "--type=merge").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		g.By("Check image-registry pods are removed")
+		checkRegistrypodsRemoved(oc)
+
+		g.By("Change managementSet from Removed to Managed")
+		err = oc.AsAdmin().Run("patch").Args("configs.imageregistry/cluster", "-p", `{"spec":{"managementState":"Managed"}}`, "--type=merge").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		recoverRegistryDefaultPods(oc)
+
+		g.By("Change managementSet from Managed to Unmanaged")
+		err = oc.AsAdmin().Run("patch").Args("configs.imageregistry/cluster", "-p", `{"spec":{"managementState":"Unmanaged"}}`, "--type=merge").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		g.By("Update replicas to 1")
+		defer oc.WithoutNamespace().AsAdmin().Run("patch").Args("configs.imageregistry/cluster", "-p", `{"spec":{"replicas": 2}}`, "--type=merge").Execute()
+		err = oc.WithoutNamespace().AsAdmin().Run("patch").Args("configs.imageregistry/cluster", "-p", `{"spec":{"replicas": 1}}`, "--type=merge").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Check image registry pods are still 2")
+		podList, err := oc.AdminKubeClient().CoreV1().Pods("openshift-image-registry").List(metav1.ListOptions{LabelSelector: "docker-registry=default"})
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(len(podList.Items)).Should(o.Equal(2))
+	})
 })

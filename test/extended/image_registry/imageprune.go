@@ -184,4 +184,49 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 		out := getResource(oc, asAdmin, withoutNamespace, "cronjob/image-pruner", "-n", "openshift-image-registry", "-o=jsonpath={.spec.jobTemplate.spec.template.spec.tolerations}")
 		o.Expect(out).Should(o.Equal(tolerationsInfo))
 	})
+
+	// author: wewang@redhat.com
+	g.It("Author:wewang-High-27588-ManagementState setting in Image registry operator config can influence image prune [Disruptive]", func() {
+		g.By("In default image registry cluster Managed and prune-registry flag is true")
+		out, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("configs.imageregistry/cluster", "-o=jsonpath={.spec.managementState}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(out).Should(o.Equal("Managed"))
+		out, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("cronjob.batch/image-pruner", "-n", "openshift-image-registry", "-o=jsonpath={.spec.jobTemplate.spec.template.spec.containers[0].args[9]}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(out).To(o.ContainSubstring("--prune-registry=true"))
+
+		g.By("Set image registry cluster Removed")
+		defer func() {
+			g.By("Set image registry cluster Managed")
+			err = oc.AsAdmin().Run("patch").Args("configs.imageregistry/cluster", "-p", `{"spec":{"managementState":"Managed"}}`, "--type=merge").Execute()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			recoverRegistryDefaultPods(oc)
+		}()
+		err = oc.AsAdmin().Run("patch").Args("configs.imageregistry/cluster", "-p", `{"spec":{"managementState":"Removed"}}`, "--type=merge").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		g.By("Check image-registry pods are removed")
+		checkRegistrypodsRemoved(oc)
+
+		g.By("Check prune-registry flag is false")
+		time.Sleep(5 * time.Second)
+		out, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("cronjob.batch/image-pruner", "-n", "openshift-image-registry", "-o=jsonpath={.spec.jobTemplate.spec.template.spec.containers[0].args[9]}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(out).To(o.ContainSubstring("--prune-registry=false"))
+
+		g.By("Make update in the pruning custom resource")
+		defer oc.AsAdmin().Run("patch").Args("imagepruner/cluster", "-p", `{"spec":{"schedule":""}}`, "--type=merge").Execute()
+		err = oc.AsAdmin().Run("patch").Args("imagepruner/cluster", "-p", `{"spec":{"schedule":"*/1 * * * *"}}`, "--type=merge").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		time.Sleep(90 * time.Second)
+		podsOfImagePrune := []corev1.Pod{}
+		podsOfImagePrune = ListPodStartingWith("image-pruner", oc, "openshift-image-registry")
+		if len(podsOfImagePrune) == 0 {
+			e2e.Failf("There is no image pruner pods")
+		}
+
+		g.By("Check the log of image pruner and expected info about:Only API objects will be removed")
+		foundImagePruneLog := false
+		foundImagePruneLog = DePodLogs(podsOfImagePrune, oc, logInfo)
+		o.Expect(foundImagePruneLog).To(o.BeTrue())
+	})
 })
