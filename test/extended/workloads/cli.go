@@ -281,6 +281,13 @@ var _ = g.Describe("[sig-cli] Workloads", func() {
 		}
 
 	})
+
+	// author: yinzhou@redhat.com
+	g.It("Author:yinzhou-Medium-33648-must gather pod should not schedule on windows node", func() {
+		go checkMustgatherPodNode(oc)
+		g.By("Create the must-gather pod")
+		oc.AsAdmin().WithoutNamespace().Run("adm").Args("must-gather", "--timeout="+"30s", "--dest-dir=/tmp/mustgatherlog", "--", "/etc/resolv.conf").Execute()
+	})
 })
 
 type ClientVersion struct {

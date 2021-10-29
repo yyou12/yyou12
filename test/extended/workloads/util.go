@@ -557,3 +557,41 @@ func getCliImage(oc *exutil.CLI) string {
 	o.Expect(err).NotTo(o.HaveOccurred())
 	return cliImage
 }
+
+func getScanNodesLabels(oc *exutil.CLI, nodeList []string, expected string) []string {
+	var machedLabelsNodeNames []string
+	for _, nodeName := range nodeList {
+		nodeLabels, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("node", nodeName,  "-o=jsonpath={.metadata.labels}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		if matched, _ := regexp.MatchString(expected, nodeLabels); matched {
+			machedLabelsNodeNames = append(machedLabelsNodeNames, nodeName)
+		}
+	}
+	return machedLabelsNodeNames
+}
+
+func checkMustgatherPodNode(oc *exutil.CLI) {
+	var nodeNameList []string
+	e2e.Logf("Get the node list of the must-gather pods running on")
+	err := wait.Poll(5*time.Second, 20*time.Second, func() (bool, error) {
+		output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-l", "app=must-gather", "-A", "-o=jsonpath={.items[*].spec.nodeName}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		nodeNameList = strings.Fields(output)
+		if nodeNameList == nil {
+			e2e.Logf("Can't find must-gather pod now, and try next round")
+			return false, nil
+		}
+		return true, nil
+	})
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("must-gather pod is not created successfully"))
+	e2e.Logf("must-gather scheduled on: %v", nodeNameList)
+
+	e2e.Logf("make sure all the nodes in nodeNameList are not windows node")
+	expectedNodeLabels := getScanNodesLabels(oc, nodeNameList, "windows")
+	if  expectedNodeLabels == nil {
+		e2e.Logf("must-gather scheduled as expected, no windows node found in the cluster")
+	} else {
+		e2e.Failf("Scheduled the must-gather pod to windows node: %v", expectedNodeLabels)
+	}
+
+}
