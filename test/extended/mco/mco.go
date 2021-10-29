@@ -430,7 +430,7 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 	g.It("Author:mhanss-Longduration-CPaasrunOnly-High-42682-change container registry config on ocp 4.6 [Disruptive]", func() {
 		clusterVersion, _, err := exutil.GetClusterVersion(oc)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		if clusterVersion != 4.6 {
+		if clusterVersion != "4.6" {
 			g.Skip("Cluster version 4.6 is required to execute this test case!")
 		}
 

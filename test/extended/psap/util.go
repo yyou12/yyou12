@@ -65,10 +65,8 @@ func installNFD(oc *exutil.CLI) {
 	exutil.ApplyNsResourceFromTemplate(oc, machineNFDNamespace, "--ignore-unknown-parameters=true", "-f", nfd_sub_file, "-p", "CHANNEL="+channel)
 
 	// get cluster version and create NFD instance from template
-	_, clusterBuild, err := exutil.GetClusterVersion(oc)
+	clusterVersion, _, err := exutil.GetClusterVersion(oc)
 	o.Expect(err).NotTo(o.HaveOccurred())
-	splitValues := strings.Split(clusterBuild, ".")
-	clusterVersion := splitValues[0] + "." + splitValues[1]
 	e2e.Logf("Cluster Version: %v", clusterVersion)
 	exutil.ApplyNsResourceFromTemplate(oc, machineNFDNamespace, "--ignore-unknown-parameters=true", "-f", nfd_instance_file, "-p", "IMAGE=quay.io/openshift/origin-node-feature-discovery:"+clusterVersion)
 
