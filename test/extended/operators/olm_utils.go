@@ -1257,6 +1257,10 @@ func clusterPackageExists(oc *exutil.CLI, sub subscriptionDescription) (bool, er
 			}
 		}
 	}
+	// add logging on failures
+	if !found {
+		e2e.Logf("%v was not found in \n%v", sub.operatorPackage, msg)
+	}
 	return found, err
 }
 
@@ -1279,6 +1283,9 @@ func clusterPackageExistsInNamespace(oc *exutil.CLI, sub subscriptionDescription
 				break
 			}
 		}
+	}
+	if !found {
+		e2e.Logf("%v was not found in \n%v", sub.operatorPackage, msg)
 	}
 	return found, err
 }
