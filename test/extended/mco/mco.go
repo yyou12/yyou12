@@ -645,11 +645,13 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 	g.It("Author:sregidor-CPaasrunOnly-High-43151-add node label to service monitor [Serial]", func() {
 		g.By("Get current mcd_ metrics from machine-config-daemon service")
 
-		clusterIp := getServiceClusterIP(oc, "machine-config-daemon", "openshift-machine-config-operator")
-		port := getServicePort(oc, "machine-config-daemon", "openshift-machine-config-operator", "metrics")
+		svcMCD := NewNamespacedResource(oc.AsAdmin(), "service", "openshift-machine-config-operator", "machine-config-daemon")
+		clusterIP := svcMCD.GetOrFail("{.spec.clusterIP}")
+		port:= svcMCD.GetOrFail("{.spec.ports[?(@.name==\"metrics\")].port}")
+
 		token := getSATokenFromContainer(oc, "prometheus-k8s-0", "openshift-monitoring", "prometheus")
 
-		statsCmd := fmt.Sprintf("curl -s -k  -H 'Authorization: Bearer %s' https://%s:%s/metrics | grep 'mcd_' | grep -v '#'", token, clusterIp, port)
+		statsCmd := fmt.Sprintf("curl -s -k  -H 'Authorization: Bearer %s' https://%s:%s/metrics | grep 'mcd_' | grep -v '#'", token, clusterIP, port)
 		e2e.Logf("stats output:\n %s", statsCmd)
 		statsOut, err := exutil.RemoteShPod(oc, "openshift-monitoring", "prometheus-k8s-0", "sh", "-c", statsCmd)
 		o.Expect(err).NotTo(o.HaveOccurred())
