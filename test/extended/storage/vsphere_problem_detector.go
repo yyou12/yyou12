@@ -84,4 +84,33 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 
 		}
 	})
+
+	// author:wduan@redhat.com
+	g.It("Author:wduan-High-45514-[vsphere-problem-detector] should report metric about vpshere env", func() {
+		g.By("Check metric: vsphere_vcenter_info, vsphere_esxi_version_total, vsphere_node_hw_version_total, vsphere_datastore_total")
+		checkStorageMetricsContent(oc, "vsphere_vcenter_info", "api_version")
+		checkStorageMetricsContent(oc, "vsphere_esxi_version_total", "api_version")
+		checkStorageMetricsContent(oc, "vsphere_node_hw_version_total", "hw_version")
+		checkStorageMetricsContent(oc, "vsphere_datastore_total", "instance")
+	})
+
+	// author:wduan@redhat.com
+	g.It("Author:wduan-High-37728-[vsphere-problem-detector] should report vsphere_cluster_check_total metric correctly", func() {
+		g.By("Check metric vsphere_cluster_check_total should contain CheckDefaultDatastore, CheckFolderPermissions, CheckTaskPermissions, CheckStorageClasses, ClusterInfo check.")
+		metric := getStorageMetrics(oc, "vsphere_cluster_check_total")
+		cluster_check_list := []string{"CheckDefaultDatastore", "CheckFolderPermissions", "CheckTaskPermissions", "CheckStorageClasses", "ClusterInfo"}
+		for i := range cluster_check_list {
+			o.Expect(metric).To(o.ContainSubstring(cluster_check_list[i]))
+		}
+	})
+
+	// author:wduan@redhat.com
+	g.It("Author:wduan-High-37729-[vsphere-problem-detector] should report vsphere_node_check_total metric correctly", func() {
+		g.By("Check metric vsphere_node_check_total should contain CheckNodeDiskUUID, CheckNodePerf, CheckNodeProviderID, CollectNodeESXiVersion, CollectNodeHWVersion.")
+		metric := getStorageMetrics(oc, "vsphere_node_check_total")
+		node_check_list := []string{"CheckNodeDiskUUID", "CheckNodePerf", "CheckNodeProviderID", "CollectNodeESXiVersion", "CollectNodeHWVersion"}
+		for i := range node_check_list {
+			o.Expect(metric).To(o.ContainSubstring(node_check_list[i]))
+		}
+	})
 })

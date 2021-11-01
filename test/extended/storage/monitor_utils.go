@@ -3,6 +3,7 @@ package storage
 import (
 	"fmt"
 	"os/exec"
+	"regexp"
 	"strings"
 	"time"
 
@@ -47,4 +48,32 @@ func checkAlertRaised(oc *exutil.CLI, alert_name string) {
 		return true, nil
 	})
 	exutil.AssertWaitPollNoErr(err, "alert state is not firing or pending")
+}
+
+// Get metric with metric name
+func getStorageMetrics(oc *exutil.CLI, metricName string) string {
+	token := getSAToken(oc)
+	storage_url := "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query="
+	output, _, err := oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-monitoring", "prometheus-k8s-0", "-c", "prometheus", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", token), storage_url+metricName).Outputs()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	return output
+}
+
+// Check if metric contains specified content
+func checkStorageMetricsContent(oc *exutil.CLI, metricName string, content string) {
+	token := getSAToken(oc)
+	storage_url := "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query="
+	err := wait.Poll(5*time.Second, 30*time.Second, func() (bool, error) {
+		output, _, err := oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-monitoring", "prometheus-k8s-0", "-c", "prometheus", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", token), storage_url+metricName).Outputs()
+		if err != nil {
+			e2e.Logf("Can't get %v metrics, error: %s. Trying again", metricName, err)
+			return false, nil
+		}
+		if matched, _ := regexp.MatchString(content, output); matched {
+			e2e.Logf("Check the %s in %s metric succeed \n", content, metricName)
+			return true, nil
+		}
+		return false, nil
+	})
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("Cannot get %s in %s metric via prometheus", content, metricName))
 }
