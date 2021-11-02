@@ -196,11 +196,6 @@ func (opr *oprResource) CleanupResource(oc *exutil.CLI) {
 
 }
 
-func getClusterNodesBy(oc *exutil.CLI, role string) ([]string, error) {
-	nodes, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("node", "-l", "node-role.kubernetes.io/"+role, "-o", "jsonpath='{.items[*].metadata.name}'").Output()
-	return strings.Split(strings.Trim(nodes, "'"), " "), err
-}
-
 //Check if NFD Installed base on the cluster labels
 func checkIfNFDInstalled(oc *exutil.CLI) bool {
 	workNode, _ := exutil.GetFirstWorkerNode(oc)
@@ -226,10 +221,10 @@ func (opr *oprResource) waitOprResourceReady(oc *exutil.CLI) {
 		//Check if deployment/daemonset is created.
 		switch opr.kind {
 		case "deployment":
-			output, err = oc.AsAdmin().Run("get").Args(opr.kind, opr.name, "-n", opr.namespace, "-o=jsonpath={.status.conditions}").Output()
+			output, err = oc.AsAdmin().WithoutNamespace().Run("get").Args(opr.kind, opr.name, "-n", opr.namespace, "-o=jsonpath={.status.conditions}").Output()
 			if strings.Contains(output, "NotFound") || strings.Contains(output, "No resources") || err != nil {
 				isCreated = false
-				output = "Failure"
+				output = "Not Ready"
 			} else {
 				//deployment has been created, but not running, need to check the string "has successfully progressed" in .status.conditions
 				isCreated = true
@@ -255,7 +250,7 @@ func (opr *oprResource) waitOprResourceReady(oc *exutil.CLI) {
 				output = "has successfully progressed"
 			} else {
 				e2e.Logf("Damonset is abnormally running")
-				output = "Failure"
+				output = "Not Ready"
 				return false, nil
 			}
 		default:
@@ -273,8 +268,31 @@ func (opr *oprResource) waitOprResourceReady(oc *exutil.CLI) {
 	exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("the pod of %v is not running", opr.name))
 }
 
+//trunct pods logs by filter
+func (opr *oprResource) assertOprPodLogs(oc *exutil.CLI, filter string) {
+	podList, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-n", opr.namespace, "-oname").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	o.Expect(podList).To(o.ContainSubstring(opr.name))
+
+	e2e.Logf("Got pods list as below: \n" + podList)
+	//Filter pod name base on deployment name
+	regexpoprname, _ := regexp.Compile(".*" + opr.name + ".*")
+	podListArry := regexpoprname.FindAllString(podList, -1)
+
+	//If have multiple pods of one deployment/daemonset, check each pods logs
+	podListSize := len(podListArry)
+	for i := 0; i < podListSize; i++ {
+		e2e.Logf("Verify the logs on %v", podListArry[i])
+		output, _ := oc.AsAdmin().WithoutNamespace().Run("logs").Args(podListArry[i], "-n", opr.namespace).Output()
+		o.Expect(output).To(o.ContainSubstring(filter))
+		regexpstr, _ := regexp.Compile(".*" + filter + ".*")
+		loglines := regexpstr.FindAllString(output, -1)
+		e2e.Logf("The result is: %v", loglines[0])
+	}
+}
+
 func assertSimpleKmodeOnNode(oc *exutil.CLI) {
-	nodeList, err := getClusterNodesBy(oc, "worker")
+	nodeList, err := exutil.GetClusterNodesBy(oc, "worker")
 	nodeListSize := len(nodeList)
 	o.Expect(err).NotTo(o.HaveOccurred())
 	o.Expect(nodeListSize).NotTo(o.Equal(0))

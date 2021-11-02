@@ -115,4 +115,81 @@ var _ = g.Describe("[sig-node] PSAP SRO should", func() {
 		//Check is the simple-kmod kernel installed on worker node
 		assertSimpleKmodeOnNode(oc)
 	})
+	
+	g.It("Longduration-Author:liqcui-Medium-43365-SRO Build and run SpecialResource ping-pong resource with SRO from CLI [Slow]", func() {
+
+		g.By("Cleanup special resource ping-pong application default objects")
+		//ping-pong example application contains ping-pong and cert-manager
+		pingPongAppRes := oprResource{
+			kind:      "SpecialResource",
+			name:      "ping-pong",
+			namespace: "",
+		}
+		certManagerAppRes := oprResource{
+			kind:      "SpecialResource",
+			name:      "cert-manager",
+			namespace: "",
+		}
+		defer pingPongAppRes.CleanupResource(oc)
+		defer certManagerAppRes.CleanupResource(oc)
+
+		//create cluster-wide SpecialResource ping-pong and cert-manager via yaml file
+		//No need to specify kind,name and namespace
+
+		g.By("Create Ping-Pong and Cert Manager Application")
+		pingPongYaml := filepath.Join(sroDir, "sro-ping-pong.yaml")
+		pingPong := oprResource{
+			kind:      "",
+			name:      "",
+			namespace: "",
+		}
+		pingPong.applyResourceByYaml(oc, pingPongYaml)
+
+		//Check ping-pong server and client pods status
+		g.By("SRO - Verfiy the result for SRO test case 43365")
+		g.By("SRO - Check ping-pong application pod status")
+		pingPongServerPod := oprResource{
+			kind:      "deployment",
+			name:      "ping-pong-server",
+			namespace: "ping-pong",
+		}
+		pingPongServerPod.waitOprResourceReady(oc)
+
+		pingPongClientPod := oprResource{
+			kind:      "deployment",
+			name:      "ping-pong-client",
+			namespace: "ping-pong",
+		}
+		pingPongClientPod.waitOprResourceReady(oc)
+
+		g.By("SRO - Check cert-manager application pod status")
+		//Check cert-manager pods status
+		certManagerPod := oprResource{
+			kind:      "deployment",
+			name:      "cert-manager",
+			namespace: "cert-manager",
+		}
+		certManagerPod.waitOprResourceReady(oc)
+
+		certManagerCainjectorPod := oprResource{
+			kind:      "deployment",
+			name:      "cert-manager-cainjector",
+			namespace: "cert-manager",
+		}
+		certManagerCainjectorPod.waitOprResourceReady(oc)
+
+		certManagerWebhookPOD := oprResource{
+			kind:      "deployment",
+			name:      "cert-manager-webhook",
+			namespace: "cert-manager",
+		}
+		certManagerWebhookPOD.waitOprResourceReady(oc)
+
+		g.By("SRO - Check ping-pong application logs")
+		//Check if ping-pong application logs normally
+		pingPongServerPod.assertOprPodLogs(oc, "Ping")
+		pingPongServerPod.assertOprPodLogs(oc, "Pong")
+		pingPongClientPod.assertOprPodLogs(oc, "Ping")
+		pingPongClientPod.assertOprPodLogs(oc, "Pong")
+	})
 })
