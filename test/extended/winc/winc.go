@@ -209,16 +209,14 @@ var _ = g.Describe("[sig-windows] Windows_Containers", func() {
 			ioutil.WriteFile("availWindowsMachineSetWithoutLabel", []byte(windowsMachineSet), 0644)
 			windowsMachineSetName = infrastructureID + "-windows-without-label-worker-" + zone
 		} else if iaasPlatform == "azure" {
+			windowsMachineSetName = "winnol"
 			windowsMachineSet := getFileContent("winc", "azure_windows_machineset_no_label.yaml")
 			infrastructureID, err := oc.WithoutNamespace().Run("get").Args("infrastructure", "cluster", "-o=jsonpath={.status.infrastructureName}").Output()
 			o.Expect(err).NotTo(o.HaveOccurred())
-			// region := "northcentralus"
-			windowsMachineSetName = "winnol"
 			location := "centralus"
 			windowsMachineSet = strings.ReplaceAll(windowsMachineSet, "<infrastructureID>", infrastructureID)
 			windowsMachineSet = strings.ReplaceAll(windowsMachineSet, "<location>", location)
 			windowsMachineSet = strings.ReplaceAll(windowsMachineSet, "<name>", windowsMachineSetName)
-
 			ioutil.WriteFile("availWindowsMachineSetWithoutLabel", []byte(windowsMachineSet), 0644)
 		} else {
 			e2e.Failf("IAAS platform: %s is not automated yet", iaasPlatform)
@@ -304,6 +302,40 @@ var _ = g.Describe("[sig-windows] Windows_Containers", func() {
 		})
 		if pollErr != nil {
 			e2e.Failf("Load balancer is not ready after waiting up to 5 minutes ...")
+		}
+	})
+
+	// author rrasouli@redhat.com
+	g.It("Longduration-Author:rrasouli-High-37096-Schedule Windows workloads with cluster running multiple Windows OS variants [Slow][Disruptive]", func() {
+
+		// we assume 2 Windows Nodes created with the default server 2019 image, here we create new server
+		namespace := "winc-37096"
+		winVersion := "2004"
+		machinesetName := "win2004"
+		machineset2004 := getMachineset(oc, iaasPlatform, winVersion, machinesetName)
+		defer oc.WithoutNamespace().Run("delete").Args("machineset", machineset2004, "-n", "openshift-machine-api").Output()
+		createMachineset(oc, "availWindowsMachineSet2004", machineset2004)
+		// Here we fetch machine IP from machineset
+		machineIP := getIPAddressesFromMachineset(oc, machineset2004, iaasPlatform)
+		nodeName := getNodeNameFromIP(oc, machineIP[0], iaasPlatform)
+		// here we update the runtime class file with the Kernel ID of Windows 2004
+		defer oc.WithoutNamespace().Run("delete").Args("runtimeclass", "windows-server-ver-2004")
+		createRuntimeClass(oc, "runtime-class.yaml", nodeName)
+		// here we provision 1 webservers with a runtime class ID, up to 30 minutes due to pull image on AWS
+		defer deleteProject(oc, namespace)
+		if !createWinWorkloadsSimple(oc, namespace, "windows_webserver_runtime_class.yaml") {
+			e2e.Failf("Windows workload is not ready after waiting up to 30 minutes ...")
+		}
+		// here we scale the deployment to 5 workloads
+		e2e.Logf("-------- Scaling up workloads to 5 -------------")
+		scaleDeployment(oc, "windows", 5, namespace)
+		// we get a list of all hostIPs all should be on the same host
+		pods := getWorkloadsHostIP(oc, "windows", namespace)
+		// we check that all workloads hostIP are similar for all pods
+		if !checkPodsHaveSimilarHostIP(oc, pods, machineIP[0]) {
+			e2e.Failf("Windows workloads did not bootstraped on the same host...")
+		} else {
+			e2e.Logf("Windows workloads succesfully bootstraped on the same host %v", nodeName)
 		}
 	})
 
@@ -709,6 +741,16 @@ func waitWindowsNodesReady(oc *exutil.CLI, nodesNumber int, interval time.Durati
 	}
 }
 
+func checkPodsHaveSimilarHostIP(oc *exutil.CLI, pods []string, nodeIP string) bool {
+	for _, pod := range pods {
+		e2e.Logf("Pod host IP is %v, of node IP, %v", pod, nodeIP)
+		if pod != nodeIP {
+			return false
+		}
+	}
+	return true
+}
+
 func waitVersionAnnotationReady(oc *exutil.CLI, windowsNodeName string, interval time.Duration, timeout time.Duration) {
 	pollErr := wait.Poll(interval, timeout, func() (bool, error) {
 		if !checkVersionAnnotationReady(oc, windowsNodeName) {
@@ -817,8 +859,8 @@ func createWindowsWorkload(oc *exutil.CLI, namespace string) {
 	msg, err := oc.WithoutNamespace().Run("get").Args("nodes", "-l=kubernetes.io/os=windows", "-o=jsonpath={.items[0].metadata.labels.node\\.kubernetes\\.io\\/windows-build}").Output()
 	o.Expect(err).NotTo(o.HaveOccurred())
 	windows_docker_image := "mcr.microsoft.com/windows/servercore:ltsc2019"
-	if msg == "10.0.18363" {
-		windows_docker_image = "mcr.microsoft.com/windows/servercore:1909"
+	if msg == "10.0.19041" {
+		windows_docker_image = "mcr.microsoft.com/windows/servercore:2004"
 	}
 	windowsWebServer := getFileContent("winc", "windows_web_server.yaml")
 	windowsWebServer = strings.ReplaceAll(windowsWebServer, "<windows_docker_image>", windows_docker_image)
@@ -831,6 +873,23 @@ func createWindowsWorkload(oc *exutil.CLI, namespace string) {
 	if poolErr != nil {
 		e2e.Failf("Windows workload is not ready after waiting up to 5 minutes ...")
 	}
+}
+
+func createWinWorkloadsSimple(oc *exutil.CLI, namespace string, workloadsFile string) bool {
+	retcode := false
+	oc.WithoutNamespace().Run("new-project").Args(namespace).Output()
+	windowsWebServer := getFileContent("winc", workloadsFile)
+	ioutil.WriteFile("availWindowsWebServer2004", []byte(windowsWebServer), 0644)
+	oc.WithoutNamespace().Run("create").Args("-f", "availWindowsWebServer2004", "-n", namespace).Output()
+	// Wait up to 30 minutes for Windows workload ready
+	poolErr := wait.Poll(15*time.Second, 20*time.Minute, func() (bool, error) {
+		retcode = true
+		return checkWindowsWorkloadCreated(oc, namespace), nil
+	})
+	if poolErr != nil {
+		retcode = false
+	}
+	return retcode
 }
 
 // A private function to translate the workload/pod/deployment name
@@ -961,6 +1020,108 @@ func truncatedVersion(s string) string {
 	str := strings.Split(s, ".")
 	str = str[:2]
 	return strings.Join(str[:], ".")
+}
+func getMachineset(oc *exutil.CLI, iaasPlatform, winVersion string, machineSetName string) string {
+
+	windowsMachineSet := ""
+	windowsMachineSetName := ""
+	if iaasPlatform == "aws" {
+		windowsMachineSet = getFileContent("winc", "aws_windows_machineset.yaml")
+		infrastructureID, err := oc.WithoutNamespace().Run("get").Args("infrastructure", "cluster", "-o=jsonpath={.status.infrastructureName}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		region, err := oc.WithoutNamespace().Run("get").Args("infrastructure", "cluster", "-o=jsonpath={.status.platformStatus.aws.region}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		zone, err := oc.WithoutNamespace().Run("get").Args("machines", "-n", "openshift-machine-api", "-o=jsonpath={.items[0].metadata.labels.machine\\.openshift\\.io\\/zone}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		// TODO, remove hard coded, default is server 2019
+		windowsAMI := "ami-04d560e8da6c12f81"
+		if winVersion == "2004" {
+			windowsAMI = "ami-0d93b5fd197b5d399"
+		}
+		windowsMachineSet = strings.ReplaceAll(windowsMachineSet, "<name>", machineSetName)
+		windowsMachineSet = strings.ReplaceAll(windowsMachineSet, "<infrastructureID>", infrastructureID)
+		windowsMachineSet = strings.ReplaceAll(windowsMachineSet, "<region>", region)
+		windowsMachineSet = strings.ReplaceAll(windowsMachineSet, "<zone>", zone)
+		windowsMachineSet = strings.ReplaceAll(windowsMachineSet, "<windows_image_with_container_runtime_installed>", windowsAMI)
+		windowsMachineSetName = infrastructureID + "-" + machineSetName + "-worker-" + zone
+
+	} else if iaasPlatform == "azure" {
+		windowsMachineSet = getFileContent("winc", "azure_windows_machineset.yaml")
+		infrastructureID, err := oc.WithoutNamespace().Run("get").Args("infrastructure", "cluster", "-o=jsonpath={.status.infrastructureName}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		location := "centralus"
+		sku := "2019-Datacenter-with-Containers"
+		if winVersion == "2004" {
+			sku = "datacenter-core-2004-with-containers-smalldisk"
+		}
+		windowsMachineSet = strings.ReplaceAll(windowsMachineSet, "<infrastructureID>", infrastructureID)
+		windowsMachineSet = strings.ReplaceAll(windowsMachineSet, "<location>", location)
+		windowsMachineSet = strings.ReplaceAll(windowsMachineSet, "<SKU>", sku)
+		windowsMachineSet = strings.ReplaceAll(windowsMachineSet, "<name>", machineSetName)
+		windowsMachineSetName = machineSetName
+	} else {
+		e2e.Failf("IAAS platform: %s is not automated yet", iaasPlatform)
+	}
+	ioutil.WriteFile("availWindowsMachineSet2004", []byte(windowsMachineSet), 0644)
+	return windowsMachineSetName
+}
+
+func createMachineset(oc *exutil.CLI, file string, machinesetName string) {
+	_, err := oc.WithoutNamespace().Run("create").Args("-f", file).Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	pollErr := wait.Poll(15*time.Second, 10*time.Minute, func() (bool, error) {
+		msg, err := oc.WithoutNamespace().Run("get").Args("machineset", machinesetName, "-o=jsonpath={.status.readyReplicas}", "-n", "openshift-machine-api").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		if msg != "1" {
+			e2e.Logf("Windows machine is not provisioned yet and waiting up to 10 minutes ...")
+			return false, nil
+		}
+		e2e.Logf("Windows machine is provisioned")
+		return true, nil
+	})
+	if pollErr != nil {
+		e2e.Failf("Windows machine is not provisioned after waiting up to 15 minutes ...")
+	}
+}
+
+// This function returns the windows build e.g windows-build: '10.0.19041'
+func getWindowsBuildID(oc *exutil.CLI, nodeID string) string {
+	build, err := oc.WithoutNamespace().Run("get").Args("node", nodeID, "-o=jsonpath={.metadata.labels.node\\.kubernetes\\.io\\/windows-build}").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	return build
+}
+
+func getIPAddressesFromMachineset(oc *exutil.CLI, machinesetName string, iaasPlatform string) []string {
+	// index of IP address defer from platform to platform
+	index := "0"
+	if iaasPlatform == "azure" {
+		index = "3"
+	}
+	machineIPAddress, err := oc.WithoutNamespace().Run("get").Args("machine", "-ojsonpath={.items[?(@.metadata.labels.machine\\.openshift\\.io\\/cluster-api-machineset==\""+machinesetName+"\")].status.addresses["+index+"].address}", "-n", "openshift-machine-api").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	return strings.Split(string(machineIPAddress), " ")
+}
+
+func getNodeNameFromIP(oc *exutil.CLI, nodeIP string, iaasPlatform string) string {
+	// Azure and AWS indexes for IP addresses are different
+	index := "0"
+	if iaasPlatform == "azure" {
+		index = "1"
+	}
+	nodeName, err := oc.WithoutNamespace().Run("get").Args("node", "-o=jsonpath={.items[?(@.status.addresses["+index+"].address==\""+nodeIP+"\")].metadata.name}").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	return nodeName
+}
+
+func createRuntimeClass(oc *exutil.CLI, runtimeClassFile, node string) {
+	runtimeClass := ""
+	runtimeClass = getFileContent("winc", runtimeClassFile)
+	buildID := getWindowsBuildID(oc, node)
+	e2e.Logf("-------- Windows build ID is " + buildID + "-----------")
+	runtimeClass = strings.ReplaceAll(runtimeClass, "<kernelID>", buildID)
+	ioutil.WriteFile(runtimeClassFile, []byte(runtimeClass), 0644)
+	_, err := oc.WithoutNamespace().Run("create").Args("-f", runtimeClassFile).Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
 func checkLBConnectivity(attempts int, externalIP string) bool {
