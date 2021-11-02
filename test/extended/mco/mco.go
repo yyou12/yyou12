@@ -3,12 +3,13 @@ package mco
 import (
 	"encoding/json"
 	"fmt"
-	ci "github.com/openshift/openshift-tests-private/test/extended/util/clusterinfrastructure"
 	"os/exec"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
+
+	ci "github.com/openshift/openshift-tests-private/test/extended/util/clusterinfrastructure"
 
 	g "github.com/onsi/ginkgo"
 	o "github.com/onsi/gomega"
@@ -23,22 +24,25 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 
 	g.It("Author:rioliu-Critical-42347-health check for machine-config-operator [Serial]", func() {
 		g.By("checking mco status")
-		coStatus, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("co/machine-config", "-o", "jsonpath='{range .status.conditions[*]}{.type}{.status}{\"\\n\"}{end}'").Output()
+		co := NewResource(oc.AsAdmin(), "co", "machine-config")
+		coStatus := co.GetOrFail(`{range .status.conditions[*]}{.type}{.status}{"\n"}{end}`)
 		e2e.Logf(coStatus)
 		o.Expect(coStatus).Should(o.ContainSubstring("ProgressingFalse"))
 		o.Expect(coStatus).Should(o.ContainSubstring("UpgradeableTrue"))
 		o.Expect(coStatus).Should(o.ContainSubstring("DegradedFalse"))
 		o.Expect(coStatus).Should(o.ContainSubstring("AvailableTrue"))
-		e2e.Logf("mco operator is healthy")
+		e2e.Logf("machine config operator is healthy")
 
 		g.By("checking mco pod status")
-		podStatus, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-n", "openshift-machine-config-operator", "-o", "jsonpath='{.items[*].status.conditions[?(@.type==\"Ready\")].status}'").Output()
+		pod := NewNamespacedResource(oc.AsAdmin(), "pods", "openshift-machine-config-operator", "")
+		podStatus := pod.GetOrFail(`{.items[*].status.conditions[?(@.type=="Ready")].status}`)
 		e2e.Logf(podStatus)
 		o.Expect(podStatus).ShouldNot(o.ContainSubstring("False"))
 		e2e.Logf("mco pods are healthy")
 
 		g.By("checking mcp status")
-		mcpStatus, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("mcp", "-o", "jsonpath='{.items[*].status.conditions[?(@.type==\"Degraded\")].status}'").Output()
+		mcp := NewResource(oc.AsAdmin(), "mcp", "")
+		mcpStatus := mcp.GetOrFail(`{.items[*].status.conditions[?(@.type=="Degraded")].status}`)
 		e2e.Logf(mcpStatus)
 		o.Expect(mcpStatus).ShouldNot(o.ContainSubstring("True"))
 		e2e.Logf("mcps are not degraded")
@@ -647,7 +651,7 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 
 		svcMCD := NewNamespacedResource(oc.AsAdmin(), "service", "openshift-machine-config-operator", "machine-config-daemon")
 		clusterIP := svcMCD.GetOrFail("{.spec.clusterIP}")
-		port:= svcMCD.GetOrFail("{.spec.ports[?(@.name==\"metrics\")].port}")
+		port := svcMCD.GetOrFail("{.spec.ports[?(@.name==\"metrics\")].port}")
 
 		token := getSATokenFromContainer(oc, "prometheus-k8s-0", "openshift-monitoring", "prometheus")
 
