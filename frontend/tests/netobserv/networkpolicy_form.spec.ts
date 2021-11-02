@@ -35,7 +35,7 @@ before('root-level: any test suite', function () {
 
 });
 
-describe('Console Network Policies (OCP-41858, NETOBSERV)', function () {
+describe('Console Network Policies form tests (OCP-41858, OCP-45303, NETOBSERV)', function () {
     before('any test', function () {
 
         /* set pod names aliases */
@@ -69,7 +69,7 @@ describe('Console Network Policies (OCP-41858, NETOBSERV)', function () {
 
     describe("UI validating tests", function () {
 
-        it('should validate network policy form', function () {
+        it('should validate network policy form (OCP-41858)', function () {
             nwpolicyPage.goToNetworkPolicy()
             nwpolicyPage.creatPolicyForm()
 
@@ -93,12 +93,64 @@ describe('Console Network Policies (OCP-41858, NETOBSERV)', function () {
             cy.get(nwpolicyPageSelectors.savePolicy).should('exist')
             cy.get(nwpolicyPageSelectors.cancelButton).should('exist')
         })
+
+        it('should show affected pods, (OCP-45303)', function () {
+            // nwpolicyPage.goToNetworkPolicy()
+            // nwpolicyPage.creatPolicyForm()
+
+            const projectName = 'test0'
+            const affectedPodsLinkText = 'show-affected-pods'
+
+            // verify all pods in project show up when no labels are added.
+            cy.visit(`k8s/ns/${projectName}/networkpolicies/~new/form`)
+            cy.byTestID(affectedPodsLinkText).click()
+            const verify = new VerifyPolicyForm(this.cli)
+            verify.podslist(projectName)
+
+            // verify tree toggle view
+            cy.get(nwpolicyPageSelectors.podsTreeViewBtn).parents('.pf-c-tree-view__list').should('have.class', 'pf-c-tree-view__list')
+            cy.get(nwpolicyPageSelectors.podsTreeViewBtn).click().click()
+
+            // verify pods for label: name=test-pods2 in project test0
+            cy.byTestID(nwpolicyPageSelectors.mainPodBtn).click()
+            cy.byTestID(nwpolicyPageSelectors.labelName).type(pod_label_key)
+            cy.byTestID(nwpolicyPageSelectors.labelValue).type(podLabels[1])
+            cy.byTestID(affectedPodsLinkText).click()
+            verify.podslist(projectName, `${pod_label_key}=${podLabels[1]}`)
+
+            /* 
+            verify the popover lists max 10 pods
+            if there are more 10 pods in tree view, then it has footer link 
+            ensure footer link has attributes to open in new tab upon clicking.
+            */
+            cy.byTestID(nwpolicyPageSelectors.addIngress).click()
+            cy.get(nwpolicyPageSelectors.dropdownBtn).should('have.text', 'Add allowed source').click()
+            cy.get(nwpolicyPageSelectors.srcDestOptions[1]).click()
+            cy.byTestID(nwpolicyPageSelectors.showIngressPods).click()
+            cy.byTestID(nwpolicyPageSelectors.podsPreviewTree).should('be.visible')
+            cy.get(nwpolicyPageSelectors.podsList).should('have.length', 10)
+            cy.byTestID(nwpolicyPageSelectors.podsPreviewTree).siblings('a').then(link => {
+                expect(link).to.have.attr('href', '/k8s/all-namespaces/pods')
+                expect(link).to.have.attr('target', '_blank')
+                expect(link).to.have.attr('rel', 'noopener noreferrer')
+                cy.request(link.prop('href')).its('status').should('eq', 200)
+            })
+
+            // verify message and no pods show up when there are none in project
+            const newProject = 'test4'
+            cy.createProject(newProject)
+            cy.visit(`k8s/ns/${newProject}/networkpolicies/~new/form`)
+            cy.byTestID(affectedPodsLinkText).click()
+            cy.byTestID(nwpolicyPageSelectors.podsPreviewTitle).should('have.text', "No pods matching the provided labels in the current namespace")
+            cy.deleteProject(newProject)
+
+        })
     })
 
-    describe("network policy end-to-end tests", function () {
+    describe("network policy end-to-end tests (OCP-41858)", function () {
         before('any end-to-end test', function () {
             /* map labels to number replicas for pods to those labels */
-            var labels_npods = new Map()
+            const labels_npods = new Map()
             this.testData.items.filter(item => (item.kind == 'ReplicationController')).forEach((item) => { labels_npods.set(item.spec.template.metadata.labels.name, item.spec.replicas) })
 
             /* set aliases for pod IP */
@@ -153,10 +205,10 @@ describe('Console Network Policies (OCP-41858, NETOBSERV)', function () {
             it('ingress: should allow pods from the same NS', function () {
                 /*  apply policy to all pods in namespace only allow traffic from pods with label name=test-pods2 */
                 cy.get(nwpolicyPageSelectors.srcDestOptions[0]).click()
-                cy.get('#peer-header-0').should('have.text', 'Allow traffic from pods in the same namespace')
+                cy.get(nwpolicyPageSelectors.peerHeader).should('have.text', 'Allow traffic from pods in the same namespace')
 
                 cy.get(nwpolicyPageSelectors.addPod).eq(1).within(() => {
-                    cy.get('button').should('have.text', "Add pod selector").click()
+                    cy.byTestID(nwpolicyPageSelectors.peerPodBtn).click()
                     cy.get(nwpolicyPageSelectors.label).type(pod_label_key)
                     cy.get(nwpolicyPageSelectors.selector).type(podLabels[1])
                 })
@@ -189,18 +241,19 @@ describe('Console Network Policies (OCP-41858, NETOBSERV)', function () {
             it('ingress: should allow pods from different NS', function () {
                 cy.get(nwpolicyPageSelectors.srcDestOptions[1]).click()
 
-                cy.get('#peer-header-0').should('have.text', 'Allow traffic from pods inside the cluster')
+                cy.get(nwpolicyPageSelectors.peerHeader).should('have.text', 'Allow traffic from pods inside the cluster')
 
                 cy.get(nwpolicyPageSelectors.addNamespace).parent().within(() => {
 
                     cy.get(nwpolicyPageSelectors.addNamespace).within(() => {
-                        cy.get('button').should('have.text', "Add namespace selector").click()
+                        cy.byTestID(nwpolicyPageSelectors.addNSBtn).click()
+
                         cy.get(nwpolicyPageSelectors.label).type(ns_label_key)
                         cy.get(nwpolicyPageSelectors.selector).type(projects[1])
                     })
 
                     cy.get(nwpolicyPageSelectors.addPod).within(() => {
-                        cy.get('button').should('have.text', "Add pod selector").click()
+                        cy.byTestID(nwpolicyPageSelectors.peerPodBtn).click()
                         cy.get(nwpolicyPageSelectors.label).type(pod_label_key)
                         cy.get(nwpolicyPageSelectors.selector).type(podLabels[1])
                     })
@@ -230,7 +283,7 @@ describe('Console Network Policies (OCP-41858, NETOBSERV)', function () {
 
             it("ingress: should validate peers by IP block", function () {
                 cy.get(nwpolicyPageSelectors.srcDestOptions[2]).click()
-                cy.get('#peer-header-0').should('have.text', 'Allow traffic from peers by IP block')
+                cy.get(nwpolicyPageSelectors.peerHeader).should('have.text', 'Allow traffic from peers by IP block')
 
                 let [mod_label1, mod_label2] = [podLabels[0].replace('-', ''), podLabels[1].replace('-', '')]
 
@@ -242,10 +295,10 @@ describe('Console Network Policies (OCP-41858, NETOBSERV)', function () {
                 let project1label1pod0Name = this[`${project1_label1_prefix}_pod0Name`]
                 let project2label2pod0Name = this[`${project2_label2_prefix}_pod0Name`]
 
-                let project1label1pod0IP = this[`${project1label1pod0Name}IP`]
-                cy.get('#cidr').type(`${project1label1pod0IP}/32`)
-                cy.get(nwpolicyPageSelectors.addPort).click()
-                cy.get('#port-0-port').type('8080')
+                const project1label1pod0IP = this[`${project1label1pod0Name}IP`]
+                cy.get(nwpolicyPageSelectors.cidrField).type(`${project1label1pod0IP}/32`)
+                cy.byTestID(nwpolicyPageSelectors.addPort).click()
+                cy.get(nwpolicyPageSelectors.portField).type('8080')
 
                 cy.get(nwpolicyPageSelectors.savePolicy).click()
 
@@ -292,10 +345,10 @@ describe('Console Network Policies (OCP-41858, NETOBSERV)', function () {
 
             it('egress: should allow traffic to pods in the same namespace', function () {
                 cy.get(nwpolicyPageSelectors.srcDestOptions[0]).click()
-                cy.get('#peer-header-0').should('have.text', 'Allow traffic to pods in the same namespace')
+                cy.get(nwpolicyPageSelectors.peerHeader).should('have.text', 'Allow traffic to pods in the same namespace')
 
                 cy.get(nwpolicyPageSelectors.addPod).eq(1).within(() => {
-                    cy.get('button').should('have.text', "Add pod selector").click()
+                    cy.byTestID(nwpolicyPageSelectors.peerPodBtn).click()
                     cy.get(nwpolicyPageSelectors.label).type(pod_label_key)
                     cy.get(nwpolicyPageSelectors.selector).type(podLabels[1])
                 })
@@ -332,21 +385,12 @@ describe('Console Network Policies (OCP-41858, NETOBSERV)', function () {
             it('egress: should allow traffic to different NS', function () {
                 cy.get(nwpolicyPageSelectors.srcDestOptions[1]).click()
 
-                cy.get('#peer-header-0').should('have.text', 'Allow traffic to pods inside the cluster')
+                cy.get(nwpolicyPageSelectors.peerHeader).should('have.text', 'Allow traffic to pods inside the cluster')
 
                 cy.get(nwpolicyPageSelectors.addNamespace).parent().within(() => {
+                    nwpolicyPage.addPodOrNamespace(nwpolicyPageSelectors.addNamespace, ns_label_key, projects[1])
 
-                    cy.get(nwpolicyPageSelectors.addNamespace).within(() => {
-                        cy.get('button').should('have.text', "Add namespace selector").click()
-                        cy.get(nwpolicyPageSelectors.label).type(ns_label_key)
-                        cy.get(nwpolicyPageSelectors.selector).type(projects[1])
-                    })
-
-                    cy.get(nwpolicyPageSelectors.addPod).within(() => {
-                        cy.get('button').should('have.text', "Add pod selector").click()
-                        cy.get(nwpolicyPageSelectors.label).type(pod_label_key)
-                        cy.get(nwpolicyPageSelectors.selector).type(podLabels[1])
-                    })
+                    nwpolicyPage.addPodOrNamespace(nwpolicyPageSelectors.addPod, pod_label_key, podLabels[1])
                 })
 
                 cy.get(nwpolicyPageSelectors.savePolicy).click()
@@ -375,7 +419,7 @@ describe('Console Network Policies (OCP-41858, NETOBSERV)', function () {
 
             it('egress: should allow traffic to peers by CIDR', function () {
                 cy.get(nwpolicyPageSelectors.srcDestOptions[2]).click()
-                cy.get('#peer-header-0').should('have.text', 'Allow traffic to peers by IP block')
+                cy.get(nwpolicyPageSelectors.peerHeader).should('have.text', 'Allow traffic to peers by IP block')
 
                 let [mod_label1, mod_label2] = [podLabels[0].replace('-', ''), podLabels[1].replace('-', '')]
 
@@ -386,11 +430,11 @@ describe('Console Network Policies (OCP-41858, NETOBSERV)', function () {
                 let project0_label1_pod0Name = this[`${project0_label1_prefix}_pod0Name`]
                 let project0_label2_pod0Name = this[`${project0_label2_prefix}_pod0Name`]
 
-                let project0_label1_pod0IP = this[`${project0_label1_pod0Name}IP`]
+                const project0_label1_pod0IP = this[`${project0_label1_pod0Name}IP`]
 
-                cy.get('#cidr').type(`${project0_label1_pod0IP}/32`)
-                cy.get(nwpolicyPageSelectors.addPort).click()
-                cy.get('#port-0-port').type('8080')
+                cy.get(nwpolicyPageSelectors.cidrField).type(`${project0_label1_pod0IP}/32`)
+                cy.byTestID(nwpolicyPageSelectors.addPort).click()
+                cy.get(nwpolicyPageSelectors.portField).type('8080')
 
                 cy.get(nwpolicyPageSelectors.savePolicy).click()
 

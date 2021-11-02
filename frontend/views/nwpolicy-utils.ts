@@ -34,10 +34,11 @@ export class VerifyPolicyForm {
         this.oc.runPodCmd(project, fromPodName, cmd, match, expectedResult)
     }
 
-    podslist(project, label) {
-        let sed_cmd = "s/pod\\///g"
-        cy.exec(`oc get pods -o name -n ${project} -l ${label} | sed '${sed_cmd}'`).then(result => {
-            cy.log(result.stdout)
+    podslist(project: string, label: string = "''") {
+        const sed_cmd = "s/pod\\///g"
+        const cmd = `oc get pods -o name -n ${project} -l ${label} | sed '${sed_cmd}'`
+        cy.exec(cmd).then(result => {
+            expect(result.stderr).to.be.empty
             cy.get(nwpolicyPageSelectors.podsList).each(($el, $index) => {
                 //individual Pod
                 cy.wrap($el).find(nwpolicyPageSelectors.treeNode).then($node => {
