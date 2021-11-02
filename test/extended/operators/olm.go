@@ -8258,6 +8258,92 @@ var _ = g.Describe("[sig-operators] OLM on VM for an end user handle within a na
 		}
 	})
 
+	// OCP-45361 author: jitli@redhat.com
+	g.It("Author:jitli-ConnectedOnly-Medium-45361-Resolution failed error condition in Subscription should be removed after resolution error is resolved", func() {
+		var (
+			itName              = g.CurrentGinkgoTestDescription().TestText
+			buildIndexBaseDir   = exutil.FixturePath("testdata", "olm")
+			subTemplate         = filepath.Join(buildIndexBaseDir, "olm-subscription.yaml")
+			ogSingleTemplate    = filepath.Join(buildIndexBaseDir, "operatorgroup.yaml")
+			catsrcImageTemplate = filepath.Join(buildIndexBaseDir, "catalogsource-image.yaml")
+
+			og = operatorGroupDescription{
+				name:      "og-45361",
+				namespace: "",
+				template:  ogSingleTemplate,
+			}
+
+			catsrc = catalogSourceDescription{
+				name:        "ditto-operator-index",
+				namespace:   "",
+				displayName: "Test Catsrc 45361 Operators",
+				publisher:   "OLM-QE",
+				sourceType:  "grpc",
+				address:     "quay.io/olmqe/ditto-index:v1-4.8",
+				interval:    "10m",
+				template:    catsrcImageTemplate,
+			}
+
+			sub = subscriptionDescription{
+				subName:                "ditto-operator",
+				namespace:              "",
+				channel:                "alpha",
+				ipApproval:             "Automatic",
+				operatorPackage:        "ditto-operator",
+				catalogSourceName:      catsrc.name,
+				catalogSourceNamespace: "",
+				template:               subTemplate,
+			}
+		)
+
+		g.By("1) Create new project")
+		oc.SetupProject()
+		og.namespace = oc.Namespace()
+		catsrc.namespace = oc.Namespace()
+		sub.namespace = oc.Namespace()
+		sub.catalogSourceNamespace = catsrc.namespace
+
+		g.By("2) Create the OperatorGroup ")
+		og.createwithCheck(oc, itName, dr)
+
+		g.By("3) Install sub")
+		sub.createWithoutCheck(oc, itName, dr)
+
+		g.By("4) check its condition is UnhealthyCatalogSourceFound")
+		newCheck("expect", asUser, withoutNamespace, contain, "UnhealthyCatalogSourceFound", ok, []string{"sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.conditions[*].reason}"}).check(oc)
+
+		g.By("5) Sub is created with error message")
+		message, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.conditions}").Output()
+		o.Expect(message).To(o.ContainSubstring("ditto-operator-index missing"))
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("6) Create catalog source")
+		catsrc.create(oc, itName, dr)
+		err = wait.Poll(3*time.Second, 120*time.Second, func() (bool, error) {
+			catsrcStatus, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("catsrc", "ditto-operator-index", "-n", sub.namespace, "-o=jsonpath={.status..lastObservedState}").Output()
+			if strings.Compare(catsrcStatus, "READY") == 0 {
+				return true, nil
+			}
+			return false, nil
+		})
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("catalogsource %s is not created", catsrc.name))
+
+		g.By("7) To wait the csv successed")
+		sub.findInstalledCSV(oc, itName, dr)
+		err = newCheck("expect", asUser, withoutNamespace, compare, "Succeeded", ok, []string{"csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).checkWithoutAssert(oc)
+		if err != nil {
+			output := getResource(oc, asAdmin, withoutNamespace, "csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={.status}")
+			e2e.Logf(output)
+		}
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("status.phase of csv %s is not Succeeded", sub.installedCSV))
+
+		g.By("8) Error message is removed")
+		newmessage, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.conditions}").Output()
+		o.Expect(newmessage).NotTo(o.ContainSubstring("ditto-operator-index missing"))
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+	})
+
 	// author: xzha@redhat.com
 	g.It("Author:xzha-ConnectedOnly-VMonly-Medium-25920-Expose bundle data from bundle image container", func() {
 		var (
