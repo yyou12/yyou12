@@ -687,17 +687,14 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 
 	g.It("Author:sregidor-CPaasrunOnly-High-43726-Azure ControllerConfig Infrastructure does not match cluster Infrastructure resource [Serial]", func() {
 		g.By("Get machine-config-controller platform status.")
-		mccPlatformStatus, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("controllerconfig/machine-config-controller", "-o", "jsonpath='{.spec.infra.status.platformStatus}'").Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
+		mccPlatformStatus := NewResource(oc.AsAdmin(), "controllerconfig", "machine-config-controller").GetOrFail("{.spec.infra.status.platformStatus}")
 		e2e.Logf("test mccPlatformStatus:\n %s", mccPlatformStatus)
 
 		if ci.CheckPlatform(oc) == "azure" {
 			g.By("check cloudName field.")
-			trimMccPlatformStatus := strings.Trim(mccPlatformStatus, "'")
-			e2e.Logf("test trimMccPlatformStatus:\n %s", trimMccPlatformStatus)
 
 			var jsonMccPlatformStatus map[string]interface{}
-			errparseinfra := json.Unmarshal([]byte(trimMccPlatformStatus), &jsonMccPlatformStatus)
+			errparseinfra := json.Unmarshal([]byte(mccPlatformStatus), &jsonMccPlatformStatus)
 			o.Expect(errparseinfra).NotTo(o.HaveOccurred())
 			o.Expect(jsonMccPlatformStatus).Should(o.HaveKey("azure"))
 
@@ -706,8 +703,7 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		}
 
 		g.By("Get infrastructure platform status.")
-		infraPlatformStatus, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("infrastructures/cluster", "-o", "jsonpath='{.status.platformStatus}'").Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
+		infraPlatformStatus := NewResource(oc.AsAdmin(), "infrastructures", "cluster").GetOrFail("{.status.platformStatus}")
 		e2e.Logf("infraPlatformStatus:\n %s", infraPlatformStatus)
 
 		g.By("Check same status in infra and machine-config-controller.")
