@@ -15,7 +15,7 @@ objects:
       name: ${PODNAME}
       volumeMounts:
       - name: data
-        mountPath: /mnt/storage
+        mountPath: ${PODMOUNTPATH}
     volumes:
     - name: data
       persistentVolumeClaim:
@@ -25,3 +25,4 @@ parameters:
 - name: PODNAME
 - name: PODNAMESPACE
 - name: PODIMAGE
+- name: PODMOUNTPATH

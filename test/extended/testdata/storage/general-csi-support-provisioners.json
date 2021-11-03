@@ -1,0 +1,66 @@
+{
+  "support_Matrix": {
+    "platforms": [
+      {
+        "name": "aws",
+        "provisioners": [
+          {
+            "name": "ebs.csi.aws.com",
+            "preset_scname": "gp2-csi",
+            "preset_vscname": "csi-aws-vsc"
+          },
+          {
+            "name": "efs.csi.aws.com",
+            "preset_scname": "NA"
+          }
+        ]
+      },
+      {
+        "name": "azure",
+        "provisioners": [
+          {
+            "name": "disk.csi.azure.com",
+            "preset_scname": "managed-csi",
+            "preset_vscname": "csi-azuredisk-vsc"
+          },
+          {
+            "name": "file.csi.azure.com",
+            "preset_scname": "azurefile-csi",
+            "preset_vscname": "csi-azurefile-vsc"
+          }
+        ]
+      },
+      {
+        "name": "gcp",
+        "provisioners": [
+          {
+            "name": "pd.csi.storage.gke.io",
+            "preset_scname": "standard-csi",
+            "preset_vscname": "csi-gce-pd-vsc"
+          }
+        ]
+      },
+      {
+        "name": "vsphere",
+        "provisioners": [
+          {
+            "name": "csi.vsphere.vmware.com",
+            "preset_scname": "thin-csi",
+          }
+        ]
+      },
+      {
+        "name": "openstack",
+        "provisioners": [
+          {
+            "name": "cinder.csi.openstack.org",
+            "preset_scname": "standard-csi"
+          },
+          {
+            "name": "manila.csi.openstack.org"
+          }
+        ]
+      }
+    ]
+  }
+}

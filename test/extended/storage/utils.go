@@ -5,13 +5,16 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math/rand"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
+	g "github.com/onsi/ginkgo"
 	o "github.com/onsi/gomega"
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
+	"github.com/tidwall/gjson"
 	"github.com/tidwall/pretty"
 	"github.com/tidwall/sjson"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -33,6 +36,8 @@ func applyResourceFromTemplateAsAdmin(oc *exutil.CLI, parameters ...string) erro
 	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("as admin fail to process %v", parameters))
 
 	e2e.Logf("the file of resource is %s", configFile)
+	jsonOutput, _ := ioutil.ReadFile(configFile)
+	debugLogf("The file content is: \n%s", jsonOutput)
 	return oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", configFile).Execute()
 }
 
@@ -51,6 +56,8 @@ func applyResourceFromTemplate(oc *exutil.CLI, parameters ...string) error {
 	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("fail to process %v", parameters))
 
 	e2e.Logf("the file of resource is %s", configFile)
+	jsonOutput, _ := ioutil.ReadFile(configFile)
+	debugLogf("The file content is: \n%s", jsonOutput)
 	return oc.WithoutNamespace().Run("apply").Args("-f", configFile).Execute()
 }
 
@@ -176,5 +183,67 @@ func applyResourceFromTemplateWithExtraParametersAsAdmin(oc *exutil.CLI, extraPa
 	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("as admin fail to process %v", parameters))
 
 	e2e.Logf("the file of resource is %s", configFile)
+	jsonOutput, _ := ioutil.ReadFile(configFile)
+	debugLogf("The file content is: \n%s", jsonOutput)
 	return oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", configFile).Execute()
+}
+
+// None dupulicate element slice intersect
+func sliceIntersect(slice1, slice2 []string) []string {
+	m := make(map[string]int)
+	sliceResult := make([]string, 0)
+	for _, value1 := range slice1 {
+		m[value1]++
+	}
+
+	for _, value2 := range slice2 {
+		appearTimes := m[value2]
+		if appearTimes == 1 {
+			sliceResult = append(sliceResult, value2)
+		}
+	}
+	return sliceResult
+}
+
+// Common csi cloud provider support check
+func generalCsiSupportCheck(cloudProvider string) {
+	generalCsiSupportMatrix, err := ioutil.ReadFile(filepath.Join(exutil.FixturePath("testdata", "storage"), "general-csi-support-provisioners.json"))
+	o.Expect(err).NotTo(o.HaveOccurred())
+	supportPlatformsBool := gjson.GetBytes(generalCsiSupportMatrix, "support_Matrix.platforms.#(name="+cloudProvider+")|@flatten").Exists()
+	e2e.Logf("%s * %v * %v", cloudProvider, gjson.GetBytes(generalCsiSupportMatrix, "support_Matrix.platforms.#(name="+cloudProvider+").provisioners.#.name|@flatten"), supportPlatformsBool)
+	if !supportPlatformsBool {
+		g.Skip("Skip for non-supported cloud provider: " + cloudProvider + "!!!")
+	}
+}
+
+// Get common csi provisioners by cloudplatform
+func getSupportProvisionersByCloudProvider(cloudProvider string) []string {
+	csiCommonSupportMatrix, err := ioutil.ReadFile(filepath.Join(exutil.FixturePath("testdata", "storage"), "general-csi-support-provisioners.json"))
+	o.Expect(err).NotTo(o.HaveOccurred())
+	supportProvisioners := []string{}
+	supportProvisionersResult := gjson.GetBytes(csiCommonSupportMatrix, "support_Matrix.platforms.#(name="+cloudProvider+").provisioners.#.name|@flatten").Array()
+	e2e.Logf("%s support provisioners are : %v", cloudProvider, supportProvisionersResult)
+	for i := 0; i < len(supportProvisionersResult); i++ {
+		supportProvisioners = append(supportProvisioners, gjson.GetBytes(csiCommonSupportMatrix, "support_Matrix.platforms.#(name="+cloudProvider+").provisioners.#.name|@flatten."+strconv.Itoa(i)).String())
+	}
+	return supportProvisioners
+}
+
+// Get common csi provisioners by cloudplatform
+func getPresetStorageClassNameByProvisioner(cloudProvider string, provisioner string) string {
+	csiCommonSupportMatrix, err := ioutil.ReadFile(filepath.Join(exutil.FixturePath("testdata", "storage"), "general-csi-support-provisioners.json"))
+	o.Expect(err).NotTo(o.HaveOccurred())
+	return gjson.GetBytes(csiCommonSupportMatrix, "support_Matrix.platforms.#(name="+cloudProvider+").provisioners.#(name="+provisioner+").preset_scname").String()
+}
+
+// Get the now timestamp mil second
+func nowStamp() string {
+	return time.Now().Format(time.StampMilli)
+}
+
+// Log output the storage debug info
+func debugLogf(format string, args ...interface{}) {
+	if logLevel := os.Getenv("STORAGE_LOG_LEVEL"); logLevel == "DEBUG" {
+		e2e.Logf(fmt.Sprintf(nowStamp()+": *STORAGE_DEBUG*: "+format+"\n", args...))
+	}
 }

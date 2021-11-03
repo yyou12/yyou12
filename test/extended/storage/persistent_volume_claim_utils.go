@@ -95,9 +95,40 @@ func (pvc *persistentVolumeClaim) create(oc *exutil.CLI) {
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
-//  Delete specified PersistentVolumeClaim
+//  Delete the PersistentVolumeClaim
 func (pvc *persistentVolumeClaim) delete(oc *exutil.CLI) {
-	oc.WithoutNamespace().Run("delete").Args("pvc", pvc.name, "-n", pvc.namespace).Execute()
+	err := oc.WithoutNamespace().Run("delete").Args("pvc", pvc.name, "-n", pvc.namespace).Execute()
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+//  Delete the PersistentVolumeClaim use kubeadmin
+func (pvc *persistentVolumeClaim) deleteAsAdmin(oc *exutil.CLI) {
+	oc.WithoutNamespace().AsAdmin().Run("delete").Args("pvc", pvc.name, "-n", pvc.namespace).Execute()
+}
+
+//  Get the PersistentVolumeClaim status
+func (pvc *persistentVolumeClaim) getStatus(oc *exutil.CLI) (string, error) {
+	pvcStatus, err := oc.WithoutNamespace().Run("get").Args("pvc", "-n", pvc.namespace, pvc.name, "-o=jsonpath={.status.phase}").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	e2e.Logf("The PVC  %s status in namespace %s is %q", pvc.name, pvc.namespace, pvcStatus)
+	return pvcStatus, err
+}
+
+// Get the PersistentVolumeClaim bounded  PersistentVolume's volumeid
+func (pvc *persistentVolumeClaim) getVolumeName(oc *exutil.CLI) string {
+	pvName, err := oc.WithoutNamespace().Run("get").Args("pvc", "-n", pvc.namespace, pvc.name, "-o=jsonpath={.spec.volumeName}").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	e2e.Logf("The PVC  %s in namespace %s Bound pv is %q", pvc.name, pvc.namespace, pvName)
+	return pvName
+}
+
+// Get the PersistentVolumeClaim bounded  PersistentVolume's volumeid
+func (pvc *persistentVolumeClaim) getVolumeId(oc *exutil.CLI) string {
+	pvName := pvc.getVolumeName(oc)
+	volumeId, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pv", pvName, "-o=jsonpath={.spec.csi.volumeHandle}").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	e2e.Logf("The PV %s volumeid is %q", pvName, volumeId)
+	return volumeId
 }
 
 //  Get specified PersistentVolumeClaim status

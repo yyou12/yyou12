@@ -12,11 +12,11 @@ objects:
     replicas: ${{REPLICASNUM}}
     selector:
       matchLabels:
-        app: mydep
+        app: ${DLABEL}
     template:
       metadata:
         labels:
-          app: mydep
+          app: ${DLABEL}
       spec:
         containers:
         - name: ${DNAME}
@@ -35,6 +35,7 @@ parameters:
 - name: DNAME
 - name: DNAMESPACE
 - name: REPLICASNUM
+- name: DLABEL
 - name: MPATH
 - name: PVCNAME
 
