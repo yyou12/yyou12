@@ -94,7 +94,11 @@ var _ = g.Describe("[sig-windows] Windows_Containers", func() {
 		}{
 			{
 				folder:   "/payload",
-				expected: "cni hybrid-overlay-node.exe kube-node powershell windows_exporter.exe wmcb.exe",
+				expected: "cni containerd hybrid-overlay-node.exe kube-node powershell windows_exporter.exe wmcb.exe",
+			},
+			{
+				folder:   "/payload/containerd",
+				expected: "containerd-shim-runhcs-v1.exe containerd.exe",
 			},
 			{
 				folder:   "/payload/cni",
