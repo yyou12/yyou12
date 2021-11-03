@@ -352,21 +352,6 @@ func generateTemplateAbsolutePath(fileName string) string {
 	return filepath.Join(mcoBaseDir, fileName)
 }
 
-func getServiceClusterIP(oc *exutil.CLI, svcName string, svcNamespace string) string {
-	stdout, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("svc", svcName, "-n", svcNamespace, "-o", "jsonpath='{.spec.clusterIP}'").Output()
-	o.Expect(err).NotTo(o.HaveOccurred())
-
-	return stdout
-}
-
-func getServicePort(oc *exutil.CLI, svcName string, svcNamespace string, portName string) string {
-	jsonPathArg := fmt.Sprintf("jsonpath='{.spec.ports[?(@.name==\"%s\")].port}'", portName)
-	stdout, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("svc", svcName, "-n", svcNamespace, "-o", jsonPathArg).Output()
-	o.Expect(err).NotTo(o.HaveOccurred())
-
-	return stdout
-}
-
 func getSATokenFromContainer(oc *exutil.CLI, podName string, podNamespace string, container string) string {
 	podOut, err := exutil.RemoteShContainer(oc, podNamespace, podName, container, "cat", "/var/run/secrets/kubernetes.io/serviceaccount/token")
 	o.Expect(err).NotTo(o.HaveOccurred())
