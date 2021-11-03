@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -13,6 +14,7 @@ import (
 	g "github.com/onsi/ginkgo"
 	o "github.com/onsi/gomega"
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
+	"k8s.io/apimachinery/pkg/util/wait"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 )
 
@@ -329,5 +331,61 @@ var _ = g.Describe("[sig-updates] OTA cvo should", func() {
 		o.Expect(cmdOut).NotTo(o.ContainSubstring("Channel:"))
 		o.Expect(cmdOut).To(o.ContainSubstring("Reason: NoChannel"))
 		o.Expect(cmdOut).To(o.ContainSubstring("Message: The update channel has not been configured."))
+	})
+
+	//author: jiajliu@redhat.com
+	g.It("Longduration-CPaasrunOnly-Author:jiajliu-Medium-41728-cvo alert ClusterOperatorDegraded on degraded operators [Disruptive][Slow]", func() {
+
+		testDataDir := exutil.FixturePath("testdata", "ota/cvo")
+		badOauthFile := filepath.Join(testDataDir, "bad-oauth.yaml")
+
+		g.By("Get goodOauthFile from the initial oauth yaml file to oauth-41728.yaml")
+		goodOauthFile, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("oauth", "cluster", "-o", "yaml").OutputToFile("oauth-41728.yaml")
+		defer exec.Command("bash", "-c", fmt.Sprintf("rm -rf %s", goodOauthFile))
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Prune goodOauthFile")
+		oauthfile, err := exec.Command("bash", "-c", fmt.Sprintf("sed -i \"/resourceVersion/d\" %s && cat %s", goodOauthFile, goodOauthFile)).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(oauthfile).NotTo(o.ContainSubstring("resourceVersion"))
+
+		g.By("Enable ClusterOperatorDegraded alert")
+		err = oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", badOauthFile).Execute()
+		defer oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", goodOauthFile).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Check ClusterOperatorDegraded condition...")
+		err = waitForCondition(60, 300, "oc get co authentication -ojson|jq -r '.status.conditions[]|select(.type==\"Degraded\").status'")
+		exutil.AssertWaitPollNoErr(err, "authentication operator is not degraded in 5m")
+
+		g.By("Check ClusterOperatorDown alert is not firing and ClusterOperatorDegraded alert is fired correctly.")
+		err = wait.Poll(5*time.Minute, 30*time.Minute, func() (bool, error) {
+			alertDown := getAlert("ClusterOperatorDown")
+			alertDegraded := getAlert("ClusterOperatorDegraded")
+			o.Expect(alertDown).To(o.BeNil())
+			if alertDegraded == nil || alertDegraded["state"] == "pending" {
+				e2e.Logf("Waiting for alert ClusterOperatorDegraded to be triggered and fired...")
+				return false, nil
+			}
+			o.Expect(alertDegraded["annotations"].(map[string]interface{})["summary"].(string)).To(o.ContainSubstring("Cluster operator has been degraded for 30 minutes."))
+			o.Expect(alertDegraded["annotations"].(map[string]interface{})["description"].(string)).To(o.ContainSubstring("The authentication operator is degraded"))
+			return true, nil
+		})
+		exutil.AssertWaitPollNoErr(err, "ClusterOperatorDegraded alert is not fired in 30m")
+
+		g.By("Disable ClusterOperatorDegraded alert")
+		err = oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", goodOauthFile).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Check alert is disabled")
+		err = wait.Poll(10*time.Second, 60*time.Second, func() (bool, error) {
+			alertDegraded := getAlert("ClusterOperatorDegraded")
+			if alertDegraded != nil {
+				e2e.Logf("Waiting for alert being disabled...")
+				return false, nil
+			}
+			return true, nil
+		})
+		exutil.AssertWaitPollNoErr(err, "alert is not disabled.")
 	})
 })

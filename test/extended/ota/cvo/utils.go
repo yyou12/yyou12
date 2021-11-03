@@ -132,6 +132,50 @@ func waitForAlert(oc *exutil.CLI, alertString string, interval time.Duration, ti
 	return true, annoMap, nil
 }
 
+//Check if operator's condition is expected until timeout or return ture or an error happened.
+func waitForCondition(interval time.Duration, timeout time.Duration, parameters string) error {
+	err := wait.Poll(interval*time.Second, timeout*time.Second, func() (bool, error) {
+		output, err := exec.Command("bash", "-c", parameters).Output()
+		if err != nil {
+			e2e.Logf("Checking condition error:%v", err)
+			return false, err
+		}
+		condition := strings.Replace(string(output), "\n", "", -1)
+		if strings.Compare(condition, "True") != 0 {
+			e2e.Logf("Current condition is: %v.Waiting for condition to be enabled...", condition)
+			return false, nil
+		}
+		e2e.Logf("Current condition is: %v", condition)
+		return true, nil
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+//Get detail alert info by alertname
+func getAlert(alertName string) map[string]interface{} {
+	var alertInfo map[string]interface{}
+	command := fmt.Sprintf("curl -s -k -H \"Authorization: Bearer $(oc -n openshift-monitoring sa get-token prometheus-k8s)\"  https://$(oc get route prometheus-k8s -n openshift-monitoring --no-headers|awk '{print $2}')/api/v1/alerts | jq -r '.data.alerts[]|select(.labels.alertname == \"%s\")'", alertName)
+	output, err := exec.Command("bash", "-c", command).Output()
+	if err != nil {
+		e2e.Logf("Getting alert error:%v", err)
+		return nil
+	}
+	if len(output) == 0 {
+		e2e.Logf("No alert %v found!", alertName)
+		return nil
+	}
+	err = json.Unmarshal(output, &alertInfo)
+	if err != nil {
+		e2e.Logf("Unmarshal alert error:%v", err)
+		return nil
+	}
+	e2e.Logf("Alert found: %v", alertInfo)
+	return alertInfo
+}
+
 // createBucket creates a new bucket in the gcs
 // projectID := "my-project-id"
 // bucketName := "bucket-name"
