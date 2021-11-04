@@ -470,6 +470,12 @@ func (catsrc *catalogSourceDescription) create(oc *exutil.CLI, itName string, dr
 	e2e.Logf("create catsrc %s SUCCESS", catsrc.name)
 }
 
+func (catsrc *catalogSourceDescription) createWithCheck(oc *exutil.CLI, itName string, dr describerResrouce) {
+	catsrc.create(oc, itName, dr)
+	newCheck("expect", asAdmin, withoutNamespace, compare, "READY", ok, []string{"catsrc", catsrc.name, "-n", catsrc.namespace, "-o=jsonpath={.status..lastObservedState}"}).check(oc)
+	e2e.Logf("catsrc %s lastObservedState is READY", catsrc.name)
+}
+
 //the method is to delete catalogsource.
 func (catsrc *catalogSourceDescription) delete(itName string, dr describerResrouce) {
 	e2e.Logf("delete carsrc %s, ns is %s", catsrc.name, catsrc.namespace)

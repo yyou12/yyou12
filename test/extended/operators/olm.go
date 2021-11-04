@@ -4076,7 +4076,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		sub.catalogSourceNamespace = catsrc.namespace
 
 		g.By("create catalog source")
-		catsrc.create(oc, itName, dr)
+		catsrc.createWithCheck(oc, itName, dr)
 
 		g.By("Create og")
 		og.create(oc, itName, dr)
@@ -4146,7 +4146,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		sub.catalogSourceNamespace = catsrc.namespace
 
 		g.By("create catalog source")
-		catsrc.create(oc, itName, dr)
+		catsrc.createWithCheck(oc, itName, dr)
 
 		g.By("Create og")
 		og.create(oc, itName, dr)
@@ -4202,7 +4202,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		sub.catalogSourceNamespace = catsrc.namespace
 
 		g.By("create catalog source")
-		catsrc.create(oc, itName, dr)
+		catsrc.createWithCheck(oc, itName, dr)
 
 		g.By("Create og")
 		og.create(oc, itName, dr)
@@ -4272,7 +4272,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		sub.catalogSourceNamespace = catsrc.namespace
 
 		g.By("create catalog source")
-		catsrc.create(oc, itName, dr)
+		catsrc.createWithCheck(oc, itName, dr)
 
 		g.By("Create og")
 		og.create(oc, itName, dr)
@@ -4346,7 +4346,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		etcdCr.namespace = oc.Namespace()
 
 		g.By("create catalog source")
-		catsrc.create(oc, itName, dr)
+		catsrc.createWithCheck(oc, itName, dr)
 
 		g.By("Create og")
 		og.create(oc, itName, dr)
@@ -4415,7 +4415,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		sub.catalogSourceNamespace = catsrc.namespace
 
 		g.By("create catalog source")
-		catsrc.create(oc, itName, dr)
+		catsrc.createWithCheck(oc, itName, dr)
 
 		g.By("Create og")
 		og.create(oc, itName, dr)
@@ -4478,7 +4478,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		sub.catalogSourceNamespace = catsrc.namespace
 
 		g.By("create catalog source")
-		catsrc.create(oc, itName, dr)
+		catsrc.createWithCheck(oc, itName, dr)
 
 		g.By("Create og")
 		og.create(oc, itName, dr)
@@ -4550,7 +4550,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 			defer crdVpa.delete(oc)
 
 			g.By("create catalog source")
-			catsrc.create(oc, itName, dr)
+			catsrc.createWithCheck(oc, itName, dr)
 
 			g.By("Create og")
 			og.create(oc, itName, dr)
@@ -4613,7 +4613,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		sub.catalogSourceNamespace = catsrc.namespace
 
 		g.By("create catalog source")
-		catsrc.create(oc, itName, dr)
+		catsrc.createWithCheck(oc, itName, dr)
 
 		g.By("Create og")
 		og.create(oc, itName, dr)
@@ -4702,7 +4702,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		subMta.catalogSourceNamespace = catsrc.namespace
 
 		g.By("create catalog source")
-		catsrc.create(oc, itName, dr)
+		catsrc.createWithCheck(oc, itName, dr)
 
 		g.By("Create og")
 		og.create(oc, itName, dr)
@@ -4813,7 +4813,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		subCockroachdb.catalogSourceNamespace = catsrc.namespace
 
 		g.By("create catalog source")
-		catsrc.create(oc, itName, dr)
+		catsrc.createWithCheck(oc, itName, dr)
 
 		g.By("Create og")
 		og.create(oc, itName, dr)
@@ -4981,7 +4981,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		subMta.catalogSourceNamespace = catsrc.namespace
 
 		g.By("create catalog source")
-		catsrc.create(oc, itName, dr)
+		catsrc.createWithCheck(oc, itName, dr)
 
 		g.By("Create og")
 		og.create(oc, itName, dr)
@@ -5344,7 +5344,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 
 		g.By("create catalog source")
 		defer catsrc.delete(itName, dr)
-		catsrc.create(oc, itName, dr)
+		catsrc.createWithCheck(oc, itName, dr)
 
 		g.By("install operator")
 		defer sub.delete(itName, dr)
@@ -5412,7 +5412,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 
 		g.By("create catalog source")
 		defer catsrc.delete(itName, dr)
-		catsrc.create(oc, itName, dr)
+		catsrc.createWithCheck(oc, itName, dr)
 
 		g.By("install operator")
 		defer sub.delete(itName, dr)
@@ -5539,7 +5539,8 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 
 		g.By(fmt.Sprintf("1) create the catsrc and OperatorGroup in project: %s", oc.Namespace()))
 		defer catsrc.delete(itName, dr)
-		catsrc.create(oc, itName, dr)
+		catsrc.createWithCheck(oc, itName, dr)
+
 		og.createwithCheck(oc, itName, dr)
 
 		g.By("2) install sub")
@@ -6001,7 +6002,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		itName := g.CurrentGinkgoTestDescription().TestText
 		g.By("1: create the catalog source and OperatorGroup ")
 		defer catsrc.delete(itName, dr)
-		catsrc.create(oc, itName, dr)
+		catsrc.createWithCheck(oc, itName, dr)
 		og.createwithCheck(oc, itName, dr)
 
 		g.By("2: create sub")
@@ -6181,7 +6182,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		itName := g.CurrentGinkgoTestDescription().TestText
 		g.By(fmt.Sprintf("1) create the catsrc in project: %s", oc.Namespace()))
 		defer catsrc.delete(itName, dr)
-		catsrc.create(oc, itName, dr)
+		catsrc.createWithCheck(oc, itName, dr)
 
 		g.By("2) install sub")
 		sub.createWithoutCheck(oc, itName, dr)
@@ -6259,7 +6260,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		itName := g.CurrentGinkgoTestDescription().TestText
 		g.By("1) create the catalog source and OperatorGroup")
 		defer catsrc.delete(itName, dr)
-		catsrc.create(oc, itName, dr)
+		catsrc.createWithCheck(oc, itName, dr)
 		og.createwithCheck(oc, itName, dr)
 
 		g.By("2) install sub")
@@ -6322,7 +6323,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		itName := g.CurrentGinkgoTestDescription().TestText
 		g.By("1) create the catalog source and OperatorGroup")
 		defer catsrc.delete(itName, dr)
-		catsrc.create(oc, itName, dr)
+		catsrc.createWithCheck(oc, itName, dr)
 		og.createwithCheck(oc, itName, dr)
 
 		g.By("2) install sub")
@@ -6419,7 +6420,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		sub.catalogSourceNamespace = catsrc.namespace
 
 		g.By("create catalog source")
-		catsrc.create(oc, itName, dr)
+		catsrc.createWithCheck(oc, itName, dr)
 
 		g.By("install operator without og")
 		sub.createWithoutCheck(oc, itName, dr)
@@ -6532,7 +6533,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 
 		g.By("1) Create the service account, catlog resource and OperatorGroup")
 		defer catsrc.delete(itName, dr)
-		catsrc.create(oc, itName, dr)
+		catsrc.createWithCheck(oc, itName, dr)
 		_, err := oc.WithoutNamespace().AsAdmin().Run("create").Args("sa", sa, "-n", sub.namespace).Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		og.createwithCheck(oc, itName, dr)
@@ -6666,7 +6667,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		og.create(oc, itName, dr)
 
 		g.By("create catalog source")
-		catsrc.create(oc, itName, dr)
+		catsrc.createWithCheck(oc, itName, dr)
 
 		g.By("install operator")
 		defer sub.delete(itName, dr)
@@ -6845,7 +6846,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 
 		g.By("Create catalog with v1alpha1 api operator")
 		defer catsrc.delete(itName, dr)
-		catsrc.create(oc, itName, dr)
+		catsrc.createWithCheck(oc, itName, dr)
 
 		g.By("Create og")
 		defer og.delete(itName, dr)
@@ -6982,7 +6983,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 
 		g.By("Create catalog with v1alpha1 api operator")
 		defer catsrc.delete(itName, dr)
-		catsrc.create(oc, itName, dr)
+		catsrc.createWithCheck(oc, itName, dr)
 
 		g.By("Create og")
 		defer og.delete(itName, dr)
@@ -7187,7 +7188,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle to support", func
 		e2e.Logf("the kubeVersionUpdated version is %s, and minKubeVersionRequired is %s", kubeVersionUpdated, minKubeVersionRequired)
 
 		g.By("Create catalog source")
-		catsrc.create(oc, itName, dr)
+		catsrc.createWithCheck(oc, itName, dr)
 
 		g.By("Update the minKubeVersion greater than the cluster KubeVersion")
 		cm.patch(oc, fmt.Sprintf("{\"data\": {\"clusterServiceVersions\": %s}}", strings.ReplaceAll(csvDesc, "minKubeVersion: "+minKubeVersionRequired, "minKubeVersion: "+kubeVersionUpdated)))
@@ -7282,7 +7283,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle to support", func
 		cm.create(oc, itName, dr)
 
 		g.By("Create catalog source")
-		catsrc.create(oc, itName, dr)
+		catsrc.createWithCheck(oc, itName, dr)
 
 		g.By("Create sub")
 		sub.ipApproval = "Manual"
@@ -7367,7 +7368,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle to support", func
 		cm.create(oc, itName, dr)
 
 		g.By("Create catalog source")
-		catsrc.create(oc, itName, dr)
+		catsrc.createWithCheck(oc, itName, dr)
 
 		g.By("Create sub")
 		sub.create(oc, itName, dr)
@@ -7459,7 +7460,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle to support", func
 		cm.create(oc, itName, dr)
 
 		g.By("Create catalog source")
-		catsrc.create(oc, itName, dr)
+		catsrc.createWithCheck(oc, itName, dr)
 
 		g.By("Create sub and cannot succeed")
 		sub.createWithoutCheck(oc, itName, dr)
@@ -7621,7 +7622,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within all namesp
 		cl.add(newCheck("expect", asAdmin, withoutNamespace, compare, "[]", ok, []string{"og", "global-operators", "-n", "openshift-operators", "-o=jsonpath={.status.namespaces}"}))
 
 		g.By("create catsrc")
-		catsrc.create(oc, itName, dr)
+		catsrc.createWithCheck(oc, itName, dr)
 		defer catsrc.delete(itName, dr)
 
 		// OCP-21484, OCP-21532
@@ -7715,7 +7716,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within all namesp
 		csvList := getResource(oc, asAdmin, withoutNamespace, "csv", "-n", subCockroachdb.namespace, "-o=jsonpath={.items[*].metadata.name}")
 		if !strings.Contains(csvList, subCockroachdb.operatorPackage) {
 			g.By("create catsrc")
-			catsrc.create(oc, itName, dr)
+			catsrc.createWithCheck(oc, itName, dr)
 			defer catsrc.delete(itName, dr)
 
 			g.By("Create operator targeted at all namespace")
@@ -7818,7 +7819,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within all namesp
 
 		g.By("create catlog resource")
 		defer catsrc.delete(itName, dr)
-		catsrc.create(oc, itName, dr)
+		catsrc.createWithCheck(oc, itName, dr)
 
 		g.By("Check if the global operator global-operators support all namesapces")
 		newCheck("expect", asAdmin, withoutNamespace, compare, "[]", ok, []string{"og", "global-operators", "-n", "openshift-operators", "-o=jsonpath={.status.namespaces}"})
@@ -7904,7 +7905,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within all namesp
 		)
 		g.By("0, create catlog resource")
 		defer catsrc.delete(itName, dr)
-		catsrc.create(oc, itName, dr)
+		catsrc.createWithCheck(oc, itName, dr)
 
 		g.By("1, Check if the global operator global-operators support all namesapces")
 		newCheck("expect", asAdmin, withoutNamespace, compare, "[]", ok, []string{"og", "global-operators", "-n", "openshift-operators", "-o=jsonpath={.status.namespaces}"})
@@ -8043,7 +8044,7 @@ var _ = g.Describe("[sig-operators] OLM on VM for an end user handle within a na
 		o.Expect(result).To(o.BeFalse())
 
 		g.By("STEP 2: Create catalog source")
-		catsrc.create(oc, itName, dr)
+		catsrc.createWithCheck(oc, itName, dr)
 		g.By("STEP 3: install operator ")
 		sub.create(oc, itName, dr)
 		o.Expect(sub.getCSV().name).To(o.Equal("ditto-operator.v0.1.0"))
@@ -8167,7 +8168,7 @@ var _ = g.Describe("[sig-operators] OLM on VM for an end user handle within a na
 		o.Expect(result).To(o.BeFalse())
 
 		g.By("STEP 2: Create catalog source")
-		catsrc.create(oc, itName, dr)
+		catsrc.createWithCheck(oc, itName, dr)
 		g.By("STEP 3: install operator ")
 		sub_manual.create(oc, itName, dr)
 		e2e.Logf("approve the install plan")
@@ -8578,7 +8579,7 @@ var _ = g.Describe("[sig-operators] OLM on VM for an end user handle within a na
 		og.createwithCheck(oc, itName, dr)
 
 		g.By("Create catalog source")
-		catsrc.create(oc, itName, dr)
+		catsrc.createWithCheck(oc, itName, dr)
 		err = wait.Poll(3*time.Second, 120*time.Second, func() (bool, error) {
 			exists, error := clusterPackageExistsInNamespace(oc, sub, catsrc.namespace)
 			if !exists || error != nil {
@@ -8693,7 +8694,7 @@ var _ = g.Describe("[sig-operators] OLM on VM for an end user handle within a na
 		}
 
 		g.By("Create catalog source")
-		catsrc.create(oc, itName, dr)
+		catsrc.createWithCheck(oc, itName, dr)
 
 		g.By("install operator")
 		sub.createWithoutCheck(oc, itName, dr)
@@ -8816,7 +8817,7 @@ var _ = g.Describe("[sig-operators] OLM on VM for an end user handle within a na
 		}
 
 		g.By("Create catalog source")
-		catsrc.create(oc, itName, dr)
+		catsrc.createWithCheck(oc, itName, dr)
 
 		g.By("install operator")
 		sub.createWithoutCheck(oc, itName, dr) // actually it is operator upgrade
@@ -8940,7 +8941,7 @@ var _ = g.Describe("[sig-operators] OLM on VM for an end user handle within a na
 		}
 
 		g.By("Create catalog source")
-		catsrc.create(oc, itName, dr)
+		catsrc.createWithCheck(oc, itName, dr)
 
 		g.By("install operator")
 		sub.createWithoutCheck(oc, itName, dr)
@@ -9085,7 +9086,7 @@ var _ = g.Describe("[sig-operators] OLM on VM for an end user handle within a na
 		g.By("Create catalog source")
 		buildIndexBaseDir = exutil.FixturePath("testdata", "olm")
 		catsrc.template = filepath.Join(buildIndexBaseDir, "catalogsource-image.yaml")
-		catsrc.create(oc, itName, dr)
+		catsrc.createWithCheck(oc, itName, dr)
 
 		g.By("install operator")
 		sub.template = filepath.Join(buildIndexBaseDir, "olm-subscription.yaml")
