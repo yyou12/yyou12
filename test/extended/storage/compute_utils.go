@@ -38,6 +38,14 @@ func checkVolumeNotMountInNode(oc *exutil.CLI, volumeName string, nodeName strin
 	o.Expect(err).Should(o.HaveOccurred())
 }
 
+// Check the mount command conatin ceontetn with volume mounted in the Node
+func checkVolumeMountCmdContain(oc *exutil.CLI, volumeName string, nodeName string, content string) {
+	command := "mount | grep " + volumeName
+	msg, err := execCommandInSpecificNode(oc, nodeName, command)
+	o.Expect(err).NotTo(o.HaveOccurred())
+	o.Expect(msg).To(o.ContainSubstring(content))
+}
+
 // Get the Node List for pod with label
 func getNodeListForPodByLabel(oc *exutil.CLI, namespace string, labelName string) ([]string, error) {
 	podsList, err := getPodsListByLabel(oc, namespace, labelName)

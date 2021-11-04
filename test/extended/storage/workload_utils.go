@@ -465,10 +465,10 @@ func (dep *deployment) checkPodMountedVolumeHaveExecRight(oc *exutil.CLI) {
 }
 
 // Check the deployment mounted volume type
-func (dep *deployment) checkPodMountedVolumeType(oc *exutil.CLI, volumeType string) {
+func (dep *deployment) checkPodMountedVolumeContain(oc *exutil.CLI, content string) {
 	for _, podinstance := range dep.getPodList(oc) {
 		output, err := execCommandInSpecificPod(oc, dep.namespace, podinstance, "mount | grep "+dep.mpath)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(output).To(o.ContainSubstring(volumeType))
+		o.Expect(output).To(o.ContainSubstring(content))
 	}
 }
