@@ -35,6 +35,7 @@ import (
 	_ "github.com/openshift/openshift-tests-private/test/extended/opm"
 	_ "github.com/openshift/openshift-tests-private/test/extended/ota/cvo"
 	_ "github.com/openshift/openshift-tests-private/test/extended/ota/osus"
+	_ "github.com/openshift/openshift-tests-private/test/extended/perfscale"
 	_ "github.com/openshift/openshift-tests-private/test/extended/psap/nfd"
 	_ "github.com/openshift/openshift-tests-private/test/extended/psap/nto"
 	_ "github.com/openshift/openshift-tests-private/test/extended/psap/sro"
