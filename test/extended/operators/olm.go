@@ -3750,7 +3750,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 
 		g.By("prepare for manual approval")
 		sub.ipApproval = "Manual"
-		sub.startingCSV = "windup-operator.0.0.4"
+		sub.startingCSV = "windup-operator.0.0.6"
 
 		g.By("Create Sub which apply manual approve install plan")
 		sub.create(oc, itName, dr)
