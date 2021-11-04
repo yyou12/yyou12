@@ -2804,41 +2804,78 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	// author: scolange@redhat.com
 	g.It("Author:scolange-Medium-24586-Prevent Operator Conflicts in OperatorHub", func() {
 
-		var buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
-		var catSource = filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
-		var Sub = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
-		var og = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+		var (
+			itName              = g.CurrentGinkgoTestDescription().TestText
+			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
+			ogSingleTemplate    = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+			catsrcImageTemplate = filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
+			subTemplate         = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+			og                  = operatorGroupDescription{
+				name:      "og-singlenamespace",
+				namespace: "",
+				template:  ogSingleTemplate,
+			}
+			catsrc = catalogSourceDescription{
+				name:        "catsrc-24586-operator",
+				namespace:   "",
+				displayName: "Test Catsrc 24586 Operators",
+				publisher:   "Red Hat",
+				sourceType:  "grpc",
+				address:     "quay.io/olmqe/mta-index:24586",
+				template:    catsrcImageTemplate,
+			}
+			sub1 = subscriptionDescription{
+				subName:                "mta-operator1",
+				namespace:              "",
+				channel:                "alpha",
+				ipApproval:             "Automatic",
+				operatorPackage:        "mta-operator",
+				catalogSourceName:      catsrc.name,
+				catalogSourceNamespace: "",
+				startingCSV:            "windup-operator.0.0.5",
+				currentCSV:             "",
+				installedCSV:           "",
+				template:               subTemplate,
+				singleNamespace:        true,
+			}
+			sub2 = subscriptionDescription{
+				subName:                "mta-operator2",
+				namespace:              "",
+				channel:                "alpha",
+				ipApproval:             "Automatic",
+				operatorPackage:        "mta-operator",
+				catalogSourceName:      catsrc.name,
+				catalogSourceNamespace: "",
+				startingCSV:            "windup-operator.0.0.5",
+				currentCSV:             "",
+				installedCSV:           "",
+				template:               subTemplate,
+				singleNamespace:        true,
+			}
+		)
+		dr := make(describerResrouce)
+		dr.addIr(itName)
+		oc.SetupProject() //project and its resource are deleted automatically when out of It, so no need derfer or AfterEach
+		og.namespace = oc.Namespace()
+		catsrc.namespace = oc.Namespace()
+		sub1.namespace = oc.Namespace()
+		sub2.namespace = oc.Namespace()
+		sub1.catalogSourceNamespace = catsrc.namespace
+		sub2.catalogSourceNamespace = catsrc.namespace
 
-		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("catalogsource", "test-prometer-24586", "-n", "openshift-marketplace").Execute()
-		defer oc.AsAdmin().Run("delete").Args("ns", "test24586").Execute()
+		g.By("Create og")
+		og.create(oc, itName, dr)
 
-		g.By("create new namespace")
-		var err = oc.AsAdmin().Run("create").Args("ns", "test24586").Execute()
-		o.Expect(err).NotTo(o.HaveOccurred())
+		g.By("Create catsrc")
+		catsrc.createWithCheck(oc, itName, dr)
 
-		g.By("create new catalogsource")
-		configFile, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", catSource, "-p", "NAME=test-prometer-24586",
-			"NAMESPACE=openshift-marketplace", "ADDRESS=quay.io/olmqe/mktplc-367", "DISPLAYNAME=prometer-24586", "PUBLISHER=QE", "SOURCETYPE=grpc").OutputToFile("config-24586.json")
-		o.Expect(err).NotTo(o.HaveOccurred())
-		err = oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", configFile).Execute()
-		o.Expect(err).NotTo(o.HaveOccurred())
+		g.By("Create operator1")
+		sub1.create(oc, itName, dr)
+		newCheck("expect", asUser, withNamespace, compare, "Succeeded", ok, []string{"csv", sub1.installedCSV, "-o=jsonpath={.status.phase}"}).check(oc)
 
-		createOg, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", og, "-p", "NAME=test-operators-og", "NAMESPACE=test24586").OutputToFile("config-24586.json")
-		o.Expect(err).NotTo(o.HaveOccurred())
-		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", createOg).Execute()
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		createImgSub, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", Sub, "-p", "SUBNAME=prometheus", "SUBNAMESPACE=test24586",
-			"CHANNEL=alpha", "APPROVAL=Automatic", "OPERATORNAME=prometheus", "SOURCENAME=community-operators", "SOURCENAMESPACE=openshift-marketplace").OutputToFile("config-24586.json")
-		o.Expect(err).NotTo(o.HaveOccurred())
-		err = oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", createImgSub).Execute()
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		createImgSub2, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", Sub, "-p", "SUBNAME=prometheus2", "SUBNAMESPACE=test24586",
-			"CHANNEL=alpha", "APPROVAL=Automatic", "OPERATORNAME=prometheus", "SOURCENAME=test-prometer-24586", "SOURCENAMESPACE=openshift-marketplace").OutputToFile("config-24586.json")
-		o.Expect(err).NotTo(o.HaveOccurred())
-		err = oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", createImgSub2).Execute()
-		o.Expect(err).NotTo(o.HaveOccurred())
+		g.By("Create operator2 which should fail")
+		sub2.createWithoutCheck(oc, itName, dr)
+		newCheck("expect", asUser, withNamespace, contain, "ConstraintsNotSatisfiable", ok, []string{"sub", sub2.subName, "-o=jsonpath={.status.conditions}"}).check(oc)
 
 	})
 
