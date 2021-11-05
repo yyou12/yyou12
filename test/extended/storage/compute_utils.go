@@ -1,7 +1,12 @@
 package storage
 
 import (
+	"fmt"
+	"strings"
+	"time"
+
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
+	"k8s.io/apimachinery/pkg/util/wait"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 
 	o "github.com/onsi/gomega"
@@ -11,7 +16,7 @@ import (
 func execCommandInSpecificNode(oc *exutil.CLI, nodeHostName string, command string) (string, error) {
 	nodeHostName = "node/" + nodeHostName
 	command1 := []string{nodeHostName, "-q", "--", "chroot", "/host", "bin/sh", "-c", command}
-	msg, err := oc.AsAdmin().WithoutNamespace().Run("debug").Args(command1...).Output()
+	msg, err := oc.AsAdmin().Run("debug").Args(command1...).Output()
 	if err != nil {
 		e2e.Logf("Execute \""+command+"\" on node \"%s\" *failed with* : \"%v\".", nodeHostName, err)
 		return msg, err
@@ -23,27 +28,43 @@ func execCommandInSpecificNode(oc *exutil.CLI, nodeHostName string, command stri
 	return msg, nil
 }
 
-// Check the Volume mounted in the Node
-func checkVolumeMountInNode(oc *exutil.CLI, volumeName string, nodeName string) {
+// Check the Volume mounted on the Node
+func checkVolumeMountOnNode(oc *exutil.CLI, volumeName string, nodeName string) {
 	command := "mount | grep " + volumeName
-	msg, err := execCommandInSpecificNode(oc, nodeName, command)
-	o.Expect(err).NotTo(o.HaveOccurred())
-	o.Expect(msg).To(o.ContainSubstring(volumeName))
+	err := wait.Poll(10*time.Second, 60*time.Second, func() (bool, error) {
+		_, err := execCommandInSpecificNode(oc, nodeName, command)
+		if err != nil {
+			return false, nil
+		}
+		return true, nil
+	})
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("Check volume: \"%s\" mount on node: \"%s\" failed", volumeName, nodeName))
 }
 
-// Check the Volume not mounted in the Node
-func checkVolumeNotMountInNode(oc *exutil.CLI, volumeName string, nodeName string) {
+// Check the Volume not mounted on the Node
+func checkVolumeNotMountOnNode(oc *exutil.CLI, volumeName string, nodeName string) {
 	command := "mount | grep " + volumeName
-	_, err := execCommandInSpecificNode(oc, nodeName, command)
-	o.Expect(err).Should(o.HaveOccurred())
+	err := wait.Poll(10*time.Second, 60*time.Second, func() (bool, error) {
+		_, err := execCommandInSpecificNode(oc, nodeName, command)
+		if err != nil {
+			return true, nil
+		}
+		return false, nil
+	})
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("Check volume: \"%s\" unmount on node: \"%s\" failed", volumeName, nodeName))
 }
 
-// Check the mount command conatin ceontetn with volume mounted in the Node
+// Check the mounted voulume on the Node conatins content by cmd
 func checkVolumeMountCmdContain(oc *exutil.CLI, volumeName string, nodeName string, content string) {
 	command := "mount | grep " + volumeName
-	msg, err := execCommandInSpecificNode(oc, nodeName, command)
-	o.Expect(err).NotTo(o.HaveOccurred())
-	o.Expect(msg).To(o.ContainSubstring(content))
+	err := wait.Poll(10*time.Second, 60*time.Second, func() (bool, error) {
+		msg, err := execCommandInSpecificNode(oc, nodeName, command)
+		if err != nil {
+			return false, nil
+		}
+		return strings.Contains(msg, content), nil
+	})
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("Check volume: \"%s\" mount in node : \"%s\" contains  \"%s\" failed", volumeName, nodeName, content))
 }
 
 // Get the Node List for pod with label
