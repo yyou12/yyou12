@@ -127,9 +127,13 @@ func NewNamespacedResourceList(oc *exutil.CLI, kind string, namespace string) *R
 }
 
 // SortByTimestamp will configure the list to be sorted by creation timestamp
-func (l *ResourceList) SortByTimestamp() *ResourceList {
+func (l *ResourceList) SortByTimestamp() {
 	l.extraParams = append(l.extraParams, "--sort-by=metadata.creationTimestamp")
-	return l
+}
+
+// ByLabel will use the given label to filter the list
+func (l *ResourceList) ByLabel(label string) {
+	l.extraParams = append(l.extraParams, fmt.Sprintf("--selector=%s", label))
 }
 
 // GetAllResources returns a list of Resource structs with the resources found in this list

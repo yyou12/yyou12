@@ -72,7 +72,9 @@ We can use the SortByTimestamp() method to specify that we want the list sorted 
 Example:
 
 ```go
-allMcs, err := NewResourceList(oc.AsAdmin(), "mc").SortByTimestamp().GetAllResources()
+resList = NewResourceList(oc.AsAdmin(), "mc")
+resList.SortByTimestamp()
+allMcs, err := resList.GetAllResources()
 if err != nil {
 	e2e.Logf("Error:\n %s", err)
 }

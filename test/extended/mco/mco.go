@@ -58,9 +58,9 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		mc.create(oc)
 
 		g.By("get one worker node to verify the config changes")
-		nodeName, err := exutil.GetFirstWorkerNode(oc)
+		workers, err := NewNodeList(oc.AsAdmin()).GetAllWorkerNodes()
 		o.Expect(err).NotTo(o.HaveOccurred())
-		stdout, err := exutil.DebugNodeWithChroot(oc, nodeName, "cat", "/etc/chrony.conf")
+		stdout, err := workers[0].DebugNodeWithChroot("cat", "/etc/chrony.conf")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		e2e.Logf(stdout)
 		o.Expect(stdout).Should(o.ContainSubstring("pool 0.rhel.pool.ntp.org iburst"))
