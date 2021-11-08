@@ -1361,6 +1361,9 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		ogSingleTemplate := filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
 		subTemplate := filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
 
+		oc.SetupProject()
+		ns := oc.Namespace()
+
 		// the priority ranking is bucket-test1 > bucket-test2 > community-operators(-400 default)
 		csObjects := []struct {
 			name     string
@@ -1372,21 +1375,33 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 			{"bucket-test2", "quay.io/olmqe/bucket-index:1.0.0", -1},
 		}
 
-		// create the openshift-storage project
-		project := projectDescription{
-			name: "openshift-storage",
-		}
-
 		// create the OperatorGroup resource
 		og := operatorGroupDescription{
 			name:      "test-og-33902",
-			namespace: "openshift-storage",
+			namespace: ns,
 			template:  ogSingleTemplate,
 		}
 
 		dr := make(describerResrouce)
 		itName := g.CurrentGinkgoTestDescription().TestText
 		dr.addIr(itName)
+
+		defer func() {
+			for _, v := range csObjects {
+				g.By(fmt.Sprintf("9) Remove the %s CatalogSource", v.name))
+				cs := catalogSourceDescription{
+					name:        v.name,
+					namespace:   "openshift-marketplace",
+					displayName: "Priority Test",
+					publisher:   "OLM QE",
+					sourceType:  "grpc",
+					address:     v.address,
+					template:    csImageTemplate,
+					priority:    v.priority,
+				}
+				cs.delete(itName, dr)
+			}
+		}()
 
 		for i, v := range csObjects {
 			g.By(fmt.Sprintf("%d) start to create the %s CatalogSource", i+1, v.name))
@@ -1404,16 +1419,13 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 			newCheck("expect", asAdmin, withoutNamespace, compare, "READY", ok, []string{"catsrc", cs.name, "-n", cs.namespace, "-o=jsonpath={.status.connectionState.lastObservedState}"}).check(oc)
 		}
 
-		g.By("4) create the openshift-storage project")
-		project.createwithCheck(oc, itName, dr)
-
-		g.By("5) create the OperatorGroup")
+		g.By("4) create the OperatorGroup")
 		og.createwithCheck(oc, itName, dr)
 
-		g.By("6) start to subscribe to the OCS operator")
+		g.By("5) start to subscribe to the OCS operator")
 		sub := subscriptionDescription{
 			subName:                "ocs-sub",
-			namespace:              "openshift-storage",
+			namespace:              ns,
 			catalogSourceName:      "ocs-cs",
 			catalogSourceNamespace: "openshift-marketplace",
 			channel:                "4.3.0",
@@ -1424,10 +1436,10 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		}
 		sub.create(oc, itName, dr)
 
-		g.By("7) check the dependce operator's subscription")
+		g.By("6) check the dependce operator's subscription")
 		depSub := subscriptionDescription{
 			subName:                "lib-bucket-provisioner-4.3.0-bucket-test1-openshift-marketplace",
-			namespace:              "openshift-storage",
+			namespace:              ns,
 			catalogSourceName:      "bucket-test1",
 			catalogSourceNamespace: "openshift-marketplace",
 			channel:                "4.3.0",
@@ -1440,26 +1452,11 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		dr.getIr(itName).add(newResource(oc, "sub", depSub.subName, requireNS, depSub.namespace))
 		depSub.findInstalledCSV(oc, itName, dr)
 
-		g.By(fmt.Sprintf("8) Remove subscription:%s, %s", sub.subName, depSub.subName))
+		g.By(fmt.Sprintf("7) Remove subscription:%s, %s", sub.subName, depSub.subName))
 		sub.delete(itName, dr)
 		sub.deleteCSV(itName, dr)
 		depSub.delete(itName, dr)
 		depSub.getCSV().delete(itName, dr)
-
-		for _, v := range csObjects {
-			g.By(fmt.Sprintf("9) Remove the %s CatalogSource", v.name))
-			cs := catalogSourceDescription{
-				name:        v.name,
-				namespace:   "openshift-marketplace",
-				displayName: "Priority Test",
-				publisher:   "OLM QE",
-				sourceType:  "grpc",
-				address:     v.address,
-				template:    csImageTemplate,
-				priority:    v.priority,
-			}
-			cs.delete(itName, dr)
-		}
 
 	})
 
