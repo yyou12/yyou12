@@ -7494,7 +7494,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle to support", func
 		cm.create(oc, itName, dr)
 
 		g.By("Create catalog source")
-		catsrc.createWithCheck(oc, itName, dr)
+		catsrc.create(oc, itName, dr)
 
 		g.By("Create sub and cannot succeed")
 		sub.createWithoutCheck(oc, itName, dr)
