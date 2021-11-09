@@ -2708,7 +2708,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	})
 
 	// Author: tbuskey@redhat.com, scolange@redhat.com
-	g.It("Author:tbuskey-Medium-23673-Installplan can be created while Install and uninstall operators via Marketplace for 5 times [Slow]", func() {
+	g.It("Author:tbuskey-ConnectedOnly-Medium-23673-Installplan can be created while Install and uninstall operators via Marketplace for 5 times [Slow]", func() {
 		var (
 			itName              = g.CurrentGinkgoTestDescription().TestText
 			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
