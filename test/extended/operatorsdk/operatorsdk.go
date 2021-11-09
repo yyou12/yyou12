@@ -707,7 +707,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
         g.By("with deprecated api, with wrong maxOpenShiftVersion")
         exec.Command("bash", "-c", "sed -i 's/4.9/invalid/g' /tmp/ocp-42614/traefikee-operator/bundle/manifests/traefikee-operator.v2.1.1.clusterserviceversion.yaml").Output()
         msg, _ = operatorsdkCLI.Run("bundle").Args("validate", "/tmp/ocp-42614/traefikee-operator/bundle", "--select-optional", "name=community", "-o", "json-alpha1").Output()
-        o.Expect(msg).To(o.ContainSubstring("csv.Annotations.olm.properties has an invalid value.Unable to parse"))
+        o.Expect(msg).To(o.ContainSubstring("csv.Annotations.olm.properties has an invalid value"))
         o.Expect(msg).To(o.ContainSubstring("error"))
 
         g.By("with deprecated api, without maxOpenShiftVersion")
