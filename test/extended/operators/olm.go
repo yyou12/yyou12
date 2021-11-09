@@ -34,11 +34,11 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	// author: jiazha@redhat.com
 	g.It("Author:jiazha-High-43487-3rd party Operator Catalog references change during an OCP Upgrade", func() {
 		g.By("1) get the Kubernetes version")
-		version, err := oc.AsAdmin().WithoutNamespace().Run("version").Args("--short").Output()
+		version, err := oc.AsAdmin().WithoutNamespace().Run("version").Args("").Output()
 		if err != nil {
 			e2e.Failf("Fail to get the Kubernetes version")
 		}
-		reg := regexp.MustCompile(`.*v((\d+).(\d+).(\d+))-`)
+		reg := regexp.MustCompile(`.*v((\d+).(\d+).(\d+))((-|\+))`)
 		if reg == nil {
 			e2e.Failf("version regexp err!")
 		}
