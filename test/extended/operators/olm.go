@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strconv"
 
+	"github.com/blang/semver"
 	"github.com/google/go-github/github"
 	g "github.com/onsi/ginkgo"
 	o "github.com/onsi/gomega"
@@ -227,15 +228,32 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		sub.approveSpecificIP(oc, itName, dr, "etcdoperator.v0.9.4", "Complete")
 		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", "etcdoperator.v0.9.4", "-n", oc.Namespace(), "-o=jsonpath={.status.phase}"}).check(oc)
 		// olm.properties: '[{"type": "olm.maxOpenShiftVersion", "value": "4.9"}]'
-		g.By("7) 4.9.0-xxx upgraded to 4.10.0-xxx < 4.10.0, or 4.9.1 upgraded to 4.9.x < 4.10.0, so it should NOT block the 4.9 upgrade.")
-		CheckUpgradeStatus(oc, "True")
+		g.By("7) 4.9.0-xxx upgraded to 4.10.0-xxx < 4.10.0, or 4.9.1 upgraded to 4.9.x < 4.10.0, so it should NOT block 4.9 upgrade, but block 4.10+ upgrade")
+		currentVersion, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("clusterversion", "version", "-o=jsonpath={.status.desired.version}").Output()
+		if err != nil {
+			e2e.Failf("Fail to get the OCP version")
+		}
+		v, _ := semver.ParseTolerant(currentVersion)
+		maxVersion, _ := semver.ParseTolerant("4.9")
+		// current version > the operator's max version: 4.9
+		if v.Compare(maxVersion) > 0 {
+			CheckUpgradeStatus(oc, "False")
+		} else {
+			CheckUpgradeStatus(oc, "True")
+		}
 
 		g.By("8) Apprrove this etcdoperator.v0.9.5, it should be in Complete state")
 		sub.approveSpecificIP(oc, itName, dr, "etcdoperator.v0.9.5", "Complete")
 		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", "etcdoperator.v0.9.5", "-n", oc.Namespace(), "-o=jsonpath={.status.phase}"}).check(oc)
 		// olm.properties: '[{"type": "olm.maxOpenShiftVersion", "value": "4.10.0"}]'
-		g.By("9) 4.9.0-xxx upgraded to 4.10.0-xxx < 4.10.0, or 4.9.1 upgraded to 4.9.x < 4.11.0, so it should NOT block the 4.9 upgrade.")
-		CheckUpgradeStatus(oc, "True")
+		g.By("9) 4.9.0-xxx upgraded to 4.10.0-xxx < 4.10.0, or 4.9.1 upgraded to 4.9.x < 4.11.0, so it should NOT block 4.10 upgrade, but blocks 4.11+ upgrade")
+		maxVersion2, _ := semver.ParseTolerant("4.10.0")
+		// current version > the operator's max version: 4.10.0
+		if v.Compare(maxVersion2) > 0 {
+			CheckUpgradeStatus(oc, "False")
+		} else {
+			CheckUpgradeStatus(oc, "True")
+		}
 	})
 
 	// author: jiazha@redhat.com
