@@ -1260,7 +1260,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 				catalogSourceNamespace: "openshift-marketplace",
 				ipApproval:             "Automatic",
 				template:               subFile,
-				channel:                "alpha",
+				channel:                "singlenamespace-alpha",
 				operatorPackage:        "etcd",
 				startingCSV:            "etcdoperator.v0.9.4",
 				singleNamespace:        true,
