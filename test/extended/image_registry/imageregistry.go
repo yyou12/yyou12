@@ -121,45 +121,15 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 		defer func() {
 			g.By("Remove proxy for imageregistry cluster")
-			oc.WithoutNamespace().AsAdmin().Run("patch").Args("configs.imageregistry/cluster", "-p", `{"spec": {"proxy": null}}`, "--type=merge").Execute()
-			err = wait.Poll(25*time.Second, 1*time.Minute, func() (bool, error) {
-				podList, _ := oc.AdminKubeClient().CoreV1().Pods("openshift-image-registry").List(metav1.ListOptions{LabelSelector: "docker-registry=default"})
-				if len(podList.Items) != 2 {
-					e2e.Logf("Continue to next round")
-					return false, nil
-				} else {
-					for _, pod := range podList.Items {
-						if pod.Status.Phase != corev1.PodRunning {
-							e2e.Logf("Continue to next round")
-							return false, nil
-						}
-					}
-					return true, nil
-				}
-
-			})
-			exutil.AssertWaitPollNoErr(err, "Image registry is not ready")
+			err = oc.WithoutNamespace().AsAdmin().Run("patch").Args("configs.imageregistry/cluster", "-p", `{"spec": {"proxy": null}}`, "--type=merge").Execute()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			recoverRegistryDefaultPods(oc)
 			result, err := oc.AsAdmin().WithoutNamespace().Run("rsh").Args("-n", "openshift-image-registry", "deployment.apps/image-registry", "env").Output()
 			o.Expect(err).NotTo(o.HaveOccurred())
 			o.Expect(result).NotTo(o.ContainSubstring("HTTP_PROXY=http://test:3128"))
 			o.Expect(result).NotTo(o.ContainSubstring("HTTPS_PROXY=http://test:3128"))
 		}()
-		err = wait.Poll(25*time.Second, 1*time.Minute, func() (bool, error) {
-			podList, _ := oc.AdminKubeClient().CoreV1().Pods("openshift-image-registry").List(metav1.ListOptions{LabelSelector: "docker-registry=default"})
-			if len(podList.Items) != 2 {
-				e2e.Logf("Continue to next round")
-				return false, nil
-			} else {
-				for _, pod := range podList.Items {
-					if pod.Status.Phase != corev1.PodRunning {
-						e2e.Logf("Continue to next round")
-						return false, nil
-					}
-				}
-				return true, nil
-			}
-		})
-		exutil.AssertWaitPollNoErr(err, "Image registry is not ready")
+		recoverRegistryDefaultPods(oc)
 		result, err := oc.AsAdmin().WithoutNamespace().Run("rsh").Args("-n", "openshift-image-registry", "deployment.apps/image-registry", "env").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(result).To(o.ContainSubstring("HTTP_PROXY=http://test:3128"))
@@ -177,6 +147,7 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 
 	// author: wewang@redhat.com
 	g.It("Author:wewang-Critial-22893-PodAntiAffinity should work for image registry pod", func() {
+		g.Skip("According devel comments: https://bugzilla.redhat.com/show_bug.cgi?id=2014940, still not work,when find a solution, will enable it")
 		g.By("Check platforms")
 		platformtype, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("infrastructure", "cluster", "-o=jsonpath={.spec.platformSpec.type}").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -203,22 +174,7 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 			g.By("Set image registry replica to 2")
 			err = oc.WithoutNamespace().AsAdmin().Run("patch").Args("configs.imageregistry/cluster", "-p", `{"spec":{"replicas":2}}`, "--type=merge").Execute()
 			o.Expect(err).NotTo(o.HaveOccurred())
-			err = wait.Poll(50*time.Second, 2*time.Minute, func() (bool, error) {
-				podList, _ := oc.AdminKubeClient().CoreV1().Pods("openshift-image-registry").List(metav1.ListOptions{LabelSelector: "docker-registry=default"})
-				if len(podList.Items) != 2 {
-					e2e.Logf("Continue to next round")
-					return false, nil
-				} else {
-					for _, pod := range podList.Items {
-						if pod.Status.Phase != corev1.PodRunning {
-							e2e.Logf("Continue to next round")
-							return false, nil
-						}
-					}
-					return true, nil
-				}
-			})
-			exutil.AssertWaitPollNoErr(err, "Image registry pod list is not 2")
+			recoverRegistryDefaultPods(oc)
 		}()
 
 		g.By("Confirm 3 pods scaled up")
@@ -250,22 +206,7 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 			g.By("Set image registry replica to 2")
 			err = oc.WithoutNamespace().AsAdmin().Run("patch").Args("configs.imageregistry/cluster", "-p", `{"spec":{"replicas":2}}`, "--type=merge").Execute()
 			o.Expect(err).NotTo(o.HaveOccurred())
-			err = wait.Poll(50*time.Second, 2*time.Minute, func() (bool, error) {
-				podList, _ := oc.AdminKubeClient().CoreV1().Pods("openshift-image-registry").List(metav1.ListOptions{LabelSelector: "docker-registry=default"})
-				if len(podList.Items) != 2 {
-					e2e.Logf("Continue to next round")
-					return false, nil
-				} else {
-					for _, pod := range podList.Items {
-						if pod.Status.Phase != corev1.PodRunning {
-							e2e.Logf("Continue to next round")
-							return false, nil
-						}
-					}
-					return true, nil
-				}
-			})
-			exutil.AssertWaitPollNoErr(err, "Image registry pod list is not 2")
+			recoverRegistryDefaultPods(oc)
 		}()
 
 		g.By("Confirm 4 pods scaled up")
@@ -452,19 +393,7 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 			g.By("Recover image registry change")
 			err = oc.WithoutNamespace().AsAdmin().Run("patch").Args("configs.imageregistry/cluster", "-p", `{"spec":{"managementState":"Managed","storage":{"managementState":"Managed"}}}`, "--type=merge").Execute()
 			o.Expect(err).NotTo(o.HaveOccurred())
-			err = wait.Poll(25*time.Second, 2*time.Minute, func() (bool, error) {
-				podList, err1 := oc.AdminKubeClient().CoreV1().Pods("openshift-image-registry").List(metav1.ListOptions{LabelSelector: "docker-registry=default"})
-				if err1 != nil {
-					e2e.Logf("Error listing pods: %v", err)
-					return false, nil
-				}
-				if len(podList.Items) == 0 {
-					e2e.Logf("Continue to next round")
-					return false, nil
-				}
-				return true, nil
-			})
-			exutil.AssertWaitPollNoErr(err, "Image registry is not recovered")
+			recoverRegistryDefaultPods(oc)
 		}()
 		err = wait.Poll(25*time.Second, 2*time.Minute, func() (bool, error) {
 			podList, err1 := oc.AdminKubeClient().CoreV1().Pods("openshift-image-registry").List(metav1.ListOptions{LabelSelector: "docker-registry=default"})
