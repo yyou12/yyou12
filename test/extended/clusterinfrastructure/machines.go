@@ -10,24 +10,15 @@ import (
 var _ = g.Describe("[sig-cluster-lifecycle] Cluster_Infrastructure", func() {
 	defer g.GinkgoRecover()
 	var (
-		oc                           = exutil.NewCLI("machine-api-operator", exutil.KubeConfigPath())
-		clusterInfrastructureBaseDir = exutil.FixturePath("testdata", "clusterinfrastructure")
-		iaasPlatform                 string
+		oc = exutil.NewCLI("machine-api-operator", exutil.KubeConfigPath())
 	)
-
-	g.BeforeEach(func() {
-		iaasPlatform = ci.CheckPlatform(oc)
-	})
-
 	// author: zhsun@redhat.com
 	g.It("Author:zhsun-Medium-42280-ClusterID should not be required to create a working machineSet", func() {
 		g.By("Create a new machineset")
 		ci.SkipConditionally(oc)
-		ms := ci.SetMachineSetTemplate(oc, iaasPlatform, clusterInfrastructureBaseDir)
-		ms.Name = "machineset-42280"
-		ms.Replicas = 0
-		ms.CreateMachineSet(oc)
+		ms := ci.MachineSetDescription{"machineset-42280", 0}
 		defer ms.DeleteMachineSet(oc)
+		ms.CreateMachineSet(oc)
 		g.By("Update machineset with empty clusterID")
 		err := oc.AsAdmin().WithoutNamespace().Run("patch").Args("machineset/machineset-42280", "-n", "openshift-machine-api", "-p", `{"metadata":{"labels":{"machine.openshift.io/cluster-api-cluster": null}},"spec":{"replicas":1,"selector":{"matchLabels":{"machine.openshift.io/cluster-api-cluster": null}},"template":{"metadata":{"labels":{"machine.openshift.io/cluster-api-cluster":null}}}}}`, "--type=merge").Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())

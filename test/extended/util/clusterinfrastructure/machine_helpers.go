@@ -1,66 +1,58 @@
 package clusterinfrastructure
 
 import (
+	"io/ioutil"
 	"math/rand"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
 	g "github.com/onsi/ginkgo"
 	o "github.com/onsi/gomega"
-
+	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
+	"github.com/tidwall/sjson"
 	"k8s.io/apimachinery/pkg/util/wait"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
-	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
-
 )
-
 
 const (
 	machineAPINamespace = "openshift-machine-api"
 )
 
 type MachineSetDescription struct {
-	Name      string
-	Namespace string
-	Replicas  int
-	ClusterID string
-	Region    string
-	Zone      string
-	Ami       string
-	Image     string
-	template  string
+	Name     string
+	Replicas int
 }
 
 // CreateMachineSet create a new machineset
 func (ms *MachineSetDescription) CreateMachineSet(oc *exutil.CLI) {
 	e2e.Logf("Creating a new MachineSets ...")
-	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", ms.template, "-p", "NAME="+ms.Name, "NAMESPACE="+machineAPINamespace, "REPLICAS="+strconv.Itoa(ms.Replicas), "CLUSTERID="+ms.ClusterID, "REGION="+ms.Region, "ZONE="+ms.Zone, "AMI="+ms.Ami, "IMAGE="+ms.Image)
+	machinesetName := GetRandomMachineSetName(oc)
+	machineSetJson, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("machineset", machinesetName, "-n", machineAPINamespace, "-o=json").OutputToFile("machineset.json")
 	o.Expect(err).NotTo(o.HaveOccurred())
+
+	bytes, _ := ioutil.ReadFile(machineSetJson)
+	value1, _ := sjson.Set(string(bytes), "metadata.name", ms.Name)
+	value2, _ := sjson.Set(value1, "spec.selector.matchLabels.machine\\.openshift\\.io/cluster-api-machineset", ms.Name)
+	value3, _ := sjson.Set(value2, "spec.template.metadata.labels.machine\\.openshift\\.io/cluster-api-machineset", ms.Name)
+	value4, _ := sjson.Set(value3, "spec.replicas", ms.Replicas)
+	// Adding taints to machineset so that pods without toleration can not schedule to the nodes we provision
+	value5, _ := sjson.Set(value4, "spec.template.spec.taints.0", map[string]interface{}{"effect": "NoSchedule", "key": "mapi", "value": "mapi_test"})
+	err = ioutil.WriteFile(machineSetJson, []byte(value5), 0644)
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	if err := oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", machineSetJson).Execute(); err != nil {
+		ms.DeleteMachineSet(oc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+	} else {
+		WaitForMachinesRunning(oc, ms.Replicas, ms.Name)
+	}
 }
 
 // DeleteMachineSet delete a machineset
 func (ms *MachineSetDescription) DeleteMachineSet(oc *exutil.CLI) error {
 	e2e.Logf("Deleting a MachineSets ...")
 	return oc.AsAdmin().WithoutNamespace().Run("delete").Args("machineset", ms.Name, "-n", machineAPINamespace).Execute()
-}
-
-func applyResourceFromTemplate(oc *exutil.CLI, parameters ...string) error {
-	var jsonCfg string
-	err := wait.Poll(3*time.Second, 15*time.Second, func() (bool, error) {
-		output, err := oc.AsAdmin().Run("process").Args(parameters...).OutputToFile(getRandomString() + "machine-config.json")
-		if err != nil {
-			e2e.Failf("the result of ReadFile:%v", err)
-			return false, nil
-		}
-		jsonCfg = output
-		return true, nil
-	})
-	o.Expect(err).NotTo(o.HaveOccurred())
-
-	e2e.Logf("The resource is %s", jsonCfg)
-	return oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", jsonCfg).Execute()
 }
 
 // ListWorkerMachineSets list all worker machineSets
@@ -123,93 +115,6 @@ func SkipConditionally(oc *exutil.CLI) {
 	if machinesRunning == 0 {
 		g.Skip("Expect at least one Running machine. Found none!!!")
 	}
-}
-
-// SetMachineSetTemplate update machineset template by iaasPlatform
-func SetMachineSetTemplate(oc *exutil.CLI, iaasPlatform string, clusterInfrastructureBaseDir string) (ms MachineSetDescription) {
-	e2e.Logf("Setting MachineSets template ...")
-	machineSetTemplate := ""
-	if iaasPlatform == "aws" {
-		machineSetTemplate = filepath.Join(clusterInfrastructureBaseDir, "aws-machineset.yaml")
-		clusterID, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("infrastructure", "cluster", "-o=jsonpath={.status.infrastructureName}").Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		region, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("machineset", GetRandomMachineSetName(oc), "-o=jsonpath={.spec.template.spec.providerSpec.value.placement.region}", "-n", machineAPINamespace).Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		zone, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("machineset", GetRandomMachineSetName(oc), "-o=jsonpath={.spec.template.spec.providerSpec.value.placement.availabilityZone}", "-n", machineAPINamespace).Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		ami, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("machineset", GetRandomMachineSetName(oc), "-o=jsonpath={.spec.template.spec.providerSpec.value.ami.id}", "-n", machineAPINamespace).Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		ms = MachineSetDescription{
-			Name:      "machineset-default",
-			Namespace: machineAPINamespace,
-			Replicas:  1,
-			ClusterID: clusterID,
-			Region:    region,
-			Zone:      zone,
-			Ami:       ami,
-			template:  machineSetTemplate,
-		}
-	} else if iaasPlatform == "azure" {
-		machineSetTemplate = filepath.Join(clusterInfrastructureBaseDir, "azure-machineset.yaml")
-		clusterID, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("infrastructure", "cluster", "-o=jsonpath={.status.infrastructureName}").Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		region, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("machineset", GetRandomMachineSetName(oc), "-o=jsonpath={.spec.template.spec.providerSpec.value.location}", "-n", machineAPINamespace).Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		ms = MachineSetDescription{
-			Name:      "machineset-default",
-			Namespace: machineAPINamespace,
-			Replicas:  1,
-			Region:    region,
-			ClusterID: clusterID,
-			template:  machineSetTemplate,
-		}
-	} else if iaasPlatform == "gcp" {
-		machineSetTemplate = filepath.Join(clusterInfrastructureBaseDir, "gcp-machineset.yaml")
-		clusterID, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("infrastructure", "cluster", "-o=jsonpath={.status.infrastructureName}").Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		region, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("machineset", GetRandomMachineSetName(oc), "-o=jsonpath={.spec.template.spec.providerSpec.value.region}", "-n", machineAPINamespace).Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		zone, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("machineset", GetRandomMachineSetName(oc), "-o=jsonpath={.spec.template.spec.providerSpec.value.zone}", "-n", machineAPINamespace).Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		image, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("machineset", GetRandomMachineSetName(oc), "-o=jsonpath={.spec.template.spec.providerSpec.value.disks[0].image}", "-n", machineAPINamespace).Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		ms = MachineSetDescription{
-			Name:      "machineset-default",
-			Namespace: machineAPINamespace,
-			Replicas:  1,
-			ClusterID: clusterID,
-			Region:    region,
-			Zone:      zone,
-			Image:     image,
-			template:  machineSetTemplate,
-		}
-	} else if iaasPlatform == "vsphere" {
-		machineSetTemplate = filepath.Join(clusterInfrastructureBaseDir, "vsphere-machineset.yaml")
-		clusterID, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("infrastructure", "cluster", "-o=jsonpath={.status.infrastructureName}").Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		ms = MachineSetDescription{
-			Name:      "machineset-default",
-			Namespace: machineAPINamespace,
-			Replicas:  1,
-			ClusterID: clusterID,
-			template:  machineSetTemplate,
-		}
-	} else if iaasPlatform == "openstack" {
-		machineSetTemplate = filepath.Join(clusterInfrastructureBaseDir, "osp-machineset.yaml")
-		clusterID, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("infrastructure", "cluster", "-o=jsonpath={.status.infrastructureName}").Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		ms = MachineSetDescription{
-			Name:      "machineset-default",
-			Namespace: machineAPINamespace,
-			Replicas:  1,
-			ClusterID: clusterID,
-			template:  machineSetTemplate,
-		}
-	} else {
-		e2e.Failf("IAAS platform: %s is not automated yet", iaasPlatform)
-	}
-	e2e.Logf("Finished setting MachineSets template ...")
-	return ms
 }
 
 func getRandomString() string {
