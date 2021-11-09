@@ -4,9 +4,10 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"strings"
 	"time"
+
+	"k8s.io/apimachinery/pkg/util/wait"
 
 	o "github.com/onsi/gomega"
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
@@ -114,10 +115,7 @@ func GetRootSecretName(oc *exutil.CLI) (string, error) {
 func IsSTSMode(oc *exutil.CLI) bool {
 	output, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("secret", "installer-cloud-credentials", "-n=openshift-image-registry", "-o=jsonpath={.data.credentials}").Output()
 	credentials, _ := base64.StdEncoding.DecodeString(output)
-	if strings.Contains(string(credentials), "web_identity_token_file") {
-		return true
-	}
-	return false
+	return strings.Contains(string(credentials), "web_identity_token_file")
 }
 
 func GetIaasPlatform(oc *exutil.CLI) (string, error) {
