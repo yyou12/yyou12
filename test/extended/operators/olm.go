@@ -34,19 +34,12 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	// author: jiazha@redhat.com
 	g.It("Author:jiazha-High-43487-3rd party Operator Catalog references change during an OCP Upgrade", func() {
 		g.By("1) get the Kubernetes version")
-		version, err := oc.AsAdmin().WithoutNamespace().Run("version").Args("").Output()
-		if err != nil {
-			e2e.Failf("Fail to get the Kubernetes version")
-		}
-		reg := regexp.MustCompile(`.*v((\d+).(\d+).(\d+))((-|\+))`)
-		if reg == nil {
-			e2e.Failf("version regexp err!")
-		}
-		result := reg.FindAllStringSubmatch(version, -1)
-		// fullVersion := result[0][1]
-		majorVersion := result[0][2]
-		minorVersion := result[0][3]
-		patchVersion := result[0][4]
+		version, err := exec.Command("bash", "-c", "oc version | grep Kubernetes |awk '{print $3}'").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		v, _ := semver.ParseTolerant(string(version))
+		majorVersion := strconv.FormatUint(v.Major, 10)
+		minorVersion := strconv.FormatUint(v.Minor, 10)
+		patchVersion := strconv.FormatUint(v.Patch, 10)
 
 		dr := make(describerResrouce)
 		itName := g.CurrentGinkgoTestDescription().TestText
