@@ -1,11 +1,12 @@
 package clusterinfrastructure
 
 import (
-	"k8s.io/apimachinery/pkg/util/wait"
-	e2e "k8s.io/kubernetes/test/e2e/framework"
-	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
 	"math/rand"
 	"time"
+
+	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
+	"k8s.io/apimachinery/pkg/util/wait"
+	e2e "k8s.io/kubernetes/test/e2e/framework"
 )
 
 const (
