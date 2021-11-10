@@ -6,8 +6,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-	"path"
-	"runtime"
 	"strings"
 
 	e2e "k8s.io/kubernetes/test/e2e/framework"
@@ -52,8 +50,7 @@ func NewQuayCLI() *QuayCLI {
 	if strings.Compare(os.Getenv("QUAY_AUTH_FILE"), "") != 0 {
 		authFilepath = os.Getenv("QUAY_AUTH_FILE")
 	} else {
-		_, fullFilename, _, _ := runtime.Caller(0)
-		authFilepath = path.Dir(path.Dir(path.Dir(path.Dir(path.Dir(fullFilename))))) + "/secrets/quay/quay_auth.json"
+		authFilepath = "/home/cloud-user/.docker/auto/quay_auth.json"
 	}
 	if _, err := os.Stat(authFilepath); os.IsNotExist(err) {
 		e2e.Logf("auth file does not exist")
@@ -73,6 +70,9 @@ func NewQuayCLI() *QuayCLI {
 	if strings.Compare(os.Getenv("QUAY_AUTH"), "") != 0 {
 		e2e.Logf("get quay auth from env QUAY_AUTH")
 		authString = "Bearer " + os.Getenv("QUAY_AUTH")
+	}
+	if strings.Compare(authString, "Bearer ") == 0 {
+		e2e.Failf("get quay auth failed!")
 	}
 	newclient.Authorization = authString
 	return newclient
