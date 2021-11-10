@@ -2,6 +2,7 @@ package sro
 
 import (
 	"path/filepath"
+	"strings"
 
 	g "github.com/onsi/ginkgo"
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
@@ -115,7 +116,7 @@ var _ = g.Describe("[sig-node] PSAP SRO should", func() {
 		//Check is the simple-kmod kernel installed on worker node
 		assertSimpleKmodeOnNode(oc)
 	})
-	
+
 	g.It("Longduration-Author:liqcui-Medium-43365-SRO Build and run SpecialResource ping-pong resource with SRO from CLI [Slow]", func() {
 
 		g.By("Cleanup special resource ping-pong application default objects")
@@ -191,5 +192,85 @@ var _ = g.Describe("[sig-node] PSAP SRO should", func() {
 		pingPongServerPod.assertOprPodLogs(oc, "Pong")
 		pingPongClientPod.assertOprPodLogs(oc, "Ping")
 		pingPongClientPod.assertOprPodLogs(oc, "Pong")
+	})
+
+	g.It("Longduration-Author:liqcui-Medium-43364-SRO Build and run SpecialResource multi-build resource from configmap [Slow]", func() {
+
+		g.By("SRO - Create Namespace for multi-build")
+
+		nsTemplate := filepath.Join(sroDir, "sro-ns.yaml")
+		ns := nsResource{
+			name:     "multi-build",
+			template: nsTemplate,
+		}
+		defer ns.delete(oc)
+		ns.createIfNotExist(oc)
+
+		g.By("SRO - Generate openshift psap multibuild pull secret")
+		sroDeploymentRes := oprResource{
+			kind:      "deployment",
+			name:      "special-resource-controller-manager",
+			namespace: "openshift-special-resource-operator",
+		}
+
+		//Using SRO Operator Controller Manager Label as Decrypted Keystring
+		cryptpwdstr := sroDeploymentRes.checkSROControlManagerLabel(oc)
+		cryptpwd := strings.Trim(cryptpwdstr, `'"`)
+		//Decode Docker Config JSON Strings and Create Secret in namespace multi-build
+		multibuildsecretfile := filepath.Join(sroDir, "sro-multi-build-pullsecret.crypt")
+		multibuilddockercfgtemplate := filepath.Join(sroDir, "sro-multi-build-dockercfg.yaml")
+		multibuildsecretStr := string(decryptFile(multibuildsecretfile, cryptpwd))
+
+		secretRes := secretResource{
+			name:       "openshift-psap-multibuild-pull-secret",
+			configjson: multibuildsecretStr,
+			namespace:  "multi-build",
+			template:   multibuilddockercfgtemplate,
+		}
+		secretRes.createIfNotExist(oc)
+
+		g.By("SRO - Create multi-build chart as configmap")
+		multibuildconfigmap := oprResource{
+			kind:      "configmap",
+			name:      "multi-build-chart",
+			namespace: "multi-build",
+		}
+		cmindexfile := filepath.Join(sroDir, "cm/index.yaml")
+		cmmultibuildfile := filepath.Join(sroDir, "cm/multi-build-0.0.1.tgz")
+		cmfilepath := []string{cmindexfile, cmmultibuildfile}
+		multibuildconfigmap.createConfigmapFromFile(oc, cmfilepath)
+
+		//Clean up resource multi-build
+		multibuildSRORes := oprResource{
+			kind:      "SpecialResource",
+			name:      "multi-build",
+			namespace: "",
+		}
+		defer multibuildSRORes.CleanupResource(oc)
+
+		g.By("SRO - Create multi-build application from configmap")
+		multibuildYaml := filepath.Join(sroDir, "sro-multi-build.yaml")
+		multibuild := oprResource{
+			kind:      "",
+			name:      "",
+			namespace: "",
+		}
+		multibuild.applyResourceByYaml(oc, multibuildYaml)
+
+		g.By("SRO - Check if multi-build application is running")
+		multibuildstatefulset := oprResource{
+			kind:      "statefulset",
+			name:      "multi-build",
+			namespace: "multi-build",
+		}
+		multibuildstatefulset.waitOprResourceReady(oc)
+
+		g.By("SRO - Assets the multi-build application logs")
+		multibuildpod := oprResource{
+			kind:      "pod",
+			name:      "multi-build-0",
+			namespace: "multi-build",
+		}
+		multibuildpod.assertOprPodLogs(oc, "infinity")
 	})
 })

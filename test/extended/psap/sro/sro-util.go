@@ -1,7 +1,16 @@
 package sro
 
 import (
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/md5"
+	"crypto/rand"
+	"encoding/base64"
+	"encoding/hex"
 	"fmt"
+	"io"
+	"io/ioutil"
+	"os"
 	"reflect"
 	"regexp"
 	"strings"
@@ -166,7 +175,7 @@ func (opr *oprResource) checkOperatorPOD(oc *exutil.CLI) bool {
 	}
 
 	if reflect.DeepEqual(activepod, totalpod) {
-		e2e.Logf(fmt.Sprintf("The active pod is :%d\nThe total pod is:%d", activepod, totalpod))
+		e2e.Logf(fmt.Sprintf("The active pod is :%d  The total pod is:%d", activepod, totalpod))
 		e2e.Logf(opr.name + " pod is suceessfully running :(")
 		return true
 	} else {
@@ -193,7 +202,6 @@ func (opr *oprResource) CleanupResource(oc *exutil.CLI) {
 		//Delete namespace-wide resource
 		oc.AsAdmin().WithoutNamespace().Run("delete").Args(opr.kind, opr.name, "-n", opr.namespace).Execute()
 	}
-
 }
 
 //Check if NFD Installed base on the cluster labels
@@ -209,59 +217,51 @@ func checkIfNFDInstalled(oc *exutil.CLI) bool {
 }
 
 func (opr *oprResource) waitOprResourceReady(oc *exutil.CLI) {
-	waitErr := wait.Poll(20*time.Second, 600*time.Second, func() (bool, error) {
+	waitErr := wait.Poll(20*time.Second, 720*time.Second, func() (bool, error) {
 		var (
-			output     string
+			kindnames  string
 			err        error
 			isCreated  bool
 			desirednum string
 			readynum   string
 		)
 
-		//Check if deployment/daemonset is created.
+		//Check if deployment/daemonset/statefulset is created.
 		switch opr.kind {
-		case "deployment":
-			output, err = oc.AsAdmin().WithoutNamespace().Run("get").Args(opr.kind, opr.name, "-n", opr.namespace, "-o=jsonpath={.status.conditions}").Output()
-			if strings.Contains(output, "NotFound") || strings.Contains(output, "No resources") || err != nil {
+		case "deployment", "statefulset":
+			kindnames, err = oc.AsAdmin().WithoutNamespace().Run("get").Args(opr.kind, opr.name, "-n", opr.namespace, "-oname").Output()
+			if strings.Contains(kindnames, "NotFound") || strings.Contains(kindnames, "No resources") || len(kindnames) == 0 || err != nil {
 				isCreated = false
-				output = "Not Ready"
 			} else {
-				//deployment has been created, but not running, need to check the string "has successfully progressed" in .status.conditions
+				//deployment/statefulset has been created, but not running, need to compare .status.readyReplicas and  in .status.replicas
 				isCreated = true
+				desirednum, _ = oc.AsAdmin().WithoutNamespace().Run("get").Args(kindnames, "-n", opr.namespace, "-o=jsonpath={.status.readyReplicas}").Output()
+				readynum, _ = oc.AsAdmin().WithoutNamespace().Run("get").Args(kindnames, "-n", opr.namespace, "-o=jsonpath={.status.replicas}").Output()
 			}
 		case "daemonset":
-			daemonsetname, err := oc.AsAdmin().WithoutNamespace().Run("get").Args(opr.kind, "-n", opr.namespace, "-oname").Output()
-			e2e.Logf("daemonset name is:" + daemonsetname)
-			if len(daemonsetname) == 0 || err != nil {
+			kindnames, err = oc.AsAdmin().WithoutNamespace().Run("get").Args(opr.kind, "-n", opr.namespace, "-oname").Output()
+			e2e.Logf("daemonset name is:" + kindnames)
+			if len(kindnames) == 0 || err != nil {
 				isCreated = false
 			} else {
-				//daemonset has been created, but not running, need to compare .status.desiredNumberScheduled and .status.numberReady}
+				//daemonset/statefulset has been created, but not running, need to compare .status.desiredNumberScheduled and .status.numberReady}
 				//if the two value is equal, set output="has successfully progressed"
 				isCreated = true
-				desirednum, _ = oc.AsAdmin().WithoutNamespace().Run("get").Args(daemonsetname, "-n", opr.namespace, "-o=jsonpath={.status.desiredNumberScheduled}").Output()
-				readynum, _ = oc.AsAdmin().WithoutNamespace().Run("get").Args(daemonsetname, "-n", opr.namespace, "-o=jsonpath={.status.numberReady}").Output()
-			}
-
-			e2e.Logf("desirednum is:" + desirednum + "\nreadynum is:" + readynum)
-			//daemonset has been created, but not running, need to compare .status.desiredNumberScheduled and .status.numberReady}
-			//if the two value is equal, set output="has successfully progressed"
-			if len(daemonsetname) != 0 && desirednum == readynum {
-				e2e.Logf("Damonset running normally")
-				output = "has successfully progressed"
-			} else {
-				e2e.Logf("Damonset is abnormally running")
-				output = "Not Ready"
-				return false, nil
+				desirednum, _ = oc.AsAdmin().WithoutNamespace().Run("get").Args(kindnames, "-n", opr.namespace, "-o=jsonpath={.status.desiredNumberScheduled}").Output()
+				readynum, _ = oc.AsAdmin().WithoutNamespace().Run("get").Args(kindnames, "-n", opr.namespace, "-o=jsonpath={.status.numberReady}").Output()
 			}
 		default:
 			e2e.Logf("Invalid Resource Type")
 		}
 
-		e2e.Logf("the %v status is %v", opr.kind, output)
-		//if isCreated is true and output contains "has successfully progressed", the pod is ready
-		if isCreated && strings.Contains(output, "has successfully progressed") {
+		e2e.Logf("desirednum is: " + desirednum + " readynum is: " + readynum)
+		//daemonset/deloyment has been created, but not running, need to compare desirednum and readynum
+		//if isCreate is true and the two value is equal, the pod is ready
+		if isCreated && len(kindnames) != 0 && desirednum == readynum {
+			e2e.Logf("The %v is successfully progressed and running normally", kindnames)
 			return true, nil
 		} else {
+			e2e.Logf("The %v is not ready or running normally", kindnames)
 			return false, nil
 		}
 	})
@@ -279,15 +279,49 @@ func (opr *oprResource) assertOprPodLogs(oc *exutil.CLI, filter string) {
 	regexpoprname, _ := regexp.Compile(".*" + opr.name + ".*")
 	podListArry := regexpoprname.FindAllString(podList, -1)
 
-	//If have multiple pods of one deployment/daemonset, check each pods logs
 	podListSize := len(podListArry)
 	for i := 0; i < podListSize; i++ {
 		e2e.Logf("Verify the logs on %v", podListArry[i])
-		output, _ := oc.AsAdmin().WithoutNamespace().Run("logs").Args(podListArry[i], "-n", opr.namespace).Output()
-		o.Expect(output).To(o.ContainSubstring(filter))
-		regexpstr, _ := regexp.Compile(".*" + filter + ".*")
-		loglines := regexpstr.FindAllString(output, -1)
-		e2e.Logf("The result is: %v", loglines[0])
+
+		//Check the log files until finding the keywords by filter
+		waitErr := wait.Poll(20*time.Second, 300*time.Second, func() (bool, error) {
+			//If have multiple pods of one deployment/daemonset, check each pods logs
+			output, _ := oc.AsAdmin().WithoutNamespace().Run("logs").Args(podListArry[i], "-n", opr.namespace).Output()
+			if strings.Contains(output, filter) {
+				o.Expect(output).To(o.ContainSubstring(filter))
+				regexpstr, _ := regexp.Compile(".*" + filter + ".*")
+				loglines := regexpstr.FindAllString(output, -1)
+				e2e.Logf("The result is: %v", loglines[0])
+				return true, nil
+			} else {
+				e2e.Logf("Can not find the key words in pod logs by: %v", filter)
+				return false, nil
+			}
+		})
+		exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("the pod of %v is not running", opr.name))
+	}
+
+}
+
+func (opr *oprResource) checkSROControlManagerLabel(oc *exutil.CLI) string {
+	output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args(opr.kind, opr.name, "-n", opr.namespace, "-o", "jsonpath='{.spec.template.metadata.labels.control-plane}'").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	return output
+}
+
+func (opr *oprResource) createConfigmapFromFile(oc *exutil.CLI, filepath []string) {
+	var (
+		output string
+		err    error
+	)
+	output, err = oc.AsAdmin().WithoutNamespace().Run("get").Args(opr.kind, opr.name, "-n", opr.namespace).Output()
+	if strings.Contains(output, "NotFound") || strings.Contains(output, "No resources") || err != nil {
+		output, err = oc.AsAdmin().WithoutNamespace().Run("create").Args(opr.kind, opr.name, "--from-file="+filepath[0], "--from-file="+filepath[1], "-n", opr.namespace).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring(opr.name))
+		e2e.Logf("The configmap %v created successfully in %v", opr.name, opr.namespace)
+	} else {
+		e2e.Logf("The configmap %v has been created in %v", opr.name, opr.namespace)
 	}
 }
 
@@ -319,4 +353,76 @@ func assertSimpleKmodeOnNode(oc *exutil.CLI) {
 		}
 	})
 	exutil.AssertWaitPollNoErr(waitErr, "the simple-kmod not found")
+}
+
+//Encrypt and Decrypt Pull Secret for multi-build
+func createHash(key string) string {
+	hasher := md5.New()
+	hasher.Write([]byte(key))
+	return hex.EncodeToString(hasher.Sum(nil))
+}
+
+func encryptStr(data []byte, passphrase string) []byte {
+	block, _ := aes.NewCipher([]byte(createHash(passphrase)))
+	gcm, err := cipher.NewGCM(block)
+	o.Expect(err).NotTo(o.HaveOccurred())
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err = io.ReadFull(rand.Reader, nonce); err != nil {
+		o.Expect(err).NotTo(o.HaveOccurred())
+	}
+	ciphertext := gcm.Seal(nonce, nonce, data, nil)
+	return ciphertext
+}
+
+func decryptStr(data []byte, passphrase string) []byte {
+	key := []byte(createHash(passphrase))
+	block, err := aes.NewCipher(key)
+	o.Expect(err).NotTo(o.HaveOccurred())
+	gcm, err := cipher.NewGCM(block)
+	o.Expect(err).NotTo(o.HaveOccurred())
+	nonceSize := gcm.NonceSize()
+	nonce, ciphertext := data[:nonceSize], data[nonceSize:]
+	plaintext, err := gcm.Open(nil, nonce, ciphertext, nil)
+	o.Expect(err).NotTo(o.HaveOccurred())
+	return plaintext
+}
+
+func encryptFile(filename string, data []byte, passphrase string) {
+	f, _ := os.Create(filename)
+	defer f.Close()
+	f.Write(encryptStr(data, passphrase))
+}
+
+func decryptFile(filename string, passphrase string) []byte {
+	//Auto Close File by os.Readfile
+	data, _ := ioutil.ReadFile(filename)
+	return decryptStr(data, passphrase)
+}
+
+// Base64 Decode
+func BASE64DecodeStr(src string) string {
+	plaintext, err := base64.StdEncoding.DecodeString(src)
+	if err != nil {
+		return ""
+	}
+	return string(plaintext)
+}
+
+//Create docker config for multi-build
+type secretResource struct {
+	name       string
+	namespace  string
+	configjson string
+	template   string
+}
+
+func (secretRes *secretResource) createIfNotExist(oc *exutil.CLI) {
+	output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("secret", secretRes.name, "-n", secretRes.namespace).Output()
+	if strings.Contains(output, "NotFound") || strings.Contains(output, "No resources") || err != nil {
+		e2e.Logf(fmt.Sprintf("No secret in project: %s, create one: %s", secretRes.namespace, secretRes.name))
+		err = applyResource(oc, "--ignore-unknown-parameters=true", "-f", secretRes.template, "-p", "CONFIGJSON="+secretRes.configjson, "NAMESPACE="+secretRes.namespace)
+		o.Expect(err).NotTo(o.HaveOccurred())
+	} else {
+		e2e.Logf(fmt.Sprintf("Already exist %v in project: %s", secretRes.name, secretRes.namespace))
+	}
 }
