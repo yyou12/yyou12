@@ -184,7 +184,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging operators upgrade testing", 
 	})
 
 	// author: qitang@redhat.com
-	g.It("CPaasrunOnly-Author:qitang-High-44983-Logging auto upgrade in minor version[Disruptive][Slow]", func() {
+	g.It("Longduration-CPaasrunOnly-Author:qitang-High-44983-Logging auto upgrade in minor version[Disruptive][Slow]", func() {
 		var targetchannel = "stable"
 		var collector string
 		var oh OperatorHub
@@ -246,7 +246,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging operators upgrade testing", 
 			o.Expect(err).NotTo(o.HaveOccurred())
 			//add workaround for bz 2002276
 			_ = oc.AsAdmin().WithoutNamespace().Run("delete").Args("pod", "-n", "openshift-marketplace", "-l", "olm.catalogSource=qe-app-registry").Execute()
-			resource{"subscription", preCLO.PackageName, preCLO.Namespace}.assertResourceStatus(oc, "jsonpath={.status.currentCSV}", currentCloCSV)
+			checkResource(oc, true, true, currentCloCSV, []string{"sub", preCLO.PackageName, "-n", preCLO.Namespace, "-ojsonpath={.status.currentCSV}"})
 			WaitForDeploymentPodsToBeReady(oc, preCLO.Namespace, preCLO.OperatorName)
 			upgraded = true
 		}
@@ -256,7 +256,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging operators upgrade testing", 
 			o.Expect(err).NotTo(o.HaveOccurred())
 			//add workaround for bz 2002276
 			_ = oc.AsAdmin().WithoutNamespace().Run("delete").Args("pod", "-n", "openshift-marketplace", "-l", "olm.catalogSource=qe-app-registry").Execute()
-			resource{"subscription", preEO.PackageName, preEO.Namespace}.assertResourceStatus(oc, "jsonpath={.status.currentCSV}", currentEoCSV)
+			checkResource(oc, true, true, currentEoCSV, []string{"sub", preEO.PackageName, "-n", preEO.Namespace, "-ojsonpath={.status.currentCSV}"})
 			WaitForDeploymentPodsToBeReady(oc, preEO.Namespace, preEO.OperatorName)
 			upgraded = true
 		}
@@ -264,6 +264,97 @@ var _ = g.Describe("[sig-openshift-logging] Logging operators upgrade testing", 
 		if upgraded {
 			g.By("waiting for the EFK pods to be ready after upgrade")
 			WaitForEFKPodsToBeReady(oc, cloNS)
+			checkResource(oc, true, true, "green", []string{"elasticsearches.logging.openshift.io", "elasticsearch", "-n", preCLO.Namespace, "-ojsonpath={.status.cluster.status}"})
+			//check PVC count, it should be equal to ES node count
+			pvc, _ := oc.AdminKubeClient().CoreV1().PersistentVolumeClaims(cloNS).List(metav1.ListOptions{LabelSelector: "logging-cluster=elasticsearch"})
+			o.Expect(len(pvc.Items) == 3).To(o.BeTrue())
+
+			g.By("checking if the fluentd can collect logs after upgrading")
+			oc.SetupProject()
+			app_proj := oc.Namespace()
+			jsonLogFile := exutil.FixturePath("testdata", "logging", "generatelog", "container_json_log_template.json")
+			err = oc.WithoutNamespace().Run("new-app").Args("-n", app_proj, "-f", jsonLogFile).Execute()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			prePodList, err := oc.AdminKubeClient().CoreV1().Pods(cloNS).List(metav1.ListOptions{LabelSelector: "es-node-master=true"})
+			o.Expect(err).NotTo(o.HaveOccurred())
+			waitForProjectLogsAppear(oc, cloNS, prePodList.Items[0].Name, app_proj, "app-00")
 		}
+	})
+
+	// author: qitang@redhat.com
+	g.It("Longduration-CPaasrunOnly-Author:qitang-Medium-40508-upgrade from prior version to current version[Serial][Slow]", func() {
+		// to add logging 5.2, create a new catalog source with image: quay.io/openshift-qe-optional-operators/ocp4-index:latest
+		catsrcTemplate := exutil.FixturePath("testdata", "logging", "subscription", "catsrc.yaml")
+		catsrc := resource{"catsrc", "logging-upgrade-" + getRandomString(), "openshift-marketplace"}
+		defer catsrc.clear(oc)
+		catsrc.applyFromTemplate(oc, "-f", catsrcTemplate, "-n", catsrc.namespace, "-p", "NAME="+catsrc.name, "-p", "IMAGE=quay.io/openshift-qe-optional-operators/ocp4-index:latest")
+		waitForPodReadyWithLabel(oc, catsrc.namespace, "olm.catalogSource="+catsrc.name)
+
+		// for 5.3, test upgrade from 5.2 to 5.3
+		preSource := CatalogSourceObjects{"stable-5.2", catsrc.name, catsrc.namespace}
+		g.By(fmt.Sprintf("Subscribe operators to %s channel", preSource.Channel))
+		preCLO := SubscriptionObjects{clo, cloNS, SingleNamespaceOG, subTemplate, cloPackageName, preSource}
+		preEO := SubscriptionObjects{eo, eoNS, AllNamespaceOG, subTemplate, eoPackageName, preSource}
+		defer preCLO.uninstallLoggingOperator(oc)
+		preCLO.SubscribeLoggingOperators(oc)
+		defer preEO.uninstallLoggingOperator(oc)
+		preEO.SubscribeLoggingOperators(oc)
+
+		g.By("Deploy clusterlogging")
+		sc, err := getStorageClassName(oc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		instance := exutil.FixturePath("testdata", "logging", "clusterlogging", "cl-storage-template.yaml")
+		cl := resource{"clusterlogging", "instance", preCLO.Namespace}
+		defer cl.deleteClusterLogging(oc)
+		cl.createClusterLogging(oc, "-n", cl.namespace, "-f", instance, "-p", "NAMESPACE="+cl.namespace, "-p", "STORAGE_CLASS="+sc, "-p", "ES_NODE_COUNT=3", "-p", "REDUNDANCY_POLICY=SingleRedundancy")
+		esDeployNames := GetDeploymentsNameByLabel(oc, preCLO.Namespace, "cluster-name=elasticsearch")
+		for _, name := range esDeployNames {
+			WaitForDeploymentPodsToBeReady(oc, preCLO.Namespace, name)
+		}
+		WaitForDeploymentPodsToBeReady(oc, preCLO.Namespace, "kibana")
+		WaitForDaemonsetPodsToBeReady(oc, preCLO.Namespace, "fluentd")
+
+		//change channel, and wait for the new operators to be ready
+		var source = CatalogSourceObjects{"stable-5.3", "qe-app-registry", "openshift-marketplace"}
+		//change channel, and wait for the new operators to be ready
+		version := strings.Split(source.Channel, "-")[1]
+		g.By(fmt.Sprintf("upgrade CLO&EO to %s", source.Channel))
+		err = oc.AsAdmin().WithoutNamespace().Run("patch").Args("-n", cloNS, "sub/"+preCLO.PackageName, "-p", "{\"spec\": {\"channel\": \""+source.Channel+"\", \"source\": \""+source.SourceName+"\", \"sourceNamespace\": \""+source.SourceNamespace+"\"}}", "--type=merge").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = oc.AsAdmin().WithoutNamespace().Run("patch").Args("-n", eoNS, "sub/"+preEO.PackageName, "-p", "{\"spec\": {\"channel\": \""+source.Channel+"\", \"source\": \""+source.SourceName+"\", \"sourceNamespace\": \""+source.SourceNamespace+"\"}}", "--type=merge").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		//add workaround for bz 2002276
+		_ = oc.AsAdmin().WithoutNamespace().Run("delete").Args("pod", "-n", "openshift-marketplace", "-l", "olm.catalogSource="+source.SourceName).Execute()
+
+		checkResource(oc, true, false, version, []string{"sub", preCLO.PackageName, "-n", preCLO.Namespace, "-ojsonpath={.status.currentCSV}"})
+		cloCurrentCSV, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("sub", "-n", preCLO.Namespace, preCLO.PackageName, "-ojsonpath={.status.currentCSV}").Output()
+		resource{"csv", cloCurrentCSV, preCLO.Namespace}.WaitForResourceToAppear(oc)
+		checkResource(oc, true, true, "Succeeded", []string{"csv", cloCurrentCSV, "-n", preCLO.Namespace, "-ojsonpath={.status.phase}"})
+		WaitForDeploymentPodsToBeReady(oc, preCLO.Namespace, preCLO.OperatorName)
+
+		checkResource(oc, true, false, version, []string{"sub", preEO.PackageName, "-n", preEO.Namespace, "-ojsonpath={.status.currentCSV}"})
+		eoCurrentCSV, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("sub", "-n", preEO.Namespace, preEO.PackageName, "-ojsonpath={.status.currentCSV}").Output()
+		resource{"csv", eoCurrentCSV, preEO.Namespace}.WaitForResourceToAppear(oc)
+		checkResource(oc, true, true, "Succeeded", []string{"csv", eoCurrentCSV, "-n", preEO.Namespace, "-ojsonpath={.status.phase}"})
+		WaitForDeploymentPodsToBeReady(oc, preEO.Namespace, preEO.OperatorName)
+
+		g.By("waiting for the EFK pods to be ready after upgrade")
+		WaitForEFKPodsToBeReady(oc, cloNS)
+		checkResource(oc, true, true, "green", []string{"elasticsearches.logging.openshift.io", "elasticsearch", "-n", preCLO.Namespace, "-ojsonpath={.status.cluster.status}"})
+
+		//check PVC count, it should be equal to ES node count
+		pvc, _ := oc.AdminKubeClient().CoreV1().PersistentVolumeClaims(cloNS).List(metav1.ListOptions{LabelSelector: "logging-cluster=elasticsearch"})
+		o.Expect(len(pvc.Items) == 3).To(o.BeTrue())
+
+		g.By("checking if the fluentd can collect logs after upgrading")
+		oc.SetupProject()
+		app_proj := oc.Namespace()
+		jsonLogFile := exutil.FixturePath("testdata", "logging", "generatelog", "container_json_log_template.json")
+		err = oc.WithoutNamespace().Run("new-app").Args("-n", app_proj, "-f", jsonLogFile).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		prePodList, err := oc.AdminKubeClient().CoreV1().Pods(cloNS).List(metav1.ListOptions{LabelSelector: "es-node-master=true"})
+		o.Expect(err).NotTo(o.HaveOccurred())
+		waitForProjectLogsAppear(oc, cloNS, prePodList.Items[0].Name, app_proj, "app-00")
 	})
 })

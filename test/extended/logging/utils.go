@@ -193,7 +193,9 @@ func (so *SubscriptionObjects) uninstallLoggingOperator(oc *exutil.CLI) {
 	resource{"subscription", so.PackageName, so.Namespace}.clear(oc)
 	_ = oc.AsAdmin().WithoutNamespace().Run("delete").Args("-n", so.Namespace, "csv", "--all").Execute()
 	resource{"operatorgroup", so.PackageName, so.Namespace}.clear(oc)
-	DeleteNamespace(oc, so.Namespace)
+	if so.Namespace != "openshift-logging" && so.Namespace != "openshift-operators-redhat" && !strings.HasPrefix(so.Namespace, "e2e-test-") {
+		DeleteNamespace(oc, so.Namespace)
+	}
 }
 
 func (so *SubscriptionObjects) getInstalledCSV(oc *exutil.CLI) string {
@@ -213,12 +215,11 @@ func WaitForDeploymentPodsToBeReady(oc *exutil.CLI, namespace string, name strin
 			}
 			return false, err
 		}
-		if int(deployment.Status.AvailableReplicas) == int(deployment.Status.Replicas) {
-			replicas := int(deployment.Status.Replicas)
-			e2e.Logf("Deployment %s available (%d/%d)\n", name, replicas, replicas)
+		if deployment.Status.AvailableReplicas == *deployment.Spec.Replicas && deployment.Status.UpdatedReplicas == *deployment.Spec.Replicas {
+			e2e.Logf("Deployment %s available (%d/%d)\n", name, deployment.Status.AvailableReplicas, *deployment.Spec.Replicas)
 			return true, nil
 		} else {
-			e2e.Logf("Waiting for full availability of %s deployment (%d/%d)\n", name, deployment.Status.AvailableReplicas, deployment.Status.Replicas)
+			e2e.Logf("Waiting for full availability of %s deployment (%d/%d)\n", name, deployment.Status.AvailableReplicas, *deployment.Spec.Replicas)
 			return false, nil
 		}
 
@@ -237,14 +238,42 @@ func WaitForDaemonsetPodsToBeReady(oc *exutil.CLI, ns string, name string) {
 			}
 			return false, err
 		}
-		if int(daemonset.Status.NumberReady) == int(daemonset.Status.DesiredNumberScheduled) {
+		if daemonset.Status.NumberReady == daemonset.Status.DesiredNumberScheduled && daemonset.Status.UpdatedNumberScheduled == daemonset.Status.DesiredNumberScheduled {
 			return true, nil
+		} else {
+			e2e.Logf("Waiting for full availability of %s daemonset (%d/%d)\n", name, daemonset.Status.NumberReady, daemonset.Status.DesiredNumberScheduled)
+			return false, nil
 		}
-		e2e.Logf("Waiting for full availability of %s daemonset (%d/%d)\n", name, daemonset.Status.NumberReady, daemonset.Status.DesiredNumberScheduled)
-		return false, nil
 	})
-	e2e.Logf("Daemonset %s is available\n", name)
 	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("Daemonset %s is not availabile", name))
+	e2e.Logf("Daemonset %s is available\n", name)
+}
+
+func waitForPodReadyWithLabel(oc *exutil.CLI, ns string, label string) {
+	err := wait.Poll(3*time.Second, 180*time.Second, func() (done bool, err error) {
+		pods, err := oc.AdminKubeClient().CoreV1().Pods(ns).List(metav1.ListOptions{LabelSelector: label})
+		if err != nil {
+			if apierrors.IsNotFound(err) {
+				e2e.Logf("Waiting for availability of pod with label %s\n", label)
+				return false, nil
+			}
+			return false, err
+		}
+		ready := true
+		for _, pod := range pods.Items {
+			for _, containerStatus := range pod.Status.ContainerStatuses {
+				if !containerStatus.Ready {
+					ready = false
+					break
+				}
+			}
+		}
+		if !ready {
+			e2e.Logf("Waiting for pod with label %s to be ready...\n", label)
+		}
+		return ready, nil
+	})
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("The pod with label %s is not availabile", label))
 }
 
 //GetDeploymentsNameByLabel retruns a list of deployment name which have specific labels
@@ -394,7 +423,7 @@ func DeleteNamespace(oc *exutil.CLI, ns string) {
 		}
 	}
 	o.Expect(err).NotTo(o.HaveOccurred())
-	err = wait.Poll(3*time.Second, 120*time.Second, func() (bool, error) {
+	err = wait.Poll(3*time.Second, 180*time.Second, func() (bool, error) {
 		_, err := oc.AdminKubeClient().CoreV1().Namespaces().Get(ns, metav1.GetOptions{})
 		if err != nil {
 			if apierrors.IsNotFound(err) {
@@ -406,7 +435,7 @@ func DeleteNamespace(oc *exutil.CLI, ns string) {
 			return false, nil
 		}
 	})
-	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("Namespace %s is not deleted in 2 minutes", ns))
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("Namespace %s is not deleted in 3 minutes", ns))
 }
 
 func WaitForIMCronJobToAppear(oc *exutil.CLI, ns string, name string) {
@@ -485,7 +514,7 @@ func getStorageClassName(oc *exutil.CLI) (string, error) {
 	return scName, err
 }
 
-//Assert the status of cluster logging components
+//Assert the status of a resource
 func (r resource) assertResourceStatus(oc *exutil.CLI, content string, exptdStatus string) {
 	err := wait.Poll(10*time.Second, 180*time.Second, func() (done bool, err error) {
 		clStatus, err := oc.AsAdmin().WithoutNamespace().Run("get").Args(r.kind, r.name, "-n", r.namespace, "-o", content).Output()
@@ -710,4 +739,36 @@ func (certs certsConf) generateCerts(keysPath string) {
 	generateCertsSH := exutil.FixturePath("testdata", "logging", "external-log-stores", "cert_generation.sh")
 	err := exec.Command("sh", generateCertsSH, keysPath, certs.namespace, certs.serverName).Run()
 	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+//expect: true means we want the resource contain/compare with the expectedContent, false means the resource is expected not to compare with/contain the expectedContent;
+//compare: true means compare the expectedContent with the resource content, false means check if the resource contains the expectedContent;
+//args are the arguments used to execute command `oc.AsAdmin.WithoutNamespace().Run("get").Args(args...).Output()`;
+func checkResource(oc *exutil.CLI, expect bool, compare bool, expectedContent string, args []string) {
+	err := wait.Poll(10*time.Second, 180*time.Second, func() (done bool, err error) {
+		output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args(args...).Output()
+		if err != nil {
+			return false, err
+		}
+		if compare {
+			res := strings.Compare(output, expectedContent)
+			if (res == 0 && expect) || (res != 0 && !expect) {
+				return true, nil
+			} else {
+				return false, nil
+			}
+		} else {
+			res := strings.Contains(output, expectedContent)
+			if (res && expect) || (!res && !expect) {
+				return true, nil
+			} else {
+				return false, nil
+			}
+		}
+	})
+	if expect {
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("The content doesn't match/contain %s", expectedContent))
+	} else {
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("The %s still exists in the resource", expectedContent))
+	}
 }
