@@ -219,9 +219,8 @@ if [ "X${LAUNCHID}X" != "XX" ]; then
     PROFILENAME=""
   fi
 
-  # rptoken=`cat ${WORKSPACE}"/internal/config/credentials/openshift-qe-reportportal.json" | jq  -r ".ginkgo_rp_token"`
-  rpmmtoken=`cat ${WORKSPACE}"/private/secrets/rp/openshift-qe-reportportal.json" | jq  -r ".ginkgo_rp_mmtoken"`
-  rppmtoken=`cat ${WORKSPACE}"/private/secrets/rp/openshift-qe-reportportal.json" | jq  -r ".ginkgo_rp_pmtoken"`
+  rpmmtoken=`cat /root/rp.key | jq  -r ".ginkgo_rp_mmtoken"`
+  rppmtoken=`cat /root/rp.key | jq  -r ".ginkgo_rp_pmtoken"`
   eval rm -fr "*.zip" "import-*.xml"
   python3 handleresult.py -a split -i ${newresultfile}
   for subteamfile in `ls import-*.xml`; do

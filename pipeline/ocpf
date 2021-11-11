@@ -15,8 +15,8 @@ cd ${WORKBUILDDIR}
 rm -fr reportportal.py && eval cp -fr ${WORKSPACE}"/private/pipeline/reportportal.py" .
 rm -fr 00000000-00.zip && eval cp -fr ${WORKSPACE}"/private/pipeline/00000000-00.zip" .
 
-rpmmtoken=`cat ${WORKSPACE}"/private/secrets/rp/openshift-qe-reportportal.json" | jq  -r ".ginkgo_rp_mmtoken"`
-rppmtoken=`cat ${WORKSPACE}"/private/secrets/rp/openshift-qe-reportportal.json" | jq  -r ".ginkgo_rp_pmtoken"`
+rpmmtoken=`cat /root/rp.key | jq  -r ".ginkgo_rp_mmtoken"`
+rppmtoken=`cat /root/rp.key | jq  -r ".ginkgo_rp_pmtoken"`
 subteam="OLM"
 eval cp -fr 00000000-00.zip "00000000-0${LAUNCHVERSION}.zip"
 # only handle ci profiles

@@ -91,8 +91,9 @@ E0628 22:11:41.236497   25735 test_context.go:447] Failed to setup provider conf
 ```
 **You need to `export` the below environment variable before running test on GCP.**
 ```
-$ export GOOGLE_APPLICATION_CREDENTIALS=`pwd`/secrets/gce/aos-qe-sa.json
+$ export GOOGLE_APPLICATION_CREDENTIALS=<path to your gce credential>
 ```
+Or you also could take ginkgo-test job to execute your case.
 #### Update the GCP SA
 You may get `400 Bad Request` error even if you have `export` the above values. This error means it's time to update the SA.
 ```

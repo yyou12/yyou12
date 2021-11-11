@@ -115,8 +115,8 @@ get_build_type
 cd ${WORKBUILDDIR}
 rm -fr reportportal.py && eval cp -fr ${WORKSPACE}"/private/pipeline/reportportal.py" .
 
-rpmmtoken=`cat ${WORKSPACE}"/private/secrets/rp/openshift-qe-reportportal.json" | jq  -r ".ginkgo_rp_mmtoken"`
-rppmtoken=`cat ${WORKSPACE}"/private/secrets/rp/openshift-qe-reportportal.json" | jq  -r ".ginkgo_rp_pmtoken"`
+rpmmtoken=`cat /root/rp.key | jq  -r ".ginkgo_rp_mmtoken"`
+rppmtoken=`cat /root/rp.key | jq  -r ".ginkgo_rp_pmtoken"`
 ret=`python3 reportportal.py -a getfcd -l "${LAUNCHID}" -ss "${ORIGSCENARIO}"  -bn "${BUILDNUM}""${buildtype}""_${JOB_BASE_NAME}" -t "${rpmmtoken}" -ta "${rppmtoken}" 2>&1 || true`
 # echo -e "\\\n"${ret}"\\\n"
 

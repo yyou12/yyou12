@@ -26,7 +26,8 @@ class UpdateResultonRP:
             # "NI": "si_vf6zbppgm81f"
         }
         if args.token == "":
-            with open("secrets/rp/openshift-qe-reportportal.json") as f:
+            # currently it is dsiable
+            with open("/root/rp.key") as f:
                 token_f = yaml.safe_load(f)
                 args.token = token_f["ginkgo_rp_mmtoken"]
         urllib3.disable_warnings(category=InsecureRequestWarning)
