@@ -8,6 +8,13 @@ WORKDIR=$3
 mkdir -p $WORKDIR
 CURRENTDIR=`pwd`
 
+http_proxy_tmp=${http_proxy}
+https_proxy_tmp=${https_proxy}
+if [[ "x${http_proxy}x" != "xx" ]] || [[ "x${https_proxy}x" != "xx" ]]; then
+    echo "unset http_proxy https_proxy"
+    unset http_proxy https_proxy
+fi
+
 sudo rm -rf /tmp/fixture-testdata-*
 rm -rf /tmp/*
 podman rm -a -f
@@ -37,6 +44,11 @@ sudo yum remove 'origin*.x86_64' 'atomic-openshift*.x86_64' 'openshift-clients*.
 sudo yum -y install openshift-clients jq patch docker
 sudo yum clean all -y
 sudo pip3 install requests
+if [[ "x${http_proxy_tmp}x" != "xx" ]] || [[ "x${https_proxy_tmp}x" != "xx" ]]; then
+    echo "set env http_proxy https_proxy"
+    export http_proxy=${http_proxy_tmp}
+    export https_proxy=${https_proxy_tmp}
+fi
 echo "oc version:"
 oc version
 retVal=$?
@@ -47,13 +59,8 @@ fi
 
 #get operatorSDK
 if echo $INSTALL_TOOLS | grep -i 'operatorSDK' > /dev/null; then
+    unset http_proxy https_proxy
     echo "------------------get operatorSDK------------------------"
-    http_proxy_tmp=${http_proxy}
-    https_proxy_tmp=${https_proxy}
-    if [[ "x${http_proxy}x" != "xx" ]] || [[ "x${https_proxy}x" != "xx" ]]; then
-        echo "unset http_proxy https_proxy"
-        unset http_proxy https_proxy
-    fi
     mkdir ${WORKSPACE}/osdk
     BUILD_CMD="sudo make build"
     if [ "${JENKINS_AGENT}" == 'goc410' ]; then
@@ -66,11 +73,6 @@ if echo $INSTALL_TOOLS | grep -i 'operatorSDK' > /dev/null; then
     cd ${WORKSPACE}/osdk
     echo "buid command is [${BUILD_CMD}]"
     eval "${BUILD_CMD}"
-    if [[ "x${http_proxy_tmp}x" != "xx" ]] || [[ "x${https_proxy_tmp}x" != "xx" ]]; then
-        echo "set env http_proxy https_proxy"
-        export http_proxy=${http_proxy_tmp}
-        export https_proxy=${https_proxy_tmp}
-    fi
     ls -lrt build/
     sudo mv -f build/* $WORKDIR
     sudo rm -fr ../osdk
@@ -86,6 +88,11 @@ fi
 if echo $INSTALL_TOOLS | grep -i 'opm' > /dev/null; then
     echo "------------------get opm------------------------"
     echo $KUBECONFIG
+    if [[ "x${http_proxy_tmp}x" != "xx" ]] || [[ "x${https_proxy_tmp}x" != "xx" ]]; then
+        echo "set env http_proxy https_proxy"
+        export http_proxy=${http_proxy_tmp}
+        export https_proxy=${https_proxy_tmp}
+    fi
     oc extract secret/pull-secret -n openshift-config  --confirm
     if cat .dockerconfigjson | grep 'registry.ci.openshift.org' > /dev/null; then
         NIGHTLYVERSION=`oc get clusterversion | grep version | awk '{print $2}'`
@@ -95,6 +102,7 @@ if echo $INSTALL_TOOLS | grep -i 'opm' > /dev/null; then
         fi
         ocpimaage=`oc adm release info registry.ci.openshift.org/ocp/release:${NIGHTLYVERSION} --image-for=operator-registry -a .dockerconfigjson`
         echo ${ocpimaage}
+        unset http_proxy https_proxy
         podman pull ${ocpimaage} --authfile  .dockerconfigjson
         rm -f .dockerconfigjson
         instanceID=`podman create ${ocpimaage}`
@@ -104,8 +112,10 @@ if echo $INSTALL_TOOLS | grep -i 'opm' > /dev/null; then
         podman cp ${instanceID}:/bin/registry-server $WORKDIR
         podman rm  -a
         podman rmi  -a
-    else
+    fi
+    if [ ! -f "$WORKDIR/opm" ]; then
         echo "get latest opm"
+        unset http_proxy https_proxy
         NIGHTLYVERSIOM=${NIGHTLYFLAG:0:1}.${NIGHTLYFLAG:1:${#NIGHTLYFLAG}}
         wget -nv https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp-dev-preview/latest-$NIGHTLYVERSIOM/opm-linux.tar.gz
         tar -xzvf opm-linux.tar.gz
@@ -120,6 +130,13 @@ if echo $INSTALL_TOOLS | grep -i 'opm' > /dev/null; then
         exit 1
     fi
 fi
+
 cp -f ~/.docker/auto/config.json ~/.docker
 podman login quay.io 
 cd $CURRENTDIR
+
+if [[ "x${http_proxy_tmp}x" != "xx" ]] || [[ "x${https_proxy_tmp}x" != "xx" ]]; then
+    echo "set env http_proxy https_proxy"
+    export http_proxy=${http_proxy_tmp}
+    export https_proxy=${https_proxy_tmp}
+fi
