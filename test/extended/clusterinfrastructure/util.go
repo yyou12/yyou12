@@ -10,7 +10,8 @@ import (
 )
 
 const (
-	machineAPINamespace = "openshift-machine-api"
+	machineAPINamespace      = "openshift-machine-api"
+	machineApproverNamespace = "openshift-cluster-machine-approver"
 )
 
 func applyResourceFromTemplate(oc *exutil.CLI, parameters ...string) error {
