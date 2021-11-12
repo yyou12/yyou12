@@ -37,13 +37,16 @@ var _ = g.Describe("[sig-etcd] ETCD", func() {
 
 		g.By("Install and run etcd benchmark")
 
-		_, err := exutil.RemoteShPod(oc, "openshift-etcd", etcdPodList[0], "dnf", "install", "-y", "git", "go")
+		_, err := exutil.RemoteShPod(oc, "openshift-etcd", etcdPodList[0], "dnf", "install", "-y", "git", "golang")
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		_, err = exutil.RemoteShPod(oc , "openshift-etcd", etcdPodList[0], "go", "get", "go.etcd.io/etcd/tools/benchmark")
+		_, err = exutil.RemoteShPodWithBash(oc , "openshift-etcd", etcdPodList[0], "cd /root && git clone --single-branch --branch release-3.5 https://github.com/etcd-io/etcd.git")
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		cmd :=	"/root/go/bin/benchmark put " +
+		_, err = exutil.RemoteShPodWithBash(oc , "openshift-etcd", etcdPodList[0], "cd /root/etcd/tools/benchmark && go build")
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		cmd :=	"/root/etcd/tools/benchmark/benchmark put " +
 			"--cacert /etc/kubernetes/static-pod-certs/configmaps/etcd-peer-client-ca/ca-bundle.crt " +
 			"--cert /etc/kubernetes/static-pod-certs/secrets/etcd-all-certs/etcd-peer-$(hostname).*crt " +
 			"--key /etc/kubernetes/static-pod-certs/secrets/etcd-all-certs/etcd-peer-$(hostname).*key " +
