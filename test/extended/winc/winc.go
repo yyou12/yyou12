@@ -316,19 +316,25 @@ var _ = g.Describe("[sig-windows] Windows_Containers", func() {
 		namespace := "winc-37096"
 		winVersion := "2004"
 		machinesetName := "win2004"
-		machineset2004 := getMachineset(oc, iaasPlatform, winVersion, machinesetName)
+		machineset2004FileName := "aws_windows_machineset.yaml"
+		if iaasPlatform == "azure" {
+			machineset2004FileName = "azure_windows_machineset.yaml"
+		}
+		machineset2004 := getMachineset(oc, iaasPlatform, winVersion, machinesetName, machineset2004FileName)
 		defer oc.WithoutNamespace().Run("delete").Args("machineset", machineset2004, "-n", "openshift-machine-api").Output()
-		createMachineset(oc, "availWindowsMachineSet2004", machineset2004)
+		createMachineset(oc, "availWindowsMachineSetwin2004", machineset2004)
+		waitForMachinesetReady(oc, machineset2004, 10, 1)
 		// Here we fetch machine IP from machineset
 		machineIP := getIPAddressesFromMachineset(oc, machineset2004, iaasPlatform)
 		nodeName := getNodeNameFromIP(oc, machineIP[0], iaasPlatform)
 		// here we update the runtime class file with the Kernel ID of Windows 2004
 		defer oc.WithoutNamespace().Run("delete").Args("runtimeclass", "windows-server-ver-2004")
 		createRuntimeClass(oc, "runtime-class.yaml", nodeName)
-		// here we provision 1 webservers with a runtime class ID, up to 30 minutes due to pull image on AWS
+		// here we provision 1 webservers with a runtime class ID, up to 20 minutes due to pull image on AWS
+		instanceDeadTime := 20
 		defer deleteProject(oc, namespace)
-		if !createWinWorkloadsSimple(oc, namespace, "windows_webserver_runtime_class.yaml") {
-			e2e.Failf("Windows workload is not ready after waiting up to 30 minutes ...")
+		if !createWinWorkloadsSimple(oc, namespace, "windows_webserver_runtime_class.yaml", instanceDeadTime) {
+			e2e.Failf("Windows workload is not ready after waiting up to %v minutes ...", instanceDeadTime)
 		}
 		// here we scale the deployment to 5 workloads
 		e2e.Logf("-------- Scaling up workloads to 5 -------------")
@@ -343,6 +349,33 @@ var _ = g.Describe("[sig-windows] Windows_Containers", func() {
 		}
 	})
 
+	g.It("Author:rrasouli-Critical-42496-byoh-Configure Windows instance with DNS [Slow][Disruptive]", func() {
+		namespace := "winc-42496"
+		user := "Administrator"
+		winVersion := "2019"
+		machinesetName := "byoh"
+		machinesetFileName := "aws_byoh_machineset.yaml"
+
+		if iaasPlatform == "azure" {
+			machinesetFileName = "azure_byoh_machineset.yaml"
+			user = "capi"
+		}
+		machineset := getMachineset(oc, iaasPlatform, winVersion, machinesetName, machinesetFileName)
+		defer oc.WithoutNamespace().Run("delete").Args("machineset", machineset, "-n", "openshift-machine-api").Output()
+		createMachineset(oc, "availWindowsMachineSetbyoh", machineset)
+		addressType := "dns"
+		address := fetchAddress(oc, addressType, machineset)
+		e2e.Logf("--------- Address is ------ %v", address)
+		setConfigmap(oc, address[0], user, "config-map.yaml")
+		defer oc.WithoutNamespace().Run("delete").Args("configmap", "windows-instances", "-n", "openshift-windows-machine-config-operator").Output()
+		e2e.Logf("--------- Machineset is ------ %v", machineset)
+		waitForMachinesetReady(oc, machineset, 10, 1)
+		instanceDeadTime := 5
+		defer deleteProject(oc, namespace)
+		if !createWinWorkloadsSimple(oc, namespace, "windows_web_server.yaml", instanceDeadTime) {
+			e2e.Failf("Windows workload is not ready after waiting up to %v minutes ...", instanceDeadTime)
+		}
+	})
 	// author rrasouli@redhat.com
 	g.It("Author:rrasouli-High-39451-Access Windows workload through clusterIP [Slow][Disruptive]", func() {
 		namespace := "winc-39451"
@@ -879,14 +912,14 @@ func createWindowsWorkload(oc *exutil.CLI, namespace string) {
 	}
 }
 
-func createWinWorkloadsSimple(oc *exutil.CLI, namespace string, workloadsFile string) bool {
+func createWinWorkloadsSimple(oc *exutil.CLI, namespace string, workloadsFile string, deadTime int) bool {
 	retcode := false
 	oc.WithoutNamespace().Run("new-project").Args(namespace).Output()
 	windowsWebServer := getFileContent("winc", workloadsFile)
 	ioutil.WriteFile("availWindowsWebServer2004", []byte(windowsWebServer), 0644)
 	oc.WithoutNamespace().Run("create").Args("-f", "availWindowsWebServer2004", "-n", namespace).Output()
 	// Wait up to 30 minutes for Windows workload ready
-	poolErr := wait.Poll(15*time.Second, 20*time.Minute, func() (bool, error) {
+	poolErr := wait.Poll(15*time.Second, time.Duration(deadTime)*time.Minute, func() (bool, error) {
 		retcode = true
 		return checkWindowsWorkloadCreated(oc, namespace), nil
 	})
@@ -1025,12 +1058,12 @@ func truncatedVersion(s string) string {
 	str = str[:2]
 	return strings.Join(str[:], ".")
 }
-func getMachineset(oc *exutil.CLI, iaasPlatform, winVersion string, machineSetName string) string {
+func getMachineset(oc *exutil.CLI, iaasPlatform, winVersion string, machineSetName string, fileName string) string {
 
 	windowsMachineSet := ""
 	windowsMachineSetName := ""
 	if iaasPlatform == "aws" {
-		windowsMachineSet = getFileContent("winc", "aws_windows_machineset.yaml")
+		windowsMachineSet = getFileContent("winc", fileName)
 		infrastructureID, err := oc.WithoutNamespace().Run("get").Args("infrastructure", "cluster", "-o=jsonpath={.status.infrastructureName}").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		region, err := oc.WithoutNamespace().Run("get").Args("infrastructure", "cluster", "-o=jsonpath={.status.platformStatus.aws.region}").Output()
@@ -1038,7 +1071,7 @@ func getMachineset(oc *exutil.CLI, iaasPlatform, winVersion string, machineSetNa
 		zone, err := oc.WithoutNamespace().Run("get").Args("machines", "-n", "openshift-machine-api", "-o=jsonpath={.items[0].metadata.labels.machine\\.openshift\\.io\\/zone}").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		// TODO, remove hard coded, default is server 2019
-		windowsAMI := "ami-04d560e8da6c12f81"
+		windowsAMI := "ami-06d96a43543089121"
 		if winVersion == "2004" {
 			windowsAMI = "ami-0d93b5fd197b5d399"
 		}
@@ -1066,25 +1099,28 @@ func getMachineset(oc *exutil.CLI, iaasPlatform, winVersion string, machineSetNa
 	} else {
 		e2e.Failf("IAAS platform: %s is not automated yet", iaasPlatform)
 	}
-	ioutil.WriteFile("availWindowsMachineSet2004", []byte(windowsMachineSet), 0644)
+	ioutil.WriteFile("availWindowsMachineSet"+machineSetName, []byte(windowsMachineSet), 0644)
 	return windowsMachineSetName
 }
 
 func createMachineset(oc *exutil.CLI, file string, machinesetName string) {
 	_, err := oc.WithoutNamespace().Run("create").Args("-f", file).Output()
 	o.Expect(err).NotTo(o.HaveOccurred())
-	pollErr := wait.Poll(15*time.Second, 10*time.Minute, func() (bool, error) {
+}
+
+func waitForMachinesetReady(oc *exutil.CLI, machinesetName string, deadTime int, expectedReplicas int) {
+	pollErr := wait.Poll(15*time.Second, time.Duration(deadTime)*time.Minute, func() (bool, error) {
 		msg, err := oc.WithoutNamespace().Run("get").Args("machineset", machinesetName, "-o=jsonpath={.status.readyReplicas}", "-n", "openshift-machine-api").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
-		if msg != "1" {
-			e2e.Logf("Windows machine is not provisioned yet and waiting up to 10 minutes ...")
+		if msg != strconv.Itoa(expectedReplicas) {
+			e2e.Logf("Windows machine is not provisioned yet and waiting up to %v minutes ...", deadTime)
 			return false, nil
 		}
 		e2e.Logf("Windows machine is provisioned")
 		return true, nil
 	})
 	if pollErr != nil {
-		e2e.Failf("Windows machine is not provisioned after waiting up to 15 minutes ...")
+		e2e.Failf("Windows machine is not provisioned after waiting up to %v minutes ...", deadTime)
 	}
 }
 
@@ -1140,4 +1176,42 @@ func checkLBConnectivity(attempts int, externalIP string) bool {
 		}
 	}
 	return retcode
+}
+
+func fetchAddress(oc *exutil.CLI, addressType string, machinesetName string) []string {
+
+	if addressType == "dns" {
+		addressType = "InternalDNS"
+	} else {
+		addressType = "InternalIP"
+	}
+	machineAddress := ""
+	poolErr := wait.Poll(5*time.Second, 30*time.Second, func() (bool, error) {
+		var err error
+		machineAddress, err = oc.WithoutNamespace().Run("get").Args("machine", "-ojsonpath={.items[?(@.metadata.labels.machine\\.openshift\\.io\\/cluster-api-machineset==\""+machinesetName+"\")].status.addresses[?(@.type==\""+addressType+"\")].address}", "-n", "openshift-machine-api").Output()
+		if err != nil {
+			e2e.Logf("trying next round")
+			return false, nil
+		}
+		if machineAddress == "" {
+			e2e.Logf("Did not get address, trying next round")
+			return false, nil
+		}
+		return true, nil
+	})
+	if poolErr != nil {
+		e2e.Failf("Failed to get address")
+	}
+	e2e.Logf("Machine Address is %v", machineAddress)
+	return strings.Split(string(machineAddress), " ")
+}
+
+func setConfigmap(oc *exutil.CLI, address string, administrator string, configMapFile string) {
+	configmap := ""
+	configmap = getFileContent("winc", configMapFile)
+	configmap = strings.ReplaceAll(configmap, "<address>", address)
+	configmap = strings.ReplaceAll(configmap, "<username>", administrator)
+	ioutil.WriteFile("configMapFile", []byte(configmap), 0644)
+	_, err := oc.WithoutNamespace().Run("create").Args("-f", "configMapFile").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
 }
