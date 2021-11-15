@@ -518,10 +518,10 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	// author: jiazha@redhat.com
 	// add `Serial` label since this etcd-operator are subscribed for cluster-scoped,
 	// that means may leads to other etcd-opertor subscription fail if in Parallel
-	g.It("ConnectedOnly-Author:jiazha-High-37826-use an PullSecret for the private Catalog Source image [Serial]", func() {
+	g.It("ConnectedOnly-VMonly-Author:jiazha-High-37826-use an PullSecret for the private Catalog Source image", func() {
 		g.By("1) Create a pull secert for CatalogSource")
 		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
-		dockerConfig := filepath.Join(buildPruningBaseDir, "dockerconfig.json")
+		dockerConfig := filepath.Join("/home", "cloud-user", ".docker", "auto", "config.json")
 		_, err := oc.AsAdmin().WithoutNamespace().Run("create").Args("-n", "openshift-marketplace", "secret", "generic", "secret-37826", fmt.Sprintf("--from-file=.dockerconfigjson=%s", dockerConfig), "--type=kubernetes.io/dockerconfigjson").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("-n", "openshift-marketplace", "secret", "secret-37826").Execute()
@@ -534,7 +534,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 			displayName: "OLM QE Operators",
 			publisher:   "Jian",
 			sourceType:  "grpc",
-			address:     "quay.io/olmqe/cs:private",
+			address:     "quay.io/olmqe/etcd-operator-private:0.9.4-index",
 			template:    csImageTemplate,
 			secret:      "secret-37826",
 		}
@@ -546,16 +546,25 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		newCheck("expect", asAdmin, withoutNamespace, compare, "READY", ok, []string{"catsrc", cs.name, "-n", "openshift-marketplace", "-o=jsonpath={.status..lastObservedState}"}).check(oc)
 
 		g.By("4) Install the etcdoperator v0.9.4 from this private image")
+		oc.SetupProject()
+		ogSingleTemplate := filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+		og := operatorGroupDescription{
+			name:      "og-37826",
+			namespace: oc.Namespace(),
+			template:  ogSingleTemplate,
+		}
+		og.createwithCheck(oc, itName, dr)
+
 		subTemplate := filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
 		sub := subscriptionDescription{
 			subName:                "sub-37826",
-			namespace:              "openshift-operators",
+			namespace:              oc.Namespace(),
 			catalogSourceName:      "cs-37826",
 			catalogSourceNamespace: "openshift-marketplace",
-			channel:                "clusterwide-alpha",
+			channel:                "alpha",
 			ipApproval:             "Automatic",
 			operatorPackage:        "etcd",
-			startingCSV:            "etcdoperator.v0.9.4-clusterwide",
+			startingCSV:            "etcdoperator.v0.9.4",
 			singleNamespace:        true,
 			template:               subTemplate,
 		}
