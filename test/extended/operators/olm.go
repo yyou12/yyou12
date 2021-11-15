@@ -8402,6 +8402,37 @@ var _ = g.Describe("[sig-operators] OLM on VM for an end user handle within a na
 
 	})
 
+	// author: jitli@redhat.com
+	g.It("ConnectedOnly-Author:jitli-Medium-43276-oc adm catalog mirror can mirror declaritive index images", func() {
+
+		indexImage := "quay.io/olmqe/etcd-index:dc-new"
+		operatorAllPath := "operators-all-manifests-" + getRandomString()
+		defer exec.Command("bash", "-c", "rm -fr ./"+operatorAllPath).Output()
+
+		g.By("mirror to localhost:5000")
+		output, err := oc.AsAdmin().WithoutNamespace().Run("adm", "catalog", "mirror").Args("--manifests-only", "--to-manifests="+operatorAllPath, indexImage, "localhost:5000").Output()
+
+		e2e.Logf(output)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring("no digest mapping available for quay.io/olmqe/etcd-bundle:dc, skip writing to ImageContentSourcePolicy"))
+		o.Expect(output).To(o.ContainSubstring("no digest mapping available for quay.io/olmqe/etcd-index:dc-new, skip writing to ImageContentSourcePolicy"))
+		o.Expect(output).To(o.ContainSubstring("wrote mirroring manifests"))
+
+		g.By("check mapping.txt to localhost:5000")
+		result, err := exec.Command("bash", "-c", "cat ./"+operatorAllPath+"/mapping.txt|grep -E \"localhost:5000/olmqe/etcd-bundle|localhost:5000/olmqe/etcd-index\"").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf("mapping result:%s", result)
+
+		o.Expect(result).To(o.ContainSubstring("quay.io/olmqe/etcd-bundle:dc=localhost:5000/olmqe/etcd-bundle:dc"))
+		o.Expect(result).To(o.ContainSubstring("quay.io/olmqe/etcd-index:dc-new=localhost:5000/olmqe/etcd-index:dc-new"))
+
+		g.By("check icsp yaml to localhost:5000")
+		result, err = exec.Command("bash", "-c", "cat ./"+operatorAllPath+"/imageContentSourcePolicy.yaml | grep \"localhost:5000\"").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf("icsp result:%s", result)
+		o.Expect(result).To(o.ContainSubstring("- localhost:5000/coreos/etcd-operator"))
+	})
+
 	// author: xzha@redhat.com
 	g.It("Author:xzha-ConnectedOnly-VMonly-Medium-25920-Expose bundle data from bundle image container", func() {
 		var (
