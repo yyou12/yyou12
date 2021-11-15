@@ -15,7 +15,7 @@ import (
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 )
 
-var _ = g.Describe("[sig-auth] Apiserver_and_Auth", func() {
+var _ = g.Describe("[sig-auth] Authentication", func() {
 	defer g.GinkgoRecover()
 
 	var oc = exutil.NewCLIWithoutNamespace("default")
@@ -227,4 +227,92 @@ var _ = g.Describe("[sig-auth] Apiserver_and_Auth", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 	})
 
+	// author: ytripath@redhat.com
+	g.It("CPaasrunOnly-Longduration-Author:ytripath-Medium-20804-Support ConfigMap injection controller [Disruptive] [Slow]", func() {
+		oc.SetupProject()
+
+		// Check the pod service-ca is running in namespace openshift-service-ca
+		podDetails, err := oc.AsAdmin().Run("get").WithoutNamespace().Args("po", "-n", "openshift-service-ca").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		matched, _ := regexp.MatchString("service-ca-.*Running", podDetails)
+		o.Expect(matched).Should(o.Equal(true))
+
+		// Create a configmap --from-literal and annotating it with service.beta.openshift.io/inject-cabundle=true
+		err = oc.Run("create").Args("configmap", "my-config", "--from-literal=key1=config1", "--from-literal=key2=config2").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = oc.Run("annotate").Args("configmap", "my-config", "service.beta.openshift.io/inject-cabundle=true").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		// wait for service-ca.crt to be created in configmap
+		err = wait.Poll(10*time.Second, 120*time.Second, func() (bool, error) {
+			output, err := oc.Run("get").Args("configmap", "my-config", `-o=json`).Output()
+			if err != nil {
+				e2e.Logf("Failed to get configmap, error: %s. Trying again", err)
+				return false, nil
+			}
+			if strings.Contains(output, "service-ca.crt") {
+				e2e.Logf("service-ca injected into configmap successfully\n")
+				return true, nil
+			}
+			return false, nil
+		})
+		exutil.AssertWaitPollNoErr(err, "service-ca.crt not found in configmap")
+
+		oldCert, err := oc.Run("get").Args("configmap", "my-config", `-o=jsonpath={.data.service-ca\.crt}`).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		// Delete secret signing-key in openshift-service-ca project
+		podOldUID, err := oc.AsAdmin().Run("get").WithoutNamespace().Args("po", "-n", "openshift-service-ca", "-o=jsonpath={.items[0].metadata.uid}").Output()
+		err = oc.AsAdmin().Run("delete").WithoutNamespace().Args("-n", "openshift-service-ca", "secret", "signing-key").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		defer func() {
+			// sleep for 200 seconds to make sure the pod is restarted
+			time.Sleep(200 * time.Second)
+			var podStatus string
+			err := wait.Poll(15*time.Second, 15*time.Minute, func() (bool, error) {
+				e2e.Logf("Check if all pods are in Completed or Running state across all namespaces")
+				podStatus, err = oc.AsAdmin().Run("get").WithoutNamespace().Args("po", "-A", `--field-selector=metadata.namespace!=openshift-kube-apiserver,status.phase==Pending`).Output()
+				o.Expect(err).NotTo(o.HaveOccurred())
+				e2e.Logf(podStatus)
+				if podStatus == "No resources found" {
+					// Sleep for 100 seconds then double-check if all pods are up and running
+					time.Sleep(100 * time.Second)
+					podStatus, err = oc.AsAdmin().Run("get").WithoutNamespace().Args("po", "-A", `--field-selector=metadata.namespace!=openshift-kube-apiserver,status.phase==Pending`).Output()
+					if err == nil {
+						if podStatus == "No resources found" {
+							e2e.Logf("No pending pods found")
+							return true, nil
+						}
+						return false, err
+					}
+				}
+				return false, err
+			})
+			exutil.AssertWaitPollNoErr(err, "These pods are still not back up after waiting for 15 minutes\n"+podStatus)
+		}()
+
+		// Waiting for the pod to be Ready, after several minutes(10 min ?) check the cert data in the configmap
+		g.By("Waiting for service-ca to be ready, then check if cert data is updated")
+		err = wait.Poll(15*time.Second, 5*time.Minute, func() (bool, error) {
+			podStatus, err := oc.AsAdmin().Run("get").WithoutNamespace().Args("po", "-n", "openshift-service-ca", `-o=jsonpath={.items[0].status.containerStatuses[0].ready}`).Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			podUID, err := oc.AsAdmin().Run("get").WithoutNamespace().Args("po", "-n", "openshift-service-ca", "-o=jsonpath={.items[0].metadata.uid}").Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			if podStatus == `true` && podOldUID != podUID {
+				// We need use AsAdmin() otherwise it will frequently hit "error: You must be logged in to the server (Unauthorized)"
+				// before the affected components finish pod restart after the secret deletion, like kube-apiserver, oauth-apiserver etc.
+				// Still researching if this is a bug
+				newCert, _ := oc.AsAdmin().Run("get").Args("configmap", "my-config", `-o=jsonpath={.data.service-ca\.crt}`).Output()
+				matched, _ := regexp.MatchString(oldCert, newCert)
+				if !matched {
+					g.By("Cert data has been updated")
+					return true, nil
+				}
+			}
+			return false, err
+		})
+		exutil.AssertWaitPollNoErr(err, "Cert data not updated after waiting for 5 mins")
+	})
 })
