@@ -1,6 +1,7 @@
 package mco
 
 import (
+	o "github.com/onsi/gomega"
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
 )
 
@@ -38,9 +39,30 @@ func (n *node) DebugNode(cmd ...string) (string, error) {
 	return exutil.DebugNode(n.oc, n.name, cmd...)
 }
 
-// GetAllNodes returns a list of Node structs with the nodes found in this list
-func (nl *nodeList) GetAllNodes() ([]node, error) {
-	allNodeResources, err := nl.GetAllResources()
+func (n *node) AddCustomLabel(label string) (string, error) {
+	return exutil.AddCustomLabelToNode(n.oc, n.name, label)
+
+}
+
+func (n *node) DeleteCustomLabel(label string) (string, error) {
+	return exutil.DeleteCustomLabelFromNode(n.oc, n.name, label)
+
+}
+
+func (n *node) GetMachineConfigDaemon() string {
+	machineConfigDaemon, err := exutil.GetPodName(n.oc, "openshift-machine-config-operator", "k8s-app=machine-config-daemon", n.name)
+	o.Expect(err).NotTo(o.HaveOccurred())
+	return machineConfigDaemon
+}
+
+// GetNodeHostname returns the cluster node hostname
+func (n *node) GetNodeHostname() (string, error) {
+	return exutil.GetNodeHostname(n.oc, n.name)
+}
+
+//GetAll returns a []node list with all existing nodes
+func (nl *nodeList) GetAll() ([]node, error) {
+	allNodeResources, err := nl.ResourceList.GetAll()
 	if err != nil {
 		return nil, err
 	}
@@ -57,12 +79,42 @@ func (nl *nodeList) GetAllNodes() ([]node, error) {
 func (nl nodeList) GetAllMasterNodes() ([]node, error) {
 	nl.ByLabel("node-role.kubernetes.io/master=")
 
-	return nl.GetAllNodes()
+	return nl.GetAll()
 }
 
 // GetAllWorkerNodes returns a list of worker Nodes
 func (nl nodeList) GetAllWorkerNodes() ([]node, error) {
 	nl.ByLabel("node-role.kubernetes.io/worker=")
 
-	return nl.GetAllNodes()
+	return nl.GetAll()
+}
+
+// GetAllMasterNodesOrFail returns a list of master Nodes
+func (nl nodeList) GetAllMasterNodesOrFail() []node {
+	masters, err := nl.GetAllMasterNodes()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	return masters
+}
+
+// GetAllWorkerNodes returns a list of worker Nodes
+func (nl nodeList) GetAllWorkerNodesOrFail() []node {
+	workers, err := nl.GetAllWorkerNodes()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	return workers
+}
+
+func (nl nodeList) GetAllRhelWokerNodesOrFail() []node {
+	nl.ByLabel("node-role.kubernetes.io/worker=,node.openshift.io/os_id=rhel")
+
+	workers, err := nl.GetAll()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	return workers
+}
+
+func (nl nodeList) GetAllCoreOsWokerNodesOrFail() []node {
+	nl.ByLabel("node-role.kubernetes.io/worker=,node.openshift.io/os_id=rhcos")
+
+	workers, err := nl.GetAll()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	return workers
 }

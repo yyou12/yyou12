@@ -136,18 +136,20 @@ func (l *ResourceList) ByLabel(label string) {
 	l.extraParams = append(l.extraParams, fmt.Sprintf("--selector=%s", label))
 }
 
-// GetAllResources returns a list of Resource structs with the resources found in this list
-func (l ResourceList) GetAllResources() ([]Resource, error) {
+// GetAll returns a list of Resource structs with the resources found in this list
+func (l ResourceList) GetAll() ([]Resource, error) {
 	allItemsNames, err := l.Get("{.items[*].metadata.name}", l.extraParams...)
 	if err != nil {
 		e2e.Failf("%v", err)
 	}
-	allNames := strings.Split(allItemsNames, " ")
+	allNames := strings.Split(strings.Trim(allItemsNames, " "), " ")
 
 	allResources := []Resource{}
 	for _, name := range allNames {
-		newResource := Resource{ocGetter{l.oc, l.kind, l.namespace, name}}
-		allResources = append(allResources, newResource)
+		if name != "" {
+			newResource := Resource{ocGetter{l.oc, l.kind, l.namespace, name}}
+			allResources = append(allResources, newResource)
+		}
 	}
 
 	return allResources, nil

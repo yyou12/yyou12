@@ -58,9 +58,8 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		mc.create(oc)
 
 		g.By("get one worker node to verify the config changes")
-		workers, err := NewNodeList(oc.AsAdmin()).GetAllWorkerNodes()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		stdout, err := workers[0].DebugNodeWithChroot("cat", "/etc/chrony.conf")
+		workerNode := NewNodeList(oc).GetAllWorkerNodesOrFail()[0]
+		stdout, err := workerNode.DebugNodeWithChroot("cat", "/etc/chrony.conf")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		e2e.Logf(stdout)
 		o.Expect(stdout).Should(o.ContainSubstring("pool 0.rhel.pool.ntp.org iburst"))
@@ -80,9 +79,8 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		mc.create(oc)
 
 		g.By("get one master node to do mc query")
-		masterNode, err := exutil.GetFirstMasterNode(oc)
-		o.Expect(err).NotTo(o.HaveOccurred())
-		stdout, err := exutil.DebugNode(oc, masterNode, "curl", "-w", "'Total: %{time_total}'", "-k", "-s", "-o", "/dev/null", "https://localhost:22623/config/worker")
+		masterNode := NewNodeList(oc).GetAllMasterNodesOrFail()[0]
+		stdout, err := masterNode.DebugNode("curl", "-w", "'Total: %{time_total}'", "-k", "-s", "-o", "/dev/null", "https://localhost:22623/config/worker")
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		var timecost float64
@@ -99,19 +97,19 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 
 	g.It("Author:mhanss-CPaasrunOnly-Critical-43043-Critical-43064-create/delete custom machine config pool [Disruptive]", func() {
 		g.By("get worker node to change the label")
-		workerNode, err := exutil.GetFirstWorkerNode(oc)
-		o.Expect(err).NotTo(o.HaveOccurred())
+		nodeList := NewNodeList(oc)
+		workerNode := nodeList.GetAllWorkerNodesOrFail()[0]
 
 		g.By("Add label as infra to the existing node")
-		labelOutput, err := exutil.AddCustomLabelToNode(oc, workerNode, "infra")
+		labelOutput, err := workerNode.AddCustomLabel("infra")
 		defer func() {
 			// ignore output, just focus on error handling, if error is occurred, fail this case
-			_, deletefailure := exutil.DeleteCustomLabelFromNode(oc, workerNode, "infra")
+			_, deletefailure := workerNode.DeleteCustomLabel("infra")
 			o.Expect(deletefailure).NotTo(o.HaveOccurred())
 		}()
 		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(labelOutput).Should(o.ContainSubstring(workerNode))
-		nodeLabel, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("nodes/" + workerNode).Output()
+		o.Expect(labelOutput).Should(o.ContainSubstring(workerNode.name))
+		nodeLabel, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("nodes/" + workerNode.name).Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(nodeLabel).Should(o.ContainSubstring("infra"))
 
@@ -120,25 +118,32 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		mcpTemplate := generateTemplateAbsolutePath("custom-machine-config-pool.yaml")
 		mcp := MachineConfigPool{name: mcpName, template: mcpTemplate}
 		defer mcp.delete(oc)
-		defer waitForNodeDoesNotContain(oc, workerNode, mcpName)
+		defer waitForNodeDoesNotContain(oc, workerNode.name, mcpName)
 		defer func() {
 			// ignore output, just focus on error handling, if error is occurred, fail this case
-			_, deletefailure := exutil.DeleteCustomLabelFromNode(oc, workerNode, mcpName)
+			_, deletefailure := workerNode.DeleteCustomLabel(mcpName)
 			o.Expect(deletefailure).NotTo(o.HaveOccurred())
 		}()
 		mcp.create(oc)
 		e2e.Logf("Custom mcp is created successfully!")
 
 		g.By("Remove custom label from the node")
-		unlabeledOutput, err := exutil.DeleteCustomLabelFromNode(oc, workerNode, mcpName)
+		unlabeledOutput, err := workerNode.DeleteCustomLabel(mcpName)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(unlabeledOutput).Should(o.ContainSubstring(workerNode))
-		waitForNodeDoesNotContain(oc, workerNode, mcpName)
+		o.Expect(unlabeledOutput).Should(o.ContainSubstring(workerNode.name))
+		e2e.Logf("Wait for label removal")
+		waitForNodeDoesNotContain(oc, workerNode.name, mcpName)
+		e2e.Logf("Label removed")
 
 		g.By("Check custom infra label is removed from the node")
 		nodeOut, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("nodes", "-l", "node-role.kubernetes.io/infra").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(nodeOut).Should(o.ContainSubstring("No resources found"))
+
+		nodeList.ByLabel("node-role.kubernetes.io/infra")
+		infraNodes, err := nodeList.GetAll()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(len(infraNodes)).Should(o.Equal(0))
 
 		g.By("Remove custom infra mcp")
 		mcp.delete(oc)
@@ -153,8 +158,7 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 	g.It("Author:mhanss-Longduration-CPaasrunOnly-Critical-42365-add real time kernel argument [Disruptive]", func() {
 		platform := ci.CheckPlatform(oc)
 		if platform == "gcp" || platform == "aws" {
-			workerNode, err := skipTestIfOsIsNotCoreOs(oc)
-			o.Expect(err).NotTo(o.HaveOccurred())
+			workerNode := skipTestIfOsIsNotCoreOs(oc)
 			textToVerify := TextToVerify{
 				textToVerifyForMC:   "realtime",
 				textToVerifyForNode: "PREEMPT_RT",
@@ -167,8 +171,7 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 	})
 
 	g.It("Author:mhanss-Longduration-CPaasrunOnly-Critical-42364-add selinux kernel argument [Disruptive]", func() {
-		workerNode, err := skipTestIfOsIsNotCoreOs(oc)
-		o.Expect(err).NotTo(o.HaveOccurred())
+		workerNode := skipTestIfOsIsNotCoreOs(oc)
 		textToVerify := TextToVerify{
 			textToVerifyForMC:   "enforcing=0",
 			textToVerifyForNode: "enforcing=0",
@@ -177,8 +180,7 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 	})
 
 	g.It("Author:mhanss-Longduration-CPaasrunOnly-Critical-42367-add extension to RHCOS [Disruptive]", func() {
-		workerNode, err := skipTestIfOsIsNotCoreOs(oc)
-		o.Expect(err).NotTo(o.HaveOccurred())
+		workerNode := skipTestIfOsIsNotCoreOs(oc)
 		textToVerify := TextToVerify{
 			textToVerifyForMC:   "usbguard",
 			textToVerifyForNode: "usbguard",
@@ -188,14 +190,16 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 	})
 
 	g.It("Author:mhanss-Longduration-CPaasrunOnly-Critical-43310-add kernel arguments, kernel type and extension to the RHCOS and RHEL [Disruptive]", func() {
-		rhelOs, err := exutil.GetFirstRhelWorkerNode(oc)
-		o.Expect(err).NotTo(o.HaveOccurred())
-		coreOs, err := exutil.GetFirstCoreOsWorkerNode(oc)
-		o.Expect(err).NotTo(o.HaveOccurred())
+		nodeList := NewNodeList(oc)
+		allRhelOs := nodeList.GetAllRhelWokerNodesOrFail()
+		allCoreOs := nodeList.GetAllCoreOsWokerNodesOrFail()
 
-		if rhelOs == "" || coreOs == "" {
+		if len(allRhelOs) == 0 || len(allCoreOs) == 0 {
 			g.Skip("Both Rhel and CoreOs are required to execute this test case!")
 		}
+
+		rhelOs := allRhelOs[0]
+		coreOs := allCoreOs[0]
 
 		g.By("Create new MC to add the kernel arguments, kernel type and extension")
 		mcName := "change-worker-karg-ktype-extension"
@@ -214,31 +218,31 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 				o.ContainSubstring("realtime")))
 
 		g.By("Check kernel arguments, kernel type and extension on the rhel worker node")
-		rhelRpmOut, err := exutil.DebugNodeWithChroot(oc, rhelOs, "rpm", "-qa")
+		rhelRpmOut, err := rhelOs.DebugNodeWithChroot("rpm", "-qa")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(rhelRpmOut).Should(o.And(
 			o.MatchRegexp(".*kernel-tools-[0-9-.]+el[0-9]+.x86_64.*"),
 			o.MatchRegexp(".*kernel-tools-libs-[0-9-.]+el[0-9]+.x86_64.*"),
 			o.MatchRegexp(".*kernel-[0-9-.]+el[0-9]+.x86_64.*")))
-		rhelUnameOut, err := exutil.DebugNodeWithChroot(oc, rhelOs, "uname", "-a")
+		rhelUnameOut, err := rhelOs.DebugNodeWithChroot("uname", "-a")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(rhelUnameOut).Should(o.Not(o.ContainSubstring("PREEMPT_RT")))
-		rhelCmdlineOut, err := exutil.DebugNodeWithChroot(oc, rhelOs, "cat", "/proc/cmdline")
+		rhelCmdlineOut, err := rhelOs.DebugNodeWithChroot("cat", "/proc/cmdline")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(rhelCmdlineOut).Should(o.Not(o.ContainSubstring("z=10")))
 
 		g.By("Check kernel arguments, kernel type and extension on the rhcos worker node")
-		coreOsRpmOut, err := exutil.DebugNodeWithChroot(oc, coreOs, "rpm", "-qa")
+		coreOsRpmOut, err := coreOs.DebugNodeWithChroot("rpm", "-qa")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(coreOsRpmOut).Should(o.And(
 			o.MatchRegexp(".*kernel-rt-kvm-[0-9-.]+rt[0-9.]+el[0-9_]+.x86_64.*"),
 			o.MatchRegexp(".*kernel-rt-core-[0-9-.]+rt[0-9.]+el[0-9_]+.x86_64.*"),
 			o.MatchRegexp(".*kernel-rt-modules-extra-[0-9-.]+rt[0-9.]+el[0-9_]+.x86_64.*"),
 			o.MatchRegexp(".*kernel-rt-modules-[0-9-.]+rt[0-9.]+el[0-9_]+.x86_64.*")))
-		coreOsUnameOut, err := exutil.DebugNodeWithChroot(oc, coreOs, "uname", "-a")
+		coreOsUnameOut, err := coreOs.DebugNodeWithChroot("uname", "-a")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(coreOsUnameOut).Should(o.ContainSubstring("PREEMPT_RT"))
-		coreOsCmdlineOut, err := exutil.DebugNodeWithChroot(oc, coreOs, "cat", "/proc/cmdline")
+		coreOsCmdlineOut, err := coreOs.DebugNodeWithChroot("cat", "/proc/cmdline")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(coreOsCmdlineOut).Should(o.ContainSubstring("z=10"))
 		e2e.Logf("Kernel argument, kernel type and extension changes are verified on both rhcos and rhel worker nodes!")
@@ -267,9 +271,8 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		e2e.Logf("Max pods are verified in the created kubelet config!")
 
 		g.By("Check kubelet config in the worker node")
-		workerNode, err := exutil.GetFirstWorkerNode(oc)
-		o.Expect(err).NotTo(o.HaveOccurred())
-		maxPods, err := exutil.DebugNodeWithChroot(oc, workerNode, "cat", "/etc/kubernetes/kubelet.conf")
+		workerNode := NewNodeList(oc).GetAllWorkerNodesOrFail()[0]
+		maxPods, err := workerNode.DebugNodeWithChroot("cat", "/etc/kubernetes/kubelet.conf")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(maxPods).Should(o.ContainSubstring("\"maxPods\": 500"))
 		e2e.Logf("Max pods are verified in the worker node!")
@@ -296,12 +299,11 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		e2e.Logf("Container runtime config values are verified in the created config!")
 
 		g.By("Check container runtime config values in the worker node")
-		workerNode, err := exutil.GetFirstWorkerNode(oc)
-		o.Expect(err).NotTo(o.HaveOccurred())
-		crStorageOut, err := exutil.DebugNodeWithChroot(oc, workerNode, "head", "-n", "7", "/etc/containers/storage.conf")
+		workerNode := NewNodeList(oc).GetAllWorkerNodesOrFail()[0]
+		crStorageOut, err := workerNode.DebugNodeWithChroot("head", "-n", "7", "/etc/containers/storage.conf")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(crStorageOut).Should(o.ContainSubstring("size = \"8G\""))
-		crConfigOut, err := exutil.DebugNodeWithChroot(oc, workerNode, "crio", "config")
+		crConfigOut, err := workerNode.DebugNodeWithChroot("crio", "config")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(crConfigOut).Should(
 			o.And(
@@ -330,9 +332,9 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		e2e.Logf("Journald config is verified in the created machine config!")
 
 		g.By("Check journald config values in the worker node")
-		workerNode, err := exutil.GetFirstWorkerNode(oc)
+		workerNode := NewNodeList(oc).GetAllWorkerNodesOrFail()[0]
 		o.Expect(err).NotTo(o.HaveOccurred())
-		journaldConfOut, err := exutil.DebugNodeWithChroot(oc, workerNode, "cat", "/etc/systemd/journald.conf")
+		journaldConfOut, err := workerNode.DebugNodeWithChroot("cat", "/etc/systemd/journald.conf")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(journaldConfOut).Should(
 			o.And(
@@ -353,9 +355,8 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		icsp.create(oc)
 
 		g.By("Check registry changes in the worker node")
-		workerNode, err := exutil.GetFirstWorkerNode(oc)
-		o.Expect(err).NotTo(o.HaveOccurred())
-		registryOut, err := exutil.DebugNodeWithChroot(oc, workerNode, "cat", "/etc/containers/registries.conf")
+		workerNode := NewNodeList(oc).GetAllWorkerNodesOrFail()[0]
+		registryOut, err := workerNode.DebugNodeWithChroot("cat", "/etc/containers/registries.conf")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(registryOut).Should(
 			o.And(
@@ -364,7 +365,7 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 				o.ContainSubstring("example.io/example/ubi-minimal")))
 
 		g.By("Check MCD logs to make sure drain is skipped")
-		podLogs, err := exutil.GetSpecificPodLogs(oc, "openshift-machine-config-operator", "machine-config-daemon", getMachineConfigDaemon(oc, workerNode), "drain")
+		podLogs, err := exutil.GetSpecificPodLogs(oc, "openshift-machine-config-operator", "machine-config-daemon", workerNode.GetMachineConfigDaemon(), "drain")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		e2e.Logf("Pod logs to skip node drain :\n %v", podLogs)
 		o.Expect(podLogs).Should(
@@ -390,9 +391,8 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		mc.create(oc)
 
 		g.By("Check content of file authorized_keys to verify whether new one is added successfully")
-		workerNode, err := exutil.GetFirstWorkerNode(oc)
-		o.Expect(err).NotTo(o.HaveOccurred())
-		sshKeyOut, err := exutil.DebugNodeWithChroot(oc, workerNode, "cat", "/home/core/.ssh/authorized_keys")
+		workerNode := NewNodeList(oc).GetAllWorkerNodesOrFail()[0]
+		sshKeyOut, err := workerNode.DebugNodeWithChroot("cat", "/home/core/.ssh/authorized_keys")
 		e2e.Logf("file content of authorized_keys: %v", sshKeyOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(sshKeyOut).Should(o.ContainSubstring("mco_test@redhat.com"))
@@ -407,9 +407,8 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		mc.create(oc)
 
 		g.By("Check MCD logs to make sure shutdown machine config daemon with SIGTERM")
-		workerNode, err := exutil.GetFirstWorkerNode(oc)
-		o.Expect(err).NotTo(o.HaveOccurred())
-		podLogs, err := exutil.WaitAndGetSpecificPodLogs(oc, "openshift-machine-config-operator", "machine-config-daemon", getMachineConfigDaemon(oc, workerNode), "SIGTERM")
+		workerNode := NewNodeList(oc).GetAllWorkerNodesOrFail()[0]
+		podLogs, err := exutil.WaitAndGetSpecificPodLogs(oc, "openshift-machine-config-operator", "machine-config-daemon", workerNode.GetMachineConfigDaemon(), "SIGTERM")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(podLogs).Should(
 			o.And(
@@ -417,14 +416,15 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 				o.ContainSubstring("Removing SIGTERM protection")))
 
 		g.By("Kill MCD process")
-		mcdKillLogs, err := exutil.DebugNodeWithChroot(oc, workerNode, "pgrep", "-f", "machine-config-daemon_")
+		mcdKillLogs, err := workerNode.DebugNodeWithChroot("pgrep", "-f", "machine-config-daemon_")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		mcpPid := regexp.MustCompile("(?m)^[0-9]+").FindString(mcdKillLogs)
-		_, err = exutil.DebugNodeWithChroot(oc, workerNode, "kill", mcpPid)
+		_, err = workerNode.DebugNodeWithChroot("kill", mcpPid)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		g.By("Check MCD logs to make sure machine config daemon without SIGTERM")
-		mcDaemon := getMachineConfigDaemon(oc, workerNode)
+		mcDaemon := workerNode.GetMachineConfigDaemon()
+
 		exutil.AssertPodToBeReady(oc, mcDaemon, "openshift-machine-config-operator")
 		mcdLogs, err := exutil.GetSpecificPodLogs(oc, "openshift-machine-config-operator", "machine-config-daemon", mcDaemon, "")
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -446,15 +446,14 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		mc.create(oc)
 
 		g.By("Check content of registries file to verify quay.io added to unqualified-search-registries list")
-		workerNode, err := exutil.GetFirstWorkerNode(oc)
-		o.Expect(err).NotTo(o.HaveOccurred())
-		regOut, err := exutil.DebugNodeWithChroot(oc, workerNode, "cat", "/etc/containers/registries.conf")
+		workerNode := NewNodeList(oc).GetAllWorkerNodesOrFail()[0]
+		regOut, err := workerNode.DebugNodeWithChroot("cat", "/etc/containers/registries.conf")
 		e2e.Logf("File content of registries conf: %v", regOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(regOut).Should(o.ContainSubstring("quay.io"))
 
 		g.By("Check MCD logs to make sure drain is successful and pods are evicted")
-		podLogs, err := exutil.GetSpecificPodLogs(oc, "openshift-machine-config-operator", "machine-config-daemon", getMachineConfigDaemon(oc, workerNode), "\"evicted\\|drain\"")
+		podLogs, err := exutil.GetSpecificPodLogs(oc, "openshift-machine-config-operator", "machine-config-daemon", workerNode.GetMachineConfigDaemon(), "\"evicted\\|drain\"")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		e2e.Logf("Pod logs for node drain and pods evicted :\n %v", podLogs)
 		o.Expect(podLogs).Should(
@@ -538,46 +537,43 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		e2e.Logf("new rendered config generated for worker: %s", renderedWorkerConf)
 
 		g.By("check logs of machine-config-daemon on master-n-worker nodes, make sure CA change is detected, drain and reboot are skipped")
-		masterNode, masterErr := exutil.GetFirstMasterNode(oc)
-		workerNode, workerErr := exutil.GetFirstWorkerNode(oc)
-		o.Expect(masterErr).NotTo(o.HaveOccurred())
-		o.Expect(workerErr).NotTo(o.HaveOccurred())
+		workerNode := NewNodeList(oc).GetAllWorkerNodesOrFail()[0]
+		masterNode := NewNodeList(oc).GetAllMasterNodesOrFail()[0]
+
 		commonExpectedStrings := []string{"File diff: detected change to /etc/kubernetes/kubelet-ca.crt", "Changes do not require drain, skipping"}
 		expectedStringsForMaster := append(commonExpectedStrings, "Node has Desired Config "+renderedMasterConf+", skipping reboot")
 		expectedStringsForWorker := append(commonExpectedStrings, "Node has Desired Config "+renderedWorkerConf+", skipping reboot")
-		masterMcdLogs, masterMcdLogErr := exutil.GetSpecificPodLogs(oc, "openshift-machine-config-operator", "machine-config-daemon", getMachineConfigDaemon(oc, masterNode), "")
+		masterMcdLogs, masterMcdLogErr := exutil.GetSpecificPodLogs(oc, "openshift-machine-config-operator", "machine-config-daemon", masterNode.GetMachineConfigDaemon(), "")
 		o.Expect(masterMcdLogErr).NotTo(o.HaveOccurred())
-		workerMcdLogs, workerMcdLogErr := exutil.GetSpecificPodLogs(oc, "openshift-machine-config-operator", "machine-config-daemon", getMachineConfigDaemon(oc, workerNode), "")
+		workerMcdLogs, workerMcdLogErr := exutil.GetSpecificPodLogs(oc, "openshift-machine-config-operator", "machine-config-daemon", workerNode.GetMachineConfigDaemon(), "")
 		o.Expect(workerMcdLogErr).NotTo(o.HaveOccurred())
 		foundOnMaster := containsMultipleStrings(masterMcdLogs, expectedStringsForMaster)
 		o.Expect(foundOnMaster).Should(o.BeTrue())
-		e2e.Logf("mcd log on master node %s contains expected strings: %v", masterNode, expectedStringsForMaster)
+		e2e.Logf("mcd log on master node %s contains expected strings: %v", masterNode.name, expectedStringsForMaster)
 		foundOnWorker := containsMultipleStrings(workerMcdLogs, expectedStringsForWorker)
 		o.Expect(foundOnWorker).Should(o.BeTrue())
-		e2e.Logf("mcd log on worker node %s contains expected strings: %v", workerNode, expectedStringsForWorker)
+		e2e.Logf("mcd log on worker node %s contains expected strings: %v", workerNode.name, expectedStringsForWorker)
 	})
 
 	g.It("Author:rioliu-CPaasrunOnly-High-43085-check mcd crash-loop-back-off error in log [Serial]", func() {
 		g.By("get master and worker nodes")
-		masterNode, masterErr := exutil.GetFirstMasterNode(oc)
-		workerNode, workerErr := exutil.GetFirstWorkerNode(oc)
-		o.Expect(masterErr).NotTo(o.HaveOccurred())
-		o.Expect(workerErr).NotTo(o.HaveOccurred())
+		workerNode := NewNodeList(oc).GetAllWorkerNodesOrFail()[0]
+		masterNode := NewNodeList(oc).GetAllMasterNodesOrFail()[0]
 		e2e.Logf("master node %s", masterNode)
 		e2e.Logf("worker node %s", workerNode)
 
 		g.By("check error messages in mcd logs for both master and worker nodes")
 		expectedStrings := []string{"unable to update node", "cannot apply annotation for SSH access due to"}
-		masterMcdLogs, masterMcdLogErr := exutil.GetSpecificPodLogs(oc, "openshift-machine-config-operator", "machine-config-daemon", getMachineConfigDaemon(oc, masterNode), "")
+		masterMcdLogs, masterMcdLogErr := exutil.GetSpecificPodLogs(oc, "openshift-machine-config-operator", "machine-config-daemon", masterNode.GetMachineConfigDaemon(), "")
 		o.Expect(masterMcdLogErr).NotTo(o.HaveOccurred())
-		workerMcdLogs, workerMcdLogErr := exutil.GetSpecificPodLogs(oc, "openshift-machine-config-operator", "machine-config-daemon", getMachineConfigDaemon(oc, workerNode), "")
+		workerMcdLogs, workerMcdLogErr := exutil.GetSpecificPodLogs(oc, "openshift-machine-config-operator", "machine-config-daemon", workerNode.GetMachineConfigDaemon(), "")
 		o.Expect(workerMcdLogErr).NotTo(o.HaveOccurred())
 		foundOnMaster := containsMultipleStrings(masterMcdLogs, expectedStrings)
 		o.Expect(foundOnMaster).Should(o.BeFalse())
-		e2e.Logf("mcd log on master node %s does not contain error messages: %v", masterNode, expectedStrings)
+		e2e.Logf("mcd log on master node %s does not contain error messages: %v", masterNode.name, expectedStrings)
 		foundOnWorker := containsMultipleStrings(workerMcdLogs, expectedStrings)
 		o.Expect(foundOnWorker).Should(o.BeFalse())
-		e2e.Logf("mcd log on worker node %s does not contain error messages: %v", workerNode, expectedStrings)
+		e2e.Logf("mcd log on worker node %s does not contain error messages: %v", workerNode.name, expectedStrings)
 	})
 
 	g.It("Author:mhanss-Longduration-CPaasrunOnly-Medium-43245-bump initial drain sleeps down to 1min [Disruptive]", func() {
@@ -591,9 +587,8 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		pdb.create(oc)
 
 		g.By("Create new pod for pod disruption budget")
-		workerNode, err := exutil.GetFirstWorkerNode(oc)
-		o.Expect(err).NotTo(o.HaveOccurred())
-		hostname, err := exutil.GetNodeHostname(oc, workerNode)
+		workerNode := NewNodeList(oc).GetAllWorkerNodesOrFail()[0]
+		hostname, err := workerNode.GetNodeHostname()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		podName := "dont-evict-43245"
 		podTemplate := generateTemplateAbsolutePath("create-pod.yaml")
@@ -609,8 +604,12 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		defer func() { o.Expect(pod.Delete(oc)).NotTo(o.HaveOccurred()) }()
 		mc.create(oc)
 
+		g.By("Wait until node is cordoned")
+		o.Eventually(workerNode.Poll(`{.spec.taints[?(@.effect=="NoSchedule")].effect}`),
+			"20m", "1m").Should(o.Equal("NoSchedule"), fmt.Sprintf("Node %s was not cordoned", workerNode.name))
+
 		g.By("Check mcd logs to see the sleep interval b/w failed drains")
-		podLogs := waitForNumberOfLinesInPodLogs(oc, "openshift-machine-config-operator", "machine-config-daemon", getMachineConfigDaemon(oc, workerNode), "Draining", 6)
+		podLogs := waitForNumberOfLinesInPodLogs(oc, "openshift-machine-config-operator", "machine-config-daemon", workerNode.GetMachineConfigDaemon(), "Draining", 6)
 		timestamps := filterTimestampFromLogs(podLogs, 6)
 		o.Expect(getTimeDifferenceInMinute(timestamps[0], timestamps[1])).Should(o.BeNumerically("<=", 2.7))
 		o.Expect(getTimeDifferenceInMinute(timestamps[4], timestamps[5])).Should(o.BeNumerically("<=", 6.7))
@@ -632,15 +631,14 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		o.Expect(float64(goVersion)).Should(o.BeNumerically(">", 1.15))
 
 		g.By("verify TLS protocol version is 1.3")
-		masterNode, nodeErr := exutil.GetFirstMasterNode(oc)
-		o.Expect(nodeErr).NotTo(o.HaveOccurred())
-		sslOutput, sslErr := exutil.DebugNodeWithChroot(oc, masterNode, "bash", "-c", "openssl s_client -connect localhost:6443 2>&1|grep -A3 SSL-Session")
+		masterNode := NewNodeList(oc).GetAllMasterNodesOrFail()[0]
+		sslOutput, sslErr := masterNode.DebugNodeWithChroot("bash", "-c", "openssl s_client -connect localhost:6443 2>&1|grep -A3 SSL-Session")
 		e2e.Logf("ssl protocol version is:\n %s", sslOutput)
 		o.Expect(sslErr).NotTo(o.HaveOccurred())
 		o.Expect(sslOutput).Should(o.ContainSubstring("TLSv1.3"))
 
 		g.By("verify whether the unsafe cipher is disabled")
-		cipherOutput, cipherErr := exutil.DebugNodeWithOptions(oc, masterNode, []string{"--image=drwetter/testssl.sh", "-n", "openshift-machine-config-operator"}, "testssl.sh", "--quiet", "--sweet32", "localhost:6443")
+		cipherOutput, cipherErr := masterNode.DebugNodeWithOptions([]string{"--image=drwetter/testssl.sh", "-n", "openshift-machine-config-operator"}, "testssl.sh", "--quiet", "--sweet32", "localhost:6443")
 		e2e.Logf("test ssh script output:\n %s", cipherOutput)
 		o.Expect(cipherErr).NotTo(o.HaveOccurred())
 		o.Expect(cipherOutput).Should(o.ContainSubstring("not vulnerable (OK)"))
@@ -677,12 +675,10 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		g.By("Check node label in mcd_state metrics")
 		stateQuery := getPrometheusQueryResults(oc, "mcd_state")
 		e2e.Logf("metrics:\n %s", stateQuery)
-		firstMasterName, err := exutil.GetFirstMasterNode(oc)
-		o.Expect(err).NotTo(o.HaveOccurred())
-		firstWorkerName, err := exutil.GetFirstWorkerNode(oc)
-		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(stateQuery).Should(o.ContainSubstring(`"node":"` + firstMasterName + `"`))
-		o.Expect(stateQuery).Should(o.ContainSubstring(`"node":"` + firstWorkerName + `"`))
+		firstMasterNode := NewNodeList(oc).GetAllMasterNodesOrFail()[0]
+		firstWorkerNode := NewNodeList(oc).GetAllWorkerNodesOrFail()[0]
+		o.Expect(stateQuery).Should(o.ContainSubstring(`"node":"` + firstMasterNode.name + `"`))
+		o.Expect(stateQuery).Should(o.ContainSubstring(`"node":"` + firstWorkerNode.name + `"`))
 	})
 
 	g.It("Author:sregidor-CPaasrunOnly-High-43726-Azure ControllerConfig Infrastructure does not match cluster Infrastructure resource [Serial]", func() {
@@ -728,6 +724,12 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(setData).Should(o.Equal("secret/pull-secret data updated"))
 
+		g.By("Wait for configuration to be applied in master and worker pools")
+		mcpWorker := MachineConfigPool{name: "worker"}
+		mcpMaster := MachineConfigPool{name: "master"}
+		mcpWorker.waitForComplete(oc)
+		mcpMaster.waitForComplete(oc)
+
 		g.By("Check new generated rendered configs for newly added pull secret")
 		renderedConfs, renderedErr := oc.AsAdmin().WithoutNamespace().Run("get").Args("mc", "--sort-by=metadata.creationTimestamp", "-o", "jsonpath='{.items[-2:].metadata.name}'").Output()
 		o.Expect(renderedErr).NotTo(o.HaveOccurred())
@@ -745,23 +747,21 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		e2e.Logf("New rendered config generated for worker: %s", renderedWorkerConf)
 
 		g.By("Check logs of machine-config-daemon on master-n-worker nodes, make sure pull secret changes are detected, drain and reboot are skipped")
-		masterNode, masterErr := exutil.GetFirstMasterNode(oc)
-		workerNode, workerErr := exutil.GetFirstWorkerNode(oc)
-		o.Expect(masterErr).NotTo(o.HaveOccurred())
-		o.Expect(workerErr).NotTo(o.HaveOccurred())
+		masterNode := NewNodeList(oc).GetAllMasterNodesOrFail()[0]
+		workerNode := NewNodeList(oc).GetAllWorkerNodesOrFail()[0]
 		commonExpectedStrings := []string{"File diff: detected change to /var/lib/kubelet/config.json", "Changes do not require drain, skipping"}
 		expectedStringsForMaster := append(commonExpectedStrings, "Node has Desired Config "+renderedMasterConf+", skipping reboot")
 		expectedStringsForWorker := append(commonExpectedStrings, "Node has Desired Config "+renderedWorkerConf+", skipping reboot")
-		masterMcdLogs, masterMcdLogErr := exutil.GetSpecificPodLogs(oc, "openshift-machine-config-operator", "machine-config-daemon", getMachineConfigDaemon(oc, masterNode), "")
+		masterMcdLogs, masterMcdLogErr := exutil.GetSpecificPodLogs(oc, "openshift-machine-config-operator", "machine-config-daemon", masterNode.GetMachineConfigDaemon(), "")
 		o.Expect(masterMcdLogErr).NotTo(o.HaveOccurred())
-		workerMcdLogs, workerMcdLogErr := exutil.GetSpecificPodLogs(oc, "openshift-machine-config-operator", "machine-config-daemon", getMachineConfigDaemon(oc, workerNode), "")
+		workerMcdLogs, workerMcdLogErr := exutil.GetSpecificPodLogs(oc, "openshift-machine-config-operator", "machine-config-daemon", workerNode.GetMachineConfigDaemon(), "")
 		o.Expect(workerMcdLogErr).NotTo(o.HaveOccurred())
 		foundOnMaster := containsMultipleStrings(masterMcdLogs, expectedStringsForMaster)
 		o.Expect(foundOnMaster).Should(o.BeTrue())
-		e2e.Logf("MCD log on master node %s contains expected strings: %v", masterNode, expectedStringsForMaster)
+		e2e.Logf("MCD log on master node %s contains expected strings: %v", masterNode.name, expectedStringsForMaster)
 		foundOnWorker := containsMultipleStrings(workerMcdLogs, expectedStringsForWorker)
 		o.Expect(foundOnWorker).Should(o.BeTrue())
-		e2e.Logf("MCD log on worker node %s contains expected strings: %v", workerNode, expectedStringsForWorker)
+		e2e.Logf("MCD log on worker node %s contains expected strings: %v", workerNode.name, expectedStringsForWorker)
 	})
 
 	g.It("Author:sregidor-CPaasrunOnly-High-45239-KubeletConfig has a limit of 10 per cluster [Disruptive]", func() {
@@ -819,7 +819,7 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 	})
 })
 
-func createMcAndVerifyMCValue(oc *exutil.CLI, stepText string, mcName string, workerNode string, textToVerify TextToVerify, cmd ...string) {
+func createMcAndVerifyMCValue(oc *exutil.CLI, stepText string, mcName string, workerNode node, textToVerify TextToVerify, cmd ...string) {
 	g.By(fmt.Sprintf("Create new MC to add the %s", stepText))
 	mcTemplate := generateTemplateAbsolutePath(mcName + ".yaml")
 	mc := MachineConfig{name: mcName, template: mcTemplate, pool: "worker"}
@@ -836,11 +836,11 @@ func createMcAndVerifyMCValue(oc *exutil.CLI, stepText string, mcName string, wo
 	g.By(fmt.Sprintf("Check %s in the machine config daemon", stepText))
 	var podOut string
 	if textToVerify.needBash {
-		podOut, err = exutil.RemoteShPodWithBash(oc, "openshift-machine-config-operator", getMachineConfigDaemon(oc, workerNode), cmd...)
+		podOut, err = exutil.RemoteShPodWithBash(oc, "openshift-machine-config-operator", workerNode.GetMachineConfigDaemon(), cmd...)
 	} else if textToVerify.needChroot {
-		podOut, err = exutil.RemoteShPodWithChroot(oc, "openshift-machine-config-operator", getMachineConfigDaemon(oc, workerNode), cmd...)
+		podOut, err = exutil.RemoteShPodWithChroot(oc, "openshift-machine-config-operator", workerNode.GetMachineConfigDaemon(), cmd...)
 	} else {
-		podOut, err = exutil.RemoteShPod(oc, "openshift-machine-config-operator", getMachineConfigDaemon(oc, workerNode), cmd...)
+		podOut, err = exutil.RemoteShPod(oc, "openshift-machine-config-operator", workerNode.GetMachineConfigDaemon(), cmd...)
 	}
 	o.Expect(err).NotTo(o.HaveOccurred())
 	o.Expect(podOut).Should(o.ContainSubstring(textToVerify.textToVerifyForNode))
@@ -848,12 +848,12 @@ func createMcAndVerifyMCValue(oc *exutil.CLI, stepText string, mcName string, wo
 }
 
 // skipTestIfOsIsNotCoreOs it will either skip the test case in case of worker node is not CoreOS or will return the CoreOS worker node
-func skipTestIfOsIsNotCoreOs(oc *exutil.CLI) (string, error) {
-	coreOs, err := exutil.GetFirstCoreOsWorkerNode(oc)
-	if coreOs == "" {
+func skipTestIfOsIsNotCoreOs(oc *exutil.CLI) node {
+	allCoreOs := NewNodeList(oc).GetAllCoreOsWokerNodesOrFail()
+	if len(allCoreOs) == 0 {
 		g.Skip("CoreOs is required to execute this test case!")
 	}
-	return coreOs, err
+	return allCoreOs[0]
 }
 
 func createMcAndVerifyIgnitionVersion(oc *exutil.CLI, stepText string, mcName string, ignitionVersion string) {

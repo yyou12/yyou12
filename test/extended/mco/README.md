@@ -65,7 +65,7 @@ port := svc.GetOrFail("{spec.ports[0].port}")
 
 ### Get All Resources
 
-In order to get a list of Resource structs we can use  `NewResourceList` and `NewNamespacedResourceList`. GetAllResources() method will return a list of Resource structs with all resources.
+In order to get a list of Resource structs we can use  `NewResourceList` and `NewNamespacedResourceList`. GetAll() method will return a list of Resource structs with all resources.
 
 We can use the SortByTimestamp() method to specify that we want the list sorted by creation timestamp.
 
@@ -74,7 +74,7 @@ Example:
 ```go
 resList = NewResourceList(oc.AsAdmin(), "mc")
 resList.SortByTimestamp()
-allMcs, err := resList.GetAllResources()
+allMcs, err := resList.GetAll()
 if err != nil {
 	e2e.Logf("Error:\n %s", err)
 }
