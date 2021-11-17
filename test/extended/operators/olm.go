@@ -8291,7 +8291,16 @@ var _ = g.Describe("[sig-operators] OLM on VM for an end user handle within a na
 	})
 
 	// OCP-45359 author: jitli@redhat.com
-	g.It("Author:jitli-ConnectedOnly-VMonly-Medium-45359-Default catalogs need to use the correct tags", func() {
+	g.It("Author:jitli-ConnectedOnly-Medium-45359-Default catalogs need to use the correct tags", func() {
+		g.By("step: get version")
+		currentVersion, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("clusterversion", "version", "-o=jsonpath={.status.desired.version}").Output()
+		if err != nil {
+			e2e.Failf("Fail to get the OCP version")
+		}
+		v, _ := semver.ParseTolerant(currentVersion)
+		majorVersion := strconv.FormatUint(v.Major, 10)
+		minorVersion := strconv.FormatUint(v.Minor, 10)
+		tag := "v" + majorVersion + "." + minorVersion
 
 		g.By("step: oc get catalogsource")
 		catsrcs, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("catalogsource", "-n", "openshift-marketplace").Output()
@@ -8301,11 +8310,10 @@ var _ = g.Describe("[sig-operators] OLM on VM for an end user handle within a na
 		defaultCatsrcs := []string{"certified-operators", "community-operators", "redhat-marketplace", "redhat-operators"}
 		for _, catalogSource := range defaultCatsrcs {
 			o.Expect(catsrcs).To(o.ContainSubstring(catalogSource))
-
-			g.By("step: get catalog image tag")
+			g.By(fmt.Sprintf("step: check image tag of %s", catalogSource))
 			output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("catalogsource", catalogSource, "-n", "openshift-marketplace", "-o=jsonpath={.spec.image}").Output()
 			o.Expect(err).NotTo(o.HaveOccurred())
-			o.Expect(output).To(o.HaveSuffix("v4.10"))
+			o.Expect(output).To(o.HaveSuffix(tag))
 		}
 	})
 
