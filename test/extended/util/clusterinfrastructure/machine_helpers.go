@@ -87,7 +87,7 @@ func ScaleMachineSet(oc *exutil.CLI, machineSetName string, replicas int) {
 // WaitForMachinesRunning check if all the machines are Running in a MachineSet
 func WaitForMachinesRunning(oc *exutil.CLI, machineNumber int, machineSetName string) {
 	e2e.Logf("Waiting for the machines Running ...")
-	pollErr := wait.Poll(60*time.Second, 600*time.Second, func() (bool, error) {
+	pollErr := wait.Poll(60*time.Second, 720*time.Second, func() (bool, error) {
 		msg, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("machineset", machineSetName, "-o=jsonpath={.status.readyReplicas}", "-n", machineAPINamespace).Output()
 		machinesRunning, _ := strconv.Atoi(msg)
 		if machinesRunning != machineNumber {
@@ -98,7 +98,7 @@ func WaitForMachinesRunning(oc *exutil.CLI, machineNumber int, machineSetName st
 		return true, nil
 	})
 	if pollErr != nil {
-		e2e.Failf("Expected %v  machines are not Running after waiting up to 10 minutes ...", machineNumber)
+		e2e.Failf("Expected %v  machines are not Running after waiting up to 12 minutes ...", machineNumber)
 	}
 	e2e.Logf("All machines are Running ...")
 }
