@@ -6610,13 +6610,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		}
 		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("status.serviceAccountRef.name of og %s is not %s", og.name, sa))
 
-		g.By("2) Delete the service account")
-		_, err = oc.WithoutNamespace().AsAdmin().Run("delete").Args("sa", sa, "-n", sub.namespace).Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		// waiting for the condition is ready
-		time.Sleep(2 * time.Second)
-
-		g.By("3) Create a Subscription, check installplan")
+		g.By("2) Create a Subscription, check installplan")
 		defer sub.delete(itName, dr)
 		defer sub.deleteCSV(itName, dr)
 		defer sub.update(oc, itName, dr)
@@ -6624,24 +6618,14 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		sub.createWithoutCheck(oc, itName, dr)
 		installPlan := sub.getIP(oc)
 		o.Expect(installPlan).NotTo(o.BeEmpty())
-		err = newCheck("expect", asAdmin, withoutNamespace, contain, "retrying execution due to error: serviceaccounts", ok, []string{"installplan", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.message}"}).checkWithoutAssert(oc)
+		err = newCheck("expect", asAdmin, withoutNamespace, contain, "retrying execution due to error", ok, []string{"installplan", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.message}"}).checkWithoutAssert(oc)
 		if err != nil {
 			output := getResource(oc, asAdmin, withoutNamespace, "installplan", installPlan, "-n", sub.namespace, "-o=jsonpath={.status}")
 			e2e.Logf(output)
 		}
-		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("status.message of installplan %s does not contain 'retrying execution due to error: serviceaccounts'", installPlan))
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("status.message of installplan %s does not contain 'retrying execution due to error'", installPlan))
 
-		g.By("4) Create the service account, check the installplan")
-		_, err = oc.WithoutNamespace().AsAdmin().Run("create").Args("sa", sa, "-n", namespace).Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		err = newCheck("expect", asAdmin, withoutNamespace, contain, "retrying execution due to error: error creating csv etcdoperator", ok, []string{"installplan", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.message}"}).checkWithoutAssert(oc)
-		if err != nil {
-			output := getResource(oc, asAdmin, withoutNamespace, "installplan", installPlan, "-n", sub.namespace, "-o=jsonpath={.status}")
-			e2e.Logf(output)
-		}
-		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("status.message of installplan %s does not contain 'retrying execution due to error: error creating csv etcdoperator'", installPlan))
-
-		g.By("5) After retry timeout, the install plan is Failed")
+		g.By("3) After retry timeout, the install plan is Failed")
 		err = newCheck("expect", asAdmin, withoutNamespace, compare, "Failed", ok, []string{"installplan", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).checkWithoutAssert(oc)
 		if err != nil {
 			output := getResource(oc, asAdmin, withoutNamespace, "installplan", installPlan, "-n", sub.namespace, "-o=jsonpath={.status}")
@@ -6649,7 +6633,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		}
 		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("status.phase of installplan %s is not Failed", installPlan))
 
-		g.By("6) delete sub, then create sub again")
+		g.By("4) delete sub, then create sub again")
 		sub.delete(itName, dr)
 		sub.createWithoutCheck(oc, itName, dr)
 		installPlan = sub.getIP(oc)
@@ -6660,11 +6644,11 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		}
 		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("status.message of installplan %s does not contain 'retrying execution due to error'", installPlan))
 
-		g.By("7) Grant the proper permissions to the service account")
+		g.By("5) Grant the proper permissions to the service account")
 		role.create(oc)
 		rolebinding.create(oc)
 
-		g.By("8) Checking the state of CSV")
+		g.By("6) Checking the state of CSV")
 		err = newCheck("expect", asAdmin, withoutNamespace, compare, "Complete", ok, []string{"installplan", installPlan, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).checkWithoutAssert(oc)
 		if err != nil {
 			output := getResource(oc, asAdmin, withoutNamespace, "installplan", installPlan, "-n", sub.namespace, "-o=jsonpath={.status}")
@@ -6686,7 +6670,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 			return true, nil
 		})
 		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("csv of sub %v is not installed", sub.subName))
-		g.By("9) SUCCESS")
+		g.By("7) SUCCESS")
 	})
 
 	// author: xzha@redhat.com
