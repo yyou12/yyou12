@@ -37,6 +37,14 @@ type podLivenessProbe struct {
 	template              string
 }
 
+type kubeletCfgMaxpods struct {
+	name       string
+	labelkey   string
+	labelvalue string
+	maxpods    int
+	template   string
+}
+
 type ctrcfgDescription struct {
 	namespace  string
 	pidlimit   int
@@ -61,6 +69,22 @@ func getRandomString() string {
 		buffer[index] = chars[seed.Intn(len(chars))]
 	}
 	return string(buffer)
+}
+
+func (kubeletcfg *kubeletCfgMaxpods) createKubeletConfigMaxpods(oc *exutil.CLI) {
+	err := createResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", kubeletcfg.template, "-p", "NAME="+kubeletcfg.name, "LABELKEY="+kubeletcfg.labelkey, "LABELVALUE="+kubeletcfg.labelvalue, "MAXPODS="+strconv.Itoa(kubeletcfg.maxpods))
+	if err != nil {
+		e2e.Logf("the err of createKubeletConfigMaxpods:%v", err)
+	}
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+func (kubeletcfg *kubeletCfgMaxpods) deleteKubeletConfigMaxpods(oc *exutil.CLI) {
+	err := oc.AsAdmin().WithoutNamespace().Run("delete").Args("kubeletconfig", kubeletcfg.name).Execute()
+	if err != nil {
+		e2e.Logf("the err of deleteKubeletConfigMaxpods:%v", err)
+	}
+	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
 func (pod *podLivenessProbe) createPodLivenessProbe(oc *exutil.CLI) {
@@ -167,6 +191,28 @@ func podEvent(oc *exutil.CLI, timeout int, keyword string) error{
 			return true, nil
 		}
 		return false, nil
+	})
+}
+
+func kubeletNotPromptDupErr(oc *exutil.CLI, keyword string, name string) error{
+	return wait.Poll(10*time.Second, 3*time.Minute, func() (bool, error) {
+		re := regexp.MustCompile(keyword)
+		output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("kubeletconfig", name, "-o=jsonpath={.status.conditions[*]}").Output()
+        	if err != nil {
+                	e2e.Logf("Can't get kubeletconfig status, error: %s. Trying again", err)
+			return false, nil
+		}
+		found := re.FindAllString(output, -1)
+		if lenStr := len(found); lenStr > 1 {
+			e2e.Logf("[%s] appear %d times.", keyword, lenStr)
+			return false, nil
+		} else if lenStr == 1 {
+			e2e.Logf("[%s] appear %d times.\nkubeletconfig not prompt duplicate error message", keyword, lenStr)
+			return true, nil
+		} else {
+			e2e.Logf("error: kubelet not prompt [%s]", keyword)
+			return false, nil
+		} 
 	})
 }
 
