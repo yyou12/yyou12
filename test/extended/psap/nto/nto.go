@@ -11,12 +11,14 @@ var _ = g.Describe("[sig-node] PSAP should", func() {
 	defer g.GinkgoRecover()
 
 	var (
-		oc                          = exutil.NewCLI("nto-test", exutil.KubeConfigPath())
-		ntoNamespace                = "openshift-cluster-node-tuning-operator"
-		override_file               = exutil.FixturePath("testdata", "psap", "nto", "override.yaml")
-		pod_test_file               = exutil.FixturePath("testdata", "psap", "nto", "pod_test.yaml")
-		tuned_nf_conntrack_max_file = exutil.FixturePath("testdata", "psap", "nto", "tuned-nf-conntrack-max.yaml")
-		isNTO                       bool
+		oc                               = exutil.NewCLI("nto-test", exutil.KubeConfigPath())
+		ntoNamespace                     = "openshift-cluster-node-tuning-operator"
+		override_file                    = exutil.FixturePath("testdata", "psap", "nto", "override.yaml")
+		pod_test_file                    = exutil.FixturePath("testdata", "psap", "nto", "pod_test.yaml")
+		tuned_nf_conntrack_max_file      = exutil.FixturePath("testdata", "psap", "nto", "tuned-nf-conntrack-max.yaml")
+		hp_performanceprofile_file       = exutil.FixturePath("testdata", "psap", "nto", "hp-performanceprofile.yaml")
+		hp_performanceprofile_patch_file = exutil.FixturePath("testdata", "psap", "nto", "hp-performanceprofile-patch.yaml")
+		isNTO                            bool
 	)
 
 	g.BeforeEach(func() {
@@ -106,7 +108,7 @@ var _ = g.Describe("[sig-node] PSAP should", func() {
 		defer func() {
 			g.By("Remove custom profile (if not already removed) and patch default tuned back to Managed")
 			_ = oc.AsAdmin().WithoutNamespace().Run("delete").Args("-n", ntoNamespace, "tuned", "nf-conntrack-max", "--ignore-not-found").Execute()
-			_ = patchTunedState(oc, ntoNamespace, "Managed")
+			_ = patchTunedState(oc, ntoNamespace, "default", "Managed")
 		}()
 
 		g.By("Create logging namespace")
@@ -114,9 +116,9 @@ var _ = g.Describe("[sig-node] PSAP should", func() {
 		loggingNamespace := oc.Namespace()
 
 		g.By("Patch default tuned to 'Unmanaged'")
-		err := patchTunedState(oc, ntoNamespace, "Unmanaged")
+		err := patchTunedState(oc, ntoNamespace, "default", "Unmanaged")
 		o.Expect(err).NotTo(o.HaveOccurred())
-		state, err := getTunedState(oc, ntoNamespace)
+		state, err := getTunedState(oc, ntoNamespace, "default")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(state).To(o.Equal("Unmanaged"))
 
@@ -163,9 +165,9 @@ var _ = g.Describe("[sig-node] PSAP should", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 		err = oc.AsAdmin().WithoutNamespace().Run("delete").Args("-n", loggingNamespace, "pod", "web").Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
-		err = patchTunedState(oc, ntoNamespace, "Managed")
+		err = patchTunedState(oc, ntoNamespace, "default", "Managed")
 		o.Expect(err).NotTo(o.HaveOccurred())
-		state, err = getTunedState(oc, ntoNamespace)
+		state, err = getTunedState(oc, ntoNamespace, "default")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(state).To(o.Equal("Managed"))
 
@@ -208,9 +210,9 @@ var _ = g.Describe("[sig-node] PSAP should", func() {
 		}
 
 		g.By("Change tuned state back to Unmanaged and delete custom tuned")
-		err = patchTunedState(oc, ntoNamespace, "Unmanaged")
+		err = patchTunedState(oc, ntoNamespace, "default", "Unmanaged")
 		o.Expect(err).NotTo(o.HaveOccurred())
-		state, err = getTunedState(oc, ntoNamespace)
+		state, err = getTunedState(oc, ntoNamespace, "default")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(state).To(o.Equal("Unmanaged"))
 		err = oc.AsAdmin().WithoutNamespace().Run("delete").Args("-n", ntoNamespace, "tuned", "nf-conntrack-max").Execute()
@@ -241,9 +243,9 @@ var _ = g.Describe("[sig-node] PSAP should", func() {
 		}
 
 		g.By("Changed tuned state back to Managed")
-		err = patchTunedState(oc, ntoNamespace, "Managed")
+		err = patchTunedState(oc, ntoNamespace, "default", "Managed")
 		o.Expect(err).NotTo(o.HaveOccurred())
-		state, err = getTunedState(oc, ntoNamespace)
+		state, err = getTunedState(oc, ntoNamespace, "default")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(state).To(o.Equal("Managed"))
 
@@ -263,6 +265,62 @@ var _ = g.Describe("[sig-node] PSAP should", func() {
 			o.Expect(err).NotTo(o.HaveOccurred())
 			o.Expect(output).To(o.ContainSubstring("net.netfilter.nf_conntrack_max = 1048576"))
 		}
+	})
+
+	// author: nweinber@redhat.com
+	g.It("Longduration-CPaasrunOnly-Author:nweinber-Medium-36881-Node Tuning Operator will provide machine config for the master machine config pool [Disruptive] [Slow]", func() {
+
+		// test requires NTO to be installed
+		if !isNTO {
+			g.Skip("NTO is not installed - skipping test ...")
+		}
+
+		defer func() {
+			g.By("Remove new tuning profile after test completion")
+			err := oc.AsAdmin().WithoutNamespace().Run("delete").Args("-n", ntoNamespace, "tuneds.tuned.openshift.io", "openshift-node-performance-hp-performanceprofile").Execute()
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}()
+
+		g.By("Add new tuning profile from CR")
+		exutil.CreateNsResourceFromTemplate(oc, ntoNamespace, "--ignore-unknown-parameters=true", "-f", hp_performanceprofile_file)
+
+		g.By("Verify new tuned profile was created")
+		profiles, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("tuned", "-n", ntoNamespace).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(profiles).To(o.ContainSubstring("openshift-node-performance-hp-performanceprofile"))
+
+		g.By("Get NTO pod name and check logs for priority warning")
+		ntoPodName, err := getNTOPodName(oc, ntoNamespace)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf("NTO pod name: %v", ntoPodName)
+		ntoPodLogs, err := exutil.GetSpecificPodLogs(oc, ntoNamespace, "", ntoPodName, "")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(ntoPodLogs).To(o.ContainSubstring("profiles openshift-control-plane/openshift-node-performance-hp-performanceprofile have the same priority 30, please use a different priority for your custom profiles!"))
+
+		g.By("Patch priority for openshift-node-performance-hp-performanceprofile tuned to 20")
+		err = patchTunedPriority(oc, ntoNamespace, "openshift-node-performance-hp-performanceprofile", hp_performanceprofile_patch_file)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		tunedPriority, err := getTunedPriority(oc, ntoNamespace, "openshift-node-performance-hp-performanceprofile")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(tunedPriority).To(o.Equal("20"))
+
+		g.By("Check Nodes for expected changes")
+		assertIfNodeSchedulingDisabled(oc)
+
+		g.By("Ensure the settings took effect on the master nodes")
+		assertIfMasterNodeChangesApplied(oc)
+
+		g.By("Check MachineConfig kernel arguments for expected changes")
+		mcCheck, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("mc").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(mcCheck).To(o.ContainSubstring("50-nto-master"))
+		mcKernelArgCheck, err := oc.AsAdmin().WithoutNamespace().Run("describe").Args("mc/50-nto-master").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(mcKernelArgCheck).To(o.ContainSubstring("default_hugepagesz=2M"))
+
+		g.By("Check MachineConfigPool for expected changes")
+		assertIfMCPChangesApplied(oc)
+
 	})
 
 })

@@ -2,10 +2,11 @@ package util
 
 import (
 	"fmt"
-	exutil "github.com/openshift/openshift-tests/test/extended/util"
 	"os/exec"
 	"strings"
 	"time"
+
+	exutil "github.com/openshift/openshift-tests/test/extended/util"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -192,6 +193,12 @@ func GetSpecificPodLogs(oc *CLI, namespace string, container string, podName str
 	}
 	filteredLogs, err := exec.Command("bash", "-c", "cat "+podLogs+filterCmd).Output()
 	return string(filteredLogs), err
+}
+
+// GetAllPods returns a list of the names of all pods in the cluster in a given namespace
+func GetAllPods(oc *CLI, namespace string) ([]string, error) {
+	pods, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-n", namespace, "-o", "jsonpath='{.items[*].metadata.name}'").Output()
+	return strings.Split(strings.Trim(pods, "'"), " "), err
 }
 
 // GetPodName returns the pod name
