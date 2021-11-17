@@ -29,10 +29,10 @@ var _ = g.Describe("[sig-cluster-lifecycle] Cluster_Infrastructure", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		g.By("Wait nodeStartupTimeout revert back to default itself")
-		err = wait.Poll(5*time.Second, 180*time.Second, func() (bool, error) {
+		err = wait.Poll(30*time.Second, 360*time.Second, func() (bool, error) {
 			output, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("mhc", "machine-api-termination-handler", "-o=jsonpath={.spec.nodeStartupTimeout}", "-n", machineAPINamespace).Output()
 			if output == "30m" {
-				e2e.Logf("nodeStartupTimeout is not changed back and waiting up to 5 seconds ...")
+				e2e.Logf("nodeStartupTimeout is not changed back and waiting up to 30 seconds ...")
 				return false, nil
 			}
 			e2e.Logf("nodeStartupTimeout is changed back")
