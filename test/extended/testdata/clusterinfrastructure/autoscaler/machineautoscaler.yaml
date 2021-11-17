@@ -9,14 +9,15 @@ objects:
       name: ${NAME}
       namespace: ${NAMESPACE}
     spec:
-      maxReplicas: ${{MAXREPLICS}}
-      minReplicas: ${{MINREPLICS}}
+      maxReplicas: ${{MAXREPLICAS}}
+      minReplicas: ${{MINREPLICAS}}
       scaleTargetRef:
         apiVersion: machine.openshift.io/v1beta1
         kind: MachineSet
-        name: ${NAME}
+        name: ${MACHINESETNAME}
 parameters:
 - name: NAME
 - name: NAMESPACE
-- name: MAXREPLICS
-- name: MINREPLICS
+- name: MAXREPLICAS
+- name: MINREPLICAS
+- name: MACHINESETNAME

@@ -1,8 +1,9 @@
 package clusterinfrastructure
 
 import (
-	o "github.com/onsi/gomega"
 	"strconv"
+
+	o "github.com/onsi/gomega"
 
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
@@ -18,11 +19,18 @@ type clusterAutoscalerDescription struct {
 }
 
 type machineAutoscalerDescription struct {
-	name        string
-	namespace   string
-	maxReplicas int
-	minReplicas int
-	template    string
+	name           string
+	namespace      string
+	maxReplicas    int
+	minReplicas    int
+	template       string
+	machineSetName string
+}
+
+type workLoadDescription struct {
+	name      string
+	namespace string
+	template  string
 }
 
 func (clusterAutoscaler *clusterAutoscalerDescription) createClusterAutoscaler(oc *exutil.CLI) {
@@ -38,11 +46,22 @@ func (clusterAutoscaler *clusterAutoscalerDescription) deleteClusterAutoscaler(o
 
 func (machineAutoscaler *machineAutoscalerDescription) createMachineAutoscaler(oc *exutil.CLI) {
 	e2e.Logf("Creating machineautoscaler ...")
-	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", machineAutoscaler.template, "-p", "NAME="+machineAutoscaler.name, "NAMESPACE="+machineAPINamespace, "REPLICAS="+strconv.Itoa(machineAutoscaler.maxReplicas), "CLUSTERID="+strconv.Itoa(machineAutoscaler.maxReplicas))
+	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", machineAutoscaler.template, "-p", "NAME="+machineAutoscaler.name, "NAMESPACE="+machineAPINamespace, "MAXREPLICAS="+strconv.Itoa(machineAutoscaler.maxReplicas), "MINREPLICAS="+strconv.Itoa(machineAutoscaler.minReplicas), "MACHINESETNAME="+machineAutoscaler.machineSetName)
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
 func (machineAutoscaler *machineAutoscalerDescription) deleteMachineAutoscaler(oc *exutil.CLI) error {
 	e2e.Logf("Deleting a machineautoscaler ...")
 	return oc.AsAdmin().WithoutNamespace().Run("delete").Args("machineautoscaler", machineAutoscaler.name, "-n", machineAPINamespace).Execute()
+}
+
+func (workLoad *workLoadDescription) createWorkLoad(oc *exutil.CLI) {
+	e2e.Logf("Creating workLoad ...")
+	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", workLoad.template, "-p", "NAME="+workLoad.name, "NAMESPACE="+workLoad.namespace)
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+func (workLoad *workLoadDescription) deleteWorkLoad(oc *exutil.CLI) error {
+	e2e.Logf("Deleting workload ...")
+	return oc.AsAdmin().WithoutNamespace().Run("delete").Args("job", workLoad.name, "-n", machineAPINamespace).Execute()
 }
