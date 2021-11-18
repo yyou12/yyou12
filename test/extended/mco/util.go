@@ -193,9 +193,41 @@ func (mcp *MachineConfigPool) getConfigNameOfStatus(oc *exutil.CLI) (string, err
 	return output, err
 }
 
+func (mcp *MachineConfigPool) getMachineCount(oc *exutil.CLI) (int, error) {
+	machineCountStr, ocErr := oc.AsAdmin().WithoutNamespace().Run("get").Args("mcp", mcp.name, "-o", "jsonpath={.status.machineCount}").Output()
+	if ocErr != nil {
+		e2e.Logf("Error getting machineCount: %s", ocErr)
+		return -1, ocErr
+	}
+	machineCount, convErr := strconv.Atoi(machineCountStr)
+
+	if convErr != nil {
+		e2e.Logf("Error converting machineCount to integer: %s", ocErr)
+		return -1, convErr
+	}
+
+	return machineCount, nil
+}
+
 func (mcp *MachineConfigPool) waitForComplete(oc *exutil.CLI) {
-	err := wait.Poll(1*time.Minute, 25*time.Minute, func() (bool, error) {
-		stdout, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("mcp/"+mcp.name, "-o", "jsonpath='{.status.conditions[?(@.type==\"Updated\")].status}'").Output()
+
+	var totalNodes int
+
+	o.Eventually(func() int {
+		var err error
+		totalNodes, err = mcp.getMachineCount(oc)
+		if err != nil {
+			return -1
+		}
+		return totalNodes
+	},
+		"5m").Should(o.BeNumerically(">=", 0), fmt.Sprintf("machineCount field has no value in MCP %s", mcp.name))
+
+	timeToWait := time.Duration(totalNodes*10) * time.Minute
+	e2e.Logf("Waiting %s for MCP %s to be completed.", timeToWait, mcp.name)
+
+	err := wait.Poll(1*time.Minute, timeToWait, func() (bool, error) {
+		stdout, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("mcp/"+mcp.name, "-o", "jsonpath={.status.conditions[?(@.type==\"Updated\")].status}").Output()
 		if err != nil {
 			e2e.Logf("the err:%v, and try next round", err)
 			return false, nil
