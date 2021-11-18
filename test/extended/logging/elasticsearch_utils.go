@@ -142,7 +142,7 @@ func (es externalES) deploy(oc *exutil.CLI) {
 		err = os.MkdirAll(keysPath, 0755)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		cert := certsConf{es.serverName, es.namespace}
+		cert := certsConf{es.serverName, es.namespace, ""}
 		cert.generateCerts(keysPath)
 		// create secret for ES if needed
 		if es.httpSSL || es.clientAuth {
@@ -186,7 +186,6 @@ func (es externalES) deploy(oc *exutil.CLI) {
 		}
 	}
 	cm.applyFromTemplate(oc, cmPatch...)
-	cm.WaitForResourceToAppear(oc)
 
 	// create deployment and expose svc
 	deploy := resource{"deployment", es.serverName, es.namespace}
@@ -194,7 +193,6 @@ func (es externalES) deploy(oc *exutil.CLI) {
 	deployFile := exutil.FixturePath(deployFilePath...)
 	err = deploy.applyFromTemplate(oc, "-f", deployFile, "-n", es.namespace, "-p", "NAMESPACE="+es.namespace, "-p", "NAME="+es.serverName)
 	o.Expect(err).NotTo(o.HaveOccurred())
-	deploy.WaitForResourceToAppear(oc)
 	WaitForDeploymentPodsToBeReady(oc, es.namespace, es.serverName)
 	err = oc.AsAdmin().WithoutNamespace().Run("expose").Args("-n", es.namespace, "deployment", es.serverName, "--name="+es.serverName).Execute()
 	o.Expect(err).NotTo(o.HaveOccurred())

@@ -4,6 +4,7 @@ WORKING_DIR=${1:-/tmp/_working_dir}
 NAMESPACE=${2:-openshift-logging}
 CA_PATH=${CA_PATH:-$WORKING_DIR/ca.crt}
 LOG_STORE=${3:-elasticsearch}
+PASS_PHRASE=${4:-}
 REGENERATE_NEEDED=0
 
 function init_cert_files() {
@@ -13,27 +14,27 @@ function init_cert_files() {
   fi
 
   if [ ! -f ${WORKING_DIR}/ca.serial.txt ]; then
-    echo 00 > ${WORKING_DIR}/ca.serial.txt
+    echo 00 >${WORKING_DIR}/ca.serial.txt
   fi
 }
 
 function generate_signing_ca() {
   if [ ! -f ${WORKING_DIR}/ca.crt ] || [ ! -f ${WORKING_DIR}/ca.key ] || ! openssl x509 -checkend 0 -noout -in ${WORKING_DIR}/ca.crt; then
     openssl req -x509 \
-                -new \
-                -newkey rsa:4096 \
-                -keyout ${WORKING_DIR}/ca.key \
-                -nodes \
-                -days 1825 \
-                -out ${WORKING_DIR}/ca.crt \
-                -subj "/CN=openshift-cluster-logging-signer"
+      -new \
+      -newkey rsa:4096 \
+      -keyout ${WORKING_DIR}/ca.key \
+      -nodes \
+      -days 1825 \
+      -out ${WORKING_DIR}/ca.crt \
+      -subj "/CN=openshift-cluster-logging-signer"
 
     REGENERATE_NEEDED=1
   fi
 }
 
 function create_signing_conf() {
-  cat <<EOF > "${WORKING_DIR}/signing.conf"
+  cat <<EOF >"${WORKING_DIR}/signing.conf"
 # Simple Signing CA
 
 # The [default] section contains global constants that can be referred to from
@@ -144,13 +145,13 @@ function sign_cert() {
   local component=$1
 
   openssl ca \
-          -in ${WORKING_DIR}/${component}.csr  \
-          -notext                              \
-          -out ${WORKING_DIR}/${component}.crt \
-          -config ${WORKING_DIR}/signing.conf  \
-          -extensions v3_req                   \
-          -batch                               \
-          -extensions server_ext
+    -in ${WORKING_DIR}/${component}.csr \
+    -notext \
+    -out ${WORKING_DIR}/${component}.crt \
+    -config ${WORKING_DIR}/signing.conf \
+    -extensions v3_req \
+    -batch \
+    -extensions server_ext
 }
 
 function generate_cert_config() {
@@ -158,7 +159,7 @@ function generate_cert_config() {
   local extensions=${2:-}
 
   if [ "$extensions" != "" ]; then
-    cat <<EOF > "${WORKING_DIR}/${component}.conf"
+    cat <<EOF >"${WORKING_DIR}/${component}.conf"
 [ req ]
 default_bits = 4096
 prompt = no
@@ -174,7 +175,7 @@ O = Logging
 subjectAltName = ${extensions}
 EOF
   else
-    cat <<EOF > "${WORKING_DIR}/${component}.conf"
+    cat <<EOF >"${WORKING_DIR}/${component}.conf"
 [ req ]
 default_bits = 4096
 prompt = no
@@ -192,13 +193,23 @@ EOF
 function generate_request() {
   local component=$1
 
-  openssl req -new                                        \
-          -out ${WORKING_DIR}/${component}.csr            \
-          -newkey rsa:4096                                \
-          -keyout ${WORKING_DIR}/${component}.key         \
-          -config ${WORKING_DIR}/${component}.conf        \
-          -days 712                                       \
-          -nodes
+  if [ -z "$PASS_PHRASE" ]; then
+    openssl req -new \
+      -out ${WORKING_DIR}/${component}.csr \
+      -newkey rsa:4096 \
+      -keyout ${WORKING_DIR}/${component}.key \
+      -config ${WORKING_DIR}/${component}.conf \
+      -days 712 \
+      -nodes
+  else
+    openssl req -new \
+      -passout pass:"$PASS_PHRASE" \
+      -out ${WORKING_DIR}/${component}.csr \
+      -newkey rsa:4096 \
+      -keyout ${WORKING_DIR}/${component}.key \
+      -config ${WORKING_DIR}/${component}.conf \
+      -days 712
+  fi
 }
 
 function generate_certs() {
@@ -236,7 +247,7 @@ function generate_extensions() {
       extension_names="DNS.${extension_index}:${name}"
       use_comma=1
     fi
-    extension_index=$(( extension_index + 1 ))
+    extension_index=$((extension_index + 1))
   done
 
   if [ "$add_oid" == "true" ]; then

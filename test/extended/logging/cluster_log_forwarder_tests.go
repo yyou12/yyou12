@@ -288,5 +288,91 @@ var _ = g.Describe("[sig-openshift-logging] Logging", func() {
 			o.Expect(count2 == 0).Should(o.BeTrue())
 
 		})
+
+		// author qitang@redhat.com
+		g.It("CPaasrunOnly-Author:qitang-High-41240-BZ1905615 The application logs can be sent to the default ES when part of projects logs are sent to external aggregator[Serial][Slow]", func() {
+			app_proj_1 := oc.Namespace()
+			err := oc.WithoutNamespace().Run("new-app").Args("-n", app_proj_1, "-f", jsonLogFile).Execute()
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			oc.SetupProject()
+			app_proj_2 := oc.Namespace()
+			err = oc.WithoutNamespace().Run("new-app").Args("-n", app_proj_2, "-f", jsonLogFile).Execute()
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			g.By("deploy rsyslog server")
+			oc.SetupProject()
+			syslog_proj := oc.Namespace()
+			rsyslog := rsyslog{"rsyslog", syslog_proj, false, "rsyslog", cloNS}
+			defer rsyslog.remove(oc)
+			rsyslog.deploy(oc)
+
+			g.By("create clusterlogforwarder/instance")
+			clfTemplate := exutil.FixturePath("testdata", "logging", "clusterlogforwarder", "41240.yaml")
+			clf := resource{"clusterlogforwarder", "instance", cloNS}
+			defer clf.clear(oc)
+			err = clf.applyFromTemplate(oc, "-n", clf.namespace, "-f", clfTemplate, "-p", "PROJ_NS="+app_proj_1, "-p", "URL=udp://"+rsyslog.serverName+"."+rsyslog.namespace+".svc:514")
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			g.By("deploy fluentd pods")
+			instance := exutil.FixturePath("testdata", "logging", "clusterlogging", "cl-template.yaml")
+			cl := resource{"clusterlogging", "instance", cloNS}
+			defer cl.deleteClusterLogging(oc)
+			cl.createClusterLogging(oc, "-n", cl.namespace, "-f", instance, "-p", "NAMESPACE="+cl.namespace)
+			WaitForEFKPodsToBeReady(oc, cloNS)
+
+			g.By("check logs in rsyslog server")
+			cmd := "ls -l /var/log/clf/"
+			stdout, err := e2e.RunHostCmdWithRetries(rsyslog.namespace, rsyslog.getPodName(oc), cmd, 3*time.Second, 30*time.Second)
+			o.Expect(err).NotTo(o.HaveOccurred())
+			o.Expect(stdout).Should(o.ContainSubstring("app-container.log"))
+
+			g.By("check logs in internal ES")
+			podList, err := oc.AdminKubeClient().CoreV1().Pods(cloNS).List(metav1.ListOptions{LabelSelector: "es-node-master=true"})
+			o.Expect(err).NotTo(o.HaveOccurred())
+			waitForIndexAppear(oc, cloNS, podList.Items[0].Name, "app")
+			waitForIndexAppear(oc, cloNS, podList.Items[0].Name, "infra")
+			waitForIndexAppear(oc, cloNS, podList.Items[0].Name, "audit")
+
+			waitForProjectLogsAppear(oc, cloNS, podList.Items[0].Name, app_proj_1, "app")
+			waitForProjectLogsAppear(oc, cloNS, podList.Items[0].Name, app_proj_2, "app")
+		})
+
+		// author qitang@redhat.com
+		g.It("CPaasrunOnly-Author:qitang-High-45419-ClusterLogForwarder Forward logs to remote syslog with tls[Serial][Slow]", func() {
+			app_proj := oc.Namespace()
+			err := oc.WithoutNamespace().Run("new-app").Args("-n", app_proj, "-f", jsonLogFile).Execute()
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			g.By("deploy rsyslog server")
+			oc.SetupProject()
+			syslog_proj := oc.Namespace()
+			rsyslog := rsyslog{"rsyslog", syslog_proj, true, "rsyslog", cloNS}
+			defer rsyslog.remove(oc)
+			rsyslog.deploy(oc)
+
+			g.By("create clusterlogforwarder/instance")
+			clfTemplate := exutil.FixturePath("testdata", "logging", "clusterlogforwarder", "45419.yaml")
+			clf := resource{"clusterlogforwarder", "instance", cloNS}
+			defer clf.clear(oc)
+			err = clf.applyFromTemplate(oc, "-n", clf.namespace, "-f", clfTemplate, "-p", "URL=tls://"+rsyslog.serverName+"."+rsyslog.namespace+".svc:6514", "-p", "OUTPUT_SECRET="+rsyslog.secretName)
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			g.By("deploy fluentd pods")
+			instance := exutil.FixturePath("testdata", "logging", "clusterlogging", "fluentd_only.yaml")
+			cl := resource{"clusterlogging", "instance", cloNS}
+			defer cl.deleteClusterLogging(oc)
+			cl.createClusterLogging(oc, "-n", cl.namespace, "-f", instance, "-p", "NAMESPACE="+cl.namespace)
+			WaitForDaemonsetPodsToBeReady(oc, cloNS, "collector")
+
+			g.By("check logs in rsyslog server")
+			cmd := "ls -l /var/log/clf/"
+			stdout, err := e2e.RunHostCmdWithRetries(rsyslog.namespace, rsyslog.getPodName(oc), cmd, 3*time.Second, 30*time.Second)
+			o.Expect(err).NotTo(o.HaveOccurred())
+			o.Expect(stdout).Should(o.ContainSubstring("app-container.log"))
+			o.Expect(stdout).Should(o.ContainSubstring("infra-container.log"))
+			o.Expect(stdout).Should(o.ContainSubstring("audit.log"))
+			o.Expect(stdout).Should(o.ContainSubstring("infra.log"))
+		})
 	})
 })

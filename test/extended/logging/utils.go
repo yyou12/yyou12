@@ -733,11 +733,16 @@ func checkNetworkType(oc *exutil.CLI) string {
 type certsConf struct {
 	serverName string
 	namespace  string
+	passPhrase string //client private key passphrase
 }
 
 func (certs certsConf) generateCerts(keysPath string) {
 	generateCertsSH := exutil.FixturePath("testdata", "logging", "external-log-stores", "cert_generation.sh")
-	err := exec.Command("sh", generateCertsSH, keysPath, certs.namespace, certs.serverName).Run()
+	cmd := []string{generateCertsSH, keysPath, certs.namespace, certs.serverName}
+	if certs.passPhrase != "" {
+		cmd = append(cmd, certs.passPhrase)
+	}
+	err := exec.Command("sh", cmd...).Run()
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
@@ -771,4 +776,91 @@ func checkResource(oc *exutil.CLI, expect bool, compare bool, expectedContent st
 	} else {
 		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("The %s still exists in the resource", expectedContent))
 	}
+}
+
+type rsyslog struct {
+	serverName string //the name of the rsyslog server, it's also used to name the svc/cm/sa/secret
+	namespace  string //the namespace where the rsyslog server deployed in
+	tls        bool
+	secretName string //the name of the secret for the collector to use
+	loggingNS  string //the namespace where the collector pods deployed in
+}
+
+func (r rsyslog) createPipelineSecret(oc *exutil.CLI, keysPath string) {
+	err := oc.AsAdmin().WithoutNamespace().Run("create").Args("secret", "generic", r.secretName, "-n", r.loggingNS, "--from-file=ca-bundle.crt="+keysPath+"/ca.crt").Execute()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	resource{"secret", r.secretName, r.loggingNS}.WaitForResourceToAppear(oc)
+}
+
+func (r rsyslog) deploy(oc *exutil.CLI) {
+	// create SA
+	sa := resource{"serviceaccount", r.serverName, r.namespace}
+	err := oc.WithoutNamespace().Run("create").Args("serviceaccount", sa.name, "-n", sa.namespace).Execute()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	sa.WaitForResourceToAppear(oc)
+	err = oc.AsAdmin().WithoutNamespace().Run("adm").Args("policy", "add-scc-to-user", "privileged", fmt.Sprintf("system:serviceaccount:%s:%s", r.namespace, r.serverName), "-n", r.namespace).Execute()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	filePath := []string{"testdata", "logging", "external-log-stores", "rsyslog"}
+	// create secrets if needed
+	if r.tls {
+		o.Expect(r.secretName).NotTo(o.BeEmpty())
+		// create a temporary directory
+		baseDir := exutil.FixturePath("testdata", "logging")
+		keysPath := filepath.Join(baseDir, "temp"+getRandomString())
+		defer exec.Command("rm", "-r", keysPath).Output()
+		err = os.MkdirAll(keysPath, 0755)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		cert := certsConf{r.serverName, r.namespace, ""}
+		cert.generateCerts(keysPath)
+		// create pipelinesecret
+		r.createPipelineSecret(oc, keysPath)
+		// create secret for rsyslog server
+		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("secret", "generic", r.serverName, "-n", r.namespace, "--from-file=server.key="+keysPath+"/logging-es.key", "--from-file=server.crt="+keysPath+"/logging-es.crt", "--from-file=ca_bundle.crt="+keysPath+"/ca.crt").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		filePath = append(filePath, "secure")
+	} else {
+		filePath = append(filePath, "insecure")
+	}
+
+	// create configmap/deployment/svc
+	cm := resource{"configmap", r.serverName, r.namespace}
+	cmFilePath := append(filePath, "configmap.yaml")
+	cmFile := exutil.FixturePath(cmFilePath...)
+	err = cm.applyFromTemplate(oc, "-f", cmFile, "-n", r.namespace, "-p", "NAMESPACE="+r.namespace, "-p", "NAME="+r.serverName)
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	deploy := resource{"deployment", r.serverName, r.namespace}
+	deployFilePath := append(filePath, "deployment.yaml")
+	deployFile := exutil.FixturePath(deployFilePath...)
+	err = deploy.applyFromTemplate(oc, "-f", deployFile, "-n", r.namespace, "-p", "NAMESPACE="+r.namespace, "-p", "NAME="+r.serverName)
+	o.Expect(err).NotTo(o.HaveOccurred())
+	WaitForDeploymentPodsToBeReady(oc, r.namespace, r.serverName)
+
+	svc := resource{"svc", r.serverName, r.namespace}
+	svcFilePath := append(filePath, "svc.yaml")
+	svcFile := exutil.FixturePath(svcFilePath...)
+	err = svc.applyFromTemplate(oc, "-f", svcFile, "-n", r.namespace, "-p", "NAMESPACE="+r.namespace, "-p", "NAME="+r.serverName)
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+func (r rsyslog) remove(oc *exutil.CLI) {
+	resource{"serviceaccount", r.serverName, r.namespace}.clear(oc)
+	if r.tls {
+		resource{"secret", r.serverName, r.namespace}.clear(oc)
+		resource{"secret", r.secretName, r.loggingNS}.clear(oc)
+	}
+	resource{"configmap", r.serverName, r.namespace}.clear(oc)
+	resource{"deployment", r.serverName, r.namespace}.clear(oc)
+	resource{"svc", r.serverName, r.namespace}.clear(oc)
+}
+
+func (r rsyslog) getPodName(oc *exutil.CLI) string {
+	pods, err := oc.AdminKubeClient().CoreV1().Pods(r.namespace).List(metav1.ListOptions{LabelSelector: "component=" + r.serverName})
+	o.Expect(err).NotTo(o.HaveOccurred())
+	var names []string
+	for i := 0; i < len(pods.Items); i++ {
+		names = append(names, pods.Items[i].Name)
+	}
+	return names[0]
 }
