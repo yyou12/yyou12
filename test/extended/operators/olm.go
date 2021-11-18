@@ -8389,11 +8389,18 @@ var _ = g.Describe("[sig-operators] OLM on VM for an end user handle within a na
 
 		g.By("7) To wait the csv successed")
 		sub.findInstalledCSV(oc, itName, dr)
-		err = newCheck("expect", asUser, withoutNamespace, compare, "Succeeded", ok, []string{"csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).checkWithoutAssert(oc)
-		if err != nil {
-			output := getResource(oc, asAdmin, withoutNamespace, "csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={.status}")
-			e2e.Logf(output)
-		}
+		err = wait.Poll(30*time.Second, 300*time.Second, func() (bool, error) {
+			checknameCsv, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={.status.phase}").Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			e2e.Logf(checknameCsv)
+			if checknameCsv == "Succeeded" {
+				e2e.Logf("CSV Installed")
+				return true, nil
+			} else {
+				e2e.Logf("CSV not installed")
+				return false, nil
+			}
+		})
 		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("status.phase of csv %s is not Succeeded", sub.installedCSV))
 
 		g.By("8) Error message is removed")
