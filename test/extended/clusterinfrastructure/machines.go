@@ -14,18 +14,15 @@ var _ = g.Describe("[sig-cluster-lifecycle] Cluster_Infrastructure", func() {
 		oc = exutil.NewCLI("machine-api-operator", exutil.KubeConfigPath())
 	)
 	// author: zhsun@redhat.com
-	g.It("Author:zhsun-Medium-42280-ClusterID should not be required to create a working machineSet", func() {
+	g.It("Author:zhsun-Medium-45772-MachineSet selector does is immutable", func() {
 		g.By("Create a new machineset")
 		ci.SkipConditionally(oc)
-		ms := ci.MachineSetDescription{"machineset-42280", 0}
+		ms := ci.MachineSetDescription{"machineset-45772", 0}
 		defer ms.DeleteMachineSet(oc)
 		ms.CreateMachineSet(oc)
 		g.By("Update machineset with empty clusterID")
-		err := oc.AsAdmin().WithoutNamespace().Run("patch").Args("machineset/machineset-42280", "-n", "openshift-machine-api", "-p", `{"metadata":{"labels":{"machine.openshift.io/cluster-api-cluster": null}},"spec":{"replicas":1,"selector":{"matchLabels":{"machine.openshift.io/cluster-api-cluster": null}},"template":{"metadata":{"labels":{"machine.openshift.io/cluster-api-cluster":null}}}}}`, "--type=merge").Execute()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		g.By("Check machine could be created successful")
-		// Creat a new machine taking roughly 5 minutes , set timeout as 7 minutes
-		ci.WaitForMachinesRunning(oc, 1, "machineset-42280")
+		out, _ := oc.AsAdmin().WithoutNamespace().Run("patch").Args("machineset/machineset-45772", "-n", "openshift-machine-api", "-p", `{"spec":{"replicas":1,"selector":{"matchLabels":{"machine.openshift.io/cluster-api-cluster": null}}}}`, "--type=merge").Output()
+		o.Expect(out).To(o.ContainSubstring("selector is immutable"))
 	})
 
 	// author: huliu@redhat.com
