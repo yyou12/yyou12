@@ -288,6 +288,13 @@ var _ = g.Describe("[sig-cli] Workloads", func() {
 		g.By("Create the must-gather pod")
 		oc.AsAdmin().WithoutNamespace().Run("adm").Args("must-gather", "--timeout="+"30s", "--dest-dir=/tmp/mustgatherlog", "--", "/etc/resolv.conf").Execute()
 	})
+
+	// author: yinzhou@redhat.com
+	g.It("Author:yinzhou-Medium-34155-oc get events sorted by lastTimestamp", func() {
+		g.By("Get events sorted by lastTimestamp")
+		err := oc.AsAdmin().WithoutNamespace().Run("get").Args("events", "-n", "openshift-operator-lifecycle-manager", "--sort-by="+".lastTimestamp").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+	})
 })
 
 type ClientVersion struct {
