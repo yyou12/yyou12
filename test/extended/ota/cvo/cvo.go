@@ -388,4 +388,71 @@ var _ = g.Describe("[sig-updates] OTA cvo should", func() {
 		})
 		exutil.AssertWaitPollNoErr(err, "alert is not disabled.")
 	})
+
+	//author: jiajliu@redhat.com
+	g.It("Longduration-CPaasrunOnly-Author:jiajliu-Medium-41778-ClusterOperatorDown and ClusterOperatorDegradedon alerts when unset conditions [Slow]", func() {
+
+		testDataDir := exutil.FixturePath("testdata", "ota/cvo")
+		badOauthFile := filepath.Join(testDataDir, "co-test.yaml")
+
+		g.By("Enable alerts")
+		err := oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", badOauthFile).Execute()
+		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("co", "test").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Check operator's condition...")
+		output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("co", "test", "-o=jsonpath={.status}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.Equal(""))
+
+		g.By("Waiting for alerts triggered...")
+		err = wait.Poll(30*time.Second, 180*time.Second, func() (bool, error) {
+			alertDown := getAlert("ClusterOperatorDown")
+			alertDegraded := getAlert("ClusterOperatorDegraded")
+			if alertDown == nil || alertDegraded == nil {
+				e2e.Logf("Waiting for alerts to be triggered...")
+				return false, nil
+			}
+			return true, nil
+		})
+		exutil.AssertWaitPollNoErr(err, "No alert triggerred!")
+
+		g.By("Check alert ClusterOperatorDown fired.")
+		err = wait.Poll(5*time.Minute, 10*time.Minute, func() (bool, error) {
+			alertDown := getAlert("ClusterOperatorDown")
+			if alertDown["state"] != "firing" {
+				e2e.Logf("Waiting for alert ClusterOperatorDown to be triggered and fired...")
+				return false, nil
+			}
+			return true, nil
+		})
+		exutil.AssertWaitPollNoErr(err, "ClusterOperatorDown alert is not fired in 10m")
+
+		g.By("Check alert ClusterOperatorDegraded fired.")
+		err = wait.Poll(5*time.Minute, 20*time.Minute, func() (bool, error) {
+			alertDegraded := getAlert("ClusterOperatorDegraded")
+			if alertDegraded["state"] != "firing" {
+				e2e.Logf("Waiting for alert ClusterOperatorDegraded to be triggered and fired...")
+				return false, nil
+			}
+			return true, nil
+		})
+		exutil.AssertWaitPollNoErr(err, "ClusterOperatorDegraded alert is not fired in 30m")
+
+		g.By("Disable alerts")
+		err = oc.AsAdmin().WithoutNamespace().Run("delete").Args("co", "test").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Check alerts are disabled...")
+		err = wait.Poll(10*time.Second, 60*time.Second, func() (bool, error) {
+			alertDown := getAlert("ClusterOperatorDown")
+			alertDegraded := getAlert("ClusterOperatorDegraded")
+			if alertDown != nil || alertDegraded != nil {
+				e2e.Logf("Waiting for alerts being disabled...")
+				return false, nil
+			}
+			return true, nil
+		})
+		exutil.AssertWaitPollNoErr(err, "alerts are not disabled.")
+	})
 })
