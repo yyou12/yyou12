@@ -4,14 +4,14 @@ WORKDIR /go/src/github.com/openshift/openshift-tests-private
 COPY . .
 RUN make all; \
     mkdir -p /tmp/build; \
-    cp /go/src/github.com/openshift/oropenshift-tests-private/bin/extended-platform-tests /tmp/build/extended-platform-tests
+    cp /go/src/github.com/openshift/openshift-tests-private/bin/extended-platform-tests /tmp/build/extended-platform-tests
 
 FROM registry.ci.openshift.org/ocp/4.10:tools
 COPY --from=builder /tmp/build/extended-platform-tests /usr/bin/
 RUN PACKAGES="git gzip util-linux" && \
     yum install --setopt=tsflags=nodocs -y $PACKAGES && yum clean all && rm -rf /var/cache/yum/* && \
-    git config --system user.name test && \
-    git config --system user.email test@test.com && \
+    git config --system user.name test-private && \
+    git config --system user.email test-private@test.com && \
     chmod g+w /etc/passwd && \
     pip3 install dotmap minio pyyaml requests && \
     curl -s -k https://gitlab.cee.redhat.com/aosqe/oc-compliance/-/raw/master/oc-compliance.tar -o oc-compliance.tar && tar -C /usr/bin -xvf oc-compliance.tar && rm -fr oc-compliance.tar && \
