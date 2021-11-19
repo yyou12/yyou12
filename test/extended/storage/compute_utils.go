@@ -54,7 +54,7 @@ func checkVolumeNotMountOnNode(oc *exutil.CLI, volumeName string, nodeName strin
 	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("Check volume: \"%s\" unmount on node: \"%s\" failed", volumeName, nodeName))
 }
 
-// Check the mounted voulume on the Node conatins content by cmd
+// Check the mounted volume on the Node contains content by cmd
 func checkVolumeMountCmdContain(oc *exutil.CLI, volumeName string, nodeName string, content string) {
 	command := "mount | grep " + volumeName
 	err := wait.Poll(10*time.Second, 60*time.Second, func() (bool, error) {

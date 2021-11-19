@@ -302,6 +302,8 @@ type deployment struct {
 	mpath      string
 	pvcname    string
 	template   string
+	volumetype string
+	typepath   string
 }
 
 // function option mode to change the default value of deployment parameters,eg. name, replicasno, mpath
@@ -356,6 +358,20 @@ func setDeploymentPVCName(pvcname string) deployOption {
 	}
 }
 
+// Replace the default value of Deployment volume type parameter
+func setDeploymentVolumeType(volumetype string) deployOption {
+	return func(this *deployment) {
+		this.volumetype = volumetype
+	}
+}
+
+// Replace the default value of Deployment volume type path parameter
+func setDeploymentVolumeTypePath(typepath string) deployOption {
+	return func(this *deployment) {
+		this.typepath = typepath
+	}
+}
+
 //  Create a new customized Deployment object
 func newDeployment(opts ...deployOption) deployment {
 	defaultDeployment := deployment{
@@ -366,6 +382,8 @@ func newDeployment(opts ...deployOption) deployment {
 		applabel:   "myapp-" + getRandomString(),
 		mpath:      "/mnt/storage",
 		pvcname:    "my-pvc",
+		volumetype: "volumeMounts",
+		typepath:   "mountPath",
 	}
 
 	for _, o := range opts {
@@ -377,7 +395,7 @@ func newDeployment(opts ...deployOption) deployment {
 
 // Create new Deployment with customized parameters
 func (dep *deployment) create(oc *exutil.CLI) {
-	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", dep.template, "-p", "DNAME="+dep.name, "DNAMESPACE="+dep.namespace, "PVCNAME="+dep.pvcname, "REPLICASNUM="+dep.replicasno, "DLABEL="+dep.applabel, "MPATH="+dep.mpath)
+	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", dep.template, "-p", "DNAME="+dep.name, "DNAMESPACE="+dep.namespace, "PVCNAME="+dep.pvcname, "REPLICASNUM="+dep.replicasno, "DLABEL="+dep.applabel, "MPATH="+dep.mpath, "VOLUMETYPE="+dep.volumetype, "TYPEPATH="+dep.typepath)
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
@@ -455,6 +473,13 @@ func (dep *deployment) checkPodMountedVolumeCouldRW(oc *exutil.CLI) {
 	}
 }
 
+// Get the deployment data written from checkPodMountedVolumeCouldRW
+func (dep *deployment) getPodMountedVolumeData(oc *exutil.CLI) {
+	for _, podinstance := range dep.getPodList(oc) {
+		o.Expect(execCommandInSpecificPod(oc, dep.namespace, podinstance, "cat "+dep.mpath+"/testfile_*")).To(o.ContainSubstring("storage test"))
+	}
+}
+
 // Check the deployment mounted volume have exec right
 func (dep *deployment) checkPodMountedVolumeHaveExecRight(oc *exutil.CLI) {
 	for _, podinstance := range dep.getPodList(oc) {
@@ -471,4 +496,20 @@ func (dep *deployment) checkPodMountedVolumeContain(oc *exutil.CLI, content stri
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(output).To(o.ContainSubstring(content))
 	}
+}
+
+// Write data in block level
+func writeDataBlockType(oc *exutil.CLI, dep deployment) {
+	e2e.Logf("Writing the data as Block level")
+	_, err := execCommandInSpecificPod(oc, dep.namespace, dep.getPodList(oc)[0], "/bin/dd  if=/dev/null of="+dep.mpath+" bs=512 count=1")
+	o.Expect(err).NotTo(o.HaveOccurred())
+	_, err = execCommandInSpecificPod(oc, dep.namespace, dep.getPodList(oc)[0], "echo 'test data' > "+dep.mpath)
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+// Check data written
+func checkDataBlockType(oc *exutil.CLI, dep deployment) {
+	_, err := execCommandInSpecificPod(oc, dep.namespace, dep.getPodList(oc)[0], "/bin/dd if="+dep.mpath+" of=/tmp/testfile bs=512 count=1")
+	o.Expect(err).NotTo(o.HaveOccurred())
+	o.Expect(execCommandInSpecificPod(oc, dep.namespace, dep.getPodList(oc)[0], "cat /tmp/testfile | grep 'test data' ")).To(o.ContainSubstring("matches"))
 }

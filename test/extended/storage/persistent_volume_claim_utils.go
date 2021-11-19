@@ -1,9 +1,13 @@
 package storage
 
 import (
+	"fmt"
+	"time"
+
 	o "github.com/onsi/gomega"
 
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
+	"k8s.io/apimachinery/pkg/util/wait"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 )
 
@@ -137,4 +141,75 @@ func getPersistentVolumeClaimStatus(oc *exutil.CLI, namespace string, pvcName st
 	o.Expect(err).NotTo(o.HaveOccurred())
 	e2e.Logf("The PVC  %s status in namespace %s is %q", pvcName, namespace, pvcStatus)
 	return pvcStatus, err
+}
+
+//  Get specified PersistentVolumeClaim status type during Resize
+func getPersistentVolumeClaimStatusType(oc *exutil.CLI, namespace string, pvcName string) (string, error) {
+	pvcStatus, err := oc.WithoutNamespace().Run("get").Args("pvc", pvcName, "-n", namespace, "-o=jsonpath={.status.conditions[0].type}").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	e2e.Logf("The PVC  %s status in namespace %s is %q", pvcName, namespace, pvcStatus)
+	return pvcStatus, err
+}
+
+// Apply the patch to Resize volume
+func applyVolumeResizePatch(oc *exutil.CLI, pvcName string, namespace string, volumeSize string) (string, error) {
+	//command1 := "{\"spec\":{\"resources\":{\"requests\":{\"storage\":\"" + volumeSize + "Gi\"}}}}"
+	command1 := "{\"spec\":{\"resources\":{\"requests\":{\"storage\":\"" + volumeSize + "\"}}}}"
+	command := []string{"pvc", pvcName, "-n", namespace, "-p", command1, "--type=merge"}
+	e2e.Logf("The command is %s", command)
+	msg, err := oc.AsAdmin().WithoutNamespace().Run("patch").Args(command...).Output()
+	if err != nil {
+		e2e.Logf("Execute command failed with err:%v .", err)
+		return msg, err
+	} else {
+		e2e.Logf("The command executed successfully %s", command)
+	}
+	o.Expect(err).NotTo(o.HaveOccurred())
+	return msg, nil
+}
+
+// Use persistent volume claim name to get the volumeSize in status.capacity
+func getVolSizeFromPvc(oc *exutil.CLI, pvcName string, namespace string) (string, error) {
+	volumeSize, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pvc", pvcName, "-n", namespace, "-o=jsonpath={.status.capacity.storage}").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	e2e.Logf("The PVC %s volumesize is %s", pvcName, volumeSize)
+	return volumeSize, err
+}
+
+// Wait for PVC Volume Size to get Resized
+func (pvc *persistentVolumeClaim) waitResizeSuccess(oc *exutil.CLI, volResized string) {
+	err := wait.Poll(15*time.Second, 120*time.Second, func() (bool, error) {
+		status, err := getVolSizeFromPvc(oc, pvc.name, pvc.namespace)
+		if err != nil {
+			e2e.Logf("the err:%v, wait for volume Resize %v .", err, pvc.name)
+			return false, err
+		} else {
+			if status == volResized {
+				e2e.Logf("The volume size Reached to expected status:%v", status)
+				return true, nil
+			} else {
+				return false, nil
+			}
+		}
+	})
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("The volume:%v, did not get Resized.", pvc.name))
+}
+
+// Wait for PVC Volume Size to match with Resizing status
+func getPersistentVolumeClaimStatusMatch(oc *exutil.CLI, namespace string, pvcName string, expectedValue string) {
+	err := wait.Poll(15*time.Second, 120*time.Second, func() (bool, error) {
+		status, err := getPersistentVolumeClaimStatusType(oc, namespace, pvcName)
+		if err != nil {
+			e2e.Logf("the err:%v, to get volume status Type %v .", err, pvcName)
+			return false, err
+		} else {
+			if status == expectedValue {
+				e2e.Logf("The volume size Reached to expected status:%v", status)
+				return true, nil
+			} else {
+				return false, nil
+			}
+		}
+	})
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("The volume:%v, did not reached expected status.", err))
 }

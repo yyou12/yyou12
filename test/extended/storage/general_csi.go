@@ -2,6 +2,7 @@ package storage
 
 import (
 	"path/filepath"
+	"strings"
 
 	g "github.com/onsi/ginkgo"
 	o "github.com/onsi/gomega"
@@ -330,4 +331,251 @@ var _ = g.Describe("[sig-storage] STORAGE WITH-TREARDOWN-PROJECT", func() {
 		}
 	})
 
+	// author: ropatil@redhat.com
+	// [CSI Driver] [Dynamic PV] [Filesystem] volumes resize on-line
+	g.It("Author:ropatil-Critical-45984-[CSI Driver] [Dynamic PV] [Filesystem default] volumes resize on-line", func() {
+		// Define the test scenario support provisioners
+		scenarioSupportProvisioners := []string{"ebs.csi.aws.com", "disk.csi.azure.com", "cinder.csi.openstack.org", "pd.csi.storage.gke.io"}
+		// Set the resource template for the scenario
+		var (
+			storageTeamBaseDir  = exutil.FixturePath("testdata", "storage")
+			pvcTemplate         = filepath.Join(storageTeamBaseDir, "pvc-template.yaml")
+			deploymentTemplate  = filepath.Join(storageTeamBaseDir, "dep-template.yaml")
+			supportProvisioners = sliceIntersect(scenarioSupportProvisioners, getSupportProvisionersByCloudProvider(cloudProvider))
+		)
+		if len(supportProvisioners) == 0 {
+			g.Skip("Skip for scenario non-supported provisioner!!!")
+		}
+		// Set up a specified project share for all the phases
+		g.By("0. Create new project for the scenario")
+		oc.SetupProject() //create new project
+		for _, provisioner := range supportProvisioners {
+			g.By("******" + cloudProvider + " csi driver: \"" + provisioner + "\" test phase start" + "******")
+			// Set the resource definition for the scenario
+			pvc := newPersistentVolumeClaim(setPersistentVolumeClaimTemplate(pvcTemplate), setPersistentVolumeClaimCapacity("1Gi"), setPersistentVolumeClaimStorageClassName(getPresetStorageClassNameByProvisioner(cloudProvider, provisioner)))
+			dep := newDeployment(setDeploymentTemplate(deploymentTemplate), setDeploymentPVCName(pvc.name))
+			pvc.namespace = oc.Namespace()
+			dep.namespace = pvc.namespace
+
+			// Performing the Test Steps for Online resize volume
+			ResizeOnlineCommonTestSteps(oc, pvc, dep, cloudProvider, provisioner)
+
+			g.By("******" + cloudProvider + " csi driver: \"" + provisioner + "\" test phase finished" + "******")
+		}
+	})
+
+	// author: ropatil@redhat.com
+	// [CSI Driver] [Dynamic PV] [Raw Block] volumes resize on-line
+	g.It("Author:ropatil-Critical-45985-[CSI Driver] [Dynamic PV] [Raw block] volumes resize on-line", func() {
+		// Define the test scenario support provisioners
+		scenarioSupportProvisioners := []string{"ebs.csi.aws.com", "disk.csi.azure.com", "cinder.csi.openstack.org", "pd.csi.storage.gke.io"}
+		// Set the resource template for the scenario
+		var (
+			storageTeamBaseDir  = exutil.FixturePath("testdata", "storage")
+			pvcTemplate         = filepath.Join(storageTeamBaseDir, "pvc-template.yaml")
+			deploymentTemplate  = filepath.Join(storageTeamBaseDir, "dep-template.yaml")
+			supportProvisioners = sliceIntersect(scenarioSupportProvisioners, getSupportProvisionersByCloudProvider(cloudProvider))
+		)
+		if len(supportProvisioners) == 0 {
+			g.Skip("Skip for scenario non-supported provisioner!!!")
+		}
+		// Set up a specified project share for all the phases
+		g.By("0. Create new project for the scenario")
+		oc.SetupProject() //create new project
+		for _, provisioner := range supportProvisioners {
+			g.By("******" + cloudProvider + " csi driver: \"" + provisioner + "\" test phase start" + "******")
+			// Set the resource definition for the scenario
+			pvc := newPersistentVolumeClaim(setPersistentVolumeClaimTemplate(pvcTemplate), setPersistentVolumeClaimCapacity("1Gi"), setPersistentVolumeClaimVolumemode("Block"), setPersistentVolumeClaimStorageClassName(getPresetStorageClassNameByProvisioner(cloudProvider, provisioner)))
+			dep := newDeployment(setDeploymentTemplate(deploymentTemplate), setDeploymentPVCName(pvc.name), setDeploymentVolumeType("volumeDevices"), setDeploymentVolumeTypePath("devicePath"), setDeploymentMountpath("/dev/dblock"))
+			pvc.namespace = oc.Namespace()
+			dep.namespace = pvc.namespace
+
+			// Performing the Test Steps for Online resize volume
+			ResizeOnlineCommonTestSteps(oc, pvc, dep, cloudProvider, provisioner)
+
+			g.By("******" + cloudProvider + " csi driver: \"" + provisioner + "\" test phase finished" + "******")
+		}
+	})
+
+	// author: ropatil@redhat.com
+	// [CSI Driver] [Dynamic PV] [Filesystem] volumes resize off-line
+	g.It("Author:ropatil-Critical-41452-[CSI Driver] [Dynamic PV] [Filesystem default] volumes resize off-line", func() {
+		// Define the test scenario support provisioners
+		scenarioSupportProvisioners := []string{"disk.csi.azure.com"}
+		// Set the resource template for the scenario
+		var (
+			storageTeamBaseDir  = exutil.FixturePath("testdata", "storage")
+			pvcTemplate         = filepath.Join(storageTeamBaseDir, "pvc-template.yaml")
+			deploymentTemplate  = filepath.Join(storageTeamBaseDir, "dep-template.yaml")
+			supportProvisioners = sliceIntersect(scenarioSupportProvisioners, getSupportProvisionersByCloudProvider(cloudProvider))
+		)
+		if len(supportProvisioners) == 0 {
+			g.Skip("Skip for scenario non-supported provisioner!!!")
+		}
+
+		g.By("0. Create new project for the scenario")
+		oc.SetupProject() //create new project
+		for _, provisioner := range supportProvisioners {
+			g.By("******" + cloudProvider + " csi driver: \"" + provisioner + "\" test phase start" + "******")
+			// Set the resource definition for the scenario
+			pvc := newPersistentVolumeClaim(setPersistentVolumeClaimTemplate(pvcTemplate), setPersistentVolumeClaimCapacity("1Gi"), setPersistentVolumeClaimStorageClassName(getPresetStorageClassNameByProvisioner(cloudProvider, provisioner)))
+			dep := newDeployment(setDeploymentTemplate(deploymentTemplate), setDeploymentPVCName(pvc.name))
+			pvc.namespace = oc.Namespace()
+			dep.namespace = pvc.namespace
+
+			// Performing the Test Steps for Offline resize volume
+			ResizeOfflineCommonTestSteps(oc, pvc, dep, cloudProvider, provisioner)
+
+			g.By("******" + cloudProvider + " csi driver: \"" + provisioner + "\" test phase finished" + "******")
+		}
+	})
+
+	// author: ropatil@redhat.com
+	// [CSI Driver] [Dynamic PV] [Raw block] volumes resize off-line
+	g.It("Author:ropatil-Critical-44902-[CSI Driver] [Dynamic PV] [Raw block] volumes resize off-line", func() {
+		// Define the test scenario support provisioners
+		scenarioSupportProvisioners := []string{"disk.csi.azure.com"}
+		// Set the resource template for the scenario
+		var (
+			storageTeamBaseDir  = exutil.FixturePath("testdata", "storage")
+			pvcTemplate         = filepath.Join(storageTeamBaseDir, "pvc-template.yaml")
+			deploymentTemplate  = filepath.Join(storageTeamBaseDir, "dep-template.yaml")
+			supportProvisioners = sliceIntersect(scenarioSupportProvisioners, getSupportProvisionersByCloudProvider(cloudProvider))
+		)
+		if len(supportProvisioners) == 0 {
+			g.Skip("Skip for scenario non-supported provisioner!!!")
+		}
+		// Set up a specified project share for all the phases
+		g.By("0. Create new project for the scenario")
+		oc.SetupProject() //create new project
+		for _, provisioner := range supportProvisioners {
+			g.By("******" + cloudProvider + " csi driver: \"" + provisioner + "\" test phase start" + "******")
+			// Set the resource definition for the scenario
+			pvc := newPersistentVolumeClaim(setPersistentVolumeClaimTemplate(pvcTemplate), setPersistentVolumeClaimCapacity("1Gi"), setPersistentVolumeClaimVolumemode("Block"), setPersistentVolumeClaimStorageClassName(getPresetStorageClassNameByProvisioner(cloudProvider, provisioner)))
+			dep := newDeployment(setDeploymentTemplate(deploymentTemplate), setDeploymentPVCName(pvc.name), setDeploymentVolumeType("volumeDevices"), setDeploymentVolumeTypePath("devicePath"), setDeploymentMountpath("/dev/dblock"))
+			pvc.namespace = oc.Namespace()
+			dep.namespace = pvc.namespace
+
+			// Performing the Test Steps for Offline resize volume
+			ResizeOfflineCommonTestSteps(oc, pvc, dep, cloudProvider, provisioner)
+
+			g.By("******" + cloudProvider + " csi driver: \"" + provisioner + "\" test phase finished" + "******")
+		}
+	})
 })
+
+// Performing test steps for Online Volume Resizing
+func ResizeOnlineCommonTestSteps(oc *exutil.CLI, pvc persistentVolumeClaim, dep deployment, cloudProvider string, provisioner string) {
+	// Set up a specified project share for all the phases
+	g.By("1. Create a pvc with the preset csi storageclass")
+	pvc.scname = getPresetStorageClassNameByProvisioner(cloudProvider, provisioner)
+	e2e.Logf("%s", pvc.scname)
+	pvc.create(oc)
+	defer pvc.deleteAsAdmin(oc)
+
+	g.By("2. Create deployment with the created pvc and wait for the pod ready")
+	dep.create(oc)
+	defer dep.deleteAsAdmin(oc)
+
+	g.By("3. Wait for the deployment ready")
+	dep.waitReady(oc)
+
+	g.By("4. Check the pvc status to Bound")
+	o.Expect(getPersistentVolumeClaimStatus(oc, pvc.namespace, pvc.name)).To(o.Equal("Bound"))
+
+	g.By("5. Write data in pod")
+	if dep.typepath == "mountPath" {
+		dep.checkPodMountedVolumeCouldRW(oc)
+	} else {
+		writeDataBlockType(oc, dep)
+	}
+
+	g.By("6. Apply the patch to Resize the pvc volume size to 2Gi")
+	o.Expect(applyVolumeResizePatch(oc, pvc.name, pvc.namespace, "2Gi")).To(o.ContainSubstring("patched"))
+
+	g.By("7. Waiting for the pvc Resize sucessfully")
+	pvc.waitResizeSuccess(oc, "2Gi")
+	waitPVVolSizeToGetResized(oc, pvc.namespace, pvc.name, "2Gi")
+
+	g.By("8. Check and Write data in pod")
+	var inputfile, outputfile string
+	if dep.typepath == "mountPath" {
+		dep.getPodMountedVolumeData(oc)
+		inputfile = "/dev/zero"
+		outputfile = dep.mpath + "/1"
+
+	} else {
+		checkDataBlockType(oc, dep)
+		inputfile = dep.mpath
+		outputfile = "/tmp/testfile"
+	}
+	msg, _ := execCommandInSpecificPod(oc, pvc.namespace, dep.getPodList(oc)[0], "/bin/dd  if="+inputfile+" of="+outputfile+" bs=1M count=1500")
+	o.Expect(!strings.Contains(msg, "No space left on device")).To(o.BeTrue())
+}
+
+// Performing test steps for Offline Volume Resizing
+func ResizeOfflineCommonTestSteps(oc *exutil.CLI, pvc persistentVolumeClaim, dep deployment, cloudProvider string, provisioner string) {
+	// Set up a specified project share for all the phases
+	g.By("1. Create a pvc with the preset csi storageclass")
+	pvc.scname = getPresetStorageClassNameByProvisioner(cloudProvider, provisioner)
+	e2e.Logf("%s", pvc.scname)
+	pvc.create(oc)
+	defer pvc.deleteAsAdmin(oc)
+
+	g.By("2. Create deployment with the created pvc and wait for the pod ready")
+	dep.create(oc)
+	defer dep.deleteAsAdmin(oc)
+
+	g.By("3. Wait for the deployment ready")
+	dep.waitReady(oc)
+
+	g.By("4. Check the pvc status to Bound")
+	o.Expect(getPersistentVolumeClaimStatus(oc, pvc.namespace, pvc.name)).To(o.Equal("Bound"))
+
+	g.By("5. Write data in pod")
+	if dep.typepath == "mountPath" {
+		dep.checkPodMountedVolumeCouldRW(oc)
+	} else {
+		writeDataBlockType(oc, dep)
+	}
+
+	g.By("6. Apply the patch to Resize the pvc volume size to 2Gi")
+	o.Expect(applyVolumeResizePatch(oc, pvc.name, pvc.namespace, "2Gi")).To(o.ContainSubstring("patched"))
+
+	g.By("7. Get the volume mounted on the pod located node and Scale down the replicas number to 0")
+	volName := pvc.getVolumeName(oc)
+	nodeName := getNodeNameByPod(oc, dep.namespace, dep.getPodList(oc)[0])
+	dep.scaleReplicas(oc, "0")
+
+	g.By("8. Wait for the deployment scale down completed and check nodes has no mounted volume")
+	dep.waitReady(oc)
+	checkVolumeNotMountOnNode(oc, volName, nodeName)
+
+	g.By("9. Get the pvc status type")
+	getPersistentVolumeClaimStatusMatch(oc, dep.namespace, pvc.name, "FileSystemResizePending")
+
+	g.By("10. Scale up the replicas number to 1")
+	dep.scaleReplicas(oc, "1")
+
+	g.By("11. Get the pod status by label Running")
+	dep.waitReady(oc)
+
+	g.By("12. Waiting for the pvc Resize sucessfully")
+	pvc.waitResizeSuccess(oc, "2Gi")
+	waitPVVolSizeToGetResized(oc, pvc.namespace, pvc.name, "2Gi")
+
+	g.By("13. Check and Write data in pod")
+	var inputfile, outputfile string
+	if dep.typepath == "mountPath" {
+		dep.getPodMountedVolumeData(oc)
+		inputfile = "/dev/zero"
+		outputfile = dep.mpath + "/1"
+
+	} else {
+		checkDataBlockType(oc, dep)
+		inputfile = dep.mpath
+		outputfile = "/tmp/testfile"
+	}
+	msg, _ := execCommandInSpecificPod(oc, pvc.namespace, dep.getPodList(oc)[0], "/bin/dd  if="+inputfile+" of="+outputfile+" bs=1M count=1500")
+	o.Expect(!strings.Contains(msg, "No space left on device")).To(o.BeTrue())
+}
