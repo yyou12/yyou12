@@ -14,8 +14,6 @@ RUN PACKAGES="git gzip util-linux" && \
     git config --system user.email test-private@test.com && \
     chmod g+w /etc/passwd
 RUN pip3 install dotmap minio pyyaml requests
-RUN curl -s -k https://gitlab.cee.redhat.com/aosqe/oc-compliance/-/raw/master/oc-compliance.tar -o oc-compliance.tar
-RUN tar -C /usr/bin -xvf oc-compliance.tar
-RUN rm -fr oc-compliance.tar
-RUN curl -s -k https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp-dev-preview/latest-4.10/opm-linux.tar.gz -o opm-linux.tar.gz && tar -C /usr/bin -xzvf opm-linux.tar.gz && rm -fr opm-linux.tar.gz
+RUN curl -s -k https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp-dev-preview/latest-4.10/opm-linux.tar.gz -o opm-linux.tar.gz
+RUN tar -C /usr/bin -xzvf opm-linux.tar.gz && rm -fr opm-linux.tar.gz
 
