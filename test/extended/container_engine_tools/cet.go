@@ -71,7 +71,7 @@ var _ = g.Describe("[sig-node] Container_Engine_Tools crio,scc", func() {
 	})
 
 	// author: pmali@redhat.com
-	g.It("Longduration-Author:pmali-Medium-22093-Medium-22094-CRIO configuration can be modified via containerruntimeconfig CRD[Disruptive][Slow]", func() {
+	g.It("Longduration-NonPreRelease-Author:pmali-Medium-22093-Medium-22094-CRIO configuration can be modified via containerruntimeconfig CRD[Disruptive][Slow]", func() {
 
 		oc.SetupProject()
 		ctrcfg.loglevel = "debug"

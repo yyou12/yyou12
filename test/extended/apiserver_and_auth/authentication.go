@@ -228,7 +228,7 @@ var _ = g.Describe("[sig-auth] Authentication", func() {
 	})
 
 	// author: ytripath@redhat.com
-	g.It("CPaasrunOnly-Longduration-Author:ytripath-Medium-20804-Support ConfigMap injection controller [Disruptive] [Slow]", func() {
+	g.It("NonPreRelease-Longduration-Author:ytripath-Medium-20804-Support ConfigMap injection controller [Disruptive] [Slow]", func() {
 		oc.SetupProject()
 
 		// Check the pod service-ca is running in namespace openshift-service-ca

@@ -1,13 +1,14 @@
 package networking
 
 import (
+	"path/filepath"
+	"regexp"
+	"strings"
+
 	g "github.com/onsi/ginkgo"
 	o "github.com/onsi/gomega"
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
-	"path/filepath"
-	"regexp"
-	"strings"
 )
 
 var _ = g.Describe("[sig-networking] SDN sriov", func() {
@@ -21,7 +22,7 @@ var _ = g.Describe("[sig-networking] SDN sriov", func() {
 			g.Skip("These cases only can be run on Beijing local baremetal server , skip for other envrionment!!!")
 		}
 	})
-	g.It("CPaasrunOnly-Author:yingwang-Medium-Longduration-42253-Pod with sriov interface should be created successfully with empty pod.ObjectMeta.Namespace in body [Disruptive]", func() {
+	g.It("NonPreRelease-Author:yingwang-Medium-Longduration-42253-Pod with sriov interface should be created successfully with empty pod.ObjectMeta.Namespace in body [Disruptive]", func() {
 		var (
 			networkBaseDir = exutil.FixturePath("testdata", "networking")
 			sriovBaseDir   = filepath.Join(networkBaseDir, "sriov")

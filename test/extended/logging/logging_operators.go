@@ -19,7 +19,7 @@ import (
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 )
 
-var _ = g.Describe("[sig-openshift-logging] Logging cluster-logging-operator should", func() {
+var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease cluster-logging-operator should", func() {
 	defer g.GinkgoRecover()
 	var (
 		oc                = exutil.NewCLI("logging-clo", exutil.KubeConfigPath())
@@ -74,7 +74,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging cluster-logging-operator sho
 	})
 })
 
-var _ = g.Describe("[sig-openshift-logging] Logging elasticsearch-operator should", func() {
+var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease elasticsearch-operator should", func() {
 	defer g.GinkgoRecover()
 	var (
 		oc                = exutil.NewCLI("logging-eo", exutil.KubeConfigPath())
@@ -160,7 +160,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging elasticsearch-operator shoul
 	})
 })
 
-var _ = g.Describe("[sig-openshift-logging] Logging operators upgrade testing", func() {
+var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease operators upgrade testing", func() {
 	defer g.GinkgoRecover()
 	var (
 		oc                = exutil.NewCLI("logging-upgrade", exutil.KubeConfigPath())

@@ -15,7 +15,7 @@ import (
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 )
 
-var _ = g.Describe("[sig-windows] Windows_Containers", func() {
+var _ = g.Describe("[sig-windows] Windows_Containers NonPreRelease", func() {
 	defer g.GinkgoRecover()
 
 	var (

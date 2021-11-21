@@ -738,7 +738,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 	})
 
 	//author: pdhamdhe@redhat.com
-	g.It("Author:pdhamdhe-CPaasrunOnly-High-29782-check md5 algorithm could not work for a fips enabled cluster while working well for a fips disabled cluster [Serial][Slow]", func() {
+	g.It("Author:pdhamdhe-NonPreRelease-CPaasrunOnly-High-29782-check md5 algorithm could not work for a fips enabled cluster while working well for a fips disabled cluster [Serial][Slow]", func() {
 		var itName = g.CurrentGinkgoTestDescription().TestText
 		oc.SetupProject()
 		catsrc.namespace = oc.Namespace()

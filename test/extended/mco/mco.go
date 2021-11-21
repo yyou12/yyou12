@@ -70,7 +70,7 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 
 	})
 
-	g.It("Author:rioliu-Longduration-CPaasrunOnly-High-42520-retrieve mc with large size from mcs [Disruptive]", func() {
+	g.It("Author:rioliu-Longduration-NonPreRelease-High-42520-retrieve mc with large size from mcs [Disruptive]", func() {
 		g.By("create new mc to add 100+ dummy files to /var/log")
 		mcName := "bz1866117-add-dummy-files"
 		mcTemplate := generateTemplateAbsolutePath("bz1866117-add-dummy-files.yaml")
@@ -95,7 +95,7 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		o.Expect(float64(timecost)).Should(o.BeNumerically("<", 10.0))
 	})
 
-	g.It("Author:mhanss-CPaasrunOnly-Critical-43043-Critical-43064-create/delete custom machine config pool [Disruptive]", func() {
+	g.It("Author:mhanss-NonPreRelease-Critical-43043-Critical-43064-create/delete custom machine config pool [Disruptive]", func() {
 		g.By("get worker node to change the label")
 		nodeList := NewNodeList(oc)
 		workerNode := nodeList.GetAllWorkerNodesOrFail()[0]
@@ -155,7 +155,7 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		e2e.Logf("Custom mcp is deleted successfully!")
 	})
 
-	g.It("Author:mhanss-Longduration-CPaasrunOnly-Critical-42365-add real time kernel argument [Disruptive]", func() {
+	g.It("Author:mhanss-Longduration-NonPreRelease-Critical-42365-add real time kernel argument [Disruptive]", func() {
 		platform := ci.CheckPlatform(oc)
 		if platform == "gcp" || platform == "aws" {
 			workerNode := skipTestIfOsIsNotCoreOs(oc)
@@ -170,7 +170,7 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		}
 	})
 
-	g.It("Author:mhanss-Longduration-CPaasrunOnly-Critical-42364-add selinux kernel argument [Disruptive]", func() {
+	g.It("Author:mhanss-Longduration-NonPreRelease-Critical-42364-add selinux kernel argument [Disruptive]", func() {
 		workerNode := skipTestIfOsIsNotCoreOs(oc)
 		textToVerify := TextToVerify{
 			textToVerifyForMC:   "enforcing=0",
@@ -179,7 +179,7 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		createMcAndVerifyMCValue(oc, "Kernel argument", "change-worker-kernel-selinux", workerNode, textToVerify, "cat", "/rootfs/proc/cmdline")
 	})
 
-	g.It("Author:mhanss-Longduration-CPaasrunOnly-Critical-42367-add extension to RHCOS [Disruptive]", func() {
+	g.It("Author:mhanss-Longduration-NonPreRelease-Critical-42367-add extension to RHCOS [Disruptive]", func() {
 		workerNode := skipTestIfOsIsNotCoreOs(oc)
 		textToVerify := TextToVerify{
 			textToVerifyForMC:   "usbguard",
@@ -189,7 +189,7 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		createMcAndVerifyMCValue(oc, "Usb Extension", "change-worker-extension-usbguard", workerNode, textToVerify, "rpm", "-q", "usbguard")
 	})
 
-	g.It("Author:mhanss-Longduration-CPaasrunOnly-Critical-43310-add kernel arguments, kernel type and extension to the RHCOS and RHEL [Disruptive]", func() {
+	g.It("Author:mhanss-Longduration-NonPreRelease-Critical-43310-add kernel arguments, kernel type and extension to the RHCOS and RHEL [Disruptive]", func() {
 		nodeList := NewNodeList(oc)
 		allRhelOs := nodeList.GetAllRhelWokerNodesOrFail()
 		allCoreOs := nodeList.GetAllCoreOsWokerNodesOrFail()
@@ -248,7 +248,7 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		e2e.Logf("Kernel argument, kernel type and extension changes are verified on both rhcos and rhel worker nodes!")
 	})
 
-	g.It("Author:mhanss-Longduration-CPaasrunOnly-Critical-42368-add max pods to the kubelet config [Disruptive]", func() {
+	g.It("Author:mhanss-Longduration-NonPreRelease-Critical-42368-add max pods to the kubelet config [Disruptive]", func() {
 		g.By("create kubelet config to add 500 max pods")
 		kcName := "change-maxpods-kubelet-config"
 		kcTemplate := generateTemplateAbsolutePath(kcName + ".yaml")
@@ -278,7 +278,7 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		e2e.Logf("Max pods are verified in the worker node!")
 	})
 
-	g.It("Author:mhanss-Longduration-CPaasrunOnly-Critical-42369-add container runtime config [Disruptive]", func() {
+	g.It("Author:mhanss-Longduration-NonPreRelease-Critical-42369-add container runtime config [Disruptive]", func() {
 		g.By("Create container runtime config")
 		crName := "change-ctr-cr-config"
 		crTemplate := generateTemplateAbsolutePath(crName + ".yaml")
@@ -312,7 +312,7 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		e2e.Logf("Container runtime config values are verified in the worker node!")
 	})
 
-	g.It("Author:mhanss-Longduration-CPaasrunOnly-Critical-42438-add journald systemd config [Disruptive]", func() {
+	g.It("Author:mhanss-Longduration-NonPreRelease-Critical-42438-add journald systemd config [Disruptive]", func() {
 		g.By("Create journald systemd config")
 		encodedConf, err := exec.Command("bash", "-c", "cat "+generateTemplateAbsolutePath("journald.conf")+" | base64 | tr -d '\n'").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -346,7 +346,7 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		e2e.Logf("Journald config values are verified in the worker node!")
 	})
 
-	g.It("Author:mhanss-Longduration-CPaasrunOnly-High-43405-node drain is not needed for mirror config change in container registry [Disruptive]", func() {
+	g.It("Author:mhanss-Longduration-NonPreRelease-High-43405-node drain is not needed for mirror config change in container registry [Disruptive]", func() {
 		g.By("Create image content source policy for mirror changes")
 		icspName := "repository-mirror"
 		icspTemplate := generateTemplateAbsolutePath(icspName + ".yaml")
@@ -374,15 +374,15 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 				o.ContainSubstring("Changes do not require drain, skipping")))
 	})
 
-	g.It("Author:rioliu-CPaasrunOnly-High-42218-add machine config without ignition version [Serial]", func() {
+	g.It("Author:rioliu-NonPreRelease-High-42218-add machine config without ignition version [Serial]", func() {
 		createMcAndVerifyIgnitionVersion(oc, "empty ign version", "change-worker-ign-version-to-empty", "")
 	})
 
-	g.It("Author:mhanss-CPaasrunOnly-High-43124-add machine config with invalid ignition version [Serial]", func() {
+	g.It("Author:mhanss-NonPreRelease-High-43124-add machine config with invalid ignition version [Serial]", func() {
 		createMcAndVerifyIgnitionVersion(oc, "invalid ign version", "change-worker-ign-version-to-invalid", "3.9.0")
 	})
 
-	g.It("Author:rioliu-CPaasrunOnly-High-42679-add new ssh authorized keys [Serial]", func() {
+	g.It("Author:rioliu-NonPreRelease-High-42679-add new ssh authorized keys [Serial]", func() {
 		g.By("Create new machine config with new authorized key")
 		mcName := "change-worker-add-ssh-authorized-key"
 		mcTemplate := generateTemplateAbsolutePath(mcName + ".yaml")
@@ -398,7 +398,7 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		o.Expect(sshKeyOut).Should(o.ContainSubstring("mco_test@redhat.com"))
 	})
 
-	g.It("Author:mhanss-CPaasrunOnly-Medium-43084-shutdown machine config daemon with SIGTERM [Disruptive]", func() {
+	g.It("Author:mhanss-NonPreRelease-Medium-43084-shutdown machine config daemon with SIGTERM [Disruptive]", func() {
 		g.By("Create new machine config to add additional ssh key")
 		mcName := "add-additional-ssh-authorized-key"
 		mcTemplate := generateTemplateAbsolutePath(mcName + ".yaml")
@@ -431,7 +431,7 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		o.Expect(mcdLogs).ShouldNot(o.ContainSubstring("SIGTERM"))
 	})
 
-	g.It("Author:mhanss-Longduration-CPaasrunOnly-High-42682-change container registry config on ocp 4.6 [Disruptive]", func() {
+	g.It("Author:mhanss-Longduration-NonPreRelease-High-42682-change container registry config on ocp 4.6 [Disruptive]", func() {
 		clusterVersion, _, err := exutil.GetClusterVersion(oc)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		if clusterVersion != "4.6" {
@@ -463,7 +463,7 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 				o.ContainSubstring("drain complete")))
 	})
 
-	g.It("Author:rioliu-Longduration-CPaasrunOnly-High-42704-disable auto reboot for mco [Disruptive]", func() {
+	g.It("Author:rioliu-Longduration-NonPreRelease-High-42704-disable auto reboot for mco [Disruptive]", func() {
 		g.By("pause mcp worker")
 		mcp := MachineConfigPool{name: "worker"}
 		defer mcp.pause(oc, false)
@@ -509,7 +509,7 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		mcp.waitForComplete(oc)
 	})
 
-	g.It("Author:rioliu-CPaasrunOnly-High-42681-rotate kubernetes certificate authority [Disruptive]", func() {
+	g.It("Author:rioliu-NonPreRelease-High-42681-rotate kubernetes certificate authority [Disruptive]", func() {
 		g.By("patch secret to trigger CA rotation")
 		patchErr := oc.AsAdmin().WithoutNamespace().Run("patch").Args("secret", "-p", `{"metadata": {"annotations": {"auth.openshift.io/certificate-not-after": null}}}`, "kube-apiserver-to-kubelet-signer", "-n", "openshift-kube-apiserver-operator").Execute()
 		o.Expect(patchErr).NotTo(o.HaveOccurred())
@@ -555,7 +555,7 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		e2e.Logf("mcd log on worker node %s contains expected strings: %v", workerNode.name, expectedStringsForWorker)
 	})
 
-	g.It("Author:rioliu-CPaasrunOnly-High-43085-check mcd crash-loop-back-off error in log [Serial]", func() {
+	g.It("Author:rioliu-NonPreRelease-High-43085-check mcd crash-loop-back-off error in log [Serial]", func() {
 		g.By("get master and worker nodes")
 		workerNode := NewNodeList(oc).GetAllWorkerNodesOrFail()[0]
 		masterNode := NewNodeList(oc).GetAllMasterNodesOrFail()[0]
@@ -576,7 +576,7 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		e2e.Logf("mcd log on worker node %s does not contain error messages: %v", workerNode.name, expectedStrings)
 	})
 
-	g.It("Author:mhanss-Longduration-CPaasrunOnly-Medium-43245-bump initial drain sleeps down to 1min [Disruptive]", func() {
+	g.It("Author:mhanss-Longduration-NonPreRelease-Medium-43245-bump initial drain sleeps down to 1min [Disruptive]", func() {
 		g.By("Create a pod disruption budget to set minAvailable to 1")
 		oc.SetupProject()
 		nsName := oc.Namespace()
@@ -615,7 +615,7 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		o.Expect(getTimeDifferenceInMinute(timestamps[4], timestamps[5])).Should(o.BeNumerically("<=", 6.7))
 	})
 
-	g.It("Author:rioliu-CPaasrunOnly-High-43278-security fix for unsafe cipher [Serial]", func() {
+	g.It("Author:rioliu-NonPreRelease-High-43278-security fix for unsafe cipher [Serial]", func() {
 		g.By("check go version >= 1.15")
 		_, clusterVersion, cvErr := exutil.GetClusterVersion(oc)
 		o.Expect(cvErr).NotTo(o.HaveOccurred())
@@ -644,7 +644,7 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		o.Expect(cipherOutput).Should(o.ContainSubstring("not vulnerable (OK)"))
 	})
 
-	g.It("Author:sregidor-CPaasrunOnly-High-43151-add node label to service monitor [Serial]", func() {
+	g.It("Author:sregidor-NonPreRelease-High-43151-add node label to service monitor [Serial]", func() {
 		g.By("Get current mcd_ metrics from machine-config-daemon service")
 
 		svcMCD := NewNamespacedResource(oc.AsAdmin(), "service", "openshift-machine-config-operator", "machine-config-daemon")
@@ -681,7 +681,7 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		o.Expect(stateQuery).Should(o.ContainSubstring(`"node":"` + firstWorkerNode.name + `"`))
 	})
 
-	g.It("Author:sregidor-CPaasrunOnly-High-43726-Azure ControllerConfig Infrastructure does not match cluster Infrastructure resource [Serial]", func() {
+	g.It("Author:sregidor-NonPreRelease-High-43726-Azure ControllerConfig Infrastructure does not match cluster Infrastructure resource [Serial]", func() {
 		g.By("Get machine-config-controller platform status.")
 		mccPlatformStatus := NewResource(oc.AsAdmin(), "controllerconfig", "machine-config-controller").GetOrFail("{.spec.infra.status.platformStatus}")
 		e2e.Logf("test mccPlatformStatus:\n %s", mccPlatformStatus)
@@ -706,7 +706,7 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		o.Expect(mccPlatformStatus).To(o.Equal(infraPlatformStatus))
 	})
 
-	g.It("Author:mhanss-CPaasrunOnly-high-42680-change pull secret in the openshift-config namespace [Serial]", func() {
+	g.It("Author:mhanss-NonPreRelease-high-42680-change pull secret in the openshift-config namespace [Serial]", func() {
 		g.By("Add a dummy credential in pull secret")
 		secretFile, err := getPullSecret(oc)
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -764,7 +764,7 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		e2e.Logf("MCD log on worker node %s contains expected strings: %v", workerNode.name, expectedStringsForWorker)
 	})
 
-	g.It("Author:sregidor-CPaasrunOnly-High-45239-KubeletConfig has a limit of 10 per cluster [Disruptive]", func() {
+	g.It("Author:sregidor-NonPreRelease-High-45239-KubeletConfig has a limit of 10 per cluster [Disruptive]", func() {
 		g.By("Pause mcp worker")
 		mcp := MachineConfigPool{name: "worker"}
 		defer mcp.pause(oc, false)

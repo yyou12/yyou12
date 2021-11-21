@@ -17,7 +17,7 @@ var _ = g.Describe("[sig-perfscale] PerfScale oc cli perf", func() {
 
 	oc := exutil.NewCLI("perfscale-cli", exutil.KubeConfigPath())
 	// author: kkulkarni@redhat.com
-	g.It("Author:kkulkarni-Medium-22140-Create 60 projects and time various oc commands durations[Slow][Serial]", func() {
+	g.It("Longduration-Author:kkulkarni-Medium-22140-Create 60 projects and time various oc commands durations[Slow][Serial]", func() {
 		deploymentConfigFixture := exutil.FixturePath("testdata", "perfscale", "oc-perf.yaml")
 		const projectCount = 60
 		start := time.Now()

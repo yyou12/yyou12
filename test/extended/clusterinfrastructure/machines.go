@@ -26,7 +26,7 @@ var _ = g.Describe("[sig-cluster-lifecycle] Cluster_Infrastructure", func() {
 	})
 
 	// author: huliu@redhat.com
-	g.It("Longduration-CPaasrunOnly-Author:huliu-Medium-45377-Enable accelerated network via MachineSets on Azure [Serial]", func() {
+	g.It("Longduration-NonPreRelease-Author:huliu-Medium-45377-Enable accelerated network via MachineSets on Azure [Serial]", func() {
 		g.By("Create a new machineset with acceleratedNetworking: true")
 		machinesetName := "machineset-45377"
 		ms := ci.MachineSetDescription{machinesetName, 0}

@@ -78,7 +78,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance Pre-check and post-check f
 		})
 
 		// author: xiyuan@redhat.com
-		g.It("Author:xiyuan-CPaasrunOnly-High-37721-High-37824-precheck for compliance operator", func() {
+		g.It("Author:xiyuan-CPaasrunOnly-NonPreRelease-High-37721-High-37824-precheck for compliance operator", func() {
 			g.By("Create scansettingbinding !!!\n")
 			ssb.namespace = ns1
 			ssb2.namespace = ns2
@@ -107,7 +107,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance Pre-check and post-check f
 		})
 
 		// author: xiyuan@redhat.com
-		g.It("Author:xiyuan-CPaasrunOnly-High-37721-High-37824-postcheck for compliance operator", func() {
+		g.It("Author:xiyuan-CPaasrunOnly-NonPreRelease-High-37721-High-37824-postcheck for compliance operator", func() {
 			defer cleanupObjects(oc,
 				objectTableRef{"scansettingbinding", ns1, ssb.name},
 				objectTableRef{"scansettingbinding", ns2, ssb2.name},

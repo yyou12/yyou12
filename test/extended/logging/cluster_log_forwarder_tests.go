@@ -12,7 +12,7 @@ import (
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 )
 
-var _ = g.Describe("[sig-openshift-logging] Logging", func() {
+var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 	var oc = exutil.NewCLI("logfwd-namespace", exutil.KubeConfigPath())
 	defer g.GinkgoRecover()
 

@@ -55,7 +55,7 @@ var _ = g.Describe("[sig-cluster-lifecycle] Cluster_Infrastructure", func() {
 	})
 
 	//author: miyadav@redhat.com
-	g.It("Longduration-CPaasrunOnly-Author:miyadav-Low-45430-MachineSet scaling from 0 should be evaluated correctly for the new or changed instance types [Serial][Slow][Disruptive]", func() {
+	g.It("Longduration-NonPreRelease-Author:miyadav-Low-45430-MachineSet scaling from 0 should be evaluated correctly for the new or changed instance types [Serial][Slow][Disruptive]", func() {
 		machineAutoscaler = machineAutoscalerDescription{
 			name:           "machineautoscaler-45430",
 			namespace:      "openshift-machine-api",

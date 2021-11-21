@@ -1416,7 +1416,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		})
 
 		// author: pdhamdhe@redhat.com
-		g.It("Author:pdhamdhe-Longduration-High-32120-The ComplianceSuite performs schedule scan for Platform scan type [Slow]", func() {
+		g.It("Author:pdhamdhe-NonPreRelease-Longduration-High-32120-The ComplianceSuite performs schedule scan for Platform scan type [Slow]", func() {
 			var (
 				csuiteD = complianceSuiteDescription{
 					name:         "platform-compliancesuite",
@@ -1545,7 +1545,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		})
 
 		// author: xiyuan@redhat.com
-		g.It("Author:xiyuan-Longduration-Medium-33456-The Compliance-Operator edits the scheduled cron job to scan from ComplianceSuite [Slow]", func() {
+		g.It("Author:xiyuan-NonPreRelease-Longduration-Medium-33456-The Compliance-Operator edits the scheduled cron job to scan from ComplianceSuite [Slow]", func() {
 			var (
 				csuiteD = complianceSuiteDescription{
 					name:         "example-compliancesuite1",
@@ -1609,7 +1609,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		})
 
 		// author: pdhamdhe@redhat.com
-		g.It("Author:pdhamdhe-Longduration-High-33453-The Compliance Operator rotates the raw scan results [Slow]", func() {
+		g.It("Author:pdhamdhe-NonPreRelease-Longduration-High-33453-The Compliance Operator rotates the raw scan results [Slow]", func() {
 			var (
 				csuiteD = complianceSuiteDescription{
 					name:         "worker-compliancesuite",
@@ -2608,7 +2608,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		})
 
 		// author: pdhamdhe@redhat.com
-		g.It("Author:pdhamdhe-Longduration-CPaasrunOnly-Low-42719-Low-42810-Low-42834-Check manual remediation works for TokenMaxAge TokenInactivityTimeout and no-ldap-insecure rules for oauth cluster object [Disruptive][Slow]", func() {
+		g.It("Author:pdhamdhe-Longduration-CPaasrunOnly-NonPreRelease-Low-42719-Low-42810-Low-42834-Check manual remediation works for TokenMaxAge TokenInactivityTimeout and no-ldap-insecure rules for oauth cluster object [Disruptive][Slow]", func() {
 
 			var (
 				ssb = scanSettingBindingDescription{
@@ -2915,7 +2915,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		})
 
 		// author: pdhamdhe@redhat.com
-		g.It("Author:pdhamdhe-CPaasrunOnly-Medium-40660-Low-42874-Check whether the audit logs are getting forwarded using TLS protocol [Disruptive][Slow]", func() {
+		g.It("Author:pdhamdhe-NonPreRelease-CPaasrunOnly-Medium-40660-Low-42874-Check whether the audit logs are getting forwarded using TLS protocol [Disruptive][Slow]", func() {
 			var (
 				ogL = operatorGroupDescription{
 					name:      "openshift-logging",
@@ -3070,7 +3070,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		})
 
 		// author: pdhamdhe@redhat.com
-		g.It("Author:pdhamdhe-CPaasrunOnly-Low-42700-Check that a login banner is configured and login screen customised [Disruptive][Slow]", func() {
+		g.It("Author:pdhamdhe-NonPreRelease-CPaasrunOnly-Low-42700-Check that a login banner is configured and login screen customised [Disruptive][Slow]", func() {
 
 			var (
 				ssb = scanSettingBindingDescription{
@@ -3155,7 +3155,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		})
 
 		// author: pdhamdhe@redhat.com
-		g.It("Author:pdhamdhe-CPaasrunOnly-Low-42720-check manual remediation for rule ocp4-moderate-configure-network-policies-namespaces working as expected [Disruptive][Slow]", func() {
+		g.It("Author:pdhamdhe-NonPreRelease-CPaasrunOnly-Low-42720-check manual remediation for rule ocp4-moderate-configure-network-policies-namespaces working as expected [Disruptive][Slow]", func() {
 
 			var (
 				ssb = scanSettingBindingDescription{
@@ -3307,7 +3307,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		})
 
 		// author: pdhamdhe@redhat.com
-		g.It("Author:pdhamdhe-Longduration-CPaasrunOnly-High-27967-High-33782-Medium-33711-The ComplianceSuite performs scan on a subset of nodes with autoApplyRemediations enable and ComplianceCheckResult shows remediation rule result in details [Disruptive][Slow]", func() {
+		g.It("Author:pdhamdhe-Longduration-CPaasrunOnly-NonPreRelease-High-27967-High-33782-Medium-33711-The ComplianceSuite performs scan on a subset of nodes with autoApplyRemediations enable and ComplianceCheckResult shows remediation rule result in details [Disruptive][Slow]", func() {
 			var (
 				csuiteD = complianceSuiteDescription{
 					name:         "worker-compliancesuite",

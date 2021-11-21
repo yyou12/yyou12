@@ -95,7 +95,7 @@ var _ = g.Describe("[sig-updates] OTA cvo should", func() {
 	})
 
 	//author: yanyang@redhat.com
-	g.It("Longduration-CPaasrunOnly-Author:yanyang-Medium-32138-cvo alert should not be fired when RetrievedUpdates failed due to nochannel [Serial][Slow]", func() {
+	g.It("Longduration-NonPreRelease-Author:yanyang-Medium-32138-cvo alert should not be fired when RetrievedUpdates failed due to nochannel [Serial][Slow]", func() {
 		orgChannel, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("clusterversion", "-o=jsonpath={.items[].spec.channel}").Output()
 
 		defer oc.AsAdmin().WithoutNamespace().Run("adm").Args("upgrade", "channel", orgChannel).Execute()
@@ -334,7 +334,7 @@ var _ = g.Describe("[sig-updates] OTA cvo should", func() {
 	})
 
 	//author: jiajliu@redhat.com
-	g.It("Longduration-CPaasrunOnly-Author:jiajliu-Medium-41728-cvo alert ClusterOperatorDegraded on degraded operators [Disruptive][Slow]", func() {
+	g.It("Longduration-NonPreRelease-Author:jiajliu-Medium-41728-cvo alert ClusterOperatorDegraded on degraded operators [Disruptive][Slow]", func() {
 
 		testDataDir := exutil.FixturePath("testdata", "ota/cvo")
 		badOauthFile := filepath.Join(testDataDir, "bad-oauth.yaml")
@@ -390,7 +390,7 @@ var _ = g.Describe("[sig-updates] OTA cvo should", func() {
 	})
 
 	//author: jiajliu@redhat.com
-	g.It("Longduration-CPaasrunOnly-Author:jiajliu-Medium-41778-ClusterOperatorDown and ClusterOperatorDegradedon alerts when unset conditions [Slow]", func() {
+	g.It("Longduration-NonPreRelease-Author:jiajliu-Medium-41778-ClusterOperatorDown and ClusterOperatorDegradedon alerts when unset conditions [Slow]", func() {
 
 		testDataDir := exutil.FixturePath("testdata", "ota/cvo")
 		badOauthFile := filepath.Join(testDataDir, "co-test.yaml")

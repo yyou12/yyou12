@@ -13,7 +13,7 @@ import (
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 )
 
-var _ = g.Describe("[sig-openshift-logging] Logging", func() {
+var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 	defer g.GinkgoRecover()
 
 	var (
@@ -233,7 +233,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging", func() {
 	})
 })
 
-var _ = g.Describe("[sig-openshift-logging] Logging Elasticsearch should", func() {
+var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Elasticsearch should", func() {
 	defer g.GinkgoRecover()
 
 	var (

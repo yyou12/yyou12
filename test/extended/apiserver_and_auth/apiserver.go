@@ -2,11 +2,12 @@ package apiserver_and_auth
 
 import (
 	"fmt"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
+
+	"k8s.io/apimachinery/pkg/util/wait"
 
 	g "github.com/onsi/ginkgo"
 	o "github.com/onsi/gomega"
@@ -152,7 +153,7 @@ spec:
 	// author: xxia@redhat.com
 	// It is destructive case, will make kube-apiserver roll out, so adding [Disruptive]. One rollout costs about 25mins, so adding [Slow]
 	// If the case duration is greater than 10 minutes and is executed in serial (labelled Serial or Disruptive), add Longduration
-	g.It("Longduration-Author:xxia-Medium-25811-Etcd encrypted cluster could self-recover when related encryption configuration is deleted [Slow][Disruptive]", func() {
+	g.It("Longduration-NonPreRelease-Author:xxia-Medium-25811-Etcd encrypted cluster could self-recover when related encryption configuration is deleted [Slow][Disruptive]", func() {
 		// only run this case in Etcd Encryption On cluster
 		g.By("Check if cluster is Etcd Encryption On")
 		output, err := oc.WithoutNamespace().Run("get").Args("apiserver/cluster", "-o=jsonpath={.spec.encryption.type}").Output()
@@ -239,7 +240,7 @@ spec:
 	// It is destructive case, will make openshift-kube-apiserver and openshift-apiserver namespaces deleted, so adding [Disruptive].
 	// In test the recovery costs about 22mins in max, so adding [Slow]
 	// If the case duration is greater than 10 minutes and is executed in serial (labelled Serial or Disruptive), add Longduration
-	g.It("Longduration-Author:xxia-Medium-36801-Etcd encrypted cluster could self-recover when related encryption namespaces are deleted [Slow][Disruptive]", func() {
+	g.It("Longduration-NonPreRelease-Author:xxia-Medium-36801-Etcd encrypted cluster could self-recover when related encryption namespaces are deleted [Slow][Disruptive]", func() {
 		// only run this case in Etcd Encryption On cluster
 		g.By("Check if cluster is Etcd Encryption On")
 		encryptionType, err := oc.WithoutNamespace().Run("get").Args("apiserver/cluster", "-o=jsonpath={.spec.encryption.type}").Output()

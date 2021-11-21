@@ -1,11 +1,12 @@
 package securityandcompliance
 
 import (
-	g "github.com/onsi/ginkgo"
-	o "github.com/onsi/gomega"
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	g "github.com/onsi/ginkgo"
+	o "github.com/onsi/gomega"
 
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
 )
@@ -58,7 +59,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance Pre-check and post-check f
 		})
 
 		// author: pdhamdhe@redhat.com
-		g.It("Author:pdhamdhe-CPaasrunOnly-High-39254-Critical-42663-precheck for file integrity operator", func() {
+		g.It("Author:pdhamdhe-NonPreRelease-CPaasrunOnly-High-39254-Critical-42663-precheck for file integrity operator", func() {
 			g.By("Create file integrity object  !!!\n")
 			fi1.namespace = ns1
 			err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", fi1.template, "-p", "NAME="+fi1.name, "NAMESPACE="+fi1.namespace, "GRACEPERIOD="+strconv.Itoa(fi1.graceperiod),
@@ -85,7 +86,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance Pre-check and post-check f
 		})
 
 		// author: pdhamdhe@redhat.com
-		g.It("Author:pdhamdhe-CPaasrunOnly-High-39254-Critical-42663-postcheck for file integrity operator", func() {
+		g.It("Author:pdhamdhe-NonPreRelease-CPaasrunOnly-High-39254-Critical-42663-postcheck for file integrity operator", func() {
 			fi1.namespace = ns1
 			defer cleanupObjects(oc,
 				objectTableRef{"fileintegrity", ns1, fi1.name},

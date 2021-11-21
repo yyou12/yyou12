@@ -268,7 +268,7 @@ var _ = g.Describe("[sig-node] PSAP should", func() {
 	})
 
 	// author: nweinber@redhat.com
-	g.It("Longduration-CPaasrunOnly-Author:nweinber-Medium-36881-Node Tuning Operator will provide machine config for the master machine config pool [Disruptive] [Slow]", func() {
+	g.It("Longduration-NonPreRelease-Author:nweinber-Medium-36881-Node Tuning Operator will provide machine config for the master machine config pool [Disruptive] [Slow]", func() {
 
 		// test requires NTO to be installed
 		if !isNTO {
