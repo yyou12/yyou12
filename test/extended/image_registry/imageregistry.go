@@ -478,4 +478,47 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(len(podList.Items)).Should(o.Equal(2))
 	})
+
+	// author: wewang@redhat.com
+	g.It("Author:wewang-High-45952-Imported imagestreams should success in deploymentconfig", func() {
+		var (
+			imageRegistryBaseDir = exutil.FixturePath("testdata", "image_registry")
+			statefulsetFile      = filepath.Join(imageRegistryBaseDir, "statefulset.yaml")
+			statefulsetsrc       = staSource{
+				namespace: "",
+				name:      "example-statefulset",
+				template:  statefulsetFile,
+			}
+		)
+		g.By("Import an image stream and set image-lookup")
+		oc.SetupProject()
+		err := oc.Run("import-image").Args("registry.access.redhat.com/ubi8/ubi", "--scheduled", "--confirm", "--reference-policy=local").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = exutil.WaitForAnImageStreamTag(oc, oc.Namespace(), "ubi", "latest")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = oc.Run("set").Args("image-lookup", "ubi").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Create the initial statefulset")
+		statefulsetsrc.namespace = oc.Namespace()
+		g.By("Create statefulset")
+		statefulsetsrc.create(oc)
+		g.By("Check the pods are running")
+		checkPodsRunningWithLabel(oc, oc.Namespace(), "app=example-statefulset", 3)
+
+		g.By("Reapply the sample yaml")
+		applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", statefulsetsrc.template, "-p", "NAME="+statefulsetsrc.name, "NAMESPACE="+statefulsetsrc.namespace)
+		g.By("Check the pods are running")
+		checkPodsRunningWithLabel(oc, oc.Namespace(), "app=example-statefulset", 3)
+
+		g.By("setting a trigger, pods are still running")
+		err = oc.Run("set").Args("triggers", "statefulset/example-statefulset", "--from-image=ubi:latest", "--containers", "example-statefulset").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		g.By("Check the pods are running")
+		checkPodsRunningWithLabel(oc, oc.Namespace(), "app=example-statefulset", 3)
+		interReg := "image-registry.openshift-image-registry.svc:5000/" + oc.Namespace() + "/ubi"
+		output, err := oc.WithoutNamespace().AsAdmin().Run("get").Args("pods", "-o=jsonpath={.items[*].spec.containers[*].image}", "-n", oc.Namespace()).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring(interReg))
+	})
 })

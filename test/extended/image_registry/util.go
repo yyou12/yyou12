@@ -133,7 +133,7 @@ func applyResourceFromTemplate(oc *exutil.CLI, parameters ...string) error {
 	})
 	exutil.AssertWaitPollNoErr(err, "Applying resources from template is failed")
 	e2e.Logf("the file of resource is %s", configFile)
-	return oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", configFile).Execute()
+	return oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", configFile).Execute()
 }
 
 func getRandomString() string {
@@ -415,4 +415,31 @@ func checkRegistrypodsRemoved(oc *exutil.CLI) {
 		return false, nil
 	})
 	exutil.AssertWaitPollNoErr(err, "Image registry pods are not removed")
+}
+
+type staSource struct {
+	name      string
+	namespace string
+	template  string
+}
+
+func (stafulsrc *staSource) create(oc *exutil.CLI) {
+	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", stafulsrc.template, "-p", "NAME="+stafulsrc.name, "NAMESPACE="+stafulsrc.namespace)
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+func checkPodsRunningWithLabel(oc *exutil.CLI, namespace string, label string, number int) {
+	err := wait.Poll(20*time.Second, 1*time.Minute, func() (bool, error) {
+		podList, _ := oc.AdminKubeClient().CoreV1().Pods(namespace).List(metav1.ListOptions{LabelSelector: label})
+		if len(podList.Items) != number {
+			e2e.Logf("the pod number is not %s, Continue to next round", number)
+			return false, nil
+		} else if podList.Items[0].Status.Phase != corev1.PodRunning {
+			e2e.Logf("the pod status is not running, continue to next round")
+			return false, nil
+		} else {
+			return true, nil
+		}
+	})
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("pods list are not %d", number))
 }
