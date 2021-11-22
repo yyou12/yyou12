@@ -36,6 +36,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		tprofileTemplate                 string
 		tprofileWithoutVarTemplate       string
 		scansettingTemplate              string
+		scansettingSingleTemplate        string
 		scansettingbindingTemplate       string
 		scansettingbindingSingleTemplate string
 		profilebundleTemplate            string
@@ -81,6 +82,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		tprofileTemplate = filepath.Join(buildPruningBaseDir, "tailoredprofile.yaml")
 		tprofileWithoutVarTemplate = filepath.Join(buildPruningBaseDir, "tailoredprofile-withoutvariable.yaml")
 		scansettingTemplate = filepath.Join(buildPruningBaseDir, "scansetting.yaml")
+		scansettingSingleTemplate = filepath.Join(buildPruningBaseDir, "scansettingsingle.yaml")
 		scansettingbindingTemplate = filepath.Join(buildPruningBaseDir, "scansettingbinding.yaml")
 		scansettingbindingSingleTemplate = filepath.Join(buildPruningBaseDir, "oc-compliance-scansettingbinding.yaml")
 		profilebundleTemplate = filepath.Join(buildPruningBaseDir, "profilebundle.yaml")
@@ -1754,20 +1756,24 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		})
 
 		// author: pdhamdhe@redhat.com
-		g.It("Author:pdhamdhe-Medium-32814-The compliance operator by default creates ProfileBundles", func() {
+		g.It("Author:pdhamdhe-Medium-32814-High-45729-The compliance operator by default creates ProfileBundles", func() {
 			g.By("Check default profilebundles name and status.. !!!\n")
-			subD.getProfileBundleNameandStatus(oc, "ocp4")
-			subD.getProfileBundleNameandStatus(oc, "rhcos4")
+			subD.getProfileBundleNameandStatus(oc, "ocp4", "VALID")
+			subD.getProfileBundleNameandStatus(oc, "rhcos4", "VALID")
 
 			g.By("Check default profiles name.. !!!\n")
 			subD.getProfileName(oc, "ocp4-cis")
 			subD.getProfileName(oc, "ocp4-cis-node")
 			subD.getProfileName(oc, "ocp4-e8")
 			subD.getProfileName(oc, "ocp4-moderate")
+			subD.getProfileName(oc, "ocp4-moderate-node")
+			subD.getProfileName(oc, "ocp4-nerc-cip")
+			subD.getProfileName(oc, "ocp4-nerc-cip-node")
 			subD.getProfileName(oc, "rhcos4-e8")
 			subD.getProfileName(oc, "rhcos4-moderate")
+			subD.getProfileName(oc, "rhcos4-nerc-cip")
 
-			g.By("ocp-32814 The Compliance Operator by default created ProfileBundles and profiles are verified successfully.. !!!\n")
+			g.By("The Compliance Operator by default created ProfileBundles and profiles are verified successfully.. !!!\n")
 		})
 
 		// author: pdhamdhe@redhat.com
@@ -3416,6 +3422,83 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			g.By("Verify example-scan-no-empty-passwords rule status through compliancecheck result again.. !!!\n")
 			newCheck("expect", asAdmin, withoutNamespace, contain, "PASS", ok, []string{"compliancecheckresult",
 				"example-scan-no-empty-passwords", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
+		})
+
+		// author: pdhamdhe@redhat.com
+		g.It("Author:pdhamdhe-CPaasrunOnly-NonPreRelease-High-45421-Verify the scan scheduling option strict or not strict are configurable through scan objects [Disruptive][Slow]", func() {
+			var (
+				ss = scanSettingDescription{
+					autoapplyremediations: false,
+					name:                  "nodestrict",
+					namespace:             "",
+					roles1:                "worker",
+					rotation:              5,
+					schedule:              "0 1 * * *",
+					strictnodescan:        false,
+					size:                  "2Gi",
+					template:              scansettingSingleTemplate,
+				}
+				ssb = scanSettingBindingDescription{
+					name:            "rhcos4-test",
+					namespace:       "",
+					profilekind1:    "Profile",
+					profilename1:    "rhcos4-moderate",
+					scansettingname: "nodestrict",
+					template:        scansettingbindingSingleTemplate,
+				}
+			)
+
+			g.By("Get one worker node and mark that unschedulable.. !!!\n")
+			nodeName := getOneRhcosWorkerNodeName(oc)
+			defer oc.AsAdmin().WithoutNamespace().Run("adm").Args("uncordon", nodeName).Output()
+			_, err := oc.AsAdmin().WithoutNamespace().Run("adm").Args("cordon", nodeName).Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			newCheck("expect", asAdmin, withoutNamespace, contain, "true", ok, []string{"node", nodeName, "-o=jsonpath={.spec.unschedulable}"}).check(oc)
+
+			defer func() {
+				cleanupObjects(oc, objectTableRef{"scansettingbinding", subD.namespace, ssb.name})
+				cleanupObjects(oc, objectTableRef{"scansetting", subD.namespace, ss.name})
+			}()
+
+			g.By("Check default profiles name rhcos4-moderate.. !!!\n")
+			subD.getProfileName(oc, "rhcos4-moderate")
+
+			g.By("Create scansetting !!!\n")
+			ss.namespace = subD.namespace
+			ss.create(oc, itName, dr)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "nodestrict", ok, []string{"scansetting", ss.name, "-n", ss.namespace,
+				"-o=jsonpath={.metadata.name}"}).check(oc)
+
+			g.By("Create scansettingbinding !!!\n")
+			ssb.namespace = subD.namespace
+			ssb.create(oc, itName, dr)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "rhcos4-test", ok, []string{"scansettingbinding", "-n", ssb.namespace,
+				"-o=jsonpath={.items[0].metadata.name}"}).check(oc)
+
+			g.By("Check ComplianceSuite status !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", ssb.name, "-n", ssb.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+
+			g.By("Check complianceSuite name and result.. !!!\n")
+			subD.complianceSuiteName(oc, ssb.name)
+			subD.complianceSuiteResult(oc, ssb.name, "NON-COMPLIANT INCONSISTENT")
+
+			g.By("Remove scansettingbinding object !!!\n")
+			cleanupObjects(oc, objectTableRef{"scansettingbinding", ssb.namespace, ssb.name})
+
+			g.By("Patch scansetting object and verify.. !!!\n")
+			patchResource(oc, asAdmin, withoutNamespace, "ss", ss.name, "--type", "merge", "-p", "{\"strictNodeScan\":true}", "-n", ss.namespace)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "true", ok, []string{"ss", ss.name, "-n", ss.namespace, "-o=jsonpath={..strictNodeScan}"}).check(oc)
+
+			g.By("Again create scansettingbinding !!!\n")
+			ssb.namespace = subD.namespace
+			ssb.create(oc, itName, dr)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "rhcos4-test", ok, []string{"scansettingbinding", "-n", ssb.namespace,
+				"-o=jsonpath={.items[0].metadata.name}"}).check(oc)
+
+			g.By("Check ComplianceSuite status !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "PENDING", ok, []string{"compliancesuite", ssb.name, "-n", ssb.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+
+			g.By("ocp-45421 Successfully verify the scan scheduling option strict or not strict are configurable through scan objects... !!!\n")
 		})
 	})
 })

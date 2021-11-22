@@ -54,6 +54,7 @@ type scanSettingDescription struct {
 	rotation              int
 	schedule              string
 	size                  string
+	strictnodescan        bool
 	template              string
 }
 
@@ -146,7 +147,7 @@ func (pb *profileBundleDescription) create(oc *exutil.CLI, itName string, dr des
 func (ss *scanSettingDescription) create(oc *exutil.CLI, itName string, dr describerResrouce) {
 	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", ss.template, "-p", "NAME="+ss.name, "NAMESPACE="+ss.namespace,
 		"AUTOAPPLYREMEDIATIONS="+strconv.FormatBool(ss.autoapplyremediations), "SCHEDULE="+ss.schedule, "SIZE="+ss.size, "ROTATION="+strconv.Itoa(ss.rotation),
-		"ROLES1="+ss.roles1, "ROLES2="+ss.roles2)
+		"ROLES1="+ss.roles1, "ROLES2="+ss.roles2, "STRICTNODESCAN="+strconv.FormatBool(ss.strictnodescan))
 	o.Expect(err).NotTo(o.HaveOccurred())
 	dr.getIr(itName).add(newResource(oc, "scansetting", ss.name, requireNS, ss.namespace))
 }
@@ -400,7 +401,7 @@ func (subD *subscriptionDescription) getRuleStatus(oc *exutil.CLI, expected stri
 	}
 }
 
-func (subD *subscriptionDescription) getProfileBundleNameandStatus(oc *exutil.CLI, expected string) {
+func (subD *subscriptionDescription) getProfileBundleNameandStatus(oc *exutil.CLI, expected string, status string) {
 	pbName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", subD.namespace, "profilebundles", "-o=jsonpath={.items[*].metadata.name}").Output()
 	lines := strings.Fields(pbName)
 	for _, line := range lines {
@@ -408,9 +409,8 @@ func (subD *subscriptionDescription) getProfileBundleNameandStatus(oc *exutil.CL
 			e2e.Logf("\n%v\n\n", line)
 			// verify profilebundle status
 			pbStatus, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", subD.namespace, "profilebundles", line, "-o=jsonpath={.status.dataStreamStatus}").Output()
-			o.Expect(pbStatus).To(o.ContainSubstring("VALID"))
+			o.Expect(pbStatus).To(o.ContainSubstring(status))
 			o.Expect(err).NotTo(o.HaveOccurred())
-			return
 		}
 	}
 	o.Expect(err).NotTo(o.HaveOccurred())
@@ -443,7 +443,6 @@ func (subD *subscriptionDescription) getProfileName(oc *exutil.CLI, expected str
 	for _, line := range lines {
 		if strings.Compare(line, expected) == 0 {
 			e2e.Logf("\n%v\n\n", line)
-			return
 		}
 	}
 	o.Expect(err).NotTo(o.HaveOccurred())
