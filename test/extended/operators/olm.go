@@ -5815,7 +5815,6 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 				ipApproval:             "Automatic",
 				channel:                "singlenamespace-alpha",
 				operatorPackage:        "etcd",
-				startingCSV:            "etcdoperator.v0.9.2",
 				singleNamespace:        true,
 				template:               subFile,
 			}
@@ -5846,26 +5845,31 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 
 		g.By("3, Collect olm metrics before installing an operator")
 		msg, _, err = oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-operator-lifecycle-manager", olmPodname, "-i", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", olmToken), "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query=csv_count").Outputs()
+		e2e.Logf("csv_count %v: %v", err, msg)
 		o.Expect(msg).NotTo(o.BeEmpty())
 		json.Unmarshal([]byte(msg), &data)
 		metricsBefore.csvCount, err = strconv.Atoi(data.Data.Result[0].Value[1].(string))
 
 		msg, _, err = oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-operator-lifecycle-manager", olmPodname, "-i", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", olmToken), "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query=csv_upgrade_count").Outputs()
+		e2e.Logf("csv_upgrade_count %v: %v", err, msg)
 		o.Expect(msg).NotTo(o.BeEmpty())
 		json.Unmarshal([]byte(msg), &data)
 		metricsBefore.csvUpgradeCount, err = strconv.Atoi(data.Data.Result[0].Value[1].(string))
 
 		msg, _, err = oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-operator-lifecycle-manager", catPodname, "-i", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", olmToken), "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query=catalog_source_count").Outputs()
+		e2e.Logf("catalog_source_count %v: %v", err, msg)
 		o.Expect(msg).NotTo(o.BeEmpty())
 		json.Unmarshal([]byte(msg), &data)
 		metricsBefore.catalogSourceCount, err = strconv.Atoi(data.Data.Result[0].Value[1].(string))
 
 		msg, _, err = oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-operator-lifecycle-manager", catPodname, "-i", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", olmToken), "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query=install_plan_count").Outputs()
+		e2e.Logf("install_plan_count %v: %v", err, msg)
 		o.Expect(msg).NotTo(o.BeEmpty())
 		json.Unmarshal([]byte(msg), &data)
 		metricsBefore.installPlanCount, err = strconv.Atoi(data.Data.Result[0].Value[1].(string))
 
 		msg, _, err = oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-operator-lifecycle-manager", catPodname, "-i", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", olmToken), "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query=subscription_count").Outputs()
+		e2e.Logf("subscription_count %v: %v", err, msg)
 		o.Expect(msg).NotTo(o.BeEmpty())
 		json.Unmarshal([]byte(msg), &data)
 		metricsBefore.subscriptionCount, err = strconv.Atoi(data.Data.Result[0].Value[1].(string))
@@ -5873,6 +5877,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		metricsBefore.subscriptionSyncTotal = 0
 
 		msg, _, err = oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-operator-lifecycle-manager", catPodname, "-i", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", olmToken), "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query=subscription_sync_total").Outputs()
+		e2e.Logf("subscription_sync_total %v: %v", err, msg)
 		o.Expect(msg).NotTo(o.BeEmpty())
 		json.Unmarshal([]byte(msg), &subSync)
 		for i = range subSync.Data.Result {
@@ -5883,41 +5888,48 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 
 		e2e.Logf("\nbefore {csv_count, csv_upgrade_count, catalog_source_count, install_plan_count, subscription_count, subscription_sync_total}\n%v", metricsBefore)
 
-		g.By("4, Start to subscribe to etcdoperator.v0.9.2")
+		g.By("4, Start to subscribe to etcdoperator")
 		defer sub.delete(itName, dr) // remove the subscription after test
 		sub.create(oc, itName, dr)
 
+		g.By("4.5 Check for latest version")
 		defer sub.deleteCSV(itName, dr) // remove the csv after test
 		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", "etcdoperator.v0.9.4", "-n", oc.Namespace(), "-o=jsonpath={.status.phase}"}).check(oc)
 
-		g.By("5, etcdoperator.v0.9.2 upgrade to etcdoperator.v0.9.4, start to collect olm metrics after")
+		g.By("5, etcdoperator is at v0.9.4, start to collect olm metrics after")
 		msg, _, err = oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-operator-lifecycle-manager", olmPodname, "-i", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", olmToken), "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query=csv_count").Outputs()
+		e2e.Logf("csv_count %v: %v", err, msg)
 		o.Expect(msg).NotTo(o.BeEmpty())
 		json.Unmarshal([]byte(msg), &data)
 		metricsAfter.csvCount, err = strconv.Atoi(data.Data.Result[0].Value[1].(string))
 
 		msg, _, err = oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-operator-lifecycle-manager", olmPodname, "-i", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", olmToken), "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query=csv_upgrade_count").Outputs()
+		e2e.Logf("csv_upgrade_count %v: %v", err, msg)
 		o.Expect(msg).NotTo(o.BeEmpty())
 		json.Unmarshal([]byte(msg), &data)
 		metricsAfter.csvUpgradeCount, err = strconv.Atoi(data.Data.Result[0].Value[1].(string))
 
 		msg, _, err = oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-operator-lifecycle-manager", catPodname, "-i", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", olmToken), "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query=catalog_source_count").Outputs()
+		e2e.Logf("catalog_source_count %v: %v", err, msg)
 		o.Expect(msg).NotTo(o.BeEmpty())
 		json.Unmarshal([]byte(msg), &data)
 		metricsAfter.catalogSourceCount, err = strconv.Atoi(data.Data.Result[0].Value[1].(string))
 
 		msg, _, err = oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-operator-lifecycle-manager", catPodname, "-i", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", olmToken), "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query=install_plan_count").Outputs()
+		e2e.Logf("install_plan_count %v: %v", err, msg)
 		o.Expect(msg).NotTo(o.BeEmpty())
 		json.Unmarshal([]byte(msg), &data)
 		metricsAfter.installPlanCount, err = strconv.Atoi(data.Data.Result[0].Value[1].(string))
 
 		msg, _, err = oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-operator-lifecycle-manager", catPodname, "-i", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", olmToken), "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query=subscription_count").Outputs()
+		e2e.Logf("subscription_count %v: %v", err, msg)
 		o.Expect(msg).NotTo(o.BeEmpty())
 		json.Unmarshal([]byte(msg), &data)
 		metricsAfter.subscriptionCount, err = strconv.Atoi(data.Data.Result[0].Value[1].(string))
 
 		metricsAfter.subscriptionSyncTotal = 0
 		msg, _, err = oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-operator-lifecycle-manager", catPodname, "-i", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", olmToken), "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query=subscription_sync_total").Outputs()
+		e2e.Logf("subscription_sync_total %v: %v", err, msg)
 		o.Expect(msg).NotTo(o.BeEmpty())
 		json.Unmarshal([]byte(msg), &subSync)
 		for i = range subSync.Data.Result {
@@ -5931,12 +5943,12 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		e2e.Logf("%v", metricsBefore)
 		e2e.Logf("%v", metricsAfter)
 
+		/* These are not reliable if other operators are added in parallel
 		g.By("Check Results")
 		// csv_count can increase since there is a new csv generated
 		o.Expect(metricsBefore.csvCount <= metricsAfter.csvCount).To(o.BeTrue())
 		e2e.Logf("PASS csv_count is greater")
 
-		/* These are not reliable if other operators are added in parallel
 		// csv_upgrade_count should increase since its type is counter, see: https://prometheus.io/docs/concepts/metric_types/
 		o.Expect((metricsAfter.csvUpgradeCount - metricsBefore.csvUpgradeCount) == 1).To(o.BeTrue())
 		e2e.Logf("PASS csv_upgrade_count is greater")
