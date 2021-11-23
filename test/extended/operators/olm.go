@@ -2072,7 +2072,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	})
 
 	g.It("ConnectedOnly-Author:bandrade-High-40317-Check CatalogSources index images", func() {
-		clusterVersion, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("clusterversion", "version", "-o=jsonpath={.status.history..version}").Output()
+		clusterVersion, _, err := exutil.GetClusterVersion(oc)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		cs := [...]string{"certified-operators", "community-operators", "redhat-operators"}
