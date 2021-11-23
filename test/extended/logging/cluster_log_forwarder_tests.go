@@ -374,5 +374,64 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			o.Expect(stdout).Should(o.ContainSubstring("audit.log"))
 			o.Expect(stdout).Should(o.ContainSubstring("infra.log"))
 		})
+
+		//Author: kbharti@redhat.com
+		g.It("CPaasrunOnly-Author:kbharti-High-43745-Forward to Loki using default value via http[Serial]", func() {
+
+			var (
+				loglabeltemplate = exutil.FixturePath("testdata", "logging", "generatelog", "container_non_json_log_template.json")
+			)
+			//create a project and app to generate some logs
+			g.By("create project for app logs")
+			app_proj := oc.Namespace()
+			err := oc.WithoutNamespace().Run("new-app").Args("-n", app_proj, "-f", loglabeltemplate, "-p", "LABELS=centos-logtest").Execute()
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			// Create Loki project and deploy Loki Server
+			lokiNS := deployExternalLokiServer(oc, "loki-config", "loki-server")
+
+			//Create ClusterLogForwarder
+			g.By("create clusterlogforwarder/instance")
+			clfTemplate := exutil.FixturePath("testdata", "logging", "clusterlogforwarder", "43745.yaml")
+			clf := resource{"clusterlogforwarder", "instance", cloNS}
+			defer clf.clear(oc)
+			err = clf.applyFromTemplate(oc, "-n", clf.namespace, "-f", clfTemplate, "-p", "LOKINAMESPACE="+lokiNS)
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			//Create ClusterLogging instance
+			g.By("deploy EFK pods")
+			instance := exutil.FixturePath("testdata", "logging", "clusterlogging", "cl-template.yaml")
+			cl := resource{"clusterlogging", "instance", cloNS}
+			defer cl.deleteClusterLogging(oc)
+			cl.createClusterLogging(oc, "-n", cl.namespace, "-f", instance, "-p", "NAMESPACE="+cl.namespace)
+			g.By("waiting for the EFK pods to be ready...")
+			WaitForEFKPodsToBeReady(oc, cloNS)
+
+			g.By("Searching for Audit Logs in Loki")
+			podList, err := oc.AdminKubeClient().CoreV1().Pods(cloNS).List(metav1.ListOptions{LabelSelector: "component=collector"})
+			auditLogs := searchLogsInLoki(oc, cloNS, lokiNS, podList.Items[0].Name, "audit")
+			o.Expect(auditLogs.Lokistatus).Should(o.Equal("success"))
+			o.Expect(auditLogs.Data.Result[0].Stream.LogType).Should(o.Equal("audit"))
+			o.Expect(auditLogs.Data.Stats.Summary.BytesProcessedPerSecond).ShouldNot(o.BeZero())
+			e2e.Logf("Audit Logs Query is a success")
+
+			g.By("Searching for Infra Logs in Loki")
+			infraLogs := searchLogsInLoki(oc, cloNS, lokiNS, podList.Items[0].Name, "infrastructure")
+			o.Expect(infraLogs.Lokistatus).Should(o.Equal("success"))
+			o.Expect(infraLogs.Data.Result[0].Stream.LogType).Should(o.Equal("infrastructure"))
+			o.Expect(infraLogs.Data.Stats.Summary.BytesProcessedPerSecond).ShouldNot(o.BeZero())
+			e2e.Logf("Infra Logs Query is a success")
+
+			g.By("Searching for Application Logs in Loki")
+			appLogs := searchAppLogsInLokiByNamespace(oc, cloNS, lokiNS, podList.Items[0].Name, app_proj)
+			o.Expect(appLogs.Lokistatus).Should(o.Equal("success"))
+			o.Expect(appLogs.Data.Result[0].Stream.LogType).Should(o.Equal("application"))
+			appPodName, err := oc.AdminKubeClient().CoreV1().Pods(app_proj).List(metav1.ListOptions{LabelSelector: "run=centos-logtest"})
+			o.Expect(err).NotTo(o.HaveOccurred())
+			o.Expect(appLogs.Data.Result[0].Stream.KubernetesPodName).Should(o.Equal(appPodName.Items[0].Name))
+			o.Expect(appLogs.Data.Stats.Summary.BytesProcessedPerSecond).ShouldNot(o.BeZero())
+			e2e.Logf("Application Logs Query is a success")
+
+		})
 	})
 })

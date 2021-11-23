@@ -864,3 +864,59 @@ func (r rsyslog) getPodName(oc *exutil.CLI) string {
 	}
 	return names[0]
 }
+
+func searchLogsInLoki(oc *exutil.CLI, cloNS string, lokiNS string, pod string, logType string) LokiLogQuery {
+	//This function to be used only for audit or infra (Journal system) logs only
+	cmd := ""
+	if logType == "audit" {
+		// audit logs
+		cmd = "curl -G -s  \"http://loki-server." + lokiNS + ".svc:3100/loki/api/v1/query\" --data-urlencode 'query={ log_type=\"" + logType + "\"}'"
+	} else {
+		// Journal system Infra logs
+		cmd = "curl -G -s  \"http://loki-server." + lokiNS + ".svc:3100/loki/api/v1/query\" --data-urlencode 'query={ tag=\"journal.system\"}'"
+	}
+	stdout, err := e2e.RunHostCmdWithRetries(cloNS, pod, cmd, 3*time.Second, 30*time.Second)
+	o.Expect(err).ShouldNot(o.HaveOccurred())
+	res := LokiLogQuery{}
+	json.Unmarshal([]byte(stdout), &res)
+	return res
+}
+func searchAppLogsInLokiByNamespace(oc *exutil.CLI, cloNS string, lokiNS string, pod string, appNS string) LokiLogQuery {
+	cmd := "curl -G -s  \"http://loki-server." + lokiNS + ".svc:3100/loki/api/v1/query\" --data-urlencode 'query={ kubernetes_namespace_name=\"" + appNS + "\"}'"
+	stdout, err := e2e.RunHostCmdWithRetries(cloNS, pod, cmd, 3*time.Second, 30*time.Second)
+	o.Expect(err).ShouldNot(o.HaveOccurred())
+	res := LokiLogQuery{}
+	json.Unmarshal([]byte(stdout), &res)
+	return res
+}
+
+func deployExternalLokiServer(oc *exutil.CLI, lokiConfigMapName string, lokiServerName string) string {
+	//create project to deploy Loki Server
+	oc.SetupProject()
+	loki_proj := oc.Namespace()
+
+	//creating sa for loki
+	err := oc.WithoutNamespace().AsAdmin().Run("create").Args("sa", "loki-sa", "-n", loki_proj).Execute()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	err = oc.AsAdmin().Run("adm").Args("policy", "add-scc-to-user", "privileged", fmt.Sprintf("system:serviceaccount:%s:loki-sa", loki_proj)).Execute()
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	//Create configmap for Loki
+	CMTemplate := exutil.FixturePath("testdata", "logging", "external-log-stores", "loki", "loki-configmap.yaml")
+	lokiCM := resource{"configmap", "loki-config", loki_proj}
+	err = lokiCM.applyFromTemplate(oc, "-n", loki_proj, "-f", CMTemplate, "-p", "LOKINAMESPACE="+loki_proj, "-p", "LOKICMNAME="+lokiConfigMapName)
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	//Create Deployment for Loki
+	deployTemplate := exutil.FixturePath("testdata", "logging", "external-log-stores", "loki", "loki-deployment.yaml")
+	lokiDeploy := resource{"Deployment", "loki-server", loki_proj}
+	err = lokiDeploy.applyFromTemplate(oc, "-n", loki_proj, "-f", deployTemplate, "-p", "LOKISERVERNAME="+lokiServerName, "-p", "LOKINAMESPACE="+loki_proj, "-p", "LOKICMNAME="+lokiConfigMapName)
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	//Expose Loki as a Service
+	WaitForDeploymentPodsToBeReady(oc, loki_proj, "loki-server")
+	err = oc.AsAdmin().WithoutNamespace().Run("expose").Args("-n", loki_proj, "deployment", "loki-server").Execute()
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	return loki_proj
+}
