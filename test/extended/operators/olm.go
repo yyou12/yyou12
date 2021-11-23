@@ -7531,65 +7531,47 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle to support", func
 	// It will cover test case: OCP-21824, author: xzha@redhat.com
 	g.It("ConnectedOnly-Author:xzha-Medium-21824-verify CRD should be ready before installing the operator", func() {
 		var (
-			itName               = g.CurrentGinkgoTestDescription().TestText
-			buildPruningBaseDir  = exutil.FixturePath("testdata", "olm")
-			ogTemplate           = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
-			cmReadyTestTemplate  = filepath.Join(buildPruningBaseDir, "cm-certutil-readytest.yaml")
-			catsrcCmTemplate     = filepath.Join(buildPruningBaseDir, "catalogsource-configmap.yaml")
-			subTemplate          = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
-			crdOlmtestTemplate   = filepath.Join(buildPruningBaseDir, "crd-olmtest.yaml")
-			cmReadyTestsTemplate = filepath.Join(buildPruningBaseDir, "cm-certutil-readytests.yaml")
-			og                   = operatorGroupDescription{
+			itName              = g.CurrentGinkgoTestDescription().TestText
+			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
+			ogTemplate          = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+			cmWrong             = filepath.Join(buildPruningBaseDir, "cm-21824-wrong.yaml")
+			cmCorrect           = filepath.Join(buildPruningBaseDir, "cm-21824-correct.yaml")
+			catsrcCmTemplate    = filepath.Join(buildPruningBaseDir, "catalogsource-configmap.yaml")
+			subTemplate         = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+			og                  = operatorGroupDescription{
 				name:      "og-singlenamespace",
 				namespace: "",
 				template:  ogTemplate,
 			}
-			cmCertUtilReadytest = configMapDescription{
-				name:      "cm-certutil-readytest-operators",
+			cm = configMapDescription{
+				name:      "cm-21824",
 				namespace: "", //must be set in iT
-				template:  cmReadyTestTemplate,
+				template:  cmWrong,
 			}
-			catsrcCertUtilReadytest = catalogSourceDescription{
-				name:        "catsrc-certutil-readytest-operators",
+			catsrc = catalogSourceDescription{
+				name:        "catsrc-21824",
 				namespace:   "", //must be set in iT
-				displayName: "certutil readytest Operators",
-				publisher:   "Community",
+				displayName: "21824 Operators",
+				publisher:   "olmqe",
 				sourceType:  "configmap",
-				address:     "cm-certutil-readytest-operators",
+				address:     "cm-21824",
 				template:    catsrcCmTemplate,
 			}
-			subCertUtilReadytest = subscriptionDescription{
-				subName:                "cert-utils-operator",
+			sub = subscriptionDescription{
+				subName:                "ditto-operator-21824",
 				namespace:              "", //must be set in iT
 				channel:                "alpha",
 				ipApproval:             "Automatic",
-				operatorPackage:        "cert-utils-operator",
-				catalogSourceName:      "catsrc-certutil-readytest-operators",
+				operatorPackage:        "ditto-operator",
+				catalogSourceName:      "catsrc-21824",
 				catalogSourceNamespace: "", //must be set in iT
 				startingCSV:            "",
-				currentCSV:             "cert-utils-operator.v0.0.3", //it matches to that in cm, so set it.
-				installedCSV:           "",
 				template:               subTemplate,
 				singleNamespace:        true,
 			}
-			cm           = cmCertUtilReadytest
-			catsrc       = catsrcCertUtilReadytest
-			sub          = subCertUtilReadytest
-			crdReadytest = crdDescription{
-				name:     "readytest.stable.example.com",
-				template: crdOlmtestTemplate,
-			}
-			crdReadytests = crdDescription{
-				name:     "readytests.stable.example.com",
-				template: crdOlmtestTemplate,
-			}
 		)
 
-		defer crdReadytest.delete(oc)
-		defer crdReadytests.delete(oc)
-
-		//oc.TeardownProject()
-		oc.SetupProject() //project and its resource are deleted automatically when out of It, so no need derfer or AfterEach
+		oc.SetupProject()
 		cm.namespace = oc.Namespace()
 		catsrc.namespace = oc.Namespace()
 		sub.namespace = oc.Namespace()
@@ -7613,17 +7595,28 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle to support", func
 			e2e.Logf(output)
 		}
 		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("status.state of sub %s is not empty", sub.subName))
+		sub.delete(itName, dr)
 
 		g.By("update cm to correct crd")
-		cm.template = cmReadyTestsTemplate
+		cm.template = cmCorrect
 		cm.create(oc, itName, dr)
+		sub.createWithoutCheck(oc, itName, dr)
 
 		g.By("sub succeed and csv succeed")
 		sub.findInstalledCSV(oc, itName, dr)
-		err = newCheck("expect", asUser, withoutNamespace, compare, "Succeeded", ok, []string{"csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).checkWithoutAssert(oc)
+		err = wait.Poll(30*time.Second, 300*time.Second, func() (bool, error) {
+			csvStatus, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={.status.phase}").Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			if csvStatus == "Succeeded" {
+				e2e.Logf("CSV status is Succeeded")
+				return true, nil
+			} else {
+				e2e.Logf("CSV status is %s, not Succeeded, go next round", csvStatus)
+				return false, nil
+			}
+		})
 		if err != nil {
-			output := getResource(oc, asAdmin, withoutNamespace, "csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={.status}")
-			e2e.Logf(output)
+			getResource(oc, asAdmin, withoutNamespace, "csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={.status}")
 		}
 		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("status.phase of csv %s is not Succeeded", sub.installedCSV))
 	})
