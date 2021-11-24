@@ -17,6 +17,11 @@ type ocGetter struct {
 	name      string
 }
 
+type Template struct {
+	oc           *exutil.CLI
+	templateFile string
+}
+
 // Resource will provide the functionality to hanlde general openshift resources
 type Resource struct {
 	ocGetter
@@ -72,12 +77,12 @@ func (r *ocGetter) Poll(jsonPath string) func() string {
 
 // NewResource constructs a Resource struct for a not-namespaced resource
 func NewResource(oc *exutil.CLI, kind string, name string) *Resource {
-	return &Resource{ocGetter{oc, kind, "", name}}
+	return &Resource{ocGetter: ocGetter{oc, kind, "", name}}
 }
 
 // NewNamespacedResource constructs a Resource struct for a namespaced resource
 func NewNamespacedResource(oc *exutil.CLI, kind string, namespace string, name string) *Resource {
-	return &Resource{ocGetter{oc, kind, namespace, name}}
+	return &Resource{ocGetter: ocGetter{oc, kind, namespace, name}}
 }
 
 // Delete removes the resource from openshift cluster
@@ -108,6 +113,33 @@ func (r *Resource) Exists() bool {
 // String implements the Stringer interface
 func (r *Resource) String() string {
 	return fmt.Sprintf("<Kind: %s, Name: %s, Namespace: %s>", r.kind, r.name, r.namespace)
+}
+
+// Creates a new template using the MCO fixture directory as the base path of the template file
+func NewMCOTemplate(oc *exutil.CLI, fileName string) *Template {
+	return &Template{oc: oc, templateFile: generateTemplateAbsolutePath(fileName)}
+}
+
+// SetTemplate sets the template file that will be used to create this resource
+func (t *Template) SetTemplate(template string) {
+	t.templateFile = template
+}
+
+// Create the resources defined in the template file
+// The template will be created using oc with no namespace (-n NAMESPACE) argument. So if we want to
+// create a namespaced resource we need to add the NAMESPACE parameter to the template and
+// provide the "-p NAMESPACE" argument to this function.
+func (t *Template) Create(parameters ...string) error {
+	if t.templateFile == "" {
+		return fmt.Errorf("There is no template configured")
+	}
+
+	allParams := []string{"--ignore-unknown-parameters=true", "-f", t.templateFile}
+	allParams = append(allParams, parameters...)
+
+	exutil.CreateClusterResourceFromTemplate(t.oc, allParams...)
+
+	return nil
 }
 
 // ResourceList provides the functionality to handle lists of openshift resources
@@ -147,7 +179,7 @@ func (l ResourceList) GetAll() ([]Resource, error) {
 	allResources := []Resource{}
 	for _, name := range allNames {
 		if name != "" {
-			newResource := Resource{ocGetter{l.oc, l.kind, l.namespace, name}}
+			newResource := Resource{ocGetter: ocGetter{l.oc, l.kind, l.namespace, name}}
 			allResources = append(allResources, newResource)
 		}
 	}
