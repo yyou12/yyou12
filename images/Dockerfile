@@ -22,5 +22,5 @@ RUN curl -s -k https://mirror2.openshift.com/pub/openshift-v4/clients/ocp-dev-pr
     echo ${optsdkver} && \
     curl -s -k https://mirror2.openshift.com/pub/openshift-v4/x86_64/clients/operator-sdk/${optsdkver}/operator-sdk-linux-x86_64.tar.gz -o opt-sdk.tar.gz && \
     tar -C /usr/bin -xzvf opt-sdk.tar.gz && \
-    rm -fr sdk.html opt-sdk.tar.gz
+    rm -fr sdk.html opt-sdk.tar.gz /usr/bin/oc
 
