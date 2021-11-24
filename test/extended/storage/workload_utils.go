@@ -92,6 +92,16 @@ func (pod *pod) create(oc *exutil.CLI) {
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
+// Create new pod with extra parameters
+func (pod *pod) createWithReadOnlyVolume(oc *exutil.CLI) {
+	extraParameters := map[string]interface{}{
+		"jsonPath": `items.0.spec.containers.0.volumeMounts.0.`,
+		"readOnly": true,
+	}
+	err := applyResourceFromTemplateWithExtraParametersAsAdmin(oc, extraParameters, "--ignore-unknown-parameters=true", "-f", pod.template, "-p", "PODNAME="+pod.name, "PODNAMESPACE="+pod.namespace, "PVCNAME="+pod.pvcname, "PODIMAGE="+pod.image, "PODMOUNTPATH="+pod.mountPath)
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
 //  Delete the pod
 func (pod *pod) delete(oc *exutil.CLI) {
 	err := oc.WithoutNamespace().Run("delete").Args("pod", pod.name, "-n", pod.namespace).Execute()
@@ -101,6 +111,18 @@ func (pod *pod) delete(oc *exutil.CLI) {
 //  Delete the pod use kubeadmin
 func (pod *pod) deleteAsadmin(oc *exutil.CLI) {
 	oc.WithoutNamespace().AsAdmin().Run("delete").Args("pod", pod.name, "-n", pod.namespace).Execute()
+}
+
+//  Pod exec the bash CLI
+func (pod *pod) execCommand(oc *exutil.CLI, command string) (string, error) {
+	command1 := []string{"-n", pod.namespace, pod.name, "--", "/bin/sh", "-c", command}
+	msg, err := oc.WithoutNamespace().Run("exec").Args(command1...).Output()
+	if err != nil {
+		e2e.Logf(pod.name+"# "+command+" *failed with* :\"%v\".", err)
+		return msg, err
+	} 
+	debugLogf(pod.name+"# "+command+" *Output is* :\"%s\".", msg)
+	return msg, nil
 }
 
 //  Check the pod mounted volume could read and write

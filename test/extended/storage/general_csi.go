@@ -108,6 +108,7 @@ var _ = g.Describe("[sig-storage] STORAGE WITH-TREARDOWN-PROJECT", func() {
 			g.By("******" + cloudProvider + " csi driver: \"" + provisioner + "\" test phase finished" + "******")
 		}
 	})
+
 	// author: pewang@redhat.com
 	// [CSI Driver] [Dynamic PV] [Filesystem default] volumes should store data and allow exec of files
 	g.It("Author:pewang-Critical-24485-[CSI Driver] [Dynamic PV] [Filesystem default] volumes should store data and allow exec of files", func() {
@@ -154,6 +155,71 @@ var _ = g.Describe("[sig-storage] STORAGE WITH-TREARDOWN-PROJECT", func() {
 
 			g.By("5. TearDown the project after test phase")
 			oc.TeardownProject()
+
+			g.By("******" + cloudProvider + " csi driver: \"" + provisioner + "\" test phase finished" + "******")
+		}
+	})
+
+	// OCP-44911 -[CSI Driver] [Dynamic PV] [Filesystem] could not write into read-only volume
+	g.It("Author:pewang-High-44911-[CSI Driver] [Dynamic PV] [Filesystem] could not write into read-only volume", func() {
+		// Define the test scenario support provisioners
+		scenarioSupportProvisioners := []string{"ebs.csi.aws.com", "disk.csi.azure.com", "cinder.csi.openstack.org", "pd.csi.storage.gke.io", "csi.vsphere.vmware.com"}
+		// Set the resource template for the scenario
+		var (
+			storageTeamBaseDir  = exutil.FixturePath("testdata", "storage")
+			pvcTemplate         = filepath.Join(storageTeamBaseDir, "pvc-template.yaml")
+			podTemplate         = filepath.Join(storageTeamBaseDir, "pod-template.yaml")
+			supportProvisioners = sliceIntersect(scenarioSupportProvisioners, getSupportProvisionersByCloudProvider(cloudProvider))
+		)
+		if len(supportProvisioners) == 0 {
+			g.Skip("Skip for scenario non-supported provisioner!!!")
+		}
+		// Set up a specified project share for all the phases
+		g.By("0. Create new project for the scenario")
+		oc.SetupProject() //create new project
+		for _, provisioner := range supportProvisioners {
+			g.By("******" + cloudProvider + " csi driver: \"" + provisioner + "\" test phase start" + "******")
+			// Set the resource definition for the scenario
+			pvc := newPersistentVolumeClaim(setPersistentVolumeClaimTemplate(pvcTemplate))
+			pod1 := newPod(setPodTemplate(podTemplate), setPodPersistentVolumeClaim(pvc.name))
+			pod2 := newPod(setPodTemplate(podTemplate), setPodPersistentVolumeClaim(pvc.name))
+			pvc.namespace = oc.Namespace()
+			pod1.namespace, pod2.namespace = pvc.namespace, pvc.namespace
+
+			g.By("# Create a pvc with the preset csi storageclass")
+			pvc.scname = getPresetStorageClassNameByProvisioner(cloudProvider, provisioner)
+			e2e.Logf("The preset storage class name is: %s", pvc.scname)
+			pvc.create(oc)
+			defer pvc.deleteAsAdmin(oc)
+
+			g.By("# Create pod1 with the created pvc and wait for the pod ready")
+			pod1.create(oc)
+			defer pod1.deleteAsadmin(oc)
+			pod1.waitReady(oc)
+
+			g.By("# Check the pod volume could be read and written and write testfile with content 'storage test' to the volume")
+			pod1.checkMountedVolumeCouldRW(oc)
+
+			// When the test cluster have multi node in the same az,
+			// delete the pod1 could help us test the pod2 maybe schedule to a different node scenario
+			// If pod2 schedule to a different node, the pvc bound pv could be attach successfully and the test data also exist
+			g.By("# Delete pod1")
+			pod1.delete(oc)
+
+			g.By("# Use readOnly parameter create pod2 with the pvc: 'spec.containers[0].volumeMounts[0].readOnly: true' and wait for the pod ready ")
+			pod2.createWithReadOnlyVolume(oc)
+			defer pod2.deleteAsadmin(oc)
+			pod2.waitReady(oc)
+
+			g.By("# Check the file /mnt/storage/testfile exist in the volume and read its content contains 'storage test' ")
+			output, err := pod2.execCommand(oc, "cat "+pod2.mountPath+"/testfile")
+			o.Expect(err).NotTo(o.HaveOccurred())
+			o.Expect(output).To(o.ContainSubstring("storage test"))
+
+			g.By("# Write something to the readOnly mount volume failed")
+			output, err = pod2.execCommand(oc, "touch "+pod2.mountPath+"/test"+getRandomString())
+			o.Expect(err).Should(o.HaveOccurred())
+			o.Expect(output).To(o.ContainSubstring("Read-only file system"))
 
 			g.By("******" + cloudProvider + " csi driver: \"" + provisioner + "\" test phase finished" + "******")
 		}

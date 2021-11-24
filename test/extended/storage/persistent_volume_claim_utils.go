@@ -79,7 +79,7 @@ func newPersistentVolumeClaim(opts ...persistentVolumeClaimOption) persistentVol
 		name:       "my-pvc-" + getRandomString(),
 		template:   "pvc-template.yaml",
 		namespace:  "default",
-		capacity:   "10Gi",
+		capacity:   "1Gi",
 		volumemode: "Filesystem",
 		scname:     "gp2-csi",
 		accessmode: "ReadWriteOnce",

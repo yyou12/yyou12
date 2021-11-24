@@ -14,7 +14,7 @@ objects:
     - ${ACCESSMODE} # ReadWriteOnce, ReadOnlyMany or ReadWriteMany
     resources:
       requests:
-        storage: ${PVCCAPACITY}  # default 10Gi
+        storage: ${PVCCAPACITY}  # default 1Gi
     storageClassName: ${SCNAME}  # gp2 gp2-csi etc.
     volumeMode: ${VOLUMEMODE}   # Filesystem, Block
 parameters:

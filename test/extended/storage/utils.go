@@ -159,9 +159,18 @@ func interfaceToString(value interface{}) string {
 
 // Json add extra parameters to jsonfile
 func jsonAddExtraParametersToFile(jsonInput string, extraParameters map[string]interface{}) (string, error) {
-	var err error
+	var (
+		jsonPath string
+		err      error
+	)
+	if interfaceToString(extraParameters["jsonPath"]) == "" {
+		jsonPath = `items.0.`
+	} else {
+		jsonPath = interfaceToString(extraParameters["jsonPath"])
+		delete(extraParameters, "jsonPath")
+	}
 	for extraParametersKey, extraParametersValue := range extraParameters {
-		jsonInput, err = sjson.Set(jsonInput, `items.0.`+extraParametersKey, extraParametersValue)
+		jsonInput, err = sjson.Set(jsonInput, jsonPath+extraParametersKey, extraParametersValue)
 		o.Expect(err).NotTo(o.HaveOccurred())
 	}
 	path := filepath.Join(e2e.TestContext.OutputDir, "storageConfig"+"-"+getRandomString()+".json")
