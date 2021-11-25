@@ -3,27 +3,33 @@ kind: Service
 metadata:
   name: linux-webserver
   labels:
-    run: linux-webserver
+    app: linux-webserver
 spec:
   ports:
+  # the port that this service should serve on
   - port: 8080
-    protocol: TCP
+    targetPort: 8080
   selector:
-    run: linux-webserver
+    app: linux-webserver
+  type: LoadBalancer
+
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  labels:
+    app: linux-webserver
   name: linux-webserver
 spec:
   selector:
     matchLabels:
-      run: linux-webserver
+      app: linux-webserver
   replicas: 1
   template:
     metadata:
       labels:
-        run: linux-webserver
+        app: linux-webserver
+      name: linux-webserver
     spec:
       containers:
       - name: linux-webserver

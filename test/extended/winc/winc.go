@@ -57,35 +57,7 @@ var _ = g.Describe("[sig-windows] Windows_Containers NonPreRelease", func() {
 			e2e.Failf("Failed to check version annotation is applied to Windows node %s", msg)
 		}
 
-		bastionHost := getSSHBastionHost(oc)
-		winInternalIP := getWindowsInternalIPs(oc)[0]
-		g.By("Check windows_exporter service is running")
-		msg, _ = runPSCommand(bastionHost, winInternalIP, "Get-Service windows_exporter", privateKey, iaasPlatform)
-		if !strings.Contains(msg, "Running") {
-			e2e.Failf("Failed to check windows_exporter service is running: %s", msg)
-		}
-
-		g.By("Check kubelet service is running")
-		msg, _ = runPSCommand(bastionHost, winInternalIP, "Get-Service kubelet", privateKey, iaasPlatform)
-		if !strings.Contains(msg, "Running") {
-			e2e.Failf("Failed to check kubelet service is running: %s", msg)
-		}
-
-		g.By("Check hybrid-overlay-node service is running")
-		msg, _ = runPSCommand(bastionHost, winInternalIP, "Get-Service hybrid-overlay-node", privateKey, iaasPlatform)
-		if !strings.Contains(msg, "Running") {
-			e2e.Failf("Failed to check hybrid-overlay-node service is running: %s", msg)
-		}
-
-		g.By("Check kube-proxy service is running")
-		msg, _ = runPSCommand(bastionHost, winInternalIP, "Get-Service kube-proxy", privateKey, iaasPlatform)
-		if !strings.Contains(msg, "Running") {
-			e2e.Failf("Failed to check kube-proxy service is running: %s", msg)
-		}
-	})
-
-	// author: sgao@redhat.com
-	g.It("Author:sgao-Critical-28423-Dockerfile prepare required binaries in operator image", func() {
+		g.By("Check dockerfile prepare required binaries in operator image")
 		checkFolders := []struct {
 			folder   string
 			expected string
@@ -120,6 +92,32 @@ var _ = g.Describe("[sig-windows] Windows_Containers NonPreRelease", func() {
 			if actual != checkFolder.expected {
 				e2e.Failf("Failed to check required files in /payload, expected: %s actual: %s", checkFolder.expected, actual)
 			}
+		}
+
+		bastionHost := getSSHBastionHost(oc)
+		winInternalIP := getWindowsInternalIPs(oc)[0]
+		g.By("Check windows_exporter service is running")
+		msg, _ = runPSCommand(bastionHost, winInternalIP, "Get-Service windows_exporter", privateKey, iaasPlatform)
+		if !strings.Contains(msg, "Running") {
+			e2e.Failf("Failed to check windows_exporter service is running: %s", msg)
+		}
+
+		g.By("Check kubelet service is running")
+		msg, _ = runPSCommand(bastionHost, winInternalIP, "Get-Service kubelet", privateKey, iaasPlatform)
+		if !strings.Contains(msg, "Running") {
+			e2e.Failf("Failed to check kubelet service is running: %s", msg)
+		}
+
+		g.By("Check hybrid-overlay-node service is running")
+		msg, _ = runPSCommand(bastionHost, winInternalIP, "Get-Service hybrid-overlay-node", privateKey, iaasPlatform)
+		if !strings.Contains(msg, "Running") {
+			e2e.Failf("Failed to check hybrid-overlay-node service is running: %s", msg)
+		}
+
+		g.By("Check kube-proxy service is running")
+		msg, _ = runPSCommand(bastionHost, winInternalIP, "Get-Service kube-proxy", privateKey, iaasPlatform)
+		if !strings.Contains(msg, "Running") {
+			e2e.Failf("Failed to check kube-proxy service is running: %s", msg)
 		}
 	})
 
@@ -249,7 +247,7 @@ var _ = g.Describe("[sig-windows] Windows_Containers NonPreRelease", func() {
 		}
 	})
 
-	// author: sgao@redhat.com
+	// author: sgao@redhat.com TODO to be delete
 	g.It("Author:sgao-High-29411-Reconcile Windows node [Slow][Disruptive]", func() {
 		windowsMachineSetName := getWindowsMachineSetName(oc)
 		g.By("Scale up the MachineSet")
@@ -259,14 +257,10 @@ var _ = g.Describe("[sig-windows] Windows_Containers NonPreRelease", func() {
 		waitWindowsNodesReady(oc, 3, 60*time.Second, 1200*time.Second)
 	})
 
-	// author: sgao@redhat.com
+	// author: sgao@redhat.com refactored:v1
 	g.It("Author:sgao-Critical-28632-Windows and Linux east west network during a long time [Serial]", func() {
-		// Note: Duplicate with Case 31276, run again in [Serial]
-		namespace := "winc-28632"
-		createWindowsWorkload(oc, namespace)
-		createLinuxWorkload(oc, namespace)
-		defer deleteProject(oc, namespace)
-
+		// Note: Flexy alredy created workload in winc-test, here we check it still works after a long time
+		namespace := "winc-test"
 		g.By("Check communication: Windows pod <--> Linux pod")
 		winPodNames, err := getWorkloadsNames(oc, "windows", namespace)
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -290,25 +284,30 @@ var _ = g.Describe("[sig-windows] Windows_Containers NonPreRelease", func() {
 		}
 	})
 
-	// author: sgao@redhat.com
+	// author: sgao@redhat.com refactored:v1
 	g.It("Author:sgao-Critical-32273-Configure kube proxy and external networking check", func() {
-		namespace := "winc-32273"
-		createWindowsWorkload(oc, namespace)
-		defer deleteProject(oc, namespace)
-		externalIP, err := getExternalIP(iaasPlatform, oc, "windows", namespace)
-		o.Expect(err).NotTo(o.HaveOccurred())
-		// Load balancer takes about 3 minutes to work, set timeout as 5 minutes
-		pollErr := wait.Poll(20*time.Second, 300*time.Second, func() (bool, error) {
-			msg, _ := exec.Command("bash", "-c", "curl "+externalIP).Output()
-			if !strings.Contains(string(msg), "Windows Container Web Server") {
-				e2e.Logf("Load balancer is not ready yet and waiting up to 5 minutes ...")
-				return false, nil
+		if iaasPlatform == "vsphere" {
+			e2e.Logf("vSphere does not support LB, skip it ...")
+		} else {
+			namespace := "winc-32273"
+			defer deleteProject(oc, namespace)
+			createProject(oc, namespace)
+			createWindowsWorkload(oc, namespace, "windows_web_server.yaml", getConfigMapData(oc, "windows_container_image"))
+			externalIP, err := getExternalIP(iaasPlatform, oc, "windows", namespace)
+			o.Expect(err).NotTo(o.HaveOccurred())
+			// Load balancer takes about 3 minutes to work, set timeout as 5 minutes
+			pollErr := wait.Poll(20*time.Second, 300*time.Second, func() (bool, error) {
+				msg, _ := exec.Command("bash", "-c", "curl "+externalIP).Output()
+				if !strings.Contains(string(msg), "Windows Container Web Server") {
+					e2e.Logf("Load balancer is not ready yet and waiting up to 5 minutes ...")
+					return false, nil
+				}
+				e2e.Logf("Load balancer is ready")
+				return true, nil
+			})
+			if pollErr != nil {
+				e2e.Failf("Load balancer is not ready after waiting up to 5 minutes ...")
 			}
-			e2e.Logf("Load balancer is ready")
-			return true, nil
-		})
-		if pollErr != nil {
-			e2e.Failf("Load balancer is not ready after waiting up to 5 minutes ...")
 		}
 	})
 
@@ -386,9 +385,10 @@ var _ = g.Describe("[sig-windows] Windows_Containers NonPreRelease", func() {
 	// author rrasouli@redhat.com
 	g.It("Author:rrasouli-High-39451-Access Windows workload through clusterIP [Slow][Disruptive]", func() {
 		namespace := "winc-39451"
-		createWindowsWorkload(oc, namespace)
-		createLinuxWorkload(oc, namespace)
 		defer deleteProject(oc, namespace)
+		createProject(oc, namespace)
+		createWindowsWorkload(oc, namespace, "windows_web_server.yaml", getConfigMapData(oc, "windows_container_image"))
+		createLinuxWorkload(oc, namespace)
 		g.By("Check access through clusterIP from Linux and Windows pods")
 		windowsClusterIP, err := getServiceClusterIP(oc, "windows", namespace)
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -468,12 +468,14 @@ var _ = g.Describe("[sig-windows] Windows_Containers NonPreRelease", func() {
 	})
 
 	// author: sgao@redhat.com
-	g.It("Longduration-Author:sgao-Critical-31276-Configure CNI and internal networking check [Slow][serial]", func() {
+	g.It("Author:sgao-Critical-31276-Configure CNI and internal networking check", func() {
 		namespace := "winc-31276"
-		createWindowsWorkload(oc, namespace)
-		createLinuxWorkload(oc, namespace)
 		defer deleteProject(oc, namespace)
-		g.By("Check communication: Windows pod <--> Linux pod")
+		createProject(oc, namespace)
+		createWindowsWorkload(oc, namespace, "windows_web_server.yaml", getConfigMapData(oc, "windows_container_image"))
+		createLinuxWorkload(oc, namespace)
+		// we scale the deployment to 5 windows pods
+		scaleDeployment(oc, "windows", 5, namespace)
 		winPodNameArray, err := getWorkloadsNames(oc, "windows", namespace)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		linuxPodNameArray, err := getWorkloadsNames(oc, "linux", namespace)
@@ -482,13 +484,16 @@ var _ = g.Describe("[sig-windows] Windows_Containers NonPreRelease", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 		linuxPodIPArray, err := getWorkloadsIP(oc, "linux", namespace)
 		o.Expect(err).NotTo(o.HaveOccurred())
+		hostIPArray, err := getWorkloadsHostIP(oc, "windows", namespace)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Check communication: Windows pod <--> Linux pod")
 		command := []string{"exec", "-n", namespace, linuxPodNameArray[0], "--", "curl", winPodIPArray[0]}
 		msg, err := oc.WithoutNamespace().Run(command...).Args().Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		if !strings.Contains(msg, "Windows Container Web Server") {
 			e2e.Failf("Failed to curl Windows web server from Linux pod")
 		}
-
 		linuxSVC := linuxPodIPArray[0] + ":8080"
 		command = []string{"exec", "-n", namespace, winPodNameArray[0], "--", "curl", linuxSVC}
 		msg, err = oc.WithoutNamespace().Run(command...).Args().Output()
@@ -498,23 +503,15 @@ var _ = g.Describe("[sig-windows] Windows_Containers NonPreRelease", func() {
 		}
 
 		g.By("Check communication: Windows pod <--> Windows pod in the same node")
-		// we scale the deployment to 5 windows pods
-		scaleDeployment(oc, "windows", 5, namespace)
-		hostIPArray, err := getWorkloadsHostIP(oc, "windows", namespace)
-		o.Expect(err).NotTo(o.HaveOccurred())
 		if hostIPArray[0] != hostIPArray[1] {
 			e2e.Failf("Failed to get Windows pod in the same node")
 		}
-		podNameArray, err := getWorkloadsNames(oc, "windows", namespace)
-		o.Expect(err).NotTo(o.HaveOccurred())
-		podIPArray, err := getWorkloadsIP(oc, "windows", namespace)
-		o.Expect(err).NotTo(o.HaveOccurred())
-		command = []string{"exec", "-n", namespace, podNameArray[0], "--", "curl", podIPArray[0]}
+		command = []string{"exec", "-n", namespace, winPodNameArray[0], "--", "curl", winPodIPArray[0]}
 		msg, err = oc.WithoutNamespace().Run(command...).Args().Output()
 		if !strings.Contains(msg, "Windows Container Web Server") {
 			e2e.Failf("Failed to curl Windows web server from Windows pod in the same node")
 		}
-		command = []string{"exec", "-n", namespace, podNameArray[0], "--", "curl", podIPArray[1]}
+		command = []string{"exec", "-n", namespace, winPodNameArray[0], "--", "curl", winPodIPArray[1]}
 		msg, err = oc.WithoutNamespace().Run(command...).Args().Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		if !strings.Contains(msg, "Windows Container Web Server") {
@@ -531,14 +528,14 @@ var _ = g.Describe("[sig-windows] Windows_Containers NonPreRelease", func() {
 		msg, err = oc.WithoutNamespace().Run(command...).Args().Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		if !strings.Contains(msg, "Windows Container Web Server") {
-			e2e.Failf("Failed to curl Windows web server from Windows pod in the same node")
+			e2e.Failf("Failed to curl Windows web server from Windows pod across different Windows nodes")
 		}
 		lastPodName := winPodNameArray[len(winPodNameArray)-1]
 		command = []string{"exec", "-n", namespace, lastPodName, "--", "curl", winPodIPArray[0]}
 		msg, err = oc.WithoutNamespace().Run(command...).Args().Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		if !strings.Contains(msg, "Windows Container Web Server") {
-			e2e.Failf("Failed to curl Windows web server from Windows pod in the same node")
+			e2e.Failf("Failed to curl Windows web server from Windows pod across different Windows nodes")
 		}
 	})
 
@@ -658,8 +655,9 @@ var _ = g.Describe("[sig-windows] Windows_Containers NonPreRelease", func() {
 	// author: sgao@redhat.com
 	g.It("Author:sgao-Medium-37472-Idempotent check of service running in Windows node [Slow][Disruptive]", func() {
 		namespace := "winc-37472"
-		createWindowsWorkload(oc, namespace)
 		defer deleteProject(oc, namespace)
+		createProject(oc, namespace)
+		createWindowsWorkload(oc, namespace, "windows_web_server.yaml", getConfigMapData(oc, "windows_container_image"))
 		windowsHostName := getWindowsHostNames(oc)[0]
 		oc.WithoutNamespace().Run("annotate").Args("node", windowsHostName, "windowsmachineconfig.openshift.io/version-").Output()
 
@@ -744,9 +742,11 @@ var _ = g.Describe("[sig-windows] Windows_Containers NonPreRelease", func() {
 		}
 	})
 
-	// author: sgao@redhat.com
+	// author: sgao@redhat.com refactored:v1
 	g.It("Author:sgao-Critical-25593-Prevent scheduling non Windows workloads on Windows nodes", func() {
 		namespace := "winc-25593"
+		defer deleteProject(oc, namespace)
+		createProject(oc, namespace)
 		g.By("Check Windows node have a taint 'os=Windows:NoSchedule'")
 		msg, err := oc.WithoutNamespace().Run("get").Args("nodes", "-l=kubernetes.io/os=windows", "-o=jsonpath={.items[0].spec.taints[0].key}={.items[0].spec.taints[0].value}:{.items[0].spec.taints[0].effect}").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -754,13 +754,10 @@ var _ = g.Describe("[sig-windows] Windows_Containers NonPreRelease", func() {
 			e2e.Failf("Failed to check Windows node have taint os=Windows:NoSchedule")
 		}
 		g.By("Check deployment without tolerations would not land on Windows nodes")
-		defer deleteProject(oc, namespace)
-		oc.WithoutNamespace().Run("new-project").Args(namespace).Output()
 		windowsWebServerNoTaint := filepath.Join(exutil.FixturePath("testdata", "winc"), "windows_web_server_no_taint.yaml")
 		oc.WithoutNamespace().Run("create").Args("-f", windowsWebServerNoTaint, "-n", namespace).Output()
 		poolErr := wait.Poll(20*time.Second, 60*time.Second, func() (bool, error) {
 			msg, err = oc.WithoutNamespace().Run("get").Args("pod", "--selector=app=win-webserver-no-taint", "-o=jsonpath={.items[].status.conditions[].message}", "-n", namespace).Output()
-			o.Expect(err).NotTo(o.HaveOccurred())
 			if strings.Contains(msg, "didn't tolerate") {
 				return true, nil
 			}
@@ -774,7 +771,6 @@ var _ = g.Describe("[sig-windows] Windows_Containers NonPreRelease", func() {
 		for _, winHostName := range getWindowsHostNames(oc) {
 			e2e.Logf("Check pods running on Windows node: " + winHostName)
 			msg, err = oc.WithoutNamespace().Run("get").Args("pods", "--all-namespaces", "-o=jsonpath={.items[*].metadata.namespace}", "--field-selector", "spec.nodeName="+winHostName, "--no-headers").Output()
-			o.Expect(err).NotTo(o.HaveOccurred())
 			for _, namespace := range strings.Split(msg, " ") {
 				e2e.Logf("Found pods running in namespace: " + namespace)
 				if namespace != "" && !strings.Contains(namespace, "winc") {

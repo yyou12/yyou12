@@ -16,6 +16,23 @@ import (
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 )
 
+func createProject(oc *exutil.CLI, namespace string) {
+	_, err := oc.WithoutNamespace().Run("new-project").Args(namespace).Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+// this function delete a workspace, we intend to do it after each test case run
+func deleteProject(oc *exutil.CLI, namespace string) {
+	_, err := oc.WithoutNamespace().Run("delete").Args("project", namespace).Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+func getConfigMapData(oc *exutil.CLI, dataKey string) string {
+	dataValue, err := oc.WithoutNamespace().Run("get").Args("configmap", "winc-test-config", "-o=jsonpath='{.data."+dataKey+"}'", "-n", "winc-test").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	return dataValue
+}
+
 func waitWindowsNodesReady(oc *exutil.CLI, nodesNumber int, interval time.Duration, timeout time.Duration) {
 	pollErr := wait.Poll(interval, timeout, func() (bool, error) {
 		msg, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("nodes", "-l", "kubernetes.io/os=windows", "--no-headers").Output()
@@ -124,15 +141,6 @@ func getAdministratorNameByPlatform(iaasPlatform string) string {
 	return admin
 }
 
-// A private function to determine selector by OS
-func getWorkloadSelector(os string) string {
-	selector := "app"
-	if os == "linux" {
-		selector = "run"
-	}
-	return selector
-}
-
 func runPSCommand(bastionHost string, windowsHost string, command string, privateKey string, iaasPlatform string) (result string, err error) {
 	windowsUser := getAdministratorNameByPlatform(iaasPlatform)
 	msg, err := exec.Command("bash", "-c", "chmod 600 "+privateKey+"; ssh -i "+privateKey+" -t -o StrictHostKeyChecking=no -o ProxyCommand=\"ssh -i "+privateKey+" -A -o StrictHostKeyChecking=no -o ServerAliveInterval=30 -W %h:%p core@"+bastionHost+"\" "+windowsUser+"@"+windowsHost+" \"powershell "+command+"\"").CombinedOutput()
@@ -149,7 +157,6 @@ func checkLinuxWorkloadCreated(oc *exutil.CLI, namespace string) bool {
 }
 
 func createLinuxWorkload(oc *exutil.CLI, namespace string) {
-	oc.WithoutNamespace().Run("new-project").Args(namespace).Output()
 	linuxWebServer := filepath.Join(exutil.FixturePath("testdata", "winc"), "linux_web_server.yaml")
 	// Wait up to 3 minutes for Linux workload ready
 	oc.WithoutNamespace().Run("create").Args("-f", linuxWebServer, "-n", namespace).Output()
@@ -159,16 +166,6 @@ func createLinuxWorkload(oc *exutil.CLI, namespace string) {
 	if poolErr != nil {
 		e2e.Failf("Linux workload is not ready after waiting up to 3 minutes ...")
 	}
-}
-
-// TODO remove this function with
-func checkWindowsWorkloadCreated(oc *exutil.CLI, namespace string) bool {
-	msg, _ := oc.WithoutNamespace().Run("get").Args("deployment", "win-webserver", "-o=jsonpath={.status.readyReplicas}", "-n", namespace).Output()
-	if msg != "1" {
-		e2e.Logf("Windows workload is not created yet")
-		return false
-	}
-	return true
 }
 
 func checkWindowsWorkloadScaled(oc *exutil.CLI, deploymentName string, namespace string, replicas int) bool {
@@ -181,25 +178,18 @@ func checkWindowsWorkloadScaled(oc *exutil.CLI, deploymentName string, namespace
 	return true
 }
 
-// TODO need to replace this function with createWinWorkloadsSimple also to be renamed
-func createWindowsWorkload(oc *exutil.CLI, namespace string) {
-	oc.WithoutNamespace().Run("new-project").Args(namespace).Output()
-	msg, err := oc.WithoutNamespace().Run("get").Args("nodes", "-l=kubernetes.io/os=windows", "-o=jsonpath={.items[0].metadata.labels.node\\.kubernetes\\.io\\/windows-build}").Output()
-	o.Expect(err).NotTo(o.HaveOccurred())
-	windowsImage := "mcr.microsoft.com/windows/servercore:ltsc2019"
-	if msg == "10.0.19041" {
-		windowsImage = "mcr.microsoft.com/windows/servercore:2004"
-	}
-	windowsWebServer := getFileContent("winc", "windows_web_server.yaml")
-	windowsWebServer = strings.ReplaceAll(windowsWebServer, "<windows_docker_image>", windowsImage)
-	ioutil.WriteFile("availWindowsWebServer", []byte(windowsWebServer), 0644)
-	oc.WithoutNamespace().Run("create").Args("-f", "availWindowsWebServer", "-n", namespace).Output()
-	// Wait up to 5 minutes for Windows workload ready
-	poolErr := wait.Poll(20*time.Second, 300*time.Second, func() (bool, error) {
-		return checkWindowsWorkloadCreated(oc, namespace), nil
+func createWindowsWorkload(oc *exutil.CLI, namespace string, workloadFile string, containerImage string) {
+	windowsWebServer := getFileContent("winc", workloadFile)
+	windowsWebServer = strings.ReplaceAll(windowsWebServer, "<windows_container_image>", containerImage)
+	tempFileName := namespace + "-windows-workload"
+	ioutil.WriteFile(tempFileName, []byte(windowsWebServer), 0644)
+	oc.WithoutNamespace().Run("create").Args("-f", tempFileName, "-n", namespace).Output()
+	// Wait up to 30 minutes for Windows workload ready in case of Windows image is not pre-pulled
+	poolErr := wait.Poll(30*time.Second, 30*time.Minute, func() (bool, error) {
+		return checkWindowsWorkloadScaled(oc, "win-webserver", namespace, 1), nil
 	})
 	if poolErr != nil {
-		e2e.Failf("Windows workload is not ready after waiting up to 5 minutes ...")
+		e2e.Failf("Windows workload is not ready after waiting up to 30 minutes ...")
 	}
 }
 
@@ -212,7 +202,7 @@ func createWinWorkloadsSimple(oc *exutil.CLI, namespace string, workloadsFile st
 	// Wait up to 30 minutes for Windows workload ready
 	poolErr := wait.Poll(15*time.Second, time.Duration(deadTime)*time.Minute, func() (bool, error) {
 		retcode = true
-		return checkWindowsWorkloadCreated(oc, namespace), nil
+		return checkWindowsWorkloadScaled(oc, "win-webserver", namespace, 1), nil
 	})
 	if poolErr != nil {
 		retcode = false
@@ -221,9 +211,7 @@ func createWinWorkloadsSimple(oc *exutil.CLI, namespace string, workloadsFile st
 }
 
 // Get an external IP of loadbalancer service
-func getExternalIP(iaasPlatform string, oc *exutil.CLI, os string, namespace string) (string, error) {
-	extIP := ""
-	var err error
+func getExternalIP(iaasPlatform string, oc *exutil.CLI, os string, namespace string) (extIP string, err error) {
 	serviceName := getWorkloadName(os)
 	if iaasPlatform == "azure" {
 		extIP, err = oc.WithoutNamespace().Run("get").Args("service", serviceName, "-o=jsonpath={.status.loadBalancer.ingress[0].ip}", "-n", namespace).Output()
@@ -234,9 +222,7 @@ func getExternalIP(iaasPlatform string, oc *exutil.CLI, os string, namespace str
 }
 
 // we retrieve the ClusterIP from a pod according to it's OS
-func getServiceClusterIP(oc *exutil.CLI, os string, namespace string) (string, error) {
-	clusterIP := ""
-	var err error
+func getServiceClusterIP(oc *exutil.CLI, os string, namespace string) (clusterIP string, err error) {
 	serviceName := getWorkloadName(os)
 	clusterIP, err = oc.WithoutNamespace().Run("get").Args("service", serviceName, "-o=jsonpath={.spec.clusterIP}", "-n", namespace).Output()
 	return clusterIP, err
@@ -274,17 +260,10 @@ func scaleWindowsMachineSet(oc *exutil.CLI, windowsMachineSetName string, replic
 	return err
 }
 
-// this function delete a workspace, we intend to do it after each test case run
-func deleteProject(oc *exutil.CLI, namespace string) error {
-	_, err := oc.WithoutNamespace().Run("delete").Args("project", namespace).Output()
-	return err
-}
-
 // this function returns an array of workloads names by their OS type
 func getWorkloadsNames(oc *exutil.CLI, os string, namespace string) ([]string, error) {
 	workloadName := getWorkloadName(os)
-	selector := getWorkloadSelector(os)
-	workloads, err := oc.WithoutNamespace().Run("get").Args("pod", "--selector="+selector+"="+workloadName, "--sort-by=.status.hostIP", "-o=jsonpath={.items[*].metadata.name}", "-n", namespace).Output()
+	workloads, err := oc.WithoutNamespace().Run("get").Args("pod", "--selector", "app="+workloadName, "--sort-by=.status.hostIP", "-o=jsonpath={.items[*].metadata.name}", "-n", namespace).Output()
 	pods := strings.Split(workloads, " ")
 	return pods, err
 }
@@ -292,17 +271,15 @@ func getWorkloadsNames(oc *exutil.CLI, os string, namespace string) ([]string, e
 // this function returns an array of workloads IP's by their OS type
 func getWorkloadsIP(oc *exutil.CLI, os string, namespace string) ([]string, error) {
 	workloadName := getWorkloadName(os)
-	selector := getWorkloadSelector(os)
-	workloads, err := oc.WithoutNamespace().Run("get").Args("pod", "--selector="+selector+"="+workloadName, "--sort-by=.status.hostIP", "-o=jsonpath={.items[*].status.podIP}", "-n", namespace).Output()
+	workloads, err := oc.WithoutNamespace().Run("get").Args("pod", "--selector", "app="+workloadName, "--sort-by=.status.hostIP", "-o=jsonpath={.items[*].status.podIP}", "-n", namespace).Output()
 	ips := strings.Split(workloads, " ")
 	return ips, err
 }
 
-// this function returns an array of workloads IP's by their OS type
+// this function returns an array of workloads host IP's by their OS type
 func getWorkloadsHostIP(oc *exutil.CLI, os string, namespace string) ([]string, error) {
 	workloadName := getWorkloadName(os)
-	selector := getWorkloadSelector(os)
-	workloads, err := oc.WithoutNamespace().Run("get").Args("pod", "--selector="+selector+"="+workloadName, "--sort-by=.status.hostIP", "-o=jsonpath={.items[*].status.hostIP}", "-n", namespace).Output()
+	workloads, err := oc.WithoutNamespace().Run("get").Args("pod", "--selector", "app="+workloadName, "--sort-by=.status.hostIP", "-o=jsonpath={.items[*].status.hostIP}", "-n", namespace).Output()
 	ips := strings.Split(workloads, " ")
 	return ips, err
 }
