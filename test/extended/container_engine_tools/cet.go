@@ -119,10 +119,10 @@ var _ = g.Describe("[sig-node] Container_Engine_Tools crio,scc", func() {
 	})
 
 	// author: pmali@redhat.com
-	g.It("Author:pmali-High-43789-Check podman version should be greater than 3.x", func() {
+	g.It("Author:pmali-High-43789-High-46278-Check podman and crictl version to check if bug fixed", func() {
 
-		g.By("Check podman version\n")
-		err := checkPodmanVersion(oc)
-		exutil.AssertWaitPollNoErr(err, "podman version is not expected")
+		g.By("Check podman and crictl version\n")
+		err := checkPodmanCrictlVersion(oc)
+		exutil.AssertWaitPollNoErr(err, "podman and crictl version are not expected")
 	})
 })

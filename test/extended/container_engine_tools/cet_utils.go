@@ -337,7 +337,7 @@ func machineconfigStatus(oc *exutil.CLI) error {
 	})
 }
 
-func checkPodmanVersion(oc *exutil.CLI) error {
+func checkPodmanCrictlVersion(oc *exutil.CLI) error {
 	return wait.Poll(1*time.Second, 1*time.Minute, func() (bool, error) {
 		nodeName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("nodes", "-o=jsonpath={.items[*].metadata.name}").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -352,12 +352,14 @@ func checkPodmanVersion(oc *exutil.CLI) error {
 			if nodeStatus == "Ready" {
 				podmanver, err := oc.AsAdmin().Run("debug").Args(`node/`+fmt.Sprintf("%s", v), "--", "chroot", "/host", "podman", "--version").Output()
 				o.Expect(err).NotTo(o.HaveOccurred())
+				crictlver, err1 := oc.AsAdmin().Run("debug").Args(`node/`+fmt.Sprintf("%s", v), "--", "chroot", "/host", "crictl", "version").Output()
+				o.Expect(err1).NotTo(o.HaveOccurred())
 				e2e.Logf(`NODE NAME IS :` + fmt.Sprintf("%s", v))
 
-				if strings.Contains(string(podmanver), "podman version 3.") {
-					e2e.Logf("\nPodman version is greater than 3.x")
+				if strings.Contains(string(podmanver), "podman version 3.") && strings.Contains(string(crictlver), "RuntimeVersion:  1.2") {
+					e2e.Logf("\n Podman and crictl is on latest version %s %s", podmanver, crictlver)
 				} else {
-					e2e.Logf("\nPodman version is NOT greater than 3.x")
+					e2e.Logf("\nPodman and crictl version are NOT Updated")
 					return false, nil
 				}
 			} else {
