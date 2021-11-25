@@ -770,6 +770,32 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
         })
         exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("can't get csv catalogtest.v0.0.1 in %s", namespace))
     })
+
+        // author: jfan@redhat.com
+    g.It("ConnectedOnly-Author:jfan-High-45141-SDK ansible add k8s event module to operator sdk util", func() {
+        buildPruningBaseDir := exutil.FixturePath("testdata", "operatorsdk")
+        var k8sevent = filepath.Join(buildPruningBaseDir, "k8s_v1_k8sevent.yaml")
+        operatorsdkCLI.showInfo = true
+        oc.SetupProject()
+        namespace := oc.Namespace()
+        _, err := operatorsdkCLI.Run("run").Args("bundle", "quay.io/olmqe/k8sevent-bundle:v4.10", "-n", namespace, "--timeout", "5m").Output()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        err = oc.AsAdmin().Run("adm").Args("policy", "add-cluster-role-to-user", "cluster-admin", "system:serviceaccount:" + namespace +":k8sevent-controller-manager").Execute()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        createK8sevent, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", k8sevent, "-p", "NAME=k8sevent-sample").OutputToFile("config-45141.json")
+        o.Expect(err).NotTo(o.HaveOccurred())
+        err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", createK8sevent, "-n", namespace).Execute()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        waitErr := wait.Poll(15*time.Second, 360*time.Second, func() (bool, error) {
+            msg, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("event", "-n", namespace).Output()
+            if strings.Contains(msg, "test-reason") {
+                e2e.Logf("k8s_event test")
+                return true, nil
+            }
+            return false, nil
+        })
+        exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("can't get k8s event test-name in %s", namespace))
+    })    
    
     // author: chuo@redhat.com
     g.It("Author:chuo-Medium-27718-scorecard remove version flag", func() {
