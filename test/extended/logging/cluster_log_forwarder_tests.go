@@ -28,7 +28,6 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			subTemplate       = exutil.FixturePath("testdata", "logging", "subscription", "sub-template.yaml")
 			SingleNamespaceOG = exutil.FixturePath("testdata", "logging", "subscription", "singlenamespace-og.yaml")
 			AllNamespaceOG    = exutil.FixturePath("testdata", "logging", "subscription", "allnamespace-og.yaml")
-			jsonLogFile       = exutil.FixturePath("testdata", "logging", "generatelog", "container_json_log_template.json")
 		)
 		cloNS := "openshift-logging"
 		eoNS := "openshift-operators-redhat"
@@ -165,6 +164,25 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			logCount, _ = getDocCountByQuery(oc, cloNS, podList.Items[0].Name, "app-00", "{\"query\": {\"terms\": {\"kubernetes.flat_labels\": [\"run=centos-logtest-dev-2\"]}}}")
 			o.Expect(logCount).Should(o.Equal(0))
 
+		})
+	})
+
+	g.Context("test forward logs to external log stores", func() {
+		var (
+			subTemplate       = exutil.FixturePath("testdata", "logging", "subscription", "sub-template.yaml")
+			SingleNamespaceOG = exutil.FixturePath("testdata", "logging", "subscription", "singlenamespace-og.yaml")
+			AllNamespaceOG    = exutil.FixturePath("testdata", "logging", "subscription", "allnamespace-og.yaml")
+			jsonLogFile       = exutil.FixturePath("testdata", "logging", "generatelog", "container_json_log_template.json")
+		)
+		cloNS := "openshift-logging"
+		eoNS := "openshift-operators-redhat"
+		CLO := SubscriptionObjects{clo, cloNS, SingleNamespaceOG, subTemplate, cloPackageName, CatalogSourceObjects{}}
+		EO := SubscriptionObjects{eo, eoNS, AllNamespaceOG, subTemplate, eoPackageName, CatalogSourceObjects{}}
+		g.BeforeEach(func() {
+			g.By("deploy CLO and EO")
+			CLO.SubscribeLoggingOperators(oc)
+			EO.SubscribeLoggingOperators(oc)
+			oc.SetupProject()
 		})
 
 		g.It("CPaasrunOnly-Author:ikanse-High-42981-Collect OVN audit logs [Serial]", func() {
@@ -409,6 +427,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 
 			g.By("Searching for Audit Logs in Loki")
 			podList, err := oc.AdminKubeClient().CoreV1().Pods(cloNS).List(metav1.ListOptions{LabelSelector: "component=collector"})
+			o.Expect(err).NotTo(o.HaveOccurred())
 			auditLogs := searchLogsInLoki(oc, cloNS, lokiNS, podList.Items[0].Name, "audit")
 			o.Expect(auditLogs.Lokistatus).Should(o.Equal("success"))
 			o.Expect(auditLogs.Data.Result[0].Stream.LogType).Should(o.Equal("audit"))
@@ -432,6 +451,40 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			o.Expect(appLogs.Data.Stats.Summary.BytesProcessedPerSecond).ShouldNot(o.BeZero())
 			e2e.Logf("Application Logs Query is a success")
 
+		})
+
+		// author qitang@redhat.com
+		g.It("CPaasrunOnly-Author:qitang-High-43250-Forward logs to fluentd enable mTLS with shared_key and tls_client_private_key_passphrase[Serial]", func() {
+			app_proj := oc.Namespace()
+			err := oc.WithoutNamespace().Run("new-app").Args("-n", app_proj, "-f", jsonLogFile).Execute()
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			g.By("deploy fluentd server")
+			oc.SetupProject()
+			fluentd_proj := oc.Namespace()
+			fluentd := fluentdServer{"fluentdtest", fluentd_proj, true, true, "testOCP43250", "", "fluentd-43250", cloNS}
+			defer fluentd.remove(oc)
+			fluentd.deploy(oc)
+
+			g.By("create clusterlogforwarder/instance")
+			clfTemplate := exutil.FixturePath("testdata", "logging", "clusterlogforwarder", "43250.yaml")
+			clf := resource{"clusterlogforwarder", "instance", cloNS}
+			defer clf.clear(oc)
+			err = clf.applyFromTemplate(oc, "-n", clf.namespace, "-f", clfTemplate, "-p", "URL=tls://"+fluentd.serverName+"."+fluentd.namespace+".svc:24224", "-p", "OUTPUT_SECRET="+fluentd.secretName)
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			g.By("deploy collector pods")
+			instance := exutil.FixturePath("testdata", "logging", "clusterlogging", "fluentd_only.yaml")
+			cl := resource{"clusterlogging", "instance", cloNS}
+			defer cl.deleteClusterLogging(oc)
+			cl.createClusterLogging(oc, "-n", cl.namespace, "-f", instance, "-p", "NAMESPACE="+cl.namespace)
+			WaitForDaemonsetPodsToBeReady(oc, cloNS, "collector")
+
+			g.By("check logs in fluentd server")
+			fluentd.checkData(oc, true, "app.log")
+			fluentd.checkData(oc, true, "infra-container.log")
+			fluentd.checkData(oc, true, "audit.log")
+			fluentd.checkData(oc, true, "infra.log")
 		})
 	})
 })

@@ -920,3 +920,157 @@ func deployExternalLokiServer(oc *exutil.CLI, lokiConfigMapName string, lokiServ
 
 	return loki_proj
 }
+
+type fluentdServer struct {
+	serverName                 string //the name of the fluentd server, it's also used to name the svc/cm/sa/secret
+	namespace                  string //the namespace where the fluentd server deployed in
+	serverAuth                 bool
+	clientAuth                 bool   // only can be set when serverAuth is true
+	clientPrivateKeyPassphrase string //only can be set when clientAuth is true
+	sharedKey                  string //if it's not empty, means the shared_key is set, only works when serverAuth is true
+	secretName                 string //the name of the secret for the collector to use
+	loggingNS                  string //the namespace where the collector pods deployed in
+}
+
+func (f fluentdServer) createPipelineSecret(oc *exutil.CLI, keysPath string) {
+	secret := resource{"secret", f.secretName, f.loggingNS}
+	cmd := []string{"secret", "generic", secret.name, "-n", secret.namespace, "--from-file=ca-bundle.crt=" + keysPath + "/ca.crt"}
+	if f.clientAuth {
+		cmd = append(cmd, "--from-file=tls.key="+keysPath+"/logging-es.key", "--from-file=tls.crt="+keysPath+"/logging-es.crt")
+	}
+	if f.clientPrivateKeyPassphrase != "" {
+		cmd = append(cmd, "--from-literal=passphrase="+f.clientPrivateKeyPassphrase)
+	}
+	if f.sharedKey != "" {
+		cmd = append(cmd, "--from-literal=shared_key="+f.sharedKey)
+	}
+	err := oc.AsAdmin().WithoutNamespace().Run("create").Args(cmd...).Execute()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	secret.WaitForResourceToAppear(oc)
+}
+
+func (f fluentdServer) deploy(oc *exutil.CLI) {
+	// create SA
+	sa := resource{"serviceaccount", f.serverName, f.namespace}
+	err := oc.WithoutNamespace().Run("create").Args("serviceaccount", sa.name, "-n", sa.namespace).Execute()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	sa.WaitForResourceToAppear(oc)
+	//err = oc.AsAdmin().WithoutNamespace().Run("adm").Args("policy", "add-scc-to-user", "privileged", fmt.Sprintf("system:serviceaccount:%s:%s", f.namespace, f.serverName), "-n", f.namespace).Execute()
+	//o.Expect(err).NotTo(o.HaveOccurred())
+	filePath := []string{"testdata", "logging", "external-log-stores", "fluentd"}
+
+	// create secrets if needed
+	if f.serverAuth {
+		o.Expect(f.secretName).NotTo(o.BeEmpty())
+		filePath = append(filePath, "secure")
+		// create a temporary directory
+		baseDir := exutil.FixturePath("testdata", "logging")
+		keysPath := filepath.Join(baseDir, "temp"+getRandomString())
+		defer exec.Command("rm", "-r", keysPath).Output()
+		err = os.MkdirAll(keysPath, 0755)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		//generate certs
+		cert := certsConf{f.serverName, f.namespace, f.clientPrivateKeyPassphrase}
+		cert.generateCerts(keysPath)
+		//create pipelinesecret
+		f.createPipelineSecret(oc, keysPath)
+		//create secret for fluentd server
+		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("secret", "generic", f.serverName, "-n", f.namespace, "--from-file=ca-bundle.crt="+keysPath+"/ca.crt", "--from-file=tls.key="+keysPath+"/logging-es.key", "--from-file=tls.crt="+keysPath+"/logging-es.crt", "--from-file=ca.key="+keysPath+"/ca.key").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+	} else {
+		filePath = append(filePath, "insecure")
+	}
+
+	// create configmap/deployment/svc
+	cm := resource{"configmap", f.serverName, f.namespace}
+	var cmFileName string
+	if !f.serverAuth {
+		cmFileName = "configmap.yaml"
+	} else {
+		if f.clientAuth {
+			if f.sharedKey != "" && f.clientPrivateKeyPassphrase == "" {
+				cmFileName = "cm-mtls-share.yaml"
+			} else if f.sharedKey == "" && f.clientPrivateKeyPassphrase == "" {
+				cmFileName = "cm-mtls.yaml"
+			} else if f.sharedKey != "" && f.clientPrivateKeyPassphrase != "" {
+				cmFileName = "cm-mtls-passphrase-share.yaml"
+			} else {
+				cmFileName = "cm-mtls-passphrase.yaml"
+			}
+		} else {
+			if f.sharedKey != "" {
+				cmFileName = "cm-serverauth-share.yaml"
+			} else {
+				cmFileName = "cm-serverauth.yaml"
+			}
+		}
+	}
+	cmFilePath := append(filePath, cmFileName)
+	cmFile := exutil.FixturePath(cmFilePath...)
+	c_cm_cmd := []string{"-f", cmFile, "-n", f.namespace, "-p", "NAMESPACE=" + f.namespace, "-p", "NAME=" + f.serverName}
+	if f.sharedKey != "" {
+		c_cm_cmd = append(c_cm_cmd, "-p", "SHARED_KEY="+f.sharedKey)
+	}
+	if f.clientPrivateKeyPassphrase != "" {
+		c_cm_cmd = append(c_cm_cmd, "-p", "PRIVATE_KEY_PASSPHRASE="+f.clientPrivateKeyPassphrase)
+	}
+	err = cm.applyFromTemplate(oc, c_cm_cmd...)
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	deploy := resource{"deployment", f.serverName, f.namespace}
+	deployFilePath := append(filePath, "deployment.yaml")
+	deployFile := exutil.FixturePath(deployFilePath...)
+	err = deploy.applyFromTemplate(oc, "-f", deployFile, "-n", f.namespace, "-p", "NAMESPACE="+f.namespace, "-p", "NAME="+f.serverName)
+	o.Expect(err).NotTo(o.HaveOccurred())
+	WaitForDeploymentPodsToBeReady(oc, f.namespace, f.serverName)
+
+	err = oc.AsAdmin().WithoutNamespace().Run("expose").Args("-n", f.namespace, "deployment", f.serverName, "--name="+f.serverName).Execute()
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+func (f fluentdServer) remove(oc *exutil.CLI) {
+	resource{"serviceaccount", f.serverName, f.namespace}.clear(oc)
+	if f.serverAuth {
+		resource{"secret", f.serverName, f.namespace}.clear(oc)
+		resource{"secret", f.secretName, f.loggingNS}.clear(oc)
+	}
+	resource{"configmap", f.serverName, f.namespace}.clear(oc)
+	resource{"deployment", f.serverName, f.namespace}.clear(oc)
+	resource{"svc", f.serverName, f.namespace}.clear(oc)
+}
+
+func (f fluentdServer) getPodName(oc *exutil.CLI) string {
+	pods, err := oc.AdminKubeClient().CoreV1().Pods(f.namespace).List(metav1.ListOptions{LabelSelector: "component=" + f.serverName})
+	o.Expect(err).NotTo(o.HaveOccurred())
+	var names []string
+	for i := 0; i < len(pods.Items); i++ {
+		names = append(names, pods.Items[i].Name)
+	}
+	return names[0]
+}
+
+// check the data in fluentd server
+// filename is the name of a file you want to check
+// expect true means you expect the file to exist, false means the file is not expected to exist
+func (f fluentdServer) checkData(oc *exutil.CLI, expect bool, filename string) {
+	cmd := "ls -l /fluentd/log/" + filename
+	err := wait.Poll(5*time.Second, 60*time.Second, func() (done bool, err error) {
+		stdout, err := e2e.RunHostCmdWithRetries(f.namespace, f.getPodName(oc), cmd, 3*time.Second, 15*time.Second)
+		if err != nil {
+			return false, err
+		} else {
+			if (strings.Contains(stdout, filename) && expect) || (!strings.Contains(stdout, filename) && !expect) {
+				return true, nil
+			} else {
+				return false, nil
+			}
+		}
+	})
+	if expect {
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("The %s doesn't exist", filename))
+	} else {
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("The %s exists", filename))
+	}
+
+}
