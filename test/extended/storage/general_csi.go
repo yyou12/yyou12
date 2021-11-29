@@ -144,7 +144,7 @@ var _ = g.Describe("[sig-storage] STORAGE WITH-TREARDOWN-PROJECT", func() {
 
 			g.By("2. Create pod with the created pvc and wait for the pod ready")
 			pod.create(oc)
-			defer pod.deleteAsadmin(oc)
+			defer pod.deleteAsAdmin(oc)
 			pod.waitReady(oc)
 
 			g.By("3. Check the pod volume can be read and write")
@@ -194,7 +194,7 @@ var _ = g.Describe("[sig-storage] STORAGE WITH-TREARDOWN-PROJECT", func() {
 
 			g.By("# Create pod1 with the created pvc and wait for the pod ready")
 			pod1.create(oc)
-			defer pod1.deleteAsadmin(oc)
+			defer pod1.deleteAsAdmin(oc)
 			pod1.waitReady(oc)
 
 			g.By("# Check the pod volume could be read and written and write testfile with content 'storage test' to the volume")
@@ -208,7 +208,7 @@ var _ = g.Describe("[sig-storage] STORAGE WITH-TREARDOWN-PROJECT", func() {
 
 			g.By("# Use readOnly parameter create pod2 with the pvc: 'spec.containers[0].volumeMounts[0].readOnly: true' and wait for the pod ready ")
 			pod2.createWithReadOnlyVolume(oc)
-			defer pod2.deleteAsadmin(oc)
+			defer pod2.deleteAsAdmin(oc)
 			pod2.waitReady(oc)
 
 			g.By("# Check the file /mnt/storage/testfile exist in the volume and read its content contains 'storage test' ")
@@ -392,6 +392,77 @@ var _ = g.Describe("[sig-storage] STORAGE WITH-TREARDOWN-PROJECT", func() {
 			g.By("13. After scaled check the deployment's pod mounted volume contents and exec right")
 			o.Expect(execCommandInSpecificPod(oc, dep.namespace, dep.getPodList(oc)[0], "cat /mnt/storage/testfile*")).To(o.ContainSubstring("storage test"))
 			o.Expect(execCommandInSpecificPod(oc, dep.namespace, dep.getPodList(oc)[0], "/mnt/storage/hello")).To(o.ContainSubstring("Hello OpenShift Storage"))
+
+			g.By("******" + cloudProvider + " csi driver: \"" + provisioner + "\" test phase finished" + "******")
+		}
+	})
+
+	// author: wduan@redhat.com
+	// OCP-46358 - [CSI Clone] Clone a pvc with filesystem VolumeMode
+	g.It("Author:wduan-Critical-46358-[CSI Clone] Clone a pvc with filesystem VolumeMode", func() {
+		// Define the test scenario support provisioners
+		scenarioSupportProvisioners := []string{"disk.csi.azure.com", "cinder.csi.openstack.org"}
+		// Set the resource template for the scenario
+		var (
+			storageTeamBaseDir  = exutil.FixturePath("testdata", "storage")
+			pvcTemplate         = filepath.Join(storageTeamBaseDir, "pvc-template.yaml")
+			podTemplate         = filepath.Join(storageTeamBaseDir, "pod-template.yaml")
+			supportProvisioners = sliceIntersect(scenarioSupportProvisioners, getSupportProvisionersByCloudProvider(cloudProvider))
+		)
+		if len(supportProvisioners) == 0 {
+			g.Skip("Skip for scenario non-supported provisioner!!!")
+		}
+		for _, provisioner := range supportProvisioners {
+			g.By("******" + cloudProvider + " csi driver: \"" + provisioner + "\" test phase start" + "******")
+			// Set the resource definition for the original
+			pvc_ori := newPersistentVolumeClaim(setPersistentVolumeClaimTemplate(pvcTemplate))
+			pod_ori := newPod(setPodTemplate(podTemplate), setPodPersistentVolumeClaim(pvc_ori.name))
+
+			// Use the framework created project as default, if use your own, exec the follow code setupProject
+			g.By("Create new project for the test phase")
+			oc.SetupProject() //create new project
+
+			g.By("Create a pvc with the preset csi storageclass")
+			pvc_ori.scname = getPresetStorageClassNameByProvisioner(cloudProvider, provisioner)
+			e2e.Logf("%s", pvc_ori.scname)
+			pvc_ori.create(oc)
+			defer pvc_ori.deleteAsAdmin(oc)
+
+			g.By("Create pod with the created pvc and wait for the pod ready")
+			pod_ori.create(oc)
+			defer pod_ori.deleteAsAdmin(oc)
+			pod_ori.waitReady(oc)
+
+			g.By("Write file to volume")
+			pod_ori.checkMountedVolumeCouldRW(oc)
+			pod_ori.execCommand(oc, "sync")
+
+			// Set the resource definition for the clone
+			pvc_clone := newPersistentVolumeClaim(setPersistentVolumeClaimTemplate(pvcTemplate), setPersistentVolumeClaimDataSourceName(pvc_ori.name))
+			pod_clone := newPod(setPodTemplate(podTemplate), setPodPersistentVolumeClaim(pvc_clone.name))
+
+			g.By("Create a clone pvc with the preset csi storageclass")
+			pvc_clone.scname = getPresetStorageClassNameByProvisioner(cloudProvider, provisioner)
+			e2e.Logf("%s", pvc_ori.scname)
+			pvc_clone.createWithCloneDataSource(oc)
+			defer pvc_clone.deleteAsAdmin(oc)
+
+			g.By("Create pod with the cloned pvc and wait for the pod ready")
+			pod_clone.create(oc)
+			defer pod_clone.deleteAsAdmin(oc)
+			pod_clone.waitReady(oc)
+
+			g.By("Delete origial pvc will not impact the cloned one")
+			pod_ori.deleteAsAdmin(oc)
+			pvc_ori.deleteAsAdmin(oc)
+
+			g.By("Check the file exist in cloned pvc")
+			output, err := pod_clone.execCommand(oc, "cat "+pod_clone.mountPath+"/testfile")
+			o.Expect(err).NotTo(o.HaveOccurred())
+			o.Expect(output).To(o.ContainSubstring("storage test"))
+
+			g.By("TearDown the project after test phase")
+			oc.TeardownProject()
 
 			g.By("******" + cloudProvider + " csi driver: \"" + provisioner + "\" test phase finished" + "******")
 		}

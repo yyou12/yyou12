@@ -12,13 +12,14 @@ import (
 )
 
 type persistentVolumeClaim struct {
-	name       string
-	namespace  string
-	scname     string
-	template   string
-	volumemode string
-	accessmode string
-	capacity   string
+	name           string
+	namespace      string
+	scname         string
+	template       string
+	volumemode     string
+	accessmode     string
+	capacity       string
+	dataSourceName string
 }
 
 // function option mode to change the default values of PersistentVolumeClaim parameters, e.g. name, namespace, accessmode, capacity, volumemode etc.
@@ -73,6 +74,13 @@ func setPersistentVolumeClaimVolumemode(volumemode string) persistentVolumeClaim
 	}
 }
 
+// Replace the default value of PersistentVolumeClaim DataSource Name
+func setPersistentVolumeClaimDataSourceName(name string) persistentVolumeClaimOption {
+	return func(this *persistentVolumeClaim) {
+		this.dataSourceName = name
+	}
+}
+
 //  Create a new customized PersistentVolumeClaim object
 func newPersistentVolumeClaim(opts ...persistentVolumeClaimOption) persistentVolumeClaim {
 	defaultPersistentVolumeClaim := persistentVolumeClaim{
@@ -98,6 +106,43 @@ func (pvc *persistentVolumeClaim) create(oc *exutil.CLI) {
 		pvc.namespace = oc.Namespace()
 	}
 	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", pvc.template, "-p", "PVCNAME="+pvc.name, "PVCNAMESPACE="+pvc.namespace, "SCNAME="+pvc.scname,
+		"ACCESSMODE="+pvc.accessmode, "VOLUMEMODE="+pvc.volumemode, "PVCCAPACITY="+pvc.capacity)
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+//  Create a new PersistentVolumeClaim with clone dataSource parameters
+func (pvc *persistentVolumeClaim) createWithCloneDataSource(oc *exutil.CLI) {
+	if pvc.namespace == "" {
+		pvc.namespace = oc.Namespace()
+	}
+	dataSource := map[string]string{
+		"kind": "PersistentVolumeClaim",
+		"name": pvc.dataSourceName,
+	}
+	extraParameters := map[string]interface{}{
+		"jsonPath":   `items.0.spec.`,
+		"dataSource": dataSource,
+	}
+	err := applyResourceFromTemplateWithExtraParametersAsAdmin(oc, extraParameters, "--ignore-unknown-parameters=true", "-f", pvc.template, "-p", "PVCNAME="+pvc.name, "PVCNAMESPACE="+pvc.namespace, "SCNAME="+pvc.scname,
+		"ACCESSMODE="+pvc.accessmode, "VOLUMEMODE="+pvc.volumemode, "PVCCAPACITY="+pvc.capacity)
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+//  Create a new PersistentVolumeClaim with snapshot dataSource parameters
+func (pvc *persistentVolumeClaim) createWithSnapshotDataSource(oc *exutil.CLI) {
+	if pvc.namespace == "" {
+		pvc.namespace = oc.Namespace()
+	}
+	dataSource := map[string]string{
+		"kind":     "VolumeSnapshot",
+		"name":     pvc.dataSourceName,
+		"apiGroup": "snapshot.storage.k8s.io",
+	}
+	extraParameters := map[string]interface{}{
+		"jsonPath":   `items.0.spec.`,
+		"dataSource": dataSource,
+	}
+	err := applyResourceFromTemplateWithExtraParametersAsAdmin(oc, extraParameters, "--ignore-unknown-parameters=true", "-f", pvc.template, "-p", "PVCNAME="+pvc.name, "PVCNAMESPACE="+pvc.namespace, "SCNAME="+pvc.scname,
 		"ACCESSMODE="+pvc.accessmode, "VOLUMEMODE="+pvc.volumemode, "PVCCAPACITY="+pvc.capacity)
 	o.Expect(err).NotTo(o.HaveOccurred())
 }

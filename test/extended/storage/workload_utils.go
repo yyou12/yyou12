@@ -112,7 +112,7 @@ func (pod *pod) delete(oc *exutil.CLI) {
 }
 
 //  Delete the pod use kubeadmin
-func (pod *pod) deleteAsadmin(oc *exutil.CLI) {
+func (pod *pod) deleteAsAdmin(oc *exutil.CLI) {
 	oc.WithoutNamespace().AsAdmin().Run("delete").Args("pod", pod.name, "-n", pod.namespace).Execute()
 }
 

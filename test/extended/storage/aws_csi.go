@@ -61,7 +61,7 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 
 		g.By("3. Create pod with the created pvc and wait for the pod ready")
 		pod.create(oc)
-		defer pod.deleteAsadmin(oc)
+		defer pod.deleteAsAdmin(oc)
 		waitPodReady(oc, pod.namespace, pod.name)
 
 		g.By("4. Check the pvc status to Bound")
