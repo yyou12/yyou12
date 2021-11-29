@@ -865,6 +865,27 @@ func (r rsyslog) getPodName(oc *exutil.CLI) string {
 	return names[0]
 }
 
+func (r rsyslog) checkData(oc *exutil.CLI, expect bool, filename string) {
+	cmd := "ls -l /var/log/clf/" + filename
+	err := wait.Poll(5*time.Second, 60*time.Second, func() (done bool, err error) {
+		stdout, err := e2e.RunHostCmdWithRetries(r.namespace, r.getPodName(oc), cmd, 3*time.Second, 15*time.Second)
+		if err != nil {
+			return false, err
+		} else {
+			if (strings.Contains(stdout, filename) && expect) || (!strings.Contains(stdout, filename) && !expect) {
+				return true, nil
+			} else {
+				return false, nil
+			}
+		}
+	})
+	if expect {
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("The %s doesn't exist", filename))
+	} else {
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("The %s exists", filename))
+	}
+}
+
 func searchLogsInLoki(oc *exutil.CLI, cloNS string, lokiNS string, pod string, logType string) LokiLogQuery {
 	//This function to be used only for audit or infra (Journal system) logs only
 	cmd := ""

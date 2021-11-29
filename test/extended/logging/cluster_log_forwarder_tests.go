@@ -384,13 +384,10 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			WaitForDaemonsetPodsToBeReady(oc, cloNS, "collector")
 
 			g.By("check logs in rsyslog server")
-			cmd := "ls -l /var/log/clf/"
-			stdout, err := e2e.RunHostCmdWithRetries(rsyslog.namespace, rsyslog.getPodName(oc), cmd, 3*time.Second, 30*time.Second)
-			o.Expect(err).NotTo(o.HaveOccurred())
-			o.Expect(stdout).Should(o.ContainSubstring("app-container.log"))
-			o.Expect(stdout).Should(o.ContainSubstring("infra-container.log"))
-			o.Expect(stdout).Should(o.ContainSubstring("audit.log"))
-			o.Expect(stdout).Should(o.ContainSubstring("infra.log"))
+			rsyslog.checkData(oc, true, "app-container.log")
+			rsyslog.checkData(oc, true, "infra-container.log")
+			rsyslog.checkData(oc, true, "audit.log")
+			rsyslog.checkData(oc, true, "infra.log")
 		})
 
 		//Author: kbharti@redhat.com
