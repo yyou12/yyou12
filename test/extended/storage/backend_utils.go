@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -20,6 +21,9 @@ import (
 // Get the secret from cluster
 func getCreditFromCluster(oc *exutil.CLI) (error, error) {
 	credential, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("secret/aws-creds", "-n", "kube-system", "-o", "json").Output()
+	if strings.Contains(interfaceToString(err), "not found") {
+		credential, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("secret/ebs-cloud-credentials", "-n", "openshift-cluster-csi-drivers", "-o", "json").Output()
+	}
 	o.Expect(err).NotTo(o.HaveOccurred())
 	accessKeyIdBase64, secureKeyBase64 := gjson.Get(credential, `data.aws_access_key_id`).Str, gjson.Get(credential, `data.aws_secret_access_key`).Str
 	accessKeyId, err1 := base64.StdEncoding.DecodeString(accessKeyIdBase64)

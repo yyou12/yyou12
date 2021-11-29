@@ -73,7 +73,7 @@ func newPod(opts ...podOption) pod {
 	defaultPod := pod{
 		name:      "mypod-" + getRandomString(),
 		template:  "pod-template.yaml",
-		namespace: "default",
+		namespace: "",
 		pvcname:   "mypvc",
 		image:     "quay.io/openshifttest/storage@sha256:a05b96d373be86f46e76817487027a7f5b8b5f87c0ac18a246b018df11529b40",
 		mountPath: "/mnt/storage",
@@ -88,6 +88,9 @@ func newPod(opts ...podOption) pod {
 
 // Create new pod with customized parameters
 func (pod *pod) create(oc *exutil.CLI) {
+	if pod.namespace == "" {
+		pod.namespace = oc.Namespace()
+	}
 	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", pod.template, "-p", "PODNAME="+pod.name, "PODNAMESPACE="+pod.namespace, "PVCNAME="+pod.pvcname, "PODIMAGE="+pod.image, "PODMOUNTPATH="+pod.mountPath)
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
@@ -120,7 +123,7 @@ func (pod *pod) execCommand(oc *exutil.CLI, command string) (string, error) {
 	if err != nil {
 		e2e.Logf(pod.name+"# "+command+" *failed with* :\"%v\".", err)
 		return msg, err
-	} 
+	}
 	debugLogf(pod.name+"# "+command+" *Output is* :\"%s\".", msg)
 	return msg, nil
 }
@@ -399,7 +402,7 @@ func newDeployment(opts ...deployOption) deployment {
 	defaultDeployment := deployment{
 		name:       "my-dep-" + getRandomString(),
 		template:   "dep-template.yaml",
-		namespace:  "default",
+		namespace:  "",
 		replicasno: "1",
 		applabel:   "myapp-" + getRandomString(),
 		mpath:      "/mnt/storage",
@@ -417,6 +420,9 @@ func newDeployment(opts ...deployOption) deployment {
 
 // Create new Deployment with customized parameters
 func (dep *deployment) create(oc *exutil.CLI) {
+	if dep.namespace == "" {
+		dep.namespace = oc.Namespace()
+	}
 	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", dep.template, "-p", "DNAME="+dep.name, "DNAMESPACE="+dep.namespace, "PVCNAME="+dep.pvcname, "REPLICASNUM="+dep.replicasno, "DLABEL="+dep.applabel, "MPATH="+dep.mpath, "VOLUMETYPE="+dep.volumetype, "TYPEPATH="+dep.typepath)
 	o.Expect(err).NotTo(o.HaveOccurred())
 }

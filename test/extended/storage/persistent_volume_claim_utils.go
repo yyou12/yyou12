@@ -78,7 +78,7 @@ func newPersistentVolumeClaim(opts ...persistentVolumeClaimOption) persistentVol
 	defaultPersistentVolumeClaim := persistentVolumeClaim{
 		name:       "my-pvc-" + getRandomString(),
 		template:   "pvc-template.yaml",
-		namespace:  "default",
+		namespace:  "",
 		capacity:   "1Gi",
 		volumemode: "Filesystem",
 		scname:     "gp2-csi",
@@ -94,6 +94,9 @@ func newPersistentVolumeClaim(opts ...persistentVolumeClaimOption) persistentVol
 
 // Create new PersistentVolumeClaim with customized parameters
 func (pvc *persistentVolumeClaim) create(oc *exutil.CLI) {
+	if pvc.namespace == "" {
+		pvc.namespace = oc.Namespace()
+	}
 	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", pvc.template, "-p", "PVCNAME="+pvc.name, "PVCNAMESPACE="+pvc.namespace, "SCNAME="+pvc.scname,
 		"ACCESSMODE="+pvc.accessmode, "VOLUMEMODE="+pvc.volumemode, "PVCCAPACITY="+pvc.capacity)
 	o.Expect(err).NotTo(o.HaveOccurred())
