@@ -10,9 +10,14 @@ upstream@ -> dynamically created soft link to upstream helpers
 ```
 
 ## Local Development
-### Clone upstream 'console' repo and create a soft link
+### Clone upstream 'console' repo somewhere and install dependencies
 ```bash
 git clone git@github.com:openshift/console.git
+cd console/frontend; yarn install
+```
+### Create Soft link
+```bash
+cd /path/to/openshift-tests-private/frontend
 ln -s /path/to/upstream/console/frontend/packages/integration-tests-cypress upstream
 ```
 ### Install all dependencies
