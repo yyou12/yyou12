@@ -61,6 +61,12 @@ type objectTableRefcscope struct {
 	name string
 }
 
+type podTerminationDescription struct {
+	name             string
+	namespace        string
+	template         string
+}
+
 func getRandomString() string {
 	chars := "abcdefghijklmnopqrstuvwxyz0123456789"
 	seed := rand.New(rand.NewSource(time.Now().UnixNano()))
@@ -110,6 +116,15 @@ func (podModify *podModifyDescription) create(oc *exutil.CLI) {
 
 func (podModify *podModifyDescription) delete(oc *exutil.CLI) error {
 	return oc.AsAdmin().WithoutNamespace().Run("delete").Args("-n", podModify.namespace, "pod", podModify.name).Execute()
+}
+
+func (podTermination *podTerminationDescription) create(oc *exutil.CLI) {
+	err := createResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", podTermination.template, "-p", "NAME="+podTermination.name, "NAMESPACE="+podTermination.namespace)
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+func (podTermination *podTerminationDescription) delete(oc *exutil.CLI) error {
+	return oc.AsAdmin().WithoutNamespace().Run("delete").Args("-n", podTermination.namespace, "pod", podTermination.name).Execute()
 }
 
 func createResourceFromTemplate(oc *exutil.CLI, parameters ...string) error {
@@ -298,5 +313,32 @@ func (ctrcfg *ctrcfgDescription) checkCtrcfgParameters(oc *exutil.CLI) error {
 			}
 		}
 		return true, nil
+	})
+}
+
+func (podTermination *podTerminationDescription) getTerminationGrace(oc *exutil.CLI) error {
+	e2e.Logf("check terminationGracePeriodSeconds period")
+	return wait.Poll(1*time.Second, 1*time.Minute, func() (bool, error) {
+		nodename, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-o=jsonpath={.items[0].spec.nodeName}", "-n", podTermination.namespace).Output()
+		e2e.Logf("The nodename is %v", nodename)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		nodeStatus, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("nodes", fmt.Sprintf("%s", nodename), "-o=jsonpath={.status.conditions[3].type}").Output()
+		e2e.Logf("The Node state is %v", nodeStatus)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		containerID, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-o=jsonpath={.items[0].status.containerStatuses[0].containerID}", "-n", podTermination.namespace).Output()
+		e2e.Logf("The containerID is %v", containerID)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		if nodeStatus == "Ready" {
+			terminationGrace, err := oc.AsAdmin().Run("debug").Args(`node/`+fmt.Sprintf("%s", nodename), "--", "chroot", "/host", "systemctl", "show", fmt.Sprintf("%s",containerID)).Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			if strings.Contains(string(terminationGrace), "TimeoutStopUSec=1min 30s") {
+				e2e.Logf("\nTERMINATION GRACE PERIOD IS SET CORRECTLY")
+				return true, nil
+			} else {
+				e2e.Logf("\ntermination grace is NOT Updated")
+				return false, nil
+			}
+		}
+		return false, nil
 	})
 }

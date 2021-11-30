@@ -1,0 +1,21 @@
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: pod-termination-template
+objects:
+- kind: Pod
+  apiVersion: v1
+  metadata:
+    name: "${NAME}"
+    namespace: "${NAMESPACE}"
+  spec:
+    terminationGracePeriodSeconds: 90
+    containers:
+    - image: "quay.io/openshifttest/nginx@sha256:3936fb3946790d711a68c58be93628e43cbca72439079e16d154b5db216b58da"
+      name: termination
+      command: [bash, -c, "sleep 100000000"] 
+      ports:
+        - containerPort: 8080
+parameters:
+- name: NAME
+- name: NAMESPACE
