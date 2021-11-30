@@ -1350,7 +1350,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	})
 
 	// author: bandrade@redhat.com
-	g.It("Author:bandrade-Medium-42972-OperatorGroup status should indicate if the SA named in spec not found", func() {
+	g.It("Author:bandrade-Medium-42972-OperatorGroup status should indicate if the SA named in spec not found [Flaky]", func() {
 		var (
 			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
 			ogSAtemplate        = filepath.Join(buildPruningBaseDir, "operatorgroup-serviceaccount.yaml")
@@ -3785,7 +3785,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 	})
 
 	// It will cover test case: OCP-20979, author: kuiwang@redhat.com
-	g.It("ConnectedOnly-Author:kuiwang-Medium-20979-only one IP is generated", func() {
+	g.It("ConnectedOnly-Author:kuiwang-Medium-20979-only one IP is generated [Flaky]", func() {
 		var (
 			itName              = g.CurrentGinkgoTestDescription().TestText
 			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
