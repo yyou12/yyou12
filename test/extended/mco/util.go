@@ -227,6 +227,17 @@ func (mcp *MachineConfigPool) waitForComplete(oc *exutil.CLI) {
 	e2e.Logf("Waiting %s for MCP %s to be completed.", timeToWait, mcp.name)
 
 	err := wait.Poll(1*time.Minute, timeToWait, func() (bool, error) {
+		// If there are degraded machines, stop polling, directly fail
+		degradedstdout, degradederr := oc.AsAdmin().WithoutNamespace().Run("get").Args("mcp/"+mcp.name, "-o", "jsonpath={.status.degradedMachineCount}").Output()
+		if degradederr != nil {
+			e2e.Logf("the err:%v, and try next round", degradederr)
+			return false, nil
+		}
+
+		if degradedstdout != "0" {
+			exutil.AssertWaitPollNoErr(fmt.Errorf("Degraded machines"), fmt.Sprintf("mcp %s has degraded %s machines", mcp.name, degradedstdout))
+		}
+
 		stdout, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("mcp/"+mcp.name, "-o", "jsonpath={.status.conditions[?(@.type==\"Updated\")].status}").Output()
 		if err != nil {
 			e2e.Logf("the err:%v, and try next round", err)

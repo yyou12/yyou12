@@ -382,7 +382,8 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		createMcAndVerifyIgnitionVersion(oc, "invalid ign version", "change-worker-ign-version-to-invalid", "3.9.0")
 	})
 
-	g.It("Author:rioliu-NonPreRelease-High-42679-add new ssh authorized keys [Serial]", func() {
+	g.It("Author:rioliu-NonPreRelease-High-42679-add new ssh authorized keys CoreOs [Serial]", func() {
+		workerNode := skipTestIfOsIsNotCoreOs(oc)
 		g.By("Create new machine config with new authorized key")
 		mcName := "change-worker-add-ssh-authorized-key"
 		mcTemplate := generateTemplateAbsolutePath(mcName + ".yaml")
@@ -391,9 +392,22 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		mc.create(oc)
 
 		g.By("Check content of file authorized_keys to verify whether new one is added successfully")
-		workerNode := NewNodeList(oc).GetAllWorkerNodesOrFail()[0]
 		sshKeyOut, err := workerNode.DebugNodeWithChroot("cat", "/home/core/.ssh/authorized_keys")
-		e2e.Logf("file content of authorized_keys: %v", sshKeyOut)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(sshKeyOut).Should(o.ContainSubstring("mco_test@redhat.com"))
+	})
+
+	g.It("Author:sregidor-NonPreRelease-High-46304-add new ssh authorized keys RHEL [Serial]", func() {
+		workerNode := skipTestIfOsIsNotRhelOs(oc)
+		g.By("Create new machine config with new authorized key")
+		mcName := "change-worker-add-ssh-authorized-key"
+		mcTemplate := generateTemplateAbsolutePath(mcName + ".yaml")
+		mc := MachineConfig{name: mcName, template: mcTemplate, pool: "worker"}
+		defer mc.delete(oc)
+		mc.create(oc)
+
+		g.By("Check content of file authorized_keys to verify whether new one is added successfully")
+		sshKeyOut, err := workerNode.DebugNodeWithChroot("cat", "/home/core/.ssh/authorized_keys")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(sshKeyOut).Should(o.ContainSubstring("mco_test@redhat.com"))
 	})
@@ -854,6 +868,15 @@ func skipTestIfOsIsNotCoreOs(oc *exutil.CLI) node {
 		g.Skip("CoreOs is required to execute this test case!")
 	}
 	return allCoreOs[0]
+}
+
+// skipTestIfOsIsNotCoreOs it will either skip the test case in case of worker node is not CoreOS or will return the CoreOS worker node
+func skipTestIfOsIsNotRhelOs(oc *exutil.CLI) node {
+	allRhelOs := NewNodeList(oc).GetAllRhelWokerNodesOrFail()
+	if len(allRhelOs) == 0 {
+		g.Skip("RhelOs is required to execute this test case!")
+	}
+	return allRhelOs[0]
 }
 
 func createMcAndVerifyIgnitionVersion(oc *exutil.CLI, stepText string, mcName string, ignitionVersion string) {
