@@ -413,3 +413,50 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Elasticsearch 
 	})
 
 })
+
+var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Fluentd should", func() {
+	defer g.GinkgoRecover()
+
+	var (
+		oc                = exutil.NewCLI("logging-fluentd-"+getRandomString(), exutil.KubeConfigPath())
+		subTemplate       = exutil.FixturePath("testdata", "logging", "subscription", "sub-template.yaml")
+		SingleNamespaceOG = exutil.FixturePath("testdata", "logging", "subscription", "singlenamespace-og.yaml")
+		AllNamespaceOG    = exutil.FixturePath("testdata", "logging", "subscription", "allnamespace-og.yaml")
+	)
+	cloNS := "openshift-logging"
+	eoNS := "openshift-operators-redhat"
+	CLO := SubscriptionObjects{"cluster-logging-operator", cloNS, SingleNamespaceOG, subTemplate, "cluster-logging", CatalogSourceObjects{}}
+	EO := SubscriptionObjects{"elasticsearch-operator", eoNS, AllNamespaceOG, subTemplate, "elasticsearch-operator", CatalogSourceObjects{}}
+	g.BeforeEach(func() {
+		g.By("deploy CLO and EO")
+		CLO.SubscribeLoggingOperators(oc)
+		EO.SubscribeLoggingOperators(oc)
+	})
+
+	// author qitang@redhat.com
+	g.It("CPaasrunOnly-Author:qitang-Medium-43177-expose the metrics needed to understand the volume of logs being collected.", func() {
+		// create clusterlogging instance
+		g.By("deploy EFK pods")
+		sc, err := getStorageClassName(oc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		instance := exutil.FixturePath("testdata", "logging", "clusterlogging", "cl-storage-template.yaml")
+		cl := resource{"clusterlogging", "instance", cloNS}
+		cl.applyFromTemplate(oc, "-n", cl.namespace, "-f", instance, "-p", "NAMESPACE="+cl.namespace, "-p", "STORAGE_CLASS="+sc)
+		g.By("waiting for the EFK pods to be ready...")
+		WaitForEFKPodsToBeReady(oc, cloNS)
+		podList, err := oc.AdminKubeClient().CoreV1().Pods(cloNS).List(metav1.ListOptions{LabelSelector: "es-node-master=true"})
+		o.Expect(err).NotTo(o.HaveOccurred())
+		waitForIndexAppear(oc, cloNS, podList.Items[0].Name, "infra")
+
+		g.By("check metrics")
+		for _, metric := range []string{"log_logged_bytes_total", "log_collected_bytes_total"} {
+			result, err := queryPrometheus(oc, "", "/api/v1/query?", metric, "GET")
+			o.Expect(err).NotTo(o.HaveOccurred())
+			value, _ := strconv.Atoi(result.Data.Result[0].Value[1].(string))
+			o.Expect(value > 0).To(o.BeTrue())
+			o.Expect(result.Data.Result[0].Metric.Path).NotTo(o.BeEmpty())
+			o.Expect(len(result.Data.Result) > 0).To(o.BeTrue())
+		}
+	})
+
+})

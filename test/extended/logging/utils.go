@@ -536,14 +536,17 @@ type PrometheusQueryResult struct {
 		Result []struct {
 			Metric struct {
 				Name              string `json:"__name__"`
-				Cluster           string `json:"cluster"`
-				Container         string `json:"container"`
-				Endpoint          string `json:"endpoint"`
-				Instance          string `json:"instance"`
-				Job               string `json:"job"`
-				Namespace         string `json:"namespace"`
-				Pod               string `json:"pod"`
-				Service           string `json:"service"`
+				Cluster           string `json:"cluster,omitempty"`
+				Container         string `json:"container,omitempty"`
+				ContainerName     string `json:"containername,omitempty"`
+				Endpoint          string `json:"endpoint,omitempty"`
+				Instance          string `json:"instance,omitempty"`
+				Job               string `json:"job,omitempty"`
+				Namespace         string `json:"namespace,omitempty"`
+				Path              string `json:"path,omitempty"`
+				Pod               string `json:"pod,omitempty"`
+				PodName           string `json:"podname,omitempty"`
+				Service           string `json:"service,omitempty"`
 				ExportedNamespace string `json:"exported_namespace,omitempty"`
 			} `json:"metric"`
 			Value []interface{} `json:"value"`
