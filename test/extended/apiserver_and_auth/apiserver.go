@@ -369,4 +369,108 @@ spec:
 		}
 	})
 
+	// author: rgangwar@redhat.com
+	g.It("NonPreRelease-Longduration-Author:rgangwar-Low-25926-Wire cipher config from apiservers/cluster into apiserver and authentication operators [Disruptive] [Slow]", func() {
+		// Check authentication operator cliconfig, openshiftapiservers.operator.openshift.io and kubeapiservers.operator.openshift.io
+		var (
+			cipher_to_recover           = `[{"op": "replace", "path": "/spec/tlsSecurityProfile", "value":}]`
+			cipherOps                   = []string{"openshift-authentication", "openshiftapiservers.operator", "kubeapiservers.operator"}
+			cipher_to_match             = `["TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256","TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256","TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384","TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384","TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256","TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256"] VersionTLS12`
+		)
+
+		cipherItems := []struct {
+			cipher_type string
+			cipher_to_check string
+			patch string
+		}{
+			{
+				cipher_type      : "custom",
+				cipher_to_check  : `["TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256","TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256","TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256","TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256"] VersionTLS11`,
+				patch            : `[{"op": "add", "path": "/spec/tlsSecurityProfile", "value":{"custom":{"ciphers":["ECDHE-ECDSA-CHACHA20-POLY1305","ECDHE-RSA-CHACHA20-POLY1305","ECDHE-RSA-AES128-GCM-SHA256","ECDHE-ECDSA-AES128-GCM-SHA256"],"minTLSVersion":"VersionTLS11"},"type":"Custom"}}]`,
+			},
+			{
+				cipher_type      : "Intermediate",
+				cipher_to_check  : cipher_to_match, // cipherSuites of "Intermediate" seems to equal to the default values when .spec.tlsSecurityProfile not set.
+				patch            : `[{"op": "replace", "path": "/spec/tlsSecurityProfile", "value":{"intermediate":{},"type":"Intermediate"}}]`,
+			},
+			{
+				cipher_type      : "Old",
+				cipher_to_check  : `["TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256","TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256","TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384","TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384","TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256","TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256","TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256","TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256","TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA","TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA","TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA","TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA","TLS_RSA_WITH_AES_128_GCM_SHA256","TLS_RSA_WITH_AES_256_GCM_SHA384","TLS_RSA_WITH_AES_128_CBC_SHA256","TLS_RSA_WITH_AES_128_CBC_SHA","TLS_RSA_WITH_AES_256_CBC_SHA","TLS_RSA_WITH_3DES_EDE_CBC_SHA"] VersionTLS10`,
+				patch            : `[{"op": "replace", "path": "/spec/tlsSecurityProfile", "value":{"old":{},"type":"Old"}}]`,
+			},
+		}
+
+		// Check ciphers for authentication operator cliconfig, openshiftapiservers.operator.openshift.io and kubeapiservers.operator.openshift.io:
+		for _, s := range cipherOps {
+			err := verify_ciphers(oc, cipher_to_match, s)
+			exutil.AssertWaitPollNoErr(err, fmt.Sprintf("Ciphers are not matched : %s", s))
+		}
+
+		//Recovering apiserver/cluster's ciphers:
+		defer func() {
+			g.By("Restoring apiserver/cluster's ciphers")
+			output,err := oc.AsAdmin().WithoutNamespace().Run("patch").Args("apiserver/cluster", "--type=json", "-p", cipher_to_recover).Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			if strings.Contains(output, "patched (no change)") {
+				e2e.Logf("Apiserver/cluster's ciphers are not changed from the default values")
+			} else {
+				for _, s := range cipherOps {
+					err := verify_ciphers(oc, cipher_to_match, s)
+					exutil.AssertWaitPollNoErr(err, fmt.Sprintf("Ciphers are not restored : %s", s))
+				}
+				g.By("Checking KAS, OAS, Auththentication operators should be in Progressing and Available after rollout and recovery")
+				e2e.Logf("Checking kube-apiserver operator should be in Progressing in 100 seconds")
+				expectedStatus := map[string]string{"Progressing": "True"}
+				err = waitCoBecomes(oc, "kube-apiserver", 100, expectedStatus)
+				exutil.AssertWaitPollNoErr(err, "kube-apiserver operator is not start progressing in 100 seconds")
+				e2e.Logf("Checking kube-apiserver operator should be Available in 1500 seconds")
+				expectedStatus = map[string]string{"Available": "True", "Progressing": "False", "Degraded": "False"}
+				err = waitCoBecomes(oc, "kube-apiserver", 1500, expectedStatus)
+				exutil.AssertWaitPollNoErr(err, "kube-apiserver operator is not becomes available in 1500 seconds")
+
+				// Using 60s because KAS takes long time, when KAS finished rotation, OAS and Auth should have already finished.
+				e2e.Logf("Checking openshift-apiserver operator should be Available in 60 seconds")
+				err = waitCoBecomes(oc, "openshift-apiserver", 60, expectedStatus)
+				exutil.AssertWaitPollNoErr(err, "openshift-apiserver operator is not becomes available in 60 seconds")
+
+				e2e.Logf("Checking authentication operator should be Available in 60 seconds")
+				err = waitCoBecomes(oc, "authentication", 60, expectedStatus)
+				exutil.AssertWaitPollNoErr(err, "authentication operator is not becomes available in 60 seconds")
+				e2e.Logf("KAS, OAS and Auth operator are available after rollout and cipher's recovery")
+			}
+		}()
+
+		// Check custom, intermediate, old ciphers for authentication operator cliconfig, openshiftapiservers.operator.openshift.io and kubeapiservers.operator.openshift.io:
+		for _, cipherItem := range cipherItems {
+			g.By("Patching the apiserver cluster with ciphers : " + cipherItem.cipher_type)
+			err := oc.AsAdmin().WithoutNamespace().Run("patch").Args("apiserver/cluster", "--type=json", "-p", cipherItem.patch).Execute()
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			// Calling verify_cipher function to check ciphers and minTLSVersion
+			for _, s := range cipherOps {
+				err := verify_ciphers(oc, cipherItem.cipher_to_check, s)
+				exutil.AssertWaitPollNoErr(err, fmt.Sprintf("Ciphers are not matched: %s : %s", s, cipherItem.cipher_type))
+			}
+			g.By("Checking KAS, OAS, Auththentication operators should be in Progressing and Available after rollout")
+			// Calling waitCoBecomes function to wait for define waitTime so that KAS, OAS, Authentication operator becomes progressing and available.
+			// WaitTime 100s for KAS becomes Progressing=True and 1500s to become Available=True and Progressing=False and Degraded=False.
+			e2e.Logf("Checking kube-apiserver operator should be in Progressing in 100 seconds")
+			expectedStatus := map[string]string{"Progressing": "True"}
+			err = waitCoBecomes(oc, "kube-apiserver", 100, expectedStatus) // Wait it to become Progressing=True
+			exutil.AssertWaitPollNoErr(err, "kube-apiserver operator is not start progressing in 100 seconds")
+			e2e.Logf("Checking kube-apiserver operator should be Available in 1500 seconds")
+			expectedStatus = map[string]string{"Available": "True", "Progressing": "False", "Degraded": "False"}
+			err = waitCoBecomes(oc, "kube-apiserver", 1500, expectedStatus) // Wait it to become Available=True and Progressing=False and Degraded=False
+			exutil.AssertWaitPollNoErr(err, "kube-apiserver operator is not becomes available in 1500 seconds")
+
+			// Using 60s because KAS takes long time, when KAS finished rotation, OAS and Auth should have already finished.
+			e2e.Logf("Checking openshift-apiserver operator should be Available in 60 seconds")
+			err = waitCoBecomes(oc, "openshift-apiserver", 60, expectedStatus)
+			exutil.AssertWaitPollNoErr(err, "openshift-apiserver operator is not becomes available in 60 seconds")
+
+			e2e.Logf("Checking authentication operator should be Available in 60 seconds")
+			err = waitCoBecomes(oc, "authentication", 60, expectedStatus)
+			exutil.AssertWaitPollNoErr(err, "authentication operator is not becomes available in 60 seconds")
+		}
+	})
 })

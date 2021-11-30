@@ -6,6 +6,11 @@ import (
 	"strings"
 	"errors"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"os/exec"
+	"fmt"
+	"reflect"
+
+	o "github.com/onsi/gomega"
 
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
@@ -97,4 +102,85 @@ func WaitEncryptionKeyMigration (oc *exutil.CLI, secret string) (bool, error) {
 	} else {
 		return true, nil
 	}
+}
+
+func waitCoBecomes(oc *exutil.CLI, coName string, waitTime int, expectedStatus map[string]string) error {
+	return wait.Poll(5*time.Second, time.Duration(waitTime)*time.Second, func() (bool, error) {
+		gottenStatus := getCoStatus(oc, coName, expectedStatus)
+		eq := reflect.DeepEqual(expectedStatus, gottenStatus)
+		if eq {
+			eq := reflect.DeepEqual(expectedStatus, map[string]string{"Available": "True", "Progressing": "False", "Degraded": "False"})
+			if eq {
+				// For True False False, we want to wait some bit more time and double check, to ensure it is stably healthy
+				time.Sleep(100 * time.Second)
+				gottenStatus := getCoStatus(oc, coName, expectedStatus)
+				eq := reflect.DeepEqual(expectedStatus, gottenStatus)
+				if eq {
+					e2e.Logf("Given operator %s becomes available/non-progressing/non-degraded", coName)
+					return true, nil
+				}
+			} else {
+				e2e.Logf("Given operator %s becomes %s", coName, gottenStatus)
+				return true, nil
+			}
+		}
+		return false, nil
+	})
+}
+
+func getCoStatus(oc *exutil.CLI, coName string, statusToCompare map[string]string) map[string]string {
+	newStatusToCompare := make(map[string]string)
+	for key := range statusToCompare {
+		args := fmt.Sprintf(`-o=jsonpath={.status.conditions[?(.type == '%s')].status}`, key)
+		status, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("co", args, coName).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		newStatusToCompare[key] = status
+	}
+	return newStatusToCompare
+}
+
+// Check ciphers for authentication operator cliconfig, openshiftapiservers.operator.openshift.io and kubeapiservers.operator.openshift.io:
+func verify_ciphers(oc *exutil.CLI, expectedCipher string, operator string) error {
+	return wait.Poll(5*time.Second, 60*time.Second, func() (bool, error) {
+		switch operator {
+			case "openshift-authentication":
+				e2e.Logf("Get the cipers for openshift-authentication:")
+				getadminoutput, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("cm", "-n", "openshift-authentication", "v4-0-config-system-cliconfig", "-o=jsonpath='{.data.v4-0-config-system-cliconfig}'").Output()
+				if err == nil {
+					// Use jqCMD to call jq because .servingInfo part JSON comming in string format
+					jqCMD := fmt.Sprintf(`echo %s | jq -cr '.servingInfo | "\(.cipherSuites) \(.minTLSVersion)"'|tr -d '\n'`, getadminoutput)
+					output,err := exec.Command("bash", "-c", jqCMD).Output()
+					o.Expect(err).NotTo(o.HaveOccurred())
+					gottenCipher := string(output)
+					e2e.Logf("Comparing the ciphers: %s with %s", expectedCipher, gottenCipher)
+					if expectedCipher == gottenCipher {
+						e2e.Logf("Ciphers are matched: %s", gottenCipher )
+						return true, nil
+					} else {
+						e2e.Logf("Ciphers are not matched: %s", gottenCipher)
+						return false, nil
+					}
+				}
+				return false, nil
+
+			case "openshiftapiservers.operator" , "kubeapiservers.operator":
+				e2e.Logf("Get the cipers for %s:", operator)
+				getadminoutput, err := oc.AsAdmin().WithoutNamespace().Run("get").Args(operator, "cluster", "-o=jsonpath={.spec.observedConfig.servingInfo['cipherSuites', 'minTLSVersion']}").Output()
+				if err == nil {
+					e2e.Logf("Comparing the ciphers: %s with %s", expectedCipher, getadminoutput)
+					if expectedCipher == getadminoutput {
+						e2e.Logf("Ciphers are matched: %s", getadminoutput)
+						return true, nil
+					} else {
+						e2e.Logf("Ciphers are not matched: %s", getadminoutput)
+						return false, nil
+					}
+				}
+				return false, nil
+
+			default:
+				e2e.Logf("Operators parameters not correct..")
+			}
+		return false, nil
+	})
 }
