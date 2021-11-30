@@ -2,7 +2,7 @@ FROM registry.ci.openshift.org/ocp/builder:rhel-8-golang-1.16-openshift-4.10 AS 
 RUN mkdir -p /go/src/github.com/openshift/openshift-tests-private
 WORKDIR /go/src/github.com/openshift/openshift-tests-private
 COPY . .
-RUN make all; \
+RUN make build; \
     mkdir -p /tmp/build; \
     cp /go/src/github.com/openshift/openshift-tests-private/bin/extended-platform-tests /tmp/build/extended-platform-tests
 

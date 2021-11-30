@@ -1,11 +1,12 @@
 package workloads
 
 import (
-	"k8s.io/apimachinery/pkg/util/wait"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
+
+	"k8s.io/apimachinery/pkg/util/wait"
 
 	g "github.com/onsi/ginkgo"
 	o "github.com/onsi/gomega"
@@ -201,7 +202,7 @@ var _ = g.Describe("[sig-apps] Workloads", func() {
 		}
 	})
 	// author: yinzhou@redhat.com
-	g.It("Author:yinzhou-Medium-43099-Cluster-scoped dependents with namespaced kind owner references will trigger warning Event", func() {
+	g.It("Author:yinzhou-Medium-43099-Cluster-scoped dependents with namespaced kind owner references will trigger warning Event [Flaky]", func() {
 		g.By("Create the first namespace")
 		err := oc.WithoutNamespace().Run("new-project").Args("p43099").Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())

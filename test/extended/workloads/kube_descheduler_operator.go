@@ -757,7 +757,7 @@ var _ = g.Describe("[sig-scheduling] Workloads The Descheduler Operator automate
 	})
 
 	// author: knarra@redhat.com
-	g.It("Author:knarra-Medium-43277-Descheduler-Descheduler operator should allow configuration of PodLifeTime Seconds", func() {
+	g.It("Author:knarra-Medium-43277-Descheduler-Descheduler operator should allow configuration of PodLifeTime Seconds [Flaky]", func() {
 		deschedulerpT := filepath.Join(buildPruningBaseDir, "kubedescheduler_podlifetime.yaml")
 
 		_, err := e2enode.GetReadySchedulableNodes(oc.KubeFramework().ClientSet)

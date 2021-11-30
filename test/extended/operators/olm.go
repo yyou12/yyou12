@@ -1161,7 +1161,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	})
 
 	// author: bandrade@redhat.com
-	g.It("Author:bandrade-Medium-24850-Allow users to edit the deployment of an active CSV", func() {
+	g.It("Author:bandrade-Medium-24850-Allow users to edit the deployment of an active CSV [Flaky]", func() {
 
 		g.By("1) Install the OperatorGroup in a random project")
 		dr := make(describerResrouce)
@@ -1387,7 +1387,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 
 	})
 	// author: jiazha@redhat.com
-	g.It("Author:jiazha-ConnectedOnly-Medium-33902-Catalog Weighting", func() {
+	g.It("Author:jiazha-ConnectedOnly-Medium-33902-Catalog Weighting [Flaky]", func() {
 		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
 		csImageTemplate := filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
 		ogSingleTemplate := filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
@@ -2071,7 +2071,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		}
 	})
 
-	g.It("ConnectedOnly-Author:bandrade-High-40317-Check CatalogSources index images", func() {
+	g.It("ConnectedOnly-Author:bandrade-High-40317-Check CatalogSources index images [Flaky]", func() {
 		clusterVersion, _, err := exutil.GetClusterVersion(oc)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
@@ -2088,7 +2088,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	})
 
 	// author: bandrade@redhat.com
-	g.It("ConnectedOnly-Author:bandrade-High-32613-Operators won't install if the CSV dependency is already installed", func() {
+	g.It("ConnectedOnly-Author:bandrade-High-32613-Operators won't install if the CSV dependency is already installed [Flaky]", func() {
 
 		namespace := "kogito"
 		infinispanPackage := CreateSubscriptionSpecificNamespace("infinispan", oc, true, true, namespace, INSTALLPLAN_AUTOMATIC_MODE)
@@ -2160,7 +2160,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	})
 
 	// author: jiazha@redhat.com
-	g.It("Author:jiazha-Medium-20981-contain the source commit id", func() {
+	g.It("Author:jiazha-Medium-20981-contain the source commit id [Flaky]", func() {
 		sameCommit := ""
 		subPods := []string{"catalog-operator", "olm-operator", "packageserver"}
 
@@ -3835,7 +3835,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 	})
 
 	// It will cover test case: OCP-25757 and 22656, author: kuiwang@redhat.com
-	g.It("ConnectedOnly-Author:kuiwang-Medium-25757-High-22656-manual approval strategy apply to subsequent releases", func() {
+	g.It("ConnectedOnly-Author:kuiwang-Medium-25757-High-22656-manual approval strategy apply to subsequent releases [Flaky]", func() {
 		var (
 			itName              = g.CurrentGinkgoTestDescription().TestText
 			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
@@ -8389,7 +8389,7 @@ var _ = g.Describe("[sig-operators] OLM on VM for an end user handle within a na
 	})
 
 	// OCP-45359 author: jitli@redhat.com
-	g.It("Author:jitli-ConnectedOnly-Medium-45359-Default catalogs need to use the correct tags", func() {
+	g.It("Author:jitli-ConnectedOnly-Medium-45359-Default catalogs need to use the correct tags [Flaky]", func() {
 		g.By("step: get version")
 		currentVersion, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("clusterversion", "version", "-o=jsonpath={.status.desired.version}").Output()
 		if err != nil {
