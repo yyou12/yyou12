@@ -1,4 +1,4 @@
-Please ask your **team peer** to review your test case first. Once your team peer add `/lgtm` lable for your PR, please ask the repo [Maintainers](https://github.com/openshift/openshift-tests-private/blob/master/OWNERS) to have a review and `/approve` it. Thanks!
+Please ask your **team peer** to review your test case first. Once your team peer add `/lgtm` label for your PR, please ask the repo [Maintainers](https://github.com/openshift/openshift-tests-private/blob/master/OWNERS) to have a review and `/approve` it. Thanks!
 
 
 ## logs output
