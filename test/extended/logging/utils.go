@@ -913,7 +913,14 @@ func searchAppLogsInLokiByNamespace(oc *exutil.CLI, cloNS string, lokiNS string,
 	json.Unmarshal([]byte(stdout), &res)
 	return res
 }
-
+func searchAppLogsInLokiByTenantKey(oc *exutil.CLI, cloNS string, lokiNS string, pod string, tenantKey string, tenantKeyID string) LokiLogQuery {
+	cmd := "curl -G -s  \"http://loki-server." + lokiNS + ".svc:3100/loki/api/v1/query\" --data-urlencode 'query={" + tenantKey + "=\"" + tenantKeyID + "\"}'"
+	stdout, err := e2e.RunHostCmdWithRetries(cloNS, pod, cmd, 3*time.Second, 30*time.Second)
+	o.Expect(err).ShouldNot(o.HaveOccurred())
+	res := LokiLogQuery{}
+	json.Unmarshal([]byte(stdout), &res)
+	return res
+}
 func deployExternalLokiServer(oc *exutil.CLI, lokiConfigMapName string, lokiServerName string) string {
 	//create project to deploy Loki Server
 	oc.SetupProject()
