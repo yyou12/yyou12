@@ -28,6 +28,7 @@ type podModifyDescription struct {
 
 type ctrcfgDescription struct {
 	namespace  string
+	name	   string
 	pidlimit   int
 	loglevel   string
 	overlay    string
@@ -166,7 +167,7 @@ func ContainerSccStatus(oc *exutil.CLI) error {
 }
 
 func (ctrcfg *ctrcfgDescription) create(oc *exutil.CLI) {
-	err := createResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", ctrcfg.template, "-p", "LOGLEVEL="+ctrcfg.loglevel, "OVERLAY="+ctrcfg.overlay, "LOGSIZEMAX="+ctrcfg.logsizemax)
+	err := createResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", ctrcfg.template, "-p", "NAME="+ctrcfg.name,"LOGLEVEL="+ctrcfg.loglevel, "OVERLAY="+ctrcfg.overlay, "LOGSIZEMAX="+ctrcfg.logsizemax)
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
@@ -367,5 +368,18 @@ func checkPodmanCrictlVersion(oc *exutil.CLI) error {
 			}
 		}
 		return true, nil
+	})
+}
+
+func (ctrcfg *ctrcfgDescription) checkCtrcfgStatus(oc *exutil.CLI) error {
+	return wait.Poll(3*time.Second, 1*time.Minute, func() (bool, error) {
+		status, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("ContainerRuntimeConfig", ctrcfg.name , "-o=jsonpath={.status.conditions[0].message}").Output()
+		e2e.Logf("The ContainerRuntimeConfig message is %v", status)
+                o.Expect(err).NotTo(o.HaveOccurred())
+		if strings.Contains(status, "Success") {
+			e2e.Logf("ContainerRuntimeConfig whose finalizer > 63 characters is applied Sucessfully \n")
+			return true, nil
+		}
+		return false, nil
 	})
 }

@@ -6,7 +6,7 @@ objects:
 - apiVersion: machineconfiguration.openshift.io/v1
   kind: ContainerRuntimeConfig
   metadata:
-   name: parameter-testing
+   name: "${NAME}"
   spec:
    machineConfigPoolSelector:
      matchLabels:
@@ -17,7 +17,7 @@ objects:
      overlaySize: "${OVERLAY}"
      logSizeMax: "${LOGSIZEMAX}"
 parameters:      
-#- name: NAMESPACE
+- name: NAME
 - name: LOGLEVEL
 - name: OVERLAY
 - name: LOGSIZEMAX   

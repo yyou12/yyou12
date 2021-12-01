@@ -32,6 +32,7 @@ var _ = g.Describe("[sig-node] Container_Engine_Tools crio,scc", func() {
 		}
 
 		ctrcfg = ctrcfgDescription{
+			name:       "",
 			loglevel:   "",
 			overlay:    "",
 			logsizemax: "",
@@ -74,6 +75,7 @@ var _ = g.Describe("[sig-node] Container_Engine_Tools crio,scc", func() {
 	g.It("Longduration-NonPreRelease-Author:pmali-Medium-22093-Medium-22094-CRIO configuration can be modified via containerruntimeconfig CRD[Disruptive][Slow]", func() {
 
 		oc.SetupProject()
+		ctrcfg.name = "parameter-testing"
 		ctrcfg.loglevel = "debug"
 		ctrcfg.overlay = "2G"
 		ctrcfg.logsizemax = "-1"
@@ -124,5 +126,20 @@ var _ = g.Describe("[sig-node] Container_Engine_Tools crio,scc", func() {
 		g.By("Check podman and crictl version\n")
 		err := checkPodmanCrictlVersion(oc)
 		exutil.AssertWaitPollNoErr(err, "podman and crictl version are not expected")
+	})
+
+	// author: pmali@redhat.com
+	g.It("Author:pmali-High-37290-mco should cope with ContainerRuntimeConfig whose finalizer > 63 characters", func() {
+
+		ctrcfg.name = "finalizer-test"
+		ctrcfg.loglevel = "debug"
+		ctrcfg.overlay = "2G"
+		ctrcfg.logsizemax = "-1"
+		g.By("Create Container Runtime Config \n")
+		ctrcfg.create(oc)
+		defer cleanupObjectsClusterScope(oc, objectTableRefcscope{"ContainerRuntimeConfig", "finalizer-test"})
+		g.By("Verify that ContainerRuntimeConfig is successfully created without any error message\n")
+		err := ctrcfg.checkCtrcfgStatus(oc)
+		exutil.AssertWaitPollNoErr(err, "Config is failed")
 	})
 })
