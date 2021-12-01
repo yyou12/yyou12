@@ -169,32 +169,32 @@ var _ = g.Describe("[sig-cli] Workloads", func() {
 	})
 
 	// author: yinzhou@redhat.com
-        g.It("Author:yinzhou-High-44797-Could define a Command for DC", func() {
+	g.It("Author:yinzhou-High-44797-Could define a Command for DC", func() {
 		g.By("create new namespace")
 		oc.SetupProject()
 
 		g.By("Create the dc with define command")
-		err := oc.WithoutNamespace().Run("create").Args("deploymentconfig","-n", oc.Namespace(), "dc44797", "--image="+"quay.io/openshifttest/busybox@sha256:afe605d272837ce1732f390966166c2afff5391208ddd57de10942748694049d", "--", "tail", "-f", "/dev/null").Execute()
+		err := oc.WithoutNamespace().Run("create").Args("deploymentconfig", "-n", oc.Namespace(), "dc44797", "--image="+"quay.io/openshifttest/busybox@sha256:afe605d272837ce1732f390966166c2afff5391208ddd57de10942748694049d", "--", "tail", "-f", "/dev/null").Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		g.By("Check the command should be defined")
-		comm, err := oc.Run("get").WithoutNamespace().Args("dc/dc44797","-n", oc.Namespace(), "-o=jsonpath={.spec.template.spec.containers[0].command[0]}").Output()
+		comm, err := oc.Run("get").WithoutNamespace().Args("dc/dc44797", "-n", oc.Namespace(), "-o=jsonpath={.spec.template.spec.containers[0].command[0]}").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		e2e.ExpectEqual("tail", comm)
 
 		g.By("Create the deploy with define command")
-		err = oc.WithoutNamespace().Run("create").Args("deployment","-n", oc.Namespace(), "deploy44797", "--image="+"quay.io/openshifttest/busybox@sha256:afe605d272837ce1732f390966166c2afff5391208ddd57de10942748694049d", "--", "tail", "-f", "/dev/null").Execute()
+		err = oc.WithoutNamespace().Run("create").Args("deployment", "-n", oc.Namespace(), "deploy44797", "--image="+"quay.io/openshifttest/busybox@sha256:afe605d272837ce1732f390966166c2afff5391208ddd57de10942748694049d", "--", "tail", "-f", "/dev/null").Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		g.By("Check the command should be defined")
-		comm1, err := oc.Run("get").WithoutNamespace().Args("deploy/deploy44797","-n", oc.Namespace(), "-o=jsonpath={.spec.template.spec.containers[0].command[0]}").Output()
+		comm1, err := oc.Run("get").WithoutNamespace().Args("deploy/deploy44797", "-n", oc.Namespace(), "-o=jsonpath={.spec.template.spec.containers[0].command[0]}").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		e2e.ExpectEqual("tail", comm1)
 
 	})
 
 	// author: yinzhou@redhat.com
-	g.It("Author:yinzhou-High-43034-should not show signature verify error msgs while trying to mirror OCP image repository to", func() {
+	g.It("Author:yinzhou-High-43034-should not show signature verify error msgs while trying to mirror OCP image repository to [Flaky]", func() {
 		buildPruningBaseDir := exutil.FixturePath("testdata", "workloads")
 		podMirrorT := filepath.Join(buildPruningBaseDir, "pod_mirror.yaml")
 		g.By("create new namespace")
@@ -215,12 +215,11 @@ var _ = g.Describe("[sig-cli] Workloads", func() {
 		g.By("Create the  pull secret from the localfile")
 		defer oc.Run("delete").Args("secret/my-secret", "-n", oc.Namespace()).Execute()
 		createPullSecret(oc, oc.Namespace())
-		
+
 		g.By("Add the cluster admin role for the default sa")
 		defer oc.AsAdmin().WithoutNamespace().Run("adm").Args("policy", "remove-cluster-role-from-user", "cluster-admin", "-z", "default", "-n", oc.Namespace()).Execute()
 		err1 := oc.AsAdmin().WithoutNamespace().Run("adm").Args("policy", "add-cluster-role-to-user", "cluster-admin", "-z", "default", "-n", oc.Namespace()).Execute()
 		o.Expect(err1).NotTo(o.HaveOccurred())
-
 
 		imageSouceS := "--from=quay.io/openshift-release-dev/ocp-release:4.5.5-x86_64"
 		imageToS := "--to=" + serInfo.serviceUrl + "/zhouytest/test-release"

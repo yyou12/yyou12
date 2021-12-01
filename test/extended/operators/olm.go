@@ -6221,7 +6221,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 	})
 
 	// author: xzha@redhat.com, test case OCP-40534
-	g.It("ConnectedOnly-Author:xzha-Medium-40534-the deployment should not lost the resources section", func() {
+	g.It("ConnectedOnly-Author:xzha-Medium-40534-the deployment should not lost the resources section [Flaky]", func() {
 		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
 		ogSingleTemplate := filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
 		subTemplate := filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
