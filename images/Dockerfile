@@ -4,10 +4,17 @@ WORKDIR /go/src/github.com/openshift/openshift-tests-private
 COPY . .
 RUN make build; \
     mkdir -p /tmp/build; \
-    cp /go/src/github.com/openshift/openshift-tests-private/bin/extended-platform-tests /tmp/build/extended-platform-tests
+    cp /go/src/github.com/openshift/openshift-tests-private/bin/extended-platform-tests /tmp/build/extended-platform-tests; \
+    cp /go/src/github.com/openshift/openshift-tests-private/pipeline/handleattribution.py /tmp/build/handleattribution.py; \
+    cp /go/src/github.com/openshift/openshift-tests-private/pipeline/handleresult.py /tmp/build/handleresult.py; \
+    cp /go/src/github.com/openshift/openshift-tests-private/pipeline/unifycirp.py /tmp/build/unifycirp.py 
+
 
 FROM registry.ci.openshift.org/ocp/4.10:tools
 COPY --from=builder /tmp/build/extended-platform-tests /usr/bin/
+COPY --from=builder /tmp/build/handleattribution.py /usr/bin/
+COPY --from=builder /tmp/build/handleresult.py /usr/bin/
+COPY --from=builder /tmp/build/unifycirp.py /usr/bin/
 RUN PACKAGES="git gzip util-linux" && \
     yum install --setopt=tsflags=nodocs -y $PACKAGES && yum clean all && rm -rf /var/cache/yum/* && \
     git config --system user.name test-private && \
