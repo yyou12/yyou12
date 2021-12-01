@@ -8399,7 +8399,12 @@ var _ = g.Describe("[sig-operators] OLM on VM for an end user handle within a na
 		majorVersion := strconv.FormatUint(v.Major, 10)
 		minorVersion := strconv.FormatUint(v.Minor, 10)
 		tag := "v" + majorVersion + "." + minorVersion
-		e2e.Logf(tag)
+		minorVersionPre, err := strconv.Atoi(minorVersion)
+		if err != nil {
+			e2e.Failf("Fail to get the OCP version")
+		}
+		tagPre := "v" + majorVersion + "." + strconv.Itoa(minorVersionPre-1)
+		e2e.Logf(tag + tagPre)
 
 		g.By("step: oc get catalogsource")
 		catsrcs, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("catalogsource", "-n", "openshift-marketplace").Output()
@@ -8412,10 +8417,10 @@ var _ = g.Describe("[sig-operators] OLM on VM for an end user handle within a na
 			g.By(fmt.Sprintf("step: check image tag of %s", catalogSource))
 			output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("catalogsource", catalogSource, "-n", "openshift-marketplace", "-o=jsonpath={.spec.image}").Output()
 			o.Expect(err).NotTo(o.HaveOccurred())
-			if strings.Contains(output, tag) || strings.Contains(output, "v4.9") {
+			if strings.Contains(output, tag) || strings.Contains(output, tagPre) {
 				e2e.Logf("%s", output)
 			} else {
-				e2e.Failf("%s not contains %s", output, tag)
+				e2e.Failf("%s not contains %s or %s", output, tag, tagPre)
 			}
 		}
 	})
