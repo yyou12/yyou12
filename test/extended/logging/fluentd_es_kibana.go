@@ -273,6 +273,46 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			cl.assertResourceStatus(oc, "jsonpath={.status.logStore.elasticsearchStatus[0].cluster.status}", "green")
 			es.assertResourceStatus(oc, "jsonpath={.status.cluster.status}", "green")
 		})
+
+		// author ikanse@redhat.com
+		g.It("CPaasrunOnly-Author:ikanse-Medium-46423-fluentd total_limit_size is not set beyond available space[Serial]", func() {
+
+			g.By("Create Cluster Logging instance with totalLimitSize which is more than the available space")
+			sc, err := getStorageClassName(oc)
+			o.Expect(err).NotTo(o.HaveOccurred())
+			instance := exutil.FixturePath("testdata", "logging", "clusterlogging", "46423.yaml")
+			cl := resource{"clusterlogging", "instance", cloNS}
+			defer cl.deleteClusterLogging(oc)
+			cl.createClusterLogging(oc, "-n", cl.namespace, "-f", instance, "-p", "NAMESPACE="+cl.namespace, "-p", "STORAGE_CLASS="+sc, "-p", "ES_NODE_COUNT=1", "-p", "REDUNDANCY_POLICY=ZeroRedundancy", "-p", "TOTAL_LIMIT_SIZE=1000G")
+
+			g.By("Waiting for the EFK pods to be ready...")
+			WaitForEFKPodsToBeReady(oc, cloNS)
+
+			g.By("Check Fluentd pod logs when Fluentd buffer totalLimitSize is set more than available space")
+			podList, err := oc.AdminKubeClient().CoreV1().Pods(cloNS).List(metav1.ListOptions{LabelSelector: "component=collector"})
+			o.Expect(err).NotTo(o.HaveOccurred())
+			pl := resource{"pods", podList.Items[0].Name, cloNS}
+			pl.checkLogsFromRs(oc, "exceeds maximum available size", "collector")
+
+			g.By("Set totalLimitSize to 3 GB")
+			err = oc.AsAdmin().WithoutNamespace().Run("patch").Args("clusterlogging/instance", "-n", "openshift-logging", "-p", "{\"spec\":{\"forwarder\":{\"fluentd\":{\"buffer\":{\"totalLimitSize\":\"3G\"}}}}}", "--type=merge").Execute()
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			g.By("Wait for 30 seconds for the config to be effective")
+			time.Sleep(30 * time.Second)
+
+			g.By("Delete collector pods for the Fluentd config changes to be picked up")
+			err = oc.AsAdmin().WithoutNamespace().Run("delete").Args("pods", "-n", cloNS, "-l", "component=collector").Execute()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			WaitForEFKPodsToBeReady(oc, cloNS)
+
+			g.By("Check Fluentd pod logs for Fluentd buffer totalLimitSize set to avilable space")
+			podList, err = oc.AdminKubeClient().CoreV1().Pods(cloNS).List(metav1.ListOptions{LabelSelector: "component=collector"})
+			o.Expect(err).NotTo(o.HaveOccurred())
+			pl = resource{"pods", podList.Items[0].Name, cloNS}
+			// 3 x 1024 x 1024 x 1024 https://github.com/openshift/cluster-logging-operator/blob/c34520fd1a42151453b2d0a41e7e0cb14dce0d83/pkg/components/fluentd/run_script.go#L80
+			pl.checkLogsFromRs(oc, "3221225472", "collector")
+		})
 	})
 })
 
