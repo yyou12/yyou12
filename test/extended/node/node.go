@@ -9,7 +9,7 @@ import (
 	//e2e "k8s.io/kubernetes/test/e2e/framework"
 )
 
-var _ = g.Describe("[sig-node] Node initContainer policy,volume,readines,quota", func() {
+var _ = g.Describe("[sig-node] NODE initContainer policy,volume,readines,quota", func() {
 	defer g.GinkgoRecover()
 
 	var (
@@ -32,9 +32,9 @@ var _ = g.Describe("[sig-node] Node initContainer policy,volume,readines,quota",
 		}
 
 		podTermination = podTerminationDescription{
-			name:              "",
-			namespace:         "",
-			template:          podTerminationTemp,
+			name:      "",
+			namespace: "",
+			template:  podTerminationTemp,
 		}
 	)
 
@@ -206,7 +206,7 @@ var _ = g.Describe("[sig-node] Node initContainer policy,volume,readines,quota",
 		oc.SetupProject()
 		podTermination.name = "pod-termination"
 		podTermination.namespace = oc.Namespace()
-		
+
 		g.By("Create a pod with termination grace period\n")
 		podTermination.create(oc)
 		g.By("Check pod status\n")
