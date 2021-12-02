@@ -188,3 +188,116 @@ func getKernelPidMaxValue(kernel string) string {
 	pid_max_value := re_value.FindString(pid_max)
 	return pid_max_value
 }
+
+//Compare if the sysctl parameter is equal to specified value on all the node
+func compareSpecifiedValueByName(oc *exutil.CLI, sysctlparm, specifiedvalue string) {
+	nodeList, err := exutil.GetAllNodes(oc)
+	o.Expect(err).NotTo(o.HaveOccurred())
+	nodeListSize := len(nodeList)
+
+	regexpstr, _ := regexp.Compile(sysctlparm + ".*")
+	for i := 0; i < nodeListSize; i++ {
+		output, err := exutil.DebugNodeWithChroot(oc, nodeList[i], "sysctl", sysctlparm)
+		conntrack_max := regexpstr.FindString(output)
+		e2e.Logf("The value is %v on %v", conntrack_max, nodeList[i])
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring(sysctlparm + " = " + specifiedvalue))
+	}
+
+}
+
+//Compare if the sysctl parameter is not equal to specified value on all the node
+func compareSysctlDifferentFromSpecifiedValueByName(oc *exutil.CLI, sysctlparm, specifiedvalue string) {
+	nodeList, err := exutil.GetAllNodes(oc)
+	o.Expect(err).NotTo(o.HaveOccurred())
+	nodeListSize := len(nodeList)
+
+	regexpstr, _ := regexp.Compile(sysctlparm + ".*")
+	for i := 0; i < nodeListSize; i++ {
+		output, err := exutil.DebugNodeWithChroot(oc, nodeList[i], "sysctl", sysctlparm)
+		conntrack_max := regexpstr.FindString(output)
+		e2e.Logf("The value is %v on %v", conntrack_max, nodeList[i])
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).NotTo(o.ContainSubstring(sysctlparm + " = " + specifiedvalue))
+	}
+
+}
+
+//Compare the sysctl parameter's value on specified node, it should different than other node
+func compareSysctlValueOnSepcifiedNodeByName(oc *exutil.CLI, tunedNodeName, sysctlparm, defaultvalue, specifiedvalue string) {
+	nodeList, err := exutil.GetAllNodes(oc)
+	o.Expect(err).NotTo(o.HaveOccurred())
+	nodeListSize := len(nodeList)
+
+	// tuned nodes should have value of 1048578, others should be 1048576
+	regexpstr, _ := regexp.Compile(sysctlparm + ".*")
+	for i := 0; i < nodeListSize; i++ {
+		output, err := exutil.DebugNodeWithChroot(oc, nodeList[i], "sysctl", sysctlparm)
+		conntrack_max := regexpstr.FindString(output)
+		e2e.Logf("The value is %v on %v", conntrack_max, nodeList[i])
+		o.Expect(err).NotTo(o.HaveOccurred())
+		if nodeList[i] == tunedNodeName {
+			o.Expect(output).To(o.ContainSubstring(sysctlparm + " = " + specifiedvalue))
+		} else {
+			if len(defaultvalue) == 0 {
+				o.Expect(output).NotTo(o.ContainSubstring(sysctlparm + " = " + specifiedvalue))
+			} else {
+				o.Expect(output).To(o.ContainSubstring(sysctlparm + " = " + defaultvalue))
+			}
+		}
+	}
+}
+
+func getTunedPodNamebyNodeName(oc *exutil.CLI, tunedNodeName, namespace string) string {
+
+	podNames, err := exutil.GetPodName(oc, namespace, "", tunedNodeName)
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	//Get Pod name based on node name, and filter tuned pod name when mulitple pod return on the same node
+	regexpstr, err := regexp.Compile(`tuned-.*`)
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	tunedPodName := regexpstr.FindString(podNames)
+	e2e.Logf("The Tuned Pod Name is: %v", tunedPodName)
+	return tunedPodName
+}
+
+type ntoResource struct {
+	name        string
+	namespace   string
+	template    string
+	sysctlparm  string
+	sysctlvalue string
+}
+
+func (ntoRes *ntoResource) createPodLabelTunedIfNotExist(oc *exutil.CLI) {
+	output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("tuned", ntoRes.name, "-n", ntoRes.namespace).Output()
+	if strings.Contains(output, "NotFound") || strings.Contains(output, "No resources") || err != nil {
+		e2e.Logf(fmt.Sprintf("No tuned in project: %s, create one: %s", ntoRes.namespace, ntoRes.name))
+		exutil.CreateNsResourceFromTemplate(oc, ntoRes.namespace, "--ignore-unknown-parameters=true", "-f", ntoRes.template, "-p", "TUNED_NAME="+ntoRes.name, "SYSCTLPARM="+ntoRes.sysctlparm, "SYSCTLVALUE="+ntoRes.sysctlvalue)
+	} else {
+		e2e.Logf(fmt.Sprintf("Already exist %v in project: %s", ntoRes.name, ntoRes.namespace))
+	}
+}
+
+func (ntoRes *ntoResource) delete(oc *exutil.CLI) {
+	_ = oc.AsAdmin().WithoutNamespace().Run("delete").Args("-n", ntoRes.namespace, "tuned", ntoRes.name, "--ignore-not-found").Execute()
+}
+
+func (ntoRes ntoResource) assertTunedProfileApplied(oc *exutil.CLI) {
+
+	err := wait.Poll(10*time.Second, 180*time.Second, func() (bool, error) {
+		output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", ntoRes.namespace, "profile").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		if strings.Contains(output, ntoRes.name) {
+			//Check if the new profiles name applied on a node
+			e2e.Logf("Current profile for each node: \n%v", output)
+			return true, nil
+		} else {
+			e2e.Logf("The profile %v is not applied on node, try next around \n", ntoRes.name)
+			return false, nil
+		}
+	})
+	exutil.AssertWaitPollNoErr(err, "New tuned profile isn't applied correctly, please check")
+
+}

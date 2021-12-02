@@ -18,6 +18,7 @@ var _ = g.Describe("[sig-node] PSAP should", func() {
 		tuned_nf_conntrack_max_file      = exutil.FixturePath("testdata", "psap", "nto", "tuned-nf-conntrack-max.yaml")
 		hp_performanceprofile_file       = exutil.FixturePath("testdata", "psap", "nto", "hp-performanceprofile.yaml")
 		hp_performanceprofile_patch_file = exutil.FixturePath("testdata", "psap", "nto", "hp-performanceprofile-patch.yaml")
+		podlabel_tuned_file              = exutil.FixturePath("testdata", "psap", "nto", "tuned-podlabel-profiles.yaml")
 		isNTO                            bool
 	)
 
@@ -320,6 +321,64 @@ var _ = g.Describe("[sig-node] PSAP should", func() {
 
 		g.By("Check MachineConfigPool for expected changes")
 		assertIfMCPChangesApplied(oc)
+
+	})
+
+	g.It("Author:liqcui-Medium-23959-Test NTO for remove pod in daemon mode [Disruptive]", func() {
+
+		// test requires NTO to be installed
+		if !isNTO {
+			g.Skip("NTO is not installed - skipping test ...")
+		}
+
+		ntoRes := ntoResource{
+			name:        "user-max-cgroup-namespaces",
+			namespace:   ntoNamespace,
+			template:    podlabel_tuned_file,
+			sysctlparm:  "user.max_cgroup_namespaces",
+			sysctlvalue: "128888",
+		}
+		defer func() {
+			g.By("Remove custom profile (if not already removed) and patch default tuned back to Managed")
+			ntoRes.delete(oc)
+			_ = patchTunedState(oc, ntoNamespace, "default", "Managed")
+		}()
+		//Get the tuned pod name that run on first worker node
+		tunedNodeName, err := exutil.GetFirstWorkerNode(oc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		tunedPodName := getTunedPodNamebyNodeName(oc, tunedNodeName, ntoNamespace)
+
+		defer func() {
+			g.By("Forcily delete labeled pod on first worker node after test case executed in case compareSysctlDifferentFromSpecifiedValueByName step failure")
+			oc.AsAdmin().WithoutNamespace().Run("delete").Args("pod", tunedPodName, "-n", ntoNamespace, "--ignore-not-found").Execute()
+		}()
+
+		g.By("Apply new profile from CR")
+		ntoRes.createPodLabelTunedIfNotExist(oc)
+
+		g.By("Check current profile for each node")
+		output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", ntoNamespace, "profile").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf("Current profile for each node: \n%v", output)
+
+		g.By("Check all nodes for user.max_cgroup_namespaces value, all node should different from 128888")
+		compareSysctlDifferentFromSpecifiedValueByName(oc, "user.max_cgroup_namespaces", "128888")
+
+		g.By("Label tuned pod as tuned.openshift.io/elasticsearch=")
+		err = exutil.LabelPod(oc, ntoNamespace, tunedPodName, "tuned.openshift.io/elasticsearch=")
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Check current profile for each node")
+		ntoRes.assertTunedProfileApplied(oc)
+
+		g.By("Compare if the value user.max_cgroup_namespaces in on node with labeled pod, should be 128888")
+		compareSysctlValueOnSepcifiedNodeByName(oc, tunedNodeName, "user.max_cgroup_namespaces", "", "128888")
+
+		g.By("Delete labeled tuned pod by name")
+		oc.AsAdmin().WithoutNamespace().Run("delete").Args("pod", tunedPodName, "-n", ntoNamespace).Execute()
+
+		g.By("Check all nodes for vm.max_map_count value, all node should different from 128888")
+		compareSysctlDifferentFromSpecifiedValueByName(oc, "user.max_cgroup_namespaces", "128888")
 
 	})
 
