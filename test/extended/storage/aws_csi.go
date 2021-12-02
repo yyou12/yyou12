@@ -24,7 +24,7 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 
 	// author: pewang@redhat.com
 	// [AWS-EBS-CSI] [Dynamic PV] io1 type ebs volumes should store data and allow exec of files
-	g.It("Author:pewang-High-24484-[CSI] Pod is running with dynamic create io1 ebs volume", func() {
+	g.It("Author:pewang-High-24484-[CSI] Pod is running with dynamic create io1 ebs volume [Flaky]", func() {
 		// Set the resource definition for the scenario
 		var (
 			storageTeamBaseDir   = exutil.FixturePath("testdata", "storage")

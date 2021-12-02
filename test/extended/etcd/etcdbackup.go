@@ -15,7 +15,7 @@ var _ = g.Describe("[sig-etcd] ETCD", func() {
 	var oc = exutil.NewCLI("default-"+getRandomString(), exutil.KubeConfigPath())
 
 	// author: yinzhou@redhat.com
-	g.It("Author:yinzhou-Critical-42183-backup and restore should perform consistency checks on etcd snapshots", func() {
+	g.It("Author:yinzhou-Critical-42183-backup and restore should perform consistency checks on etcd snapshots [Flaky]", func() {
 		g.By("Test for case OCP-42183 backup and restore should perform consistency checks on etcd snapshots")
 		g.By("create new namespace")
 		oc.SetupProject()

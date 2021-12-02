@@ -59,7 +59,7 @@ var _ = g.Describe("[sig-cli] Workloads", func() {
 
 	})
 	// author: yinzhou@redhat.com
-	g.It("Author:yinzhou-Medium-42983-always delete the debug pod when the oc debug node command exist", func() {
+	g.It("Author:yinzhou-Medium-42983-always delete the debug pod when the oc debug node command exist [Flaky]", func() {
 		g.By("Get all the node name list")
 		out, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("node", "-o=jsonpath={.items[*].metadata.name}").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
