@@ -1,6 +1,8 @@
 package mco
 
 import (
+	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
 	"os/exec"
@@ -10,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	b64 "encoding/base64"
 	o "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/util/wait"
 
@@ -429,4 +432,35 @@ func getPrometheusQueryResults(oc *exutil.CLI, query string) string {
 	o.Expect(cmdErr).NotTo(o.HaveOccurred())
 
 	return string(curlOutput)
+}
+
+func gZipData(data []byte) (compressedData []byte, err error) {
+	var b bytes.Buffer
+	gz := gzip.NewWriter(&b)
+	defer gz.Close()
+
+	_, err = gz.Write(data)
+	if err != nil {
+		return nil, err
+	}
+
+	if err = gz.Flush(); err != nil {
+		return nil, err
+	}
+
+	if err = gz.Close(); err != nil {
+		return nil, err
+	}
+
+	compressedData = b.Bytes()
+
+	return compressedData, nil
+}
+
+func getGzipFileJSONConfig(destinationPath string, fileContent string) string {
+	compressedContent, err := gZipData([]byte(fileContent))
+	o.Expect(err).NotTo(o.HaveOccurred())
+	encodedContent := b64.StdEncoding.EncodeToString(compressedContent)
+	fileConfig := fmt.Sprintf(`{"contents": {"compression": "gzip", "source": "data:;base64,%s"}, "path": "%s"}`, encodedContent, destinationPath)
+	return fileConfig
 }

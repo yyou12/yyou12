@@ -831,6 +831,45 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		o.Expect(kcCounter).Should(o.Equal(10), "Only 10 Kubeletconfig resources should be generated")
 
 	})
+	g.It("Author:sregidor-Longduration-NonPreRelease-High-46314-Incorrect file contents if compression field is specified [Serial]", func() {
+		g.By("Create a new MachineConfig to provision a config file in zipped format")
+
+		fileContent := `Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
+eiusmod tempor incididunt ut labore et dolore magna aliqua.  Ut
+enim ad minim veniam, quis nostrud exercitation ullamco laboris
+nisi ut aliquip ex ea commodo consequat.  Duis aute irure dolor in
+reprehenderit in voluptate velit esse cillum dolore eu fugiat
+nulla pariatur.  Excepteur sint occaecat cupidatat non proident,
+sunt in culpa qui officia deserunt mollit anim id est laborum.
+
+
+nulla pariatur.`
+
+		mcName := "99-gzip-test"
+		destPath := "/etc/test-file"
+		fileConfig := getGzipFileJSONConfig(destPath, fileContent)
+
+		mc := MachineConfig{name: mcName, pool: "worker"}
+		defer mc.delete(oc)
+
+		template := NewMCOTemplate(oc, "generic-machine-config-template.yml")
+		err := template.Create("-p", "NAME="+mcName, "-p", "POOL=worker", "-p", fmt.Sprintf("FILES=[%s]", fileConfig))
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Wait until worker MachineConfigPool has finished the configuration")
+		mcp := MachineConfigPool{name: "worker"}
+		mcp.waitForComplete(oc)
+
+		g.By("Verfiy that the file has been properly provisioned")
+		node := NewNodeList(oc).GetAllWorkerNodesOrFail()[0]
+		rf := NewRemoteFile(node, destPath)
+		err = rf.Fetch()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(rf.GetTextContent()).To(o.Equal(fileContent))
+		o.Expect(rf.GetNpermissions()).To(o.Equal("0644"))
+		o.Expect(rf.GetUIDName()).To(o.Equal("root"))
+		o.Expect(rf.GetGIDName()).To(o.Equal("root"))
+	})
 })
 
 func createMcAndVerifyMCValue(oc *exutil.CLI, stepText string, mcName string, workerNode node, textToVerify TextToVerify, cmd ...string) {

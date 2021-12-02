@@ -39,12 +39,14 @@ func CreateNsResourceFromTemplate(oc *CLI, namespace string, parameters ...strin
 func resourceFromTemplate(oc *CLI, create bool, namespace string, parameters ...string) {
 	var configFile string
 	err := wait.Poll(3*time.Second, 15*time.Second, func() (bool, error) {
-		output, err := oc.AsAdmin().Run("process").Args(parameters...).OutputToFile(GetRandomString() + "config.json")
+		fileName := GetRandomString() + "config.json"
+		stdout, _, err := oc.AsAdmin().Run("process").Args(parameters...).OutputsToFiles(fileName)
 		if err != nil {
 			e2e.Logf("the err:%v, and try next round", err)
 			return false, nil
 		}
-		configFile = output
+
+		configFile = stdout
 		return true, nil
 	})
 	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("fail to process %v", parameters))

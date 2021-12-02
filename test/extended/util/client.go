@@ -638,6 +638,31 @@ func (c *CLI) OutputToFile(filename string) (string, error) {
 	return path, ioutil.WriteFile(path, []byte(content), 0644)
 }
 
+// OutputsToFiles executes the command and store the stdout in one file and stderr in another one
+// The stdout output will be written to fileName+'.stdout'
+// The stderr output will be written to fileName+'.stderr'
+func (c *CLI) OutputsToFiles(fileName string) (string, string, error) {
+	stdoutFilename := fileName+".stdout"
+	stderrFilename := fileName+".stderr"
+
+	stdout, stderr, err := c.Outputs()
+	if err != nil {
+		return "", "", err
+	}
+	stdoutPath := filepath.Join(e2e.TestContext.OutputDir, c.Namespace()+"-"+stdoutFilename)
+	stderrPath := filepath.Join(e2e.TestContext.OutputDir, c.Namespace()+"-"+stderrFilename)
+
+        if err := ioutil.WriteFile(stdoutPath, []byte(stdout), 0644); err != nil {
+		return "", "", err
+        }
+
+        if err := ioutil.WriteFile(stderrPath, []byte(stderr), 0644); err != nil {
+		return stdoutPath, "", err
+        }
+
+	return stdoutPath, stderrPath, nil
+}
+
 // Execute executes the current command and return error if the execution failed
 // This function will set the default output to Ginkgo writer.
 func (c *CLI) Execute() error {

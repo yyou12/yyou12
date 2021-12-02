@@ -17,6 +17,7 @@ type ocGetter struct {
 	name      string
 }
 
+// Template helps to create resources using openshift templates
 type Template struct {
 	oc           *exutil.CLI
 	templateFile string
@@ -115,7 +116,7 @@ func (r *Resource) String() string {
 	return fmt.Sprintf("<Kind: %s, Name: %s, Namespace: %s>", r.kind, r.name, r.namespace)
 }
 
-// Creates a new template using the MCO fixture directory as the base path of the template file
+// NewMCOTemplate creates a new template using the MCO fixture directory as the base path of the template file
 func NewMCOTemplate(oc *exutil.CLI, fileName string) *Template {
 	return &Template{oc: oc, templateFile: generateTemplateAbsolutePath(fileName)}
 }
