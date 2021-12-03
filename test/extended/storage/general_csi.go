@@ -599,6 +599,83 @@ var _ = g.Describe("[sig-storage] STORAGE WITH-TREARDOWN-PROJECT", func() {
 			g.By("******" + cloudProvider + " csi driver: \"" + provisioner + "\" test phase finished" + "******")
 		}
 	})
+	// author: chaoyang@redhat.com
+	//[CSI Driver] [Dynamic PV] [Security] CSI volume security testing when privileged is false
+	g.It("Author:chaoyang-Critical-44908-[CSI Driver] [Dynamic PV] CSI volume security testing when privileged is false ", func() {
+		// Define the test scenario support provisioners
+		scenarioSupportProvisioners := []string{"ebs.csi.aws.com", "disk.csi.azure.com", "cinder.csi.openstack.org", "pd.csi.storage.gke.io", "csi.vsphere.vmware.com"}
+
+		// Set the resource template for the scenario
+		var (
+			storageTeamBaseDir  = exutil.FixturePath("testdata", "storage")
+			pvcTemplate         = filepath.Join(storageTeamBaseDir, "pvc-template.yaml")
+			podTemplate         = filepath.Join(storageTeamBaseDir, "pod-template.yaml")
+			supportProvisioners = sliceIntersect(scenarioSupportProvisioners, getSupportProvisionersByCloudProvider(cloudProvider))
+		)
+
+		if len(supportProvisioners) == 0 {
+			g.Skip("Skip for scenario non-supported provisioner!!!")
+		}
+
+		g.By("0. Create new project for the scenario")
+		oc.SetupProject() //create new project
+
+		for _, provisioner := range supportProvisioners {
+			g.By("******" + cloudProvider + " csi driver: \"" + provisioner + "\" test phase start" + "******")
+			// Set the resource definition for the scenario
+			pvc := newPersistentVolumeClaim(setPersistentVolumeClaimTemplate(pvcTemplate))
+			pod := newPod(setPodTemplate(podTemplate), setPodPersistentVolumeClaim(pvc.name))
+
+			pvc.namespace = oc.Namespace()
+			pod.namespace = pvc.namespace
+			g.By("1. Create a pvc with the preset csi storageclass")
+			pvc.scname = getPresetStorageClassNameByProvisioner(cloudProvider, provisioner)
+			e2e.Logf("%s", pvc.scname)
+			pvc.create(oc)
+			defer pvc.deleteAsAdmin(oc)
+
+			g.By("2. Create pod with the created pvc and wait for the pod ready")
+			pod.createWithSecurity(oc)
+			defer pod.deleteAsAdmin(oc)
+			pod.waitReady(oc)
+
+			g.By("3. Check pod security--uid")
+			output_uid, err := pod.execCommandAsAdmin(oc, "id -u")
+			o.Expect(err).NotTo(o.HaveOccurred())
+			e2e.Logf("%s", output_uid)
+			o.Expect(output_uid).To(o.ContainSubstring("1000160000"))
+
+			g.By("4. Check pod security--fsGroup")
+			output_gid, err := pod.execCommandAsAdmin(oc, "id -G")
+			o.Expect(err).NotTo(o.HaveOccurred())
+			e2e.Logf("%s", output_gid)
+			o.Expect(output_gid).To(o.ContainSubstring("24680"))
+
+			g.By("5. Check pod security--selinux")
+			output_mountPath, err := pod.execCommandAsAdmin(oc, "ls -lZd "+pod.mountPath)
+			o.Expect(err).NotTo(o.HaveOccurred())
+			e2e.Logf("%s", output_mountPath)
+			o.Expect(output_mountPath).To(o.ContainSubstring("24680"))
+			o.Expect(output_mountPath).To(o.ContainSubstring("system_u:object_r:container_file_t:s0:c2,c13"))
+
+			_, err = pod.execCommandAsAdmin(oc, "touch "+pod.mountPath+"/testfile")
+			o.Expect(err).NotTo(o.HaveOccurred())
+			output_testfile, err := pod.execCommandAsAdmin(oc, "ls -lZ "+pod.mountPath+"/testfile")
+			o.Expect(err).NotTo(o.HaveOccurred())
+			e2e.Logf("%s", output_testfile)
+			o.Expect(output_testfile).To(o.ContainSubstring("24680"))
+			o.Expect(output_testfile).To(o.ContainSubstring("system_u:object_r:container_file_t:s0:c2,c13"))
+
+			_, err = pod.execCommandAsAdmin(oc, "cp /hello "+pod.mountPath)
+			o.Expect(err).NotTo(o.HaveOccurred())
+			output_execfile, err := pod.execCommandAsAdmin(oc, "cat "+pod.mountPath+"/hello")
+			o.Expect(err).NotTo(o.HaveOccurred())
+			o.Expect(output_execfile).To(o.ContainSubstring("Hello OpenShift Storage"))
+
+			g.By("******" + cloudProvider + " csi driver: \"" + provisioner + "\" test phase finished" + "******")
+
+		}
+	})
 })
 
 // Performing test steps for Online Volume Resizing

@@ -105,6 +105,27 @@ func (pod *pod) createWithReadOnlyVolume(oc *exutil.CLI) {
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
+// Create new pod for security check
+func (pod *pod) createWithSecurity(oc *exutil.CLI) {
+	seLevel := map[string]string{
+		"level": "s0:c13,c2",
+	}
+	securityContext := map[string]interface{}{
+		"seLinuxOptions": seLevel,
+		"fsGroup":        24680,
+		"runAsUser":      1000160000,
+	}
+	extraParameters := map[string]interface{}{
+		"jsonPath":        `items.0.spec.`,
+		"securityContext": securityContext,
+	}
+	if pod.namespace == "" {
+		pod.namespace = oc.Namespace()
+	}
+	err := applyResourceFromTemplateWithExtraParametersAsAdmin(oc, extraParameters, "--ignore-unknown-parameters=true", "-f", pod.template, "-p", "PODNAME="+pod.name, "PODNAMESPACE="+pod.namespace, "PVCNAME="+pod.pvcname, "PODIMAGE="+pod.image, "PODMOUNTPATH="+pod.mountPath)
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
 //  Delete the pod
 func (pod *pod) delete(oc *exutil.CLI) {
 	err := oc.WithoutNamespace().Run("delete").Args("pod", pod.name, "-n", pod.namespace).Execute()
@@ -120,6 +141,18 @@ func (pod *pod) deleteAsAdmin(oc *exutil.CLI) {
 func (pod *pod) execCommand(oc *exutil.CLI, command string) (string, error) {
 	command1 := []string{"-n", pod.namespace, pod.name, "--", "/bin/sh", "-c", command}
 	msg, err := oc.WithoutNamespace().Run("exec").Args(command1...).Output()
+	if err != nil {
+		e2e.Logf(pod.name+"# "+command+" *failed with* :\"%v\".", err)
+		return msg, err
+	}
+	debugLogf(pod.name+"# "+command+" *Output is* :\"%s\".", msg)
+	return msg, nil
+}
+
+// Pod exec the bash CLI with admin
+func (pod *pod) execCommandAsAdmin(oc *exutil.CLI, command string) (string, error) {
+	command1 := []string{"-n", pod.namespace, pod.name, "--", "/bin/sh", "-c", command}
+	msg, err := oc.WithoutNamespace().AsAdmin().Run("exec").Args(command1...).Output()
 	if err != nil {
 		e2e.Logf(pod.name+"# "+command+" *failed with* :\"%v\".", err)
 		return msg, err
