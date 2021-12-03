@@ -71,6 +71,21 @@ func ListWorkerMachines(oc *exutil.CLI) []string {
 	return strings.Split(machineNames, " ")
 }
 
+// GetMachinesFromMachineSet get all Machines in a Machineset
+func GetMachinesFromMachineSet(oc *exutil.CLI, machineSetName string) []string {
+	e2e.Logf("Getting all Machines in a Machineset ...")
+	machineNames, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("machine", "-o=jsonpath={.items[*].metadata.name}", "-l", "machine.openshift.io/cluster-api-machineset="+machineSetName, "-n", machineAPINamespace).Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	return strings.Split(machineNames, " ")
+}
+
+// GetNodeNameFromMachine get node name for a machine
+func GetNodeNameFromMachine(oc *exutil.CLI, machineName string) string {
+	nodeName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("machine", machineName, "-o=jsonpath={.status.nodeRef.name}", "-n", machineAPINamespace).Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	return nodeName
+}
+
 // GetRandomMachineSetName get a random MachineSet name
 func GetRandomMachineSetName(oc *exutil.CLI) string {
 	e2e.Logf("Getting a random MachineSet ...")
