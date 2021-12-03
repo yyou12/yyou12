@@ -355,7 +355,7 @@ var _ = g.Describe("[sig-updates] OTA cvo should", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		g.By("Check ClusterOperatorDegraded condition...")
-		err = waitForCondition(60, 300, "oc get co authentication -ojson|jq -r '.status.conditions[]|select(.type==\"Degraded\").status'")
+		err = waitForCondition(60, 300, "True", "oc get co authentication -ojson|jq -r '.status.conditions[]|select(.type==\"Degraded\").status'")
 		exutil.AssertWaitPollNoErr(err, "authentication operator is not degraded in 5m")
 
 		g.By("Check ClusterOperatorDown alert is not firing and ClusterOperatorDegraded alert is fired correctly.")
@@ -363,10 +363,11 @@ var _ = g.Describe("[sig-updates] OTA cvo should", func() {
 			alertDown := getAlert("ClusterOperatorDown")
 			alertDegraded := getAlert("ClusterOperatorDegraded")
 			o.Expect(alertDown).To(o.BeNil())
-			if alertDegraded == nil || alertDegraded["state"] == "pending" {
+			if alertDegraded == nil || alertDegraded["state"] != "firing" {
 				e2e.Logf("Waiting for alert ClusterOperatorDegraded to be triggered and fired...")
 				return false, nil
 			}
+			o.Expect(alertDegraded["labels"].(map[string]interface{})["severity"].(string)).To(o.Equal("warning"))
 			o.Expect(alertDegraded["annotations"].(map[string]interface{})["summary"].(string)).To(o.ContainSubstring("Cluster operator has been degraded for 30 minutes."))
 			o.Expect(alertDegraded["annotations"].(map[string]interface{})["description"].(string)).To(o.ContainSubstring("The authentication operator is degraded"))
 			return true, nil
@@ -454,5 +455,50 @@ var _ = g.Describe("[sig-updates] OTA cvo should", func() {
 			return true, nil
 		})
 		exutil.AssertWaitPollNoErr(err, "alerts are not disabled.")
+	})
+
+	//author: jiajliu@redhat.com
+	g.It("Longduration-NonPreRelease-Author:jiajliu-Medium-41736-cvo alert ClusterOperatorDown on unavailable operators [Disruptive][Slow]", func() {
+
+		masterNode, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-n", "openshift-authentication-operator", "-o=jsonpath={.items[].spec.nodeName}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Enable ClusterOperatorDown alert")
+		err = oc.AsAdmin().Run("label").Args("node", masterNode, "kubernetes.io/os-").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		defer oc.AsAdmin().Run("label").Args("node", masterNode, "kubernetes.io/os=linux").Execute()
+
+		g.By("Check ClusterOperatorDown condition...")
+		err = waitForCondition(60, 300, "False", "oc get co authentication -ojson|jq -r '.status.conditions[]|select(.type==\"Available\").status'")
+		exutil.AssertWaitPollNoErr(err, "authentication operator is not down in 5m")
+
+		g.By("Check ClusterOperatorDown alert is fired correctly")
+		err = wait.Poll(100*time.Second, 600*time.Second, func() (bool, error) {
+			alertDown := getAlert("ClusterOperatorDown")
+			if alertDown == nil || alertDown["state"] != "firing" {
+				e2e.Logf("Waiting for alert ClusterOperatorDown to be triggered and fired...")
+				return false, nil
+			}
+			o.Expect(alertDown["labels"].(map[string]interface{})["severity"].(string)).To(o.Equal("critical"))
+			o.Expect(alertDown["annotations"].(map[string]interface{})["summary"].(string)).To(o.ContainSubstring("Cluster operator has not been available for 10 minutes."))
+			o.Expect(alertDown["annotations"].(map[string]interface{})["description"].(string)).To(o.ContainSubstring("The authentication operator may be down or disabled"))
+			return true, nil
+		})
+		exutil.AssertWaitPollNoErr(err, "ClusterOperatorDown alert is not fired in 10m")
+
+		g.By("Disable ClusterOperatorDown alert")
+		err = oc.AsAdmin().Run("label").Args("node", masterNode, "kubernetes.io/os=linux").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Check alert is disabled")
+		err = wait.Poll(30*time.Second, 180*time.Second, func() (bool, error) {
+			alertDown := getAlert("ClusterOperatorDown")
+			if alertDown != nil {
+				e2e.Logf("Waiting for alert being disabled...")
+				return false, nil
+			}
+			return true, nil
+		})
+		exutil.AssertWaitPollNoErr(err, "alert is not disabled.")
 	})
 })

@@ -133,7 +133,7 @@ func waitForAlert(oc *exutil.CLI, alertString string, interval time.Duration, ti
 }
 
 //Check if operator's condition is expected until timeout or return ture or an error happened.
-func waitForCondition(interval time.Duration, timeout time.Duration, parameters string) error {
+func waitForCondition(interval time.Duration, timeout time.Duration, expectedCondition string, parameters string) error {
 	err := wait.Poll(interval*time.Second, timeout*time.Second, func() (bool, error) {
 		output, err := exec.Command("bash", "-c", parameters).Output()
 		if err != nil {
@@ -141,7 +141,7 @@ func waitForCondition(interval time.Duration, timeout time.Duration, parameters 
 			return false, err
 		}
 		condition := strings.Replace(string(output), "\n", "", -1)
-		if strings.Compare(condition, "True") != 0 {
+		if strings.Compare(condition, expectedCondition) != 0 {
 			e2e.Logf("Current condition is: %v.Waiting for condition to be enabled...", condition)
 			return false, nil
 		}
