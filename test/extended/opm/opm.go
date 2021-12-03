@@ -164,8 +164,8 @@ var _ = g.Describe("[sig-operators] OLM opm should", func() {
 		o.Expect(output).To(o.ContainSubstring("\"name\": \"cockroachdb.v5.0.4\""))
 		o.Expect(output).To(o.ContainSubstring("\"name\": \"cockroachdb.v5.0.3\""))
 		o.Expect(output).To(o.ContainSubstring("\"package\": \"cockroachdb\""))
-		o.Expect(output).NotTo(o.ContainSubstring("quay.io/helmoperators/cockroachdb:v5.0.4"))
-		o.Expect(output).NotTo(o.ContainSubstring("quay.io/helmoperators/cockroachdb:v5.0.3"))
+		o.Expect(output).To(o.ContainSubstring("quay.io/helmoperators/cockroachdb:v5.0.4"))
+		o.Expect(output).To(o.ContainSubstring("quay.io/helmoperators/cockroachdb:v5.0.3"))
 		o.Expect(output).To(o.ContainSubstring("\"group\": \"charts.operatorhub.io\""))
 		o.Expect(output).To(o.ContainSubstring("\"version\": \"5.0.4\""))
 		o.Expect(output).To(o.ContainSubstring("\"version\": \"5.0.3\""))
@@ -287,6 +287,32 @@ var _ = g.Describe("[sig-operators] OLM opm should", func() {
 			}
 		}
 		g.By("45401 SUCCESS")
+	})
+
+	// author: xzha@redhat.com
+	g.It("ConnectedOnly-Author:xzha-Medium-45402-opm render should automatically pulling in the image(s) used in the deployments", func() {
+		g.By("render bundle image")
+		output, err := opmCLI.Run("render").Args("quay.io/olmqe/mta-operator:v0.0.4-45402", "quay.io/olmqe/eclipse-che:7.32.2-45402", "-oyaml").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring("---"))
+		bundleConfigBlobs := strings.Split(output, "---")
+		for _, bundleConfigBlob := range bundleConfigBlobs {
+			if strings.Contains(bundleConfigBlob, "packageName: mta-operator") {
+				g.By("check putput of render bundle image which has no relatedimages defined in csv")
+				o.Expect(bundleConfigBlob).To(o.ContainSubstring("relatedImages"))
+				relatedImages := strings.Split(bundleConfigBlob, "relatedImages")[1]
+				o.Expect(relatedImages).To(o.ContainSubstring("quay.io/olmqe/mta-operator:v0.0.4-45402"))
+				o.Expect(relatedImages).To(o.ContainSubstring("quay.io/windupeng/windup-operator-native:0.0.4"))
+				continue
+			}
+			if strings.Contains(bundleConfigBlob, "packageName: eclipse-che") {
+				g.By("check putput of render bundle image which has relatedimages defined in csv")
+				o.Expect(bundleConfigBlob).To(o.ContainSubstring("relatedImages"))
+				relatedImages := strings.Split(bundleConfigBlob, "relatedImages")[1]
+				o.Expect(relatedImages).To(o.ContainSubstring("index.docker.io/codercom/code-server"))
+				o.Expect(relatedImages).To(o.ContainSubstring("quay.io/olmqe/eclipse-che:7.32.2-45402"))
+			}
+		}
 	})
 
 	// author: kuiwang@redhat.com
