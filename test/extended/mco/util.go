@@ -464,3 +464,7 @@ func getGzipFileJSONConfig(destinationPath string, fileContent string) string {
 	fileConfig := fmt.Sprintf(`{"contents": {"compression": "gzip", "source": "data:;base64,%s"}, "path": "%s"}`, encodedContent, destinationPath)
 	return fileConfig
 }
+
+func getMaskServiceConfig(name string, mask bool) string {
+	return fmt.Sprintf(`{"name": "%s", "mask": %t}`, name, mask)
+}

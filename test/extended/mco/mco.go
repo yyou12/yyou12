@@ -870,6 +870,82 @@ nulla pariatur.`
 		o.Expect(rf.GetUIDName()).To(o.Equal("root"))
 		o.Expect(rf.GetGIDName()).To(o.Equal("root"))
 	})
+
+	g.It("Author:sregidor-High-46424-Check run level", func() {
+		g.By("Validate openshift-machine-config-operator run level")
+		mcoNs := NewResource(oc.AsAdmin(), "ns", "openshift-machine-config-operator")
+		runLevel := mcoNs.GetOrFail(`{.metadata.labels.openshift\.io/run-level}`)
+		o.Expect(runLevel).To(o.Equal(""))
+
+		g.By("Validate machine-config-operator SCC")
+		podsList := NewNamespacedResourceList(oc.AsAdmin(), "pods", mcoNs.name)
+		podsList.ByLabel("k8s-app=machine-config-operator")
+		mcoPods, err := podsList.GetAll()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(mcoPods).To(o.HaveLen(1))
+		mcoPod := mcoPods[0]
+		scc := mcoPod.GetOrFail(`{.metadata.annotations.openshift\.io/scc}`)
+		o.Expect(scc).To(o.Equal("hostmount-anyuid"))
+
+		g.By("Validate machine-config-daemon clusterrole")
+		mcdCR := NewResource(oc.AsAdmin(), "clusterrole", "machine-config-daemon")
+		mcdRules := mcdCR.GetOrFail(`{.rules[?(@.apiGroups[0]=="security.openshift.io")]}`)
+		o.Expect(mcdRules).Should(o.ContainSubstring("privileged"))
+
+		g.By("Validate machine-config-server clusterrole")
+		mcsCR := NewResource(oc.AsAdmin(), "clusterrole", "machine-config-server")
+		mcsRules := mcsCR.GetOrFail(`{.rules[?(@.apiGroups[0]=="security.openshift.io")]}`)
+		o.Expect(mcsRules).Should(o.ContainSubstring("hostnetwork"))
+
+	})
+	g.It("Author:sregidor-Longduration-NonPreRelease-High-46434-Mask service [Serial]", func() {
+		activeString := "Active: active (running)"
+		inactiveString := "Active: inactive (dead)"
+
+		g.By("Validate that the chronyd service is active")
+		workerNode := NewNodeList(oc).GetAllWorkerNodesOrFail()[0]
+		svcOuput, err := workerNode.DebugNodeWithChroot("systemctl", "status", "chronyd")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(svcOuput).Should(o.ContainSubstring(activeString))
+		o.Expect(svcOuput).ShouldNot(o.ContainSubstring(inactiveString))
+
+		g.By("Create a MachineConfig resource to mask the chronyd service")
+		mcName := "99-test-mask-services"
+		maskSvcConfig := getMaskServiceConfig("chronyd.service", true)
+		mc := MachineConfig{name: mcName, pool: "worker"}
+		defer mc.delete(oc)
+
+		template := NewMCOTemplate(oc, "generic-machine-config-template.yml")
+		err = template.Create("-p", "NAME="+mcName, "-p", "POOL=worker", "-p", fmt.Sprintf("UNITS=[%s]", maskSvcConfig))
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Wait until worker MachineConfigPool has finished the configuration")
+		mcp := MachineConfigPool{name: "worker"}
+		mcp.waitForComplete(oc)
+
+		g.By("Validate that the chronyd service is masked")
+		svcMaskedOuput, _ := workerNode.DebugNodeWithChroot("systemctl", "status", "chronyd")
+		// Since the service is masked, the "systemctl status chronyd" command will return a value != 0 and an error will be reported
+		// So we dont check the error, only the output
+		o.Expect(svcMaskedOuput).ShouldNot(o.ContainSubstring(activeString))
+		o.Expect(svcMaskedOuput).Should(o.ContainSubstring(inactiveString))
+
+		g.By("Patch the MachineConfig resource to unmaskd the svc")
+		// This part needs to be changed once we refactor MachineConfig to embed the Resource struct.
+		// We will use here the 'mc' object directly
+		mcresource := NewResource(oc.AsAdmin(), "mc", mc.name)
+		err = mcresource.Patch("json", `[{ "op": "replace", "path": "/spec/config/systemd/units/0/mask", "value": false}]`)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Wait until worker MachineConfigPool has finished the configuration")
+		mcp.waitForComplete(oc)
+
+		g.By("Validate that the chronyd service is unmasked")
+		svcUnMaskedOuput, err := workerNode.DebugNodeWithChroot("systemctl", "status", "chronyd")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(svcUnMaskedOuput).Should(o.ContainSubstring(activeString))
+		o.Expect(svcUnMaskedOuput).ShouldNot(o.ContainSubstring(inactiveString))
+	})
 })
 
 func createMcAndVerifyMCValue(oc *exutil.CLI, stepText string, mcName string, workerNode node, textToVerify TextToVerify, cmd ...string) {

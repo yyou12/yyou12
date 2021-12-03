@@ -28,8 +28,9 @@ type Resource struct {
 	ocGetter
 }
 
-// Get uses the CLI to retrieve the return value for this jsonpath
-func (r *ocGetter) Get(jsonPath string, extraParams ...string) (string, error) {
+// getCommonParams returns the params that are necessary for all commands involving this object
+// It returns these 3 params (or 2 if the object is not namespaced): {kind} {resourcename} ({-n} {namespace} only if namespaced)
+func (r *ocGetter) getCommonParams() []string {
 	params := []string{r.kind}
 	if r.name != "" {
 		params = append(params, r.name)
@@ -38,6 +39,13 @@ func (r *ocGetter) Get(jsonPath string, extraParams ...string) (string, error) {
 	if r.namespace != "" {
 		params = append([]string{"-n", r.namespace}, params...)
 	}
+
+	return params
+}
+
+// Get uses the CLI to retrieve the return value for this jsonpath
+func (r *ocGetter) Get(jsonPath string, extraParams ...string) (string, error) {
+	params := r.getCommonParams()
 
 	params = append(params, extraParams...)
 
@@ -88,14 +96,7 @@ func NewNamespacedResource(oc *exutil.CLI, kind string, namespace string, name s
 
 // Delete removes the resource from openshift cluster
 func (r *Resource) Delete() error {
-	params := []string{r.kind}
-	if r.name != "" {
-		params = append(params, r.name)
-	}
-
-	if r.namespace != "" {
-		params = append([]string{"-n", r.namespace}, params...)
-	}
+	params := r.getCommonParams()
 
 	_, err := r.oc.WithoutNamespace().Run("delete").Args(params...).Output()
 	if err != nil {
@@ -114,6 +115,23 @@ func (r *Resource) Exists() bool {
 // String implements the Stringer interface
 func (r *Resource) String() string {
 	return fmt.Sprintf("<Kind: %s, Name: %s, Namespace: %s>", r.kind, r.name, r.namespace)
+}
+
+// Patch patches the resource using the given patch type
+// The following patches are exactly the same patch but using different types, 'merge' and 'json'
+// --type merge -p '{"spec": {"selector": {"app": "frommergepatch"}}}'
+// --type json  -p '[{ "op": "replace", "path": "/spec/selector/app", "value": "fromjsonpatch"}]'
+func (r *Resource) Patch(patchType string, patch string) error {
+	params := r.getCommonParams()
+
+	params = append(params, []string{"--type", patchType, "-p", patch}...)
+
+	_, err := r.oc.WithoutNamespace().Run("patch").Args(params...).Output()
+	if err != nil {
+		e2e.Logf("%v", err)
+	}
+
+	return err
 }
 
 // NewMCOTemplate creates a new template using the MCO fixture directory as the base path of the template file

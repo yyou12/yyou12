@@ -15,11 +15,14 @@ objects:
           version: ${IGNITION_VERSION}
         storage:
           files: ${{FILES}}
-
+        systemd:
+          units: ${{UNITS}}
 parameters:
   - name: NAME
   - name: POOL
   - name: IGNITION_VERSION
     value: 3.2.0
   - name: FILES
+    value: "[]"
+  - name: UNITS
     value: "[]"
