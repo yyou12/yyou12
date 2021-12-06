@@ -84,5 +84,6 @@ func getNodeListForPodByLabel(oc *exutil.CLI, namespace string, labelName string
 func getNodeNameByPod(oc *exutil.CLI, namespace string, podName string) string {
 	nodeName, err := oc.WithoutNamespace().Run("get").Args("pod", podName, "-n", namespace, "-o=jsonpath={.spec.nodeName}").Output()
 	o.Expect(err).NotTo(o.HaveOccurred())
+	e2e.Logf("The node name is %s", nodeName)
 	return nodeName
 }

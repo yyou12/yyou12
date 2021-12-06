@@ -13,9 +13,9 @@ objects:
     containers:
     - image: ${PODIMAGE} # default: quay.io/openshifttest/storage@sha256:a05b96d373be86f46e76817487027a7f5b8b5f87c0ac18a246b018df11529b40
       name: ${PODNAME}
-      volumeMounts:
+      ${VOLUMETYPE}:
       - name: data
-        mountPath: ${PODMOUNTPATH}
+        ${PATHTYPE}: ${PODMOUNTPATH}
     volumes:
     - name: data
       persistentVolumeClaim:
@@ -25,4 +25,6 @@ parameters:
 - name: PODNAME
 - name: PODNAMESPACE
 - name: PODIMAGE
+- name: VOLUMETYPE
+- name: PATHTYPE
 - name: PODMOUNTPATH

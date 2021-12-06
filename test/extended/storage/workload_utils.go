@@ -15,12 +15,14 @@ import (
 
 // Pod workload related functions
 type pod struct {
-	name      string
-	namespace string
-	pvcname   string
-	template  string
-	image     string
-	mountPath string
+	name       string
+	namespace  string
+	pvcname    string
+	template   string
+	image      string
+	volumeType string
+	pathType   string
+	mountPath  string
 }
 
 // function option mode to change the default values of pod parameters, e.g. name, namespace, persistent volume claim, image etc.
@@ -61,7 +63,21 @@ func setPodImage(image string) podOption {
 	}
 }
 
-// Replace the default value of pod image parameter
+// Replace the default value of pod volume type
+func setPodVolumeType(volumeType string) podOption {
+	return func(this *pod) {
+		this.volumeType = volumeType
+	}
+}
+
+// Replace the default value of pod mount path type
+func setPodPathType(pathType string) podOption {
+	return func(this *pod) {
+		this.pathType = pathType
+	}
+}
+
+// Replace the default value of pod mount path value
 func setPodMountPath(mountPath string) podOption {
 	return func(this *pod) {
 		this.mountPath = mountPath
@@ -71,12 +87,14 @@ func setPodMountPath(mountPath string) podOption {
 //  Create a new customized pod object
 func newPod(opts ...podOption) pod {
 	defaultPod := pod{
-		name:      "mypod-" + getRandomString(),
-		template:  "pod-template.yaml",
-		namespace: "",
-		pvcname:   "mypvc",
-		image:     "quay.io/openshifttest/storage@sha256:a05b96d373be86f46e76817487027a7f5b8b5f87c0ac18a246b018df11529b40",
-		mountPath: "/mnt/storage",
+		name:       "mypod-" + getRandomString(),
+		template:   "pod-template.yaml",
+		namespace:  "",
+		pvcname:    "mypvc",
+		image:      "quay.io/openshifttest/storage@sha256:a05b96d373be86f46e76817487027a7f5b8b5f87c0ac18a246b018df11529b40",
+		volumeType: "volumeMounts",
+		pathType:   "mountPath",
+		mountPath:  "/mnt/storage",
 	}
 
 	for _, o := range opts {
@@ -91,7 +109,7 @@ func (pod *pod) create(oc *exutil.CLI) {
 	if pod.namespace == "" {
 		pod.namespace = oc.Namespace()
 	}
-	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", pod.template, "-p", "PODNAME="+pod.name, "PODNAMESPACE="+pod.namespace, "PVCNAME="+pod.pvcname, "PODIMAGE="+pod.image, "PODMOUNTPATH="+pod.mountPath)
+	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", pod.template, "-p", "PODNAME="+pod.name, "PODNAMESPACE="+pod.namespace, "PVCNAME="+pod.pvcname, "PODIMAGE="+pod.image, "VOLUMETYPE="+pod.volumeType, "PATHTYPE="+pod.pathType, "PODMOUNTPATH="+pod.mountPath)
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
@@ -101,7 +119,7 @@ func (pod *pod) createWithReadOnlyVolume(oc *exutil.CLI) {
 		"jsonPath": `items.0.spec.containers.0.volumeMounts.0.`,
 		"readOnly": true,
 	}
-	err := applyResourceFromTemplateWithExtraParametersAsAdmin(oc, extraParameters, "--ignore-unknown-parameters=true", "-f", pod.template, "-p", "PODNAME="+pod.name, "PODNAMESPACE="+pod.namespace, "PVCNAME="+pod.pvcname, "PODIMAGE="+pod.image, "PODMOUNTPATH="+pod.mountPath)
+	err := applyResourceFromTemplateWithExtraParametersAsAdmin(oc, extraParameters, "--ignore-unknown-parameters=true", "-f", pod.template, "-p", "PODNAME="+pod.name, "PODNAMESPACE="+pod.namespace, "PVCNAME="+pod.pvcname, "PODIMAGE="+pod.image, "VOLUMETYPE="+pod.volumeType, "PATHTYPE="+pod.pathType, "PODMOUNTPATH="+pod.mountPath)
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
@@ -122,7 +140,7 @@ func (pod *pod) createWithSecurity(oc *exutil.CLI) {
 	if pod.namespace == "" {
 		pod.namespace = oc.Namespace()
 	}
-	err := applyResourceFromTemplateWithExtraParametersAsAdmin(oc, extraParameters, "--ignore-unknown-parameters=true", "-f", pod.template, "-p", "PODNAME="+pod.name, "PODNAMESPACE="+pod.namespace, "PVCNAME="+pod.pvcname, "PODIMAGE="+pod.image, "PODMOUNTPATH="+pod.mountPath)
+	err := applyResourceFromTemplateWithExtraParametersAsAdmin(oc, extraParameters, "--ignore-unknown-parameters=true", "-f", pod.template, "-p", "PODNAME="+pod.name, "PODNAMESPACE="+pod.namespace, "PVCNAME="+pod.pvcname, "PODIMAGE="+pod.image, "VOLUMETYPE="+pod.volumeType, "PATHTYPE="+pod.pathType, "PODMOUNTPATH="+pod.mountPath)
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
@@ -173,6 +191,25 @@ func (pod *pod) checkMountedVolumeHaveExecRight(oc *exutil.CLI) {
 	_, err := execCommandInSpecificPod(oc, pod.namespace, pod.name, "cp hello "+pod.mountPath)
 	o.Expect(err).NotTo(o.HaveOccurred())
 	o.Expect(execCommandInSpecificPod(oc, pod.namespace, pod.name, pod.mountPath+"/hello")).To(o.ContainSubstring("Hello OpenShift Storage"))
+}
+
+//  Check the pod mounted volume could write data into raw block volume
+func (pod *pod) writeDataIntoRawBlockVolume(oc *exutil.CLI) {
+	e2e.Logf("Writing the data into Raw Block volume")
+	_, err := pod.execCommand(oc, "/bin/dd  if=/dev/null of="+pod.mountPath+" bs=512 count=1")
+	o.Expect(err).NotTo(o.HaveOccurred())
+	_, err = pod.execCommand(oc, "echo 'storage test' > "+pod.mountPath)
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+//  Check data in raw block volume could be read
+func (pod *pod) checkDataInRawBlockVolume(oc *exutil.CLI) {
+	e2e.Logf("Check the data in Raw Block volume")
+	_, err := pod.execCommand(oc, "/bin/dd  if="+pod.mountPath+" of=/tmp/testfile bs=512 count=1")
+	o.Expect(err).NotTo(o.HaveOccurred())
+	output, err := pod.execCommand(oc, "cat /tmp/testfile")
+	o.Expect(err).NotTo(o.HaveOccurred())
+	o.Expect(output).To(o.ContainSubstring("storage test"))
 }
 
 // Waiting for the Pod ready
