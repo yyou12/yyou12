@@ -99,7 +99,7 @@ var _ = g.Describe("[sig-node] PSAP should", func() {
 	})
 
 	// author: nweinber@redhat.com
-	g.It("Author:nweinber-Medium-33237-Test NTO support for operatorapi Unmanaged state", func() {
+	g.It("Author:nweinber-Medium-33237-Test NTO support for operatorapi Unmanaged state [Flaky]", func() {
 
 		// test requires NTO to be installed
 		if !isNTO {

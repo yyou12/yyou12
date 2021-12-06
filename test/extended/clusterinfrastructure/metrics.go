@@ -19,7 +19,7 @@ var _ = g.Describe("[sig-cluster-lifecycle] Cluster_Infrastructure", func() {
 	)
 
 	// author: zhsun@redhat.com
-	g.It("Author:zhsun-Medium-45499-mapi_current_pending_csr should reflect real pending CSR count", func() {
+	g.It("Author:zhsun-Medium-45499-mapi_current_pending_csr should reflect real pending CSR count [Flaky]", func() {
 		g.By("Check the pending csr count")
 		csrStatuses, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("csr", "-o=jsonpath={.items[*].status.conditions[0].type}").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())

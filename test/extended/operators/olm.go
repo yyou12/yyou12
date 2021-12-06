@@ -695,7 +695,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	})
 
 	// author: jiazha@redhat.com
-	g.It("Author:jiazha-High-37442-create a Conditions CR for each Operator it installs", func() {
+	g.It("Author:jiazha-High-37442-create a Conditions CR for each Operator it installs [Flaky]", func() {
 		g.By("1) Install the OperatorGroup in a random project")
 		dr := make(describerResrouce)
 		itName := g.CurrentGinkgoTestDescription().TestText
@@ -3051,7 +3051,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	})
 
 	// author: scolange@redhat.com
-	g.It("ConnectedOnly-Author:scolange-Medium-24587-Add InstallPlan conditions to Subscription status", func() {
+	g.It("ConnectedOnly-Author:scolange-Medium-24587-Add InstallPlan conditions to Subscription status [Flaky]", func() {
 
 		var buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
 		var Sub = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
@@ -4909,7 +4909,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 	})
 
 	// It will cover test case: OCP-33176, author: kuiwang@redhat.com
-	g.It("ConnectedOnly-Author:kuiwang-Medium-33176-Enable generated operator component adoption for operators with single ns mode [Slow]", func() {
+	g.It("ConnectedOnly-Author:kuiwang-Medium-33176-Enable generated operator component adoption for operators with single ns mode [Slow] [Flaky]", func() {
 		var (
 			itName                  = g.CurrentGinkgoTestDescription().TestText
 			buildPruningBaseDir     = exutil.FixturePath("testdata", "olm")

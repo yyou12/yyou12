@@ -6,6 +6,7 @@ import (
 
 	g "github.com/onsi/ginkgo"
 	o "github.com/onsi/gomega"
+
 	//e2e "k8s.io/kubernetes/test/e2e/framework"
 
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
@@ -44,7 +45,7 @@ var _ = g.Describe("[sig-network-edge] Network_Edge should", func() {
 	})
 
 	// author: aiyengar@redhat.com
-	g.It("Author:aiyengar-Critical-OCP-40675-Ingresscontroller with endpointPublishingStrategy of hostNetwork allows PROXY protocol for source forwarding", func() {
+	g.It("Author:aiyengar-Critical-OCP-40675-Ingresscontroller with endpointPublishingStrategy of hostNetwork allows PROXY protocol for source forwarding [Flaky]", func() {
 		buildPruningBaseDir := exutil.FixturePath("testdata", "router")
 		customTemp := filepath.Join(buildPruningBaseDir, "ingresscontroller-hn-PROXY.yaml")
 		var (
