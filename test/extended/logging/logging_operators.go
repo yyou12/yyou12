@@ -39,6 +39,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease cluster-loggin
 		EO.SubscribeLoggingOperators(oc)
 	})
 
+	// author qitang@redhat.com
 	g.It("CPaasrunOnly-Author:qitang-Medium-42405-No configurations when forward to external ES with only username or password set in pipeline secret[Serial]", func() {
 		g.By("create secret in openshift-logging namespace")
 		s := resource{"secret", "pipelinesecret", cloNS}
@@ -72,6 +73,36 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease cluster-loggin
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(file_stat.Size() == 0).To(o.BeTrue())
 	})
+
+	// author qitang@redhat.com
+	g.It("CPaasrunOnly-Author:qitang-Medium-41069-gather cert generation status in openshift event[Serial]", func() {
+		g.By("deploy EFK pods")
+		instance := exutil.FixturePath("testdata", "logging", "clusterlogging", "cl-template.yaml")
+		cl := resource{"clusterlogging", "instance", cloNS}
+		defer cl.deleteClusterLogging(oc)
+		cl.createClusterLogging(oc, "-n", cl.namespace, "-f", instance, "-p", "NAMESPACE="+cl.namespace)
+		WaitForDaemonsetPodsToBeReady(oc, cloNS, "collector")
+
+		g.By("Make CLO regenrate certs")
+		master_certs := resource{"secret", "master-certs", cloNS}
+		defer oc.AsAdmin().WithoutNamespace().Run("scale").Args("deploy/cluster-logging-operator", "--replicas=1", "-n", cloNS).Execute()
+		err := oc.AsAdmin().WithoutNamespace().Run("scale").Args("deploy/cluster-logging-operator", "--replicas=0", "-n", cloNS).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = oc.AsAdmin().WithoutNamespace().Run("delete").Args("secret/master-certs", "-n", cloNS).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		master_certs.WaitUntilResourceIsGone(oc)
+		err = oc.AsAdmin().WithoutNamespace().Run("scale").Args("deploy/cluster-logging-operator", "--replicas=1", "-n", cloNS).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		master_certs.WaitForResourceToAppear(oc)
+
+		g.By("check events")
+		events, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("events", "-n", cloNS, "--field-selector", "involvedObject.kind=ClusterLogging").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(events).Should(o.ContainSubstring("msg /tmp/ocp-clo/ca.key reason FileMissing type Regenerate"))
+		o.Expect(events).Should(o.ContainSubstring("reason ExpiredOrMissing type Regenerate msg /tmp/ocp-clo/ca.crt"))
+		o.Expect(events).Should(o.ContainSubstring("msg /tmp/ocp-clo/ca.crt reason FileMissing type Regenerate"))
+	})
+
 })
 
 var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease elasticsearch-operator should", func() {
@@ -185,8 +216,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease operators upgr
 
 	// author: qitang@redhat.com
 	g.It("Longduration-CPaasrunOnly-Author:qitang-High-44983-Logging auto upgrade in minor version[Disruptive][Slow]", func() {
-		var targetchannel = "stable"
-		var collector string
+		var targetchannel = "stable-5.3"
 		var oh OperatorHub
 		g.By("check source/redhat-operators status in operatorhub")
 		output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("operatorhub/cluster", "-ojson").Output()
@@ -216,13 +246,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease operators upgr
 		cl := resource{"clusterlogging", "instance", preCLO.Namespace}
 		defer cl.deleteClusterLogging(oc)
 		cl.createClusterLogging(oc, "-n", cl.namespace, "-f", instance, "-p", "NAMESPACE="+cl.namespace, "-p", "STORAGE_CLASS="+sc, "-p", "ES_NODE_COUNT=3", "-p", "REDUNDANCY_POLICY=SingleRedundancy")
-		collector = getCollectorName(oc, preCLO.PackageName, preCLO.Namespace)
-		esDeployNames := GetDeploymentsNameByLabel(oc, preCLO.Namespace, "cluster-name=elasticsearch")
-		for _, name := range esDeployNames {
-			WaitForDeploymentPodsToBeReady(oc, preCLO.Namespace, name)
-		}
-		WaitForDeploymentPodsToBeReady(oc, preCLO.Namespace, "kibana")
-		WaitForDaemonsetPodsToBeReady(oc, preCLO.Namespace, collector)
+		WaitForEFKPodsToBeReady(oc, preCLO.Namespace)
 
 		//get current csv version
 		preCloCSV := preCLO.getInstalledCSV(oc)

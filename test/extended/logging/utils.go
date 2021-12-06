@@ -670,20 +670,6 @@ func getCurrentCSVFromPackage(oc *exutil.CLI, channel string, packagemanifest st
 	return currentCSV
 }
 
-//get collector name by CLO's version
-func getCollectorName(oc *exutil.CLI, subname string, ns string) string {
-	var collector string
-	output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("subscription", subname, "-n", ns, "-ojsonpath={.status.installedCSV}").Output()
-	o.Expect(err).NotTo(o.HaveOccurred())
-	version := strings.SplitAfterN(output, ".", 2)[1]
-	if strings.Compare(version, "5.3") > 0 {
-		collector = "collector"
-	} else {
-		collector = "fluentd"
-	}
-	return collector
-}
-
 func chkMustGather(oc *exutil.CLI, ns string) {
 	cloImg, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", ns, "deployment.apps/cluster-logging-operator", "-o", "jsonpath={.spec.template.spec.containers[?(@.name == \"cluster-logging-operator\")].image}").Output()
 	o.Expect(err).NotTo(o.HaveOccurred())
