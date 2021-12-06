@@ -20,11 +20,14 @@ import (
 var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 	defer g.GinkgoRecover()
 	var (
-		oc           = exutil.NewCLI("default-image-registry", exutil.KubeConfigPath())
-		bcName       = "rails-postgresql-example"
-		bcNameOne    = fmt.Sprintf("%s-1", bcName)
-		logInfo      = `Unsupported value: "abc": supported values: "", "Normal", "Debug", "Trace", "TraceAll"`
-		updatePolicy = `"maxSurge":0,"maxUnavailable":"10%"`
+		oc                  = exutil.NewCLI("default-image-registry", exutil.KubeConfigPath())
+		bcName              = "rails-postgresql-example"
+		bcNameOne           = fmt.Sprintf("%s-1", bcName)
+		logInfo             = `Unsupported value: "abc": supported values: "", "Normal", "Debug", "Trace", "TraceAll"`
+		updatePolicy        = `"maxSurge":0,"maxUnavailable":"10%"`
+		monitoringns        = "openshift-monitoring"
+		promPod             = "prometheus-k8s-0"
+		queryCredentialMode = "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query=cco_credentials_mode"
 	)
 	// author: wewang@redhat.com
 	g.It("Author:wewang-High-39027-Check AWS secret and access key with an OpenShift installed in a regular way", func() {
@@ -520,5 +523,57 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 		output, err := oc.WithoutNamespace().AsAdmin().Run("get").Args("pods", "-o=jsonpath={.items[*].spec.containers[*].image}", "-n", oc.Namespace()).Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(output).To(o.ContainSubstring(interReg))
+	})
+
+	// author: wewang@redhat.com
+	g.It("Author:wewang-Medium-39028-Check aws secret and access key with an openShift installed with an STS credential", func() {
+		g.By("Check platforms")
+		output, err := oc.WithoutNamespace().AsAdmin().Run("get").Args("infrastructure", "cluster", "-o=jsonpath={.status.platformStatus.type}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		if !strings.Contains(output, "AWS") {
+			g.Skip("Skip for non-supported platform")
+		}
+		g.By("Check if the cluster is with STS credential")
+		token, err := oc.AsAdmin().WithoutNamespace().Run("sa").Args("-n", "openshift-monitoring", "get-token", "prometheus-k8s").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		result, err := getBearerTokenURLViaPod(monitoringns, promPod, queryCredentialMode, token)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		if !strings.Contains(result, "manualpodidentity") {
+			g.Skip("Skip for the aws cluster without STS credential")
+		}
+
+		g.By("Check role_arn/web_identity_token_file inside image registry pod")
+		result, err = oc.AsAdmin().WithoutNamespace().Run("rsh").Args("-n", "openshift-image-registry", "deployment.apps/image-registry", "cat", "/var/run/secrets/cloud/credentials").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(result).To(o.ContainSubstring("role_arn"))
+		o.Expect(result).To(o.ContainSubstring("web_identity_token_file"))
+
+		g.By("Check installer-cloud-credentials secret")
+		credentials, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("secret/installer-cloud-credentials", "-n", "openshift-image-registry", "-o=jsonpath={.data.credentials}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		sDec, _ := base64.StdEncoding.DecodeString(credentials)
+		if !strings.Contains(string(sDec), "role_arn") {
+			e2e.Failf("credentials does not contain role_arn")
+		}
+		if !strings.Contains(string(sDec), "web_identity_token_file") {
+			e2e.Failf("credentials does not contain web_identity_token_file")
+		}
+
+		g.By("push/pull image to registry")
+		oc.SetupProject()
+		ns_39028 := oc.Namespace()
+		err = oc.WithoutNamespace().AsAdmin().Run("import-image").Args("myimage", "-n", ns_39028, "--from", "busybox", "--confirm", "--reference-policy=local").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = exutil.WaitForAnImageStreamTag(oc, oc.Namespace(), "myimage", "latest")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = oc.WithoutNamespace().AsAdmin().Run("new-app").Args("rails-postgresql-example", "-n", ns_39028).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("waiting for build to finish")
+		err = exutil.WaitForABuild(oc.BuildClient().BuildV1().Builds(oc.Namespace()), bcNameOne, nil, nil, nil)
+		if err != nil {
+			exutil.DumpBuildLogs(bcName, oc)
+		}
+		o.Expect(err).NotTo(o.HaveOccurred())
 	})
 })
