@@ -9,13 +9,14 @@ RUN make build; \
 
 FROM registry.ci.openshift.org/ocp/4.10:tools
 COPY --from=builder /tmp/build/extended-platform-tests /usr/bin/
-RUN PACKAGES="git gzip zip util-linux" && \
+RUN PACKAGES="git gzip zip util-linux openssh-clients httpd-tools nodejs" && \
     yum install --setopt=tsflags=nodocs -y $PACKAGES && yum clean all && rm -rf /var/cache/yum/* && \
     git config --system user.name test-private && \
     git config --system user.email test-private@test.com && \
     chmod g+w /etc/passwd
 RUN pip3 install dotmap minio pyyaml requests
-RUN curl -s -k https://mirror2.openshift.com/pub/openshift-v4/clients/ocp-dev-preview/latest-4.10/opm-linux.tar.gz -o opm-linux.tar.gz && \
+RUN curl -o- -L https://yarnpkg.com/install.sh | bash && \
+    curl -s -k https://mirror2.openshift.com/pub/openshift-v4/clients/ocp-dev-preview/latest-4.10/opm-linux.tar.gz -o opm-linux.tar.gz && \
     tar -C /usr/bin -xzvf opm-linux.tar.gz && \
     rm -fr opm-linux.tar.gz && \
     curl -s -k https://mirror2.openshift.com/pub/openshift-v4/x86_64/clients/operator-sdk/ -o sdk.html && \
@@ -23,5 +24,5 @@ RUN curl -s -k https://mirror2.openshift.com/pub/openshift-v4/clients/ocp-dev-pr
     echo ${optsdkver} && \
     curl -s -k https://mirror2.openshift.com/pub/openshift-v4/x86_64/clients/operator-sdk/${optsdkver}/operator-sdk-linux-x86_64.tar.gz -o opt-sdk.tar.gz && \
     tar -C /usr/bin -xzvf opt-sdk.tar.gz && \
-    rm -fr sdk.html opt-sdk.tar.gz /usr/bin/oc
+    rm -fr sdk.html opt-sdk.tar.gz /usr/bin/oc install.sh
 
