@@ -191,7 +191,7 @@ func getKernelPidMaxValue(kernel string) string {
 
 //Compare if the sysctl parameter is equal to specified value on all the node
 func compareSpecifiedValueByName(oc *exutil.CLI, sysctlparm, specifiedvalue string) {
-	nodeList, err := exutil.GetAllNodes(oc)
+	nodeList, err := exutil.GetAllNodesbyOSType(oc, "linux")
 	o.Expect(err).NotTo(o.HaveOccurred())
 	nodeListSize := len(nodeList)
 
@@ -208,7 +208,7 @@ func compareSpecifiedValueByName(oc *exutil.CLI, sysctlparm, specifiedvalue stri
 
 //Compare if the sysctl parameter is not equal to specified value on all the node
 func compareSysctlDifferentFromSpecifiedValueByName(oc *exutil.CLI, sysctlparm, specifiedvalue string) {
-	nodeList, err := exutil.GetAllNodes(oc)
+	nodeList, err := exutil.GetAllNodesbyOSType(oc, "linux")
 	o.Expect(err).NotTo(o.HaveOccurred())
 	nodeListSize := len(nodeList)
 
@@ -225,7 +225,7 @@ func compareSysctlDifferentFromSpecifiedValueByName(oc *exutil.CLI, sysctlparm, 
 
 //Compare the sysctl parameter's value on specified node, it should different than other node
 func compareSysctlValueOnSepcifiedNodeByName(oc *exutil.CLI, tunedNodeName, sysctlparm, defaultvalue, specifiedvalue string) {
-	nodeList, err := exutil.GetAllNodes(oc)
+	nodeList, err := exutil.GetAllNodesbyOSType(oc, "linux")
 	o.Expect(err).NotTo(o.HaveOccurred())
 	nodeListSize := len(nodeList)
 
@@ -299,5 +299,14 @@ func (ntoRes ntoResource) assertTunedProfileApplied(oc *exutil.CLI) {
 		}
 	})
 	exutil.AssertWaitPollNoErr(err, "New tuned profile isn't applied correctly, please check")
+}
 
+func isAllInOneCluster(oc *exutil.CLI) bool {
+	masterNodes, _ := exutil.GetClusterNodesBy(oc, "master")
+	workerNodes, _ := exutil.GetClusterNodesBy(oc, "worker")
+	if len(masterNodes) == 3 && len(workerNodes) == 0 {
+		return true
+	} else {
+		return false
+	}
 }

@@ -4,6 +4,24 @@ import (
 	"strings"
 )
 
+func GetFirstLinuxWorkerNode(oc *CLI) (string, error) {
+	var (
+		workerNode string
+		err        error
+	)
+	workerNode, err = getFirstNodeByOsId(oc, "worker", "rhcos")
+	if len(workerNode) == 0 {
+		workerNode, err = getFirstNodeByOsId(oc, "worker", "rhel")
+	}
+	return workerNode, err
+}
+
+// GetAllNodes returns a list of the names of all linux/windows nodes in the cluster have both linux and windows node
+func GetAllNodesbyOSType(oc *CLI, ostype string) ([]string, error) {
+	nodes, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("node", "-l", "kubernetes.io/os="+ostype, "-o", "jsonpath='{.items[*].metadata.name}'").Output()
+	return strings.Split(strings.Trim(nodes, "'"), " "), err
+}
+
 // GetAllNodes returns a list of the names of all nodes in the cluster
 func GetAllNodes(oc *CLI) ([]string, error) {
 	nodes, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("node", "-o", "jsonpath='{.items[*].metadata.name}'").Output()

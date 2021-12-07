@@ -1,6 +1,8 @@
 package nto
 
 import (
+	"fmt"
+
 	g "github.com/onsi/ginkgo"
 	o "github.com/onsi/gomega"
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
@@ -20,11 +22,13 @@ var _ = g.Describe("[sig-node] PSAP should", func() {
 		hp_performanceprofile_patch_file = exutil.FixturePath("testdata", "psap", "nto", "hp-performanceprofile-patch.yaml")
 		podlabel_tuned_file              = exutil.FixturePath("testdata", "psap", "nto", "tuned-podlabel-profiles.yaml")
 		isNTO                            bool
+		isAllInOne                       bool
 	)
 
 	g.BeforeEach(func() {
 		// ensure NTO operator is installed
 		isNTO = isPodInstalled(oc, ntoNamespace)
+		isAllInOne = isAllInOneCluster(oc)
 	})
 
 	// author: nweinber@redhat.com
@@ -36,7 +40,7 @@ var _ = g.Describe("[sig-node] PSAP should", func() {
 		}
 
 		g.By("Pick one worker node and one tuned pod on said node")
-		workerNodeName, err := exutil.GetFirstWorkerNode(oc)
+		workerNodeName, err := exutil.GetFirstLinuxWorkerNode(oc)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		e2e.Logf("Worker Node: %v", workerNodeName)
 		tunedPodName, err := exutil.GetPodName(oc, ntoNamespace, "", workerNodeName)
@@ -152,7 +156,7 @@ var _ = g.Describe("[sig-node] PSAP should", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(profileCheck).To(o.Equal("openshift-node"))
 
-		nodeList, err := exutil.GetAllNodes(oc)
+		nodeList, err := exutil.GetAllNodesbyOSType(oc, "linux")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		nodeListSize := len(nodeList)
 		for i := 0; i < nodeListSize; i++ {
@@ -276,6 +280,10 @@ var _ = g.Describe("[sig-node] PSAP should", func() {
 			g.Skip("NTO is not installed - skipping test ...")
 		}
 
+		if !isAllInOne {
+			g.Skip("It's not all in one cluster - skipping test ...")
+		}
+
 		defer func() {
 			g.By("Remove new tuning profile after test completion")
 			err := oc.AsAdmin().WithoutNamespace().Run("delete").Args("-n", ntoNamespace, "tuneds.tuned.openshift.io", "openshift-node-performance-hp-performanceprofile").Execute()
@@ -344,7 +352,8 @@ var _ = g.Describe("[sig-node] PSAP should", func() {
 			_ = patchTunedState(oc, ntoNamespace, "default", "Managed")
 		}()
 		//Get the tuned pod name that run on first worker node
-		tunedNodeName, err := exutil.GetFirstWorkerNode(oc)
+		tunedNodeName, err := exutil.GetFirstLinuxWorkerNode(oc)
+		fmt.Println("tunedNodeName" + tunedNodeName)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		tunedPodName := getTunedPodNamebyNodeName(oc, tunedNodeName, ntoNamespace)
 
