@@ -14,7 +14,7 @@ var _ = g.Describe("[sig-cluster-lifecycle] Cluster_Infrastructure", func() {
 		oc = exutil.NewCLI("machine-api-operator", exutil.KubeConfigPath())
 	)
 	// author: zhsun@redhat.com
-	g.It("Author:zhsun-Medium-45772-MachineSet selector does is immutable", func() {
+	g.It("Author:zhsun-Medium-45772-MachineSet selector is immutable", func() {
 		g.By("Create a new machineset")
 		ci.SkipConditionally(oc)
 		ms := ci.MachineSetDescription{"machineset-45772", 0}
