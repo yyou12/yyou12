@@ -2088,17 +2088,75 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	})
 
 	// author: bandrade@redhat.com
-	g.It("ConnectedOnly-Author:bandrade-High-32613-Operators won't install if the CSV dependency is already installed [Flaky]", func() {
+	// author: bandrade@redhat.com
+	g.It("ConnectedOnly-Author:bandrade-High-32613-Operators won't install if the CSV dependency is already installed", func() {
 
-		namespace := "kogito"
-		infinispanPackage := CreateSubscriptionSpecificNamespace("infinispan", oc, true, true, namespace, INSTALLPLAN_AUTOMATIC_MODE)
-		CheckDeployment(infinispanPackage, oc)
-		keycloakPackage := CreateSubscriptionSpecificNamespace("keycloak-operator", oc, false, false, namespace, INSTALLPLAN_AUTOMATIC_MODE)
-		CheckDeployment(keycloakPackage, oc)
-		kogitoPackage := CreateSubscriptionSpecificNamespace("kogito-operator", oc, false, false, namespace, INSTALLPLAN_AUTOMATIC_MODE)
-		CheckDeployment(kogitoPackage, oc)
-		RemoveOperatorDependencies(kogitoPackage, oc, false)
-		RemoveNamespace(namespace, oc)
+		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
+		csImageTemplate := filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
+
+		oc.SetupProject()
+		g.By("1) Start to create the CatalogSource CR")
+		cs := catalogSourceDescription{
+			name:        "prometheus-dependency-cs",
+			namespace:   "openshift-marketplace",
+			displayName: "OLM QE",
+			publisher:   "OLM QE",
+			sourceType:  "grpc",
+			address:     "quay.io/olmqe/etcd-prometheus-dependency-index:11.0",
+			template:    csImageTemplate,
+		}
+		dr := make(describerResrouce)
+		itName := g.CurrentGinkgoTestDescription().TestText
+		dr.addIr(itName)
+		defer cs.delete(itName, dr)
+		cs.create(oc, itName, dr)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "READY", ok, []string{"catsrc", cs.name, "-n", cs.namespace, "-o=jsonpath={.status..lastObservedState}"}).check(oc)
+
+		g.By("2) Install the OperatorGroup in a random project")
+
+		ogSingleTemplate := filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+		og := operatorGroupDescription{
+			name:      "og-32613",
+			namespace: oc.Namespace(),
+			template:  ogSingleTemplate,
+		}
+		og.createwithCheck(oc, itName, dr)
+
+		g.By("3) Install the etcdoperator v0.9.4 with Automatic approval")
+		subTemplate := filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+		sub := subscriptionDescription{
+			subName:                "sub-32613",
+			namespace:              oc.Namespace(),
+			catalogSourceName:      "prometheus-dependency-cs",
+			catalogSourceNamespace: "openshift-marketplace",
+			channel:                "singlenamespace-alpha",
+			ipApproval:             "Automatic",
+			operatorPackage:        "etcd-service-monitor",
+			startingCSV:            "etcdoperator.v0.9.4",
+			singleNamespace:        true,
+			template:               subTemplate,
+		}
+		sub.create(oc, itName, dr)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", "etcdoperator.v0.9.4", "-n", oc.Namespace(), "-o=jsonpath={.status.phase}"}).check(oc)
+
+		g.By("4) Assert that prometheus dependency is resolved")
+		msg, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", "-n", oc.Namespace()).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(msg).To(o.ContainSubstring("prometheus"))
+
+		sub = subscriptionDescription{
+			subName:                "prometheus-32613",
+			namespace:              oc.Namespace(),
+			catalogSourceName:      "community-operators",
+			catalogSourceNamespace: "openshift-marketplace",
+			ipApproval:             "Automatic",
+			channel:                "beta",
+			operatorPackage:        "prometheus",
+			singleNamespace:        true,
+			template:               subTemplate,
+		}
+		sub.createWithoutCheck(oc, itName, dr)
+		newCheck("expect", asAdmin, withoutNamespace, contain, "prometheus-beta-community-operators-openshift-marketplace exists", ok, []string{"subs", "prometheus-32613", "-n", oc.Namespace(), "-o=jsonpath={.status.conditions..message}"}).check(oc)
 
 	})
 
