@@ -28,21 +28,24 @@ var _ = g.Describe("[sig-cluster-lifecycle] Cluster_Infrastructure", func() {
 	// author: huliu@redhat.com
 	g.It("Longduration-NonPreRelease-Author:huliu-Medium-45377-Enable accelerated network via MachineSets on Azure [Serial]", func() {
 		g.By("Create a new machineset with acceleratedNetworking: true")
-		machinesetName := "machineset-45377"
-		ms := ci.MachineSetDescription{machinesetName, 0}
-		defer ms.DeleteMachineSet(oc)
-		ms.CreateMachineSet(oc)
-		g.By("Update machineset with acceleratedNetworking: true")
-		err := oc.AsAdmin().WithoutNamespace().Run("patch").Args("machineset/"+machinesetName, "-n", "openshift-machine-api", "-p", `{"spec":{"replicas":1,"template":{"spec":{"providerSpec":{"value":{"acceleratedNetworking":true,"vmSize":"Standard_D4s_v3"}}}}}}`, "--type=merge").Execute()
-		o.Expect(err).NotTo(o.HaveOccurred())
+		if ci.CheckPlatform(oc) == "azure" {
+			machinesetName := "machineset-45377"
+			ms := ci.MachineSetDescription{machinesetName, 0}
+			defer ms.DeleteMachineSet(oc)
+			ms.CreateMachineSet(oc)
+			g.By("Update machineset with acceleratedNetworking: true")
+			err := oc.AsAdmin().WithoutNamespace().Run("patch").Args("machineset/"+machinesetName, "-n", "openshift-machine-api", "-p", `{"spec":{"replicas":1,"template":{"spec":{"providerSpec":{"value":{"acceleratedNetworking":true,"vmSize":"Standard_D4s_v3"}}}}}}`, "--type=merge").Execute()
+			o.Expect(err).NotTo(o.HaveOccurred())
 
-		//test when set acceleratedNetworking: true, machine running needs nearly 9 minutes. so change the method timeout as 10 minutes.
-		ci.WaitForMachinesRunning(oc, 1, machinesetName)
+			//test when set acceleratedNetworking: true, machine running needs nearly 9 minutes. so change the method timeout as 10 minutes.
+			ci.WaitForMachinesRunning(oc, 1, machinesetName)
 
-		g.By("Check machine with acceleratedNetworking: true")
-		out, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("machine", "-n", "openshift-machine-api", "-l", "machine.openshift.io/cluster-api-machineset="+machinesetName, "-o=jsonpath={.items[0].spec.providerSpec.value.acceleratedNetworking}").Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		e2e.Logf("out:%s", out)
-		o.Expect(out).To(o.ContainSubstring("true"))
+			g.By("Check machine with acceleratedNetworking: true")
+			out, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("machine", "-n", "openshift-machine-api", "-l", "machine.openshift.io/cluster-api-machineset="+machinesetName, "-o=jsonpath={.items[0].spec.providerSpec.value.acceleratedNetworking}").Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			e2e.Logf("out:%s", out)
+			o.Expect(out).To(o.ContainSubstring("true"))
+		}
+		e2e.Logf("Only azure platform supported for the test")
 	})
 })
