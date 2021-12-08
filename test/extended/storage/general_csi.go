@@ -457,7 +457,7 @@ var _ = g.Describe("[sig-storage] STORAGE WITH-TREARDOWN-PROJECT", func() {
 
 	// author: wduan@redhat.com
 	// OCP-46358 - [CSI Clone] Clone a pvc with filesystem VolumeMode
-	g.It("Author:wduan-Critical-46358-[CSI Clone] Clone a pvc with filesystem VolumeMode", func() {
+	g.It("Author:wduan-NonPreRelease-Critical-46358-[CSI Clone] Clone a pvc with filesystem VolumeMode", func() {
 		// Define the test scenario support provisioners
 		scenarioSupportProvisioners := []string{"disk.csi.azure.com", "cinder.csi.openstack.org"}
 		// Set the resource template for the scenario
