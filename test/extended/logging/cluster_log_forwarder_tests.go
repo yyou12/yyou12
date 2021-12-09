@@ -519,6 +519,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 
 			g.By("Searching for Application Logs in Loki using tenantKey")
 			podList, err := oc.AdminKubeClient().CoreV1().Pods(cloNS).List(metav1.ListOptions{LabelSelector: "component=collector"})
+			o.Expect(err).NotTo(o.HaveOccurred())
 			appPodName, err := oc.AdminKubeClient().CoreV1().Pods(app_proj).List(metav1.ListOptions{LabelSelector: "run=centos-logtest"})
 			o.Expect(err).NotTo(o.HaveOccurred())
 			appLogs := searchAppLogsInLokiByTenantKey(oc, cloNS, lokiNS, podList.Items[0].Name, tenantKey, appPodName.Items[0].Name)
@@ -564,6 +565,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 
 			g.By("Searching for Application Logs in Loki using tenantKey")
 			podList, err := oc.AdminKubeClient().CoreV1().Pods(cloNS).List(metav1.ListOptions{LabelSelector: "component=collector"})
+			o.Expect(err).NotTo(o.HaveOccurred())
 			appPodName, err := oc.AdminKubeClient().CoreV1().Pods(app_proj).List(metav1.ListOptions{LabelSelector: "run=centos-logtest"})
 			o.Expect(err).NotTo(o.HaveOccurred())
 			appLogs := searchAppLogsInLokiByTenantKey(oc, cloNS, lokiNS, podList.Items[0].Name, tenantKey, app_proj)

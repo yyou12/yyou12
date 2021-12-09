@@ -98,9 +98,8 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease cluster-loggin
 		g.By("check events")
 		events, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("events", "-n", cloNS, "--field-selector", "involvedObject.kind=ClusterLogging").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(events).Should(o.ContainSubstring("msg /tmp/ocp-clo/ca.key reason FileMissing type Regenerate"))
-		o.Expect(events).Should(o.ContainSubstring("reason ExpiredOrMissing type Regenerate msg /tmp/ocp-clo/ca.crt"))
-		o.Expect(events).Should(o.ContainSubstring("msg /tmp/ocp-clo/ca.crt reason FileMissing type Regenerate"))
+		o.Expect(events).Should(o.ContainSubstring("reason FileMissing type Regenerate"))
+		o.Expect(events).Should(o.ContainSubstring("reason ExpiredOrMissing type Regenerate"))
 	})
 
 })

@@ -135,7 +135,7 @@ func (so *SubscriptionObjects) SubscribeLoggingOperators(oc *exutil.CLI) {
 	msg := fmt.Sprintf("%v", og)
 	if strings.Contains(msg, "No resources found") {
 		// create operator group
-		ogFile, err := oc.AsAdmin().WithoutNamespace().Run("process").Args("-n", so.Namespace, "-f", so.OperatorGroup, "-p", "OG_NAME="+so.PackageName, "NAMESPACE="+so.Namespace).OutputToFile(getRandomString() + ".json")
+		ogFile, err := oc.AsAdmin().WithoutNamespace().Run("process").Args("-n", so.Namespace, "-f", so.OperatorGroup, "-p", "OG_NAME="+so.Namespace, "NAMESPACE="+so.Namespace).OutputToFile(getRandomString() + ".json")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		err = wait.Poll(5*time.Second, 60*time.Second, func() (done bool, err error) {
 			output, err := oc.AsAdmin().Run("apply").Args("-f", ogFile, "-n", so.Namespace).Output()
@@ -149,7 +149,7 @@ func (so *SubscriptionObjects) SubscribeLoggingOperators(oc *exutil.CLI) {
 				return true, nil
 			}
 		})
-		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("can't create operatorgroup %s in %s project", so.PackageName, so.Namespace))
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("can't create operatorgroup %s in %s project", so.Namespace, so.Namespace))
 	}
 
 	// subscribe operator if the deployment doesn't exist
@@ -192,7 +192,7 @@ func (so *SubscriptionObjects) SubscribeLoggingOperators(oc *exutil.CLI) {
 func (so *SubscriptionObjects) uninstallLoggingOperator(oc *exutil.CLI) {
 	resource{"subscription", so.PackageName, so.Namespace}.clear(oc)
 	_ = oc.AsAdmin().WithoutNamespace().Run("delete").Args("-n", so.Namespace, "csv", "--all").Execute()
-	resource{"operatorgroup", so.PackageName, so.Namespace}.clear(oc)
+	resource{"operatorgroup", so.Namespace, so.Namespace}.clear(oc)
 	if so.Namespace != "openshift-logging" && so.Namespace != "openshift-operators-redhat" && !strings.HasPrefix(so.Namespace, "e2e-test-") {
 		DeleteNamespace(oc, so.Namespace)
 	}
