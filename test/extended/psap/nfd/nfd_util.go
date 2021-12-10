@@ -1,13 +1,9 @@
 package nfd
 
 import (
-	"fmt"
-	"time"
-
 	o "github.com/onsi/gomega"
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/wait"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 )
 
@@ -42,12 +38,6 @@ func installNFD(oc *exutil.CLI) {
 	// if an error is thrown, namespace does not exist, create and continue with installation
 	if err == nil {
 		e2e.Logf("NFD namespace found - checking if NFD is installed ...")
-		nfdInstalled := isPodInstalled(oc, nfdNamespace)
-		if nfdInstalled {
-			e2e.Logf("NFD installation found! Continuing with test ...")
-			return
-		}
-		e2e.Logf("NFD namespace found but no pods running - attempting installation ...")
 	} else {
 		e2e.Logf("NFD namespace not found - creating namespace and installing NFD ...")
 		exutil.CreateClusterResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", nfd_namespace_file)
@@ -61,22 +51,20 @@ func installNFD(oc *exutil.CLI) {
 	o.Expect(err).NotTo(o.HaveOccurred())
 	e2e.Logf("Channel: %v", channel)
 	exutil.ApplyNsResourceFromTemplate(oc, nfdNamespace, "--ignore-unknown-parameters=true", "-f", nfd_sub_file, "-p", "CHANNEL="+channel)
+	//Wait for NFD controller manager is ready
+	exutil.WaitOprResourceReady(oc, "deployment", "nfd-controller-manager", nfdNamespace, false, false)
 
+}
+
+func createNFDInstance(oc *exutil.CLI) {
 	// get cluster version and create NFD instance from template
 	clusterVersion, _, err := exutil.GetClusterVersion(oc)
 	o.Expect(err).NotTo(o.HaveOccurred())
 	e2e.Logf("Cluster Version: %v", clusterVersion)
 	exutil.ApplyNsResourceFromTemplate(oc, nfdNamespace, "--ignore-unknown-parameters=true", "-f", nfd_instance_file, "-p", "IMAGE=quay.io/openshift/origin-node-feature-discovery:"+clusterVersion)
-
-	// wait for NFD pods to come online to verify installation was successful
-	err = wait.Poll(30*time.Second, 3*time.Minute, func() (bool, error) {
-		podInstalled := isPodInstalled(oc, nfdNamespace)
-		if !podInstalled {
-			return false, nil
-		}
-		return true, nil
-	})
-	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("NFD installation failed - No pods found within namespace %s within timeout limit (3 minutes)", nfdNamespace))
+	//wait for NFD master and worker is ready
+	exutil.WaitOprResourceReady(oc, "daemonset", "nfd-master", nfdNamespace, false, false)
+	exutil.WaitOprResourceReady(oc, "daemonset", "nfd-worker", nfdNamespace, false, true)
 }
 
 // createYAMLFromMachineSet creates a YAML file with a given filename from a given machineset name in a given namespace, throws an error if creation fails

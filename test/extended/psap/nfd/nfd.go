@@ -36,14 +36,22 @@ var _ = g.Describe("[sig-node] PSAP should", func() {
 		}
 
 		// test requires NFD to be installed and an instance to be runnning
-		installNFD(oc)
+		g.By("Deploy NFD Operator and create instance on Openshift Container Platform")
+		isNodeLabeled := exutil.IsNodeLabeledByNFD(oc)
+		nfdInstalled := isPodInstalled(oc, nfdNamespace)
+		if nfdInstalled && isNodeLabeled {
+			e2e.Logf("NFD installation and node label found! Continuing with test ...")
+		} else {
+			installNFD(oc)
+			createNFDInstance(oc)
+		}
 
 		g.By("Get existing machinesets in cluster")
 		oc_get_machineset := ci.ListWorkerMachineSets(oc)
 		e2e.Logf("Existing machinesets:\n%v", oc_get_machineset)
 
 		g.By("Get name of first machineset in existing machineset list")
-		first_machineset_name := ci.GetRandomMachineSetName(oc)
+		first_machineset_name := exutil.GetFirstLinuxMachineSets(oc)
 		e2e.Logf("Got %v from machineset list", first_machineset_name)
 
 		g.By("Generate name of new machineset that will be created")
