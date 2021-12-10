@@ -113,7 +113,7 @@ func (pod *pod) create(oc *exutil.CLI) {
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
-// Create new pod with extra parameters
+// Create new pod with extra parameters for readonly
 func (pod *pod) createWithReadOnlyVolume(oc *exutil.CLI) {
 	extraParameters := map[string]interface{}{
 		"jsonPath": `items.0.spec.containers.0.volumeMounts.0.`,
@@ -136,6 +136,19 @@ func (pod *pod) createWithSecurity(oc *exutil.CLI) {
 	extraParameters := map[string]interface{}{
 		"jsonPath":        `items.0.spec.`,
 		"securityContext": securityContext,
+	}
+	if pod.namespace == "" {
+		pod.namespace = oc.Namespace()
+	}
+	err := applyResourceFromTemplateWithExtraParametersAsAdmin(oc, extraParameters, "--ignore-unknown-parameters=true", "-f", pod.template, "-p", "PODNAME="+pod.name, "PODNAMESPACE="+pod.namespace, "PVCNAME="+pod.pvcname, "PODIMAGE="+pod.image, "VOLUMETYPE="+pod.volumeType, "PATHTYPE="+pod.pathType, "PODMOUNTPATH="+pod.mountPath)
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+// Create new pod with extra parameters for nodeSelector
+func (pod *pod) createWithNodeSelector(oc *exutil.CLI, labelName string, labelValue string) {
+	extraParameters := map[string]interface{}{
+		"jsonPath": `items.0.spec.nodeSelector.`,
+		labelName:  labelValue,
 	}
 	if pod.namespace == "" {
 		pod.namespace = oc.Namespace()
