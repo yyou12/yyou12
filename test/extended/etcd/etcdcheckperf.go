@@ -7,8 +7,9 @@ import (
 	g "github.com/onsi/ginkgo"
 	o "github.com/onsi/gomega"
 
-	ci "github.com/openshift/openshift-tests-private/test/extended/util/clusterinfrastructure"
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
+	ci "github.com/openshift/openshift-tests-private/test/extended/util/clusterinfrastructure"
+	e2e "k8s.io/kubernetes/test/e2e/framework"
 )
 
 var _ = g.Describe("[sig-etcd] ETCD", func() {
@@ -40,13 +41,24 @@ var _ = g.Describe("[sig-etcd] ETCD", func() {
 		_, err := exutil.RemoteShPod(oc, "openshift-etcd", etcdPodList[0], "dnf", "install", "-y", "git", "golang")
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		_, err = exutil.RemoteShPodWithBash(oc , "openshift-etcd", etcdPodList[0], "cd /root && git clone --single-branch --branch release-3.5 https://github.com/etcd-io/etcd.git")
+		_, err = exutil.RemoteShPodWithBash(oc, "openshift-etcd", etcdPodList[0], "cd /root && git clone --single-branch --branch release-3.5 https://github.com/etcd-io/etcd.git")
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		_, err = exutil.RemoteShPodWithBash(oc , "openshift-etcd", etcdPodList[0], "cd /root/etcd/tools/benchmark && go build")
+		_, err = exutil.RemoteShPodWithBash(oc, "openshift-etcd", etcdPodList[0], "cd /root/etcd/tools/benchmark && go build")
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		cmd :=	"/root/etcd/tools/benchmark/benchmark put " +
+		defer func() {
+			_, err := exutil.RemoteShPod(oc, "openshift-etcd", etcdPodList[0], "dnf", "remove", "-y", "git", "golang")
+			if err != nil {
+				e2e.Logf("Could not remove git and golang packages")
+			}
+			_, err = exutil.RemoteShPod(oc, "openshift-etcd", etcdPodList[0], "rm", "-rf", "/root/go", "/root/etcd")
+			if err != nil {
+				e2e.Logf("Could not remove test directories")
+			}
+		}()
+
+		cmd := "/root/etcd/tools/benchmark/benchmark put " +
 			"--cacert /etc/kubernetes/static-pod-certs/configmaps/etcd-peer-client-ca/ca-bundle.crt " +
 			"--cert /etc/kubernetes/static-pod-certs/secrets/etcd-all-certs/etcd-peer-$(hostname).*crt " +
 			"--key /etc/kubernetes/static-pod-certs/secrets/etcd-all-certs/etcd-peer-$(hostname).*key " +
@@ -69,7 +81,7 @@ var _ = g.Describe("[sig-etcd] ETCD", func() {
 
 		// Get the monitoring token
 		token, err := oc.AsAdmin().WithoutNamespace().Run("sa").Args("get-token", "prometheus-k8s", "-n",
-		"openshift-monitoring").Output()
+			"openshift-monitoring").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		// Network RTT metric
