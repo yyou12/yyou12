@@ -443,3 +443,19 @@ func checkPodsRunningWithLabel(oc *exutil.CLI, namespace string, label string, n
 	})
 	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("pods list are not %d", number))
 }
+
+type icspSource struct {
+	name     string
+	template string
+}
+
+func (icspsrc *icspSource) create(oc *exutil.CLI) {
+	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", icspsrc.template, "-p", "NAME="+icspsrc.name)
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+func (icspsrc *icspSource) delete(oc *exutil.CLI) {
+	e2e.Logf("deleting icsp: %s", icspsrc.name)
+	err := oc.AsAdmin().WithoutNamespace().Run("delete").Args("imagecontentsourcepolicy", icspsrc.name, "--ignore-not-found=true").Execute()
+	o.Expect(err).NotTo(o.HaveOccurred())
+}

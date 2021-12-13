@@ -20,14 +20,15 @@ import (
 var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 	defer g.GinkgoRecover()
 	var (
-		oc                  = exutil.NewCLI("default-image-registry", exutil.KubeConfigPath())
-		bcName              = "rails-postgresql-example"
-		bcNameOne           = fmt.Sprintf("%s-1", bcName)
-		logInfo             = `Unsupported value: "abc": supported values: "", "Normal", "Debug", "Trace", "TraceAll"`
-		updatePolicy        = `"maxSurge":0,"maxUnavailable":"10%"`
-		monitoringns        = "openshift-monitoring"
-		promPod             = "prometheus-k8s-0"
-		queryCredentialMode = "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query=cco_credentials_mode"
+		oc                   = exutil.NewCLI("default-image-registry", exutil.KubeConfigPath())
+		bcName               = "rails-postgresql-example"
+		bcNameOne            = fmt.Sprintf("%s-1", bcName)
+		logInfo              = `Unsupported value: "abc": supported values: "", "Normal", "Debug", "Trace", "TraceAll"`
+		updatePolicy         = `"maxSurge":0,"maxUnavailable":"10%"`
+		monitoringns         = "openshift-monitoring"
+		promPod              = "prometheus-k8s-0"
+		queryCredentialMode  = "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query=cco_credentials_mode"
+		imageRegistryBaseDir = exutil.FixturePath("testdata", "image_registry")
 	)
 	// author: wewang@redhat.com
 	g.It("Author:wewang-High-39027-Check AWS secret and access key with an OpenShift installed in a regular way", func() {
@@ -80,9 +81,8 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 	// author: wewang@redhat.com
 	g.It("Author:wewang-Critial-24262-Image registry operator can read/overlap gloabl proxy setting [Disruptive]", func() {
 		var (
-			imageRegistryBaseDir = exutil.FixturePath("testdata", "image_registry")
-			buildFile            = filepath.Join(imageRegistryBaseDir, "inputimage.yaml")
-			buildsrc             = bcSource{
+			buildFile = filepath.Join(imageRegistryBaseDir, "inputimage.yaml")
+			buildsrc  = bcSource{
 				outname:   "inputimage",
 				namespace: "",
 				name:      "imagesourcebuildconfig",
@@ -269,9 +269,8 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 	// author: wewang@redhat.com
 	g.It("Author:wewang-Medium-27961-Create imagestreamtag with insufficient permissions [Disruptive]", func() {
 		var (
-			imageRegistryBaseDir = exutil.FixturePath("testdata", "image_registry")
-			roleFile             = filepath.Join(imageRegistryBaseDir, "role.yaml")
-			rolesrc              = authRole{
+			roleFile = filepath.Join(imageRegistryBaseDir, "role.yaml")
+			rolesrc  = authRole{
 				namespace: "",
 				rolename:  "tag-bug-role",
 				template:  roleFile,
@@ -485,9 +484,8 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 	// author: wewang@redhat.com
 	g.It("Author:wewang-High-45952-Imported imagestreams should success in deploymentconfig", func() {
 		var (
-			imageRegistryBaseDir = exutil.FixturePath("testdata", "image_registry")
-			statefulsetFile      = filepath.Join(imageRegistryBaseDir, "statefulset.yaml")
-			statefulsetsrc       = staSource{
+			statefulsetFile = filepath.Join(imageRegistryBaseDir, "statefulset.yaml")
+			statefulsetsrc  = staSource{
 				namespace: "",
 				name:      "example-statefulset",
 				template:  statefulsetFile,
@@ -575,5 +573,56 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 			exutil.DumpBuildLogs(bcName, oc)
 		}
 		o.Expect(err).NotTo(o.HaveOccurred())
+	})
+
+	//author: xiuwang@redhat.com
+	g.It("NonPreRelease-Author:xiuwang-High-45540-Registry should fall back to secondary ImageContentSourcePolicy Mirror [Disruptive]", func() {
+		var (
+			icspFile = filepath.Join(imageRegistryBaseDir, "icsp-multi-mirrors.yaml")
+			icspsrc  = icspSource{
+				name:     "image-policy-fake",
+				template: icspFile,
+			}
+		)
+		g.By("Create imagecontentsourcepolicy with multiple mirrors")
+		defer icspsrc.delete(oc)
+		icspsrc.create(oc)
+
+		g.By("Get all nodes list")
+		nodeList, err := exutil.GetAllNodes(oc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Check registry configs in all nodes")
+		err = wait.Poll(25*time.Second, 2*time.Minute, func() (bool, error) {
+			for _, nodeName := range nodeList {
+				output, err := exutil.DebugNodeWithChroot(oc, nodeName, "cat", "/etc/containers/registries.conf")
+				o.Expect(err).NotTo(o.HaveOccurred())
+				if !strings.Contains(output, "fake.rhcloud.com") {
+					e2e.Logf("Continue to next round")
+					return false, nil
+				}
+			}
+			return true, nil
+		})
+		exutil.AssertWaitPollNoErr(err, "registry configs are not changed")
+
+		g.By("Create a pod to check pulling issue")
+		oc.SetupProject()
+		err = exutil.WaitForAnImageStreamTag(oc, "openshift", "cli", "latest")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("deployment", "cli-test", "--image", "image-registry.openshift-image-registry.svc:5000/openshift/cli:latest", "-n", oc.Namespace()).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Get project events")
+		err = wait.Poll(10*time.Second, 1*time.Minute, func() (bool, error) {
+			events, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("events", "-n", oc.Namespace()).Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			if !strings.Contains(events, `Successfully pulled image "image-registry.openshift-image-registry.svc:5000/openshift/cli:latest"`) {
+				e2e.Logf("Continue to next round")
+				return false, nil
+			}
+			return true, nil
+		})
+		exutil.AssertWaitPollNoErr(err, "Image pulls failed")
 	})
 })
