@@ -33,8 +33,8 @@ func getCreditFromCluster(oc *exutil.CLI) (error, error) {
 	return os.Setenv("AWS_ACCESS_KEY_ID", string(accessKeyId)), os.Setenv("AWS_SECRET_ACCESS_KEY", string(secureKey))
 }
 
-// Get the volume status "in use" or "avaiable" by persistent volume id
-func getAwsVolumeStatusByVolumeId(volumeId string) (string, error) {
+// Get the volume detail info by persistent volume id
+func getAwsVolumeInfoByVolumeId(volumeId string) (string, error) {
 	mySession := session.Must(session.NewSession())
 	svc := ec2.New(mySession, aws.NewConfig().WithRegion("us-east-2"))
 	input := &ec2.DescribeVolumesInput{
@@ -47,9 +47,15 @@ func getAwsVolumeStatusByVolumeId(volumeId string) (string, error) {
 			},
 		},
 	}
-	result, err := svc.DescribeVolumes(input)
-	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("Get the volume:%v status failed.", volumeId))
-	volumeStatus := gjson.Get(interfaceToString(result), `Volumes.0.State`).Str
+	volumeInfo, err := svc.DescribeVolumes(input)
+	return interfaceToString(volumeInfo), err
+}
+
+// Get the volume status "in use" or "avaiable" by persistent volume id
+func getAwsVolumeStatusByVolumeId(volumeId string) (string, error) {
+	volumeInfo, err := getAwsVolumeInfoByVolumeId(volumeId)
+	o.Expect(err).NotTo(o.HaveOccurred())
+	volumeStatus := gjson.Get(volumeInfo, `Volumes.0.State`).Str
 	e2e.Logf("The volume %s status is %q on aws backend", volumeId, volumeStatus)
 	return volumeStatus, err
 }
@@ -110,43 +116,18 @@ func waitVolumeDeleted(volumeId string) {
 
 // Get the volume type by volume id
 func getAwsVolumeTypeByVolumeId(volumeId string) string {
-	mySession := session.Must(session.NewSession())
-	svc := ec2.New(mySession, aws.NewConfig().WithRegion("us-east-2"))
-	input := &ec2.DescribeVolumesInput{
-		Filters: []*ec2.Filter{
-			{
-				Name: aws.String("volume-id"),
-				Values: []*string{
-					aws.String(volumeId),
-				},
-			},
-		},
-	}
-	result, err := svc.DescribeVolumes(input)
+	volumeInfo, err := getAwsVolumeInfoByVolumeId(volumeId)
 	o.Expect(err).NotTo(o.HaveOccurred())
-	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("Get the volume:%v type failed.", volumeId))
-	volumeType := gjson.Get(interfaceToString(result), `Volumes.0.VolumeType`).Str
+	volumeType := gjson.Get(volumeInfo, `Volumes.0.VolumeType`).Str
 	e2e.Logf("The volume %s type is %q on aws backend", volumeId, volumeType)
 	return volumeType
 }
 
 // Get the volume iops by volume id
 func getAwsVolumeIopsByVolumeId(volumeId string) int64 {
-	mySession := session.Must(session.NewSession())
-	svc := ec2.New(mySession, aws.NewConfig().WithRegion("us-east-2"))
-	input := &ec2.DescribeVolumesInput{
-		Filters: []*ec2.Filter{
-			{
-				Name: aws.String("volume-id"),
-				Values: []*string{
-					aws.String(volumeId),
-				},
-			},
-		},
-	}
-	result, err := svc.DescribeVolumes(input)
+	volumeInfo, err := getAwsVolumeInfoByVolumeId(volumeId)
 	o.Expect(err).NotTo(o.HaveOccurred())
-	volumeIops := gjson.Get(interfaceToString(result), `Volumes.0.Iops`).Int()
+	volumeIops := gjson.Get(volumeInfo, `Volumes.0.Iops`).Int()
 	e2e.Logf("The volume %s Iops is %d on aws backend", volumeId, volumeIops)
 	return volumeIops
 }

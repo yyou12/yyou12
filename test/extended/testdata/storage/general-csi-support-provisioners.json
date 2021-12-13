@@ -11,7 +11,7 @@
           },
           {
             "name": "efs.csi.aws.com",
-            "preset_scname": "NA"
+            "preset_scname": "efs-sc"
           }
         ]
       },
@@ -45,7 +45,7 @@
         "provisioners": [
           {
             "name": "csi.vsphere.vmware.com",
-            "preset_scname": "thin-csi",
+            "preset_scname": "thin-csi"
           }
         ]
       },
@@ -57,7 +57,8 @@
             "preset_scname": "standard-csi"
           },
           {
-            "name": "manila.csi.openstack.org"
+            "name": "manila.csi.openstack.org",
+            "preset_scname": "csi-manila-ceph"
           }
         ]
       }

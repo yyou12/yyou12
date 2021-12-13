@@ -10,7 +10,7 @@ import (
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 )
 
-var _ = g.Describe("[sig-storage] STORAGE WITH-TREARDOWN-PROJECT", func() {
+var _ = g.Describe("[sig-storage] STORAGE", func() {
 	defer g.GinkgoRecover()
 	var (
 		oc            = exutil.NewCLI("storage-general-csi", exutil.KubeConfigPath())
@@ -124,37 +124,31 @@ var _ = g.Describe("[sig-storage] STORAGE WITH-TREARDOWN-PROJECT", func() {
 		if len(supportProvisioners) == 0 {
 			g.Skip("Skip for scenario non-supported provisioner!!!")
 		}
+		// Use the framework created project as default, if use your own, exec the follow code setupProject
+		g.By("0. Create new project for the scenario")
+		oc.SetupProject() //create new project
 		for _, provisioner := range supportProvisioners {
 			g.By("******" + cloudProvider + " csi driver: \"" + provisioner + "\" test phase start" + "******")
 			// Set the resource definition for the scenario
 			pvc := newPersistentVolumeClaim(setPersistentVolumeClaimTemplate(pvcTemplate))
 			pod := newPod(setPodTemplate(podTemplate), setPodPersistentVolumeClaim(pvc.name))
 
-			// Use the framework created project as default, if use your own, exec the follow code setupProject
-			g.By("0. Create new project for the scenario")
-			oc.SetupProject() //create new project
-			pvc.namespace = oc.Namespace()
-			pod.namespace = pvc.namespace
-
-			g.By("1. Create a pvc with the preset csi storageclass")
+			g.By("# Create a pvc with the preset csi storageclass")
 			pvc.scname = getPresetStorageClassNameByProvisioner(cloudProvider, provisioner)
 			e2e.Logf("%s", pvc.scname)
 			pvc.create(oc)
 			defer pvc.deleteAsAdmin(oc)
 
-			g.By("2. Create pod with the created pvc and wait for the pod ready")
+			g.By("# Create pod with the created pvc and wait for the pod ready")
 			pod.create(oc)
 			defer pod.deleteAsAdmin(oc)
 			pod.waitReady(oc)
 
-			g.By("3. Check the pod volume can be read and write")
+			g.By("# Check the pod volume can be read and write")
 			pod.checkMountedVolumeCouldRW(oc)
 
-			g.By("4. Check the pod volume have the exec right")
+			g.By("# Check the pod volume have the exec right")
 			pod.checkMountedVolumeHaveExecRight(oc)
-
-			g.By("5. TearDown the project after test phase")
-			oc.TeardownProject()
 
 			g.By("******" + cloudProvider + " csi driver: \"" + provisioner + "\" test phase finished" + "******")
 		}
@@ -579,6 +573,74 @@ var _ = g.Describe("[sig-storage] STORAGE WITH-TREARDOWN-PROJECT", func() {
 
 			g.By("Check the data exist in cloned volume")
 			pod_clone.checkDataInRawBlockVolume(oc)
+
+			g.By("******" + cloudProvider + " csi driver: \"" + provisioner + "\" test phase finished" + "******")
+		}
+	})
+
+	// author: pewang@redhat.com
+	// OCP-44909 [CSI Driver] Volume should mount again after `oc adm drain`
+	g.It("Author:pewang-High-44909-[CSI Driver] Volume should mount again after `oc adm drain` [Disruptive]", func() {
+		// Define the test scenario support provisioners
+		scenarioSupportProvisioners := []string{"ebs.csi.aws.com", "disk.csi.azure.com", "cinder.csi.openstack.org", "pd.csi.storage.gke.io", "csi.vsphere.vmware.com"}
+		// Set the resource template for the scenario
+		var (
+			storageTeamBaseDir                 = exutil.FixturePath("testdata", "storage")
+			pvcTemplate                        = filepath.Join(storageTeamBaseDir, "pvc-template.yaml")
+			deploymentTemplate                 = filepath.Join(storageTeamBaseDir, "dep-template.yaml")
+			supportProvisioners                = sliceIntersect(scenarioSupportProvisioners, getSupportProvisionersByCloudProvider(cloudProvider))
+			schedulableWorkersWithSameAz, azName = getSchedulableWorkersWithSameAz(oc)
+		)
+		if len(supportProvisioners) == 0 {
+			g.Skip("Skip: Non-supported provisioner!!!")
+		}
+		if len(schedulableWorkersWithSameAz) == 0 {
+			g.Skip("Skip: The test cluster has less than two schedulable workers in each avaiable zone!!!")
+		}
+		// Set up a specified project share for all the phases
+		g.By("# Create new project for the scenario")
+		oc.SetupProject() //create new project
+		for _, provisioner := range supportProvisioners {
+			g.By("******" + cloudProvider + " csi driver: \"" + provisioner + "\" test phase start" + "******")
+			// Set the resource definition for the scenario
+			pvc := newPersistentVolumeClaim(setPersistentVolumeClaimTemplate(pvcTemplate), setPersistentVolumeClaimStorageClassName(getPresetStorageClassNameByProvisioner(cloudProvider, provisioner)))
+			dep := newDeployment(setDeploymentTemplate(deploymentTemplate), setDeploymentPVCName(pvc.name))
+
+			g.By("# Create a pvc with preset csi storageclass")
+			e2e.Logf("The preset storage class name is: %s", pvc.scname)
+			pvc.create(oc)
+			defer pvc.deleteAsAdmin(oc)
+
+			g.By("# Create a deployment with the created pvc, node selector and wait for the pod ready")
+			if azName == "noneAzCluster" {
+				dep.create(oc)
+			} else {
+				dep.createWithNodeSelector(oc, `topology\.kubernetes\.io\/zone`, azName)
+			}
+			defer dep.deleteAsAdmin(oc)
+
+			g.By("# Wait for the deployment ready")
+			dep.waitReady(oc)
+
+			g.By("# Check the deployment's pod mounted volume can be read and write")
+			dep.checkPodMountedVolumeCouldRW(oc)
+
+			g.By("# Run drain cmd to drain the node which the deployment's pod located")
+			originNodeName := getNodeNameByPod(oc, dep.namespace, dep.getPodList(oc)[0])
+			drainSpecificNode(oc, originNodeName)
+			defer uncordonSpecificNode(oc, originNodeName)
+
+			g.By("# Wait for the deployment become ready again")
+			dep.waitReady(oc)
+
+			g.By("# Check the deployment's pod schedule to another ready node")
+			newNodeName := getNodeNameByPod(oc, dep.namespace, dep.getPodList(oc)[0])
+			o.Expect(originNodeName).NotTo(o.Equal(newNodeName))
+
+			g.By("# Check testdata still in the volume")
+			output, err := execCommandInSpecificPod(oc, dep.namespace, dep.getPodList(oc)[0], "cat "+dep.mpath+"/testfile*")
+			o.Expect(err).NotTo(o.HaveOccurred())
+			o.Expect(output).To(o.ContainSubstring("storage test"))
 
 			g.By("******" + cloudProvider + " csi driver: \"" + provisioner + "\" test phase finished" + "******")
 		}

@@ -191,6 +191,14 @@ func getPersistentVolumeClaimStatus(oc *exutil.CLI, namespace string, pvcName st
 	return pvcStatus, err
 }
 
+//  Describe specified PersistentVolumeClaim
+func describePersistentVolumeClaim(oc *exutil.CLI, namespace string, pvcName string) (string, error) {
+	output, err := oc.WithoutNamespace().Run("describe").Args("pvc", "-n", namespace, pvcName).Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	e2e.Logf("The PVC  %s in namespace %s detail info:\n %s", pvcName, namespace, output)
+	return output, err
+}
+
 //  Get specified PersistentVolumeClaim status type during Resize
 func getPersistentVolumeClaimStatusType(oc *exutil.CLI, namespace string, pvcName string) (string, error) {
 	pvcStatus, err := oc.WithoutNamespace().Run("get").Args("pvc", pvcName, "-n", namespace, "-o=jsonpath={.status.conditions[0].type}").Output()
@@ -201,7 +209,6 @@ func getPersistentVolumeClaimStatusType(oc *exutil.CLI, namespace string, pvcNam
 
 // Apply the patch to Resize volume
 func applyVolumeResizePatch(oc *exutil.CLI, pvcName string, namespace string, volumeSize string) (string, error) {
-	//command1 := "{\"spec\":{\"resources\":{\"requests\":{\"storage\":\"" + volumeSize + "Gi\"}}}}"
 	command1 := "{\"spec\":{\"resources\":{\"requests\":{\"storage\":\"" + volumeSize + "\"}}}}"
 	command := []string{"pvc", pvcName, "-n", namespace, "-p", command1, "--type=merge"}
 	e2e.Logf("The command is %s", command)

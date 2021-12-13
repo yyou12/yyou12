@@ -6,6 +6,7 @@ import (
 	"time"
 
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
+	"github.com/tidwall/gjson"
 	"k8s.io/apimachinery/pkg/util/wait"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 
@@ -86,4 +87,50 @@ func getNodeNameByPod(oc *exutil.CLI, namespace string, podName string) string {
 	o.Expect(err).NotTo(o.HaveOccurred())
 	e2e.Logf("The node name is %s", nodeName)
 	return nodeName
+}
+
+// Get the cluster wokernodes info
+func getWorkersInfo(oc *exutil.CLI) string {
+	workersInfo, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("nodes", "-l", "node-role.kubernetes.io/worker", "-o", "json").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	return workersInfo
+}
+
+// Get the cluster schedulable woker nodes names with the same avaiable zone
+func getSchedulableWorkersWithSameAz(oc *exutil.CLI) (schedulableWorkersWithSameAz []string, azName string) {
+	var (
+		workersInfo              = getWorkersInfo(oc)
+		workers                  = strings.Split(strings.Trim(strings.Trim(gjson.Get(workersInfo, "items.#.metadata.name").String(), "["), "]"), ",")
+		schedulableWorkersWithAz = make(map[string]string)
+		zonePath                 = `metadata.labels.topology\.kubernetes\.io\/zone`
+	)
+	for _, worker := range workers {
+		scheduleFlag := gjson.Get(workersInfo, "items.#(metadata.name="+worker+").spec.unschedulable").String()
+		if scheduleFlag != "true" {
+			azName = gjson.Get(workersInfo, "items.#(metadata.name="+worker+")."+zonePath).String()
+			if azName == "" {
+				azName = "noneAzCluster"
+			}
+			if _, ok := schedulableWorkersWithAz[azName]; ok {
+				e2e.Logf("Schedulable workers with Same Az: %s,%s", worker, schedulableWorkersWithAz[azName])
+				return append(schedulableWorkersWithSameAz, worker, schedulableWorkersWithAz[azName]), azName
+			}
+			schedulableWorkersWithAz[azName] = worker
+		}
+	}
+	e2e.Logf("*** The test cluster has less than two schedulable workers in each avaiable zone! ***")
+	return nil, azName
+}
+
+// Drain specified node
+func drainSpecificNode(oc *exutil.CLI, nodeName string) {
+	e2e.Logf("oc adm drain nodes/" + nodeName + " --ignore-daemonsets --delete-emptydir-data --force")
+	err := oc.AsAdmin().WithoutNamespace().Run("adm").Args("drain", "nodes/"+nodeName, "--ignore-daemonsets", "--delete-emptydir-data", "--force").Execute()
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+// Uncordon specified node
+func uncordonSpecificNode(oc *exutil.CLI, nodeName string) error {
+	e2e.Logf("oc adm uncordon nodes/" + nodeName)
+	return oc.AsAdmin().WithoutNamespace().Run("adm").Args("uncordon", "nodes/"+nodeName).Execute()
 }

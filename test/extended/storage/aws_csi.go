@@ -48,8 +48,6 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 		// Use the framework created project as default, if use your own, exec the follow code setupProject
 		g.By("0. Create new project for the scenario")
 		oc.SetupProject() //create new project
-		pvc.namespace = oc.Namespace()
-		pod.namespace = pvc.namespace
 
 		g.By("1. Create io1 type aws-ebs-csi storageclass")
 		storageClass.createWithExtraParameters(oc, extraParameters)

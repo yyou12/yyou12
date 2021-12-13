@@ -170,14 +170,7 @@ func (pod *pod) deleteAsAdmin(oc *exutil.CLI) {
 
 //  Pod exec the bash CLI
 func (pod *pod) execCommand(oc *exutil.CLI, command string) (string, error) {
-	command1 := []string{"-n", pod.namespace, pod.name, "--", "/bin/sh", "-c", command}
-	msg, err := oc.WithoutNamespace().Run("exec").Args(command1...).Output()
-	if err != nil {
-		e2e.Logf(pod.name+"# "+command+" *failed with* :\"%v\".", err)
-		return msg, err
-	}
-	debugLogf(pod.name+"# "+command+" *Output is* :\"%s\".", msg)
-	return msg, nil
+	return execCommandInSpecificPod(oc, pod.namespace, pod.name, command)
 }
 
 // Pod exec the bash CLI with admin
@@ -227,7 +220,7 @@ func (pod *pod) checkDataInRawBlockVolume(oc *exutil.CLI) {
 
 // Waiting for the Pod ready
 func (pod *pod) waitReady(oc *exutil.CLI) {
-	err := wait.Poll(5*time.Second, 120*time.Second, func() (bool, error) {
+	err := wait.Poll(5*time.Second, 180*time.Second, func() (bool, error) {
 		status, err1 := checkPodReady(oc, pod.namespace, pod.name)
 		if err1 != nil {
 			e2e.Logf("the err:%v, wait for pod %v to become ready.", err1, pod.name)
@@ -241,8 +234,8 @@ func (pod *pod) waitReady(oc *exutil.CLI) {
 
 	if err != nil {
 		podDescribe := describePod(oc, pod.namespace, pod.name)
-		e2e.Logf("oc describe pod %v.", pod.name)
-		e2e.Logf(podDescribe)
+		e2e.Logf("oc describe pod %s:\n%s", pod.name, podDescribe)
+		describePersistentVolumeClaim(oc, pod.namespace, pod.pvcname)
 	}
 	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("pod %s not ready", pod.name))
 }
@@ -271,7 +264,7 @@ func describePod(oc *exutil.CLI, namespace string, podName string) string {
 
 //  Waiting for the pod becomes ready, such as "Running", "Ready", "Complete"
 func waitPodReady(oc *exutil.CLI, namespace string, podName string) {
-	err := wait.Poll(5*time.Second, 120*time.Second, func() (bool, error) {
+	err := wait.Poll(5*time.Second, 180*time.Second, func() (bool, error) {
 		status, err1 := checkPodReady(oc, namespace, podName)
 		if err1 != nil {
 			e2e.Logf("the err:%v, wait for pod %v to become ready.", err1, podName)
@@ -292,17 +285,25 @@ func waitPodReady(oc *exutil.CLI, namespace string, podName string) {
 }
 
 //  Specified pod exec the bash CLI
-func execCommandInSpecificPod(oc *exutil.CLI, namespace string, podName string, command string) (string, error) {
+//  If failed execute will retry 3 times, because of the network instability or other action cause the pod recreate flake.
+//  Flake info : "error: unable to upgrade connection: container not found"  It maybe the container suddenly crashed.
+func execCommandInSpecificPod(oc *exutil.CLI, namespace string, podName string, command string) (output string, errInfo error) {
 	command1 := []string{"-n", namespace, podName, "--", "/bin/sh", "-c", command}
-	msg, err := oc.WithoutNamespace().Run("exec").Args(command1...).Output()
+	err := wait.Poll(5*time.Second, 15*time.Second, func() (bool, error) {
+		output, errInfo = oc.WithoutNamespace().Run("exec").Args(command1...).Output()
+		if errInfo != nil {
+			e2e.Logf(podName+"# "+command+" *failed with* :\"%v\".", errInfo)
+			return false, errInfo
+		}
+		e2e.Logf(podName+"# "+command+" *Output is* :\"%s\".", output)
+		return true, nil
+	})
+
 	if err != nil {
-		e2e.Logf(podName+"# "+command+" *failed with* :\"%v\".", err)
-		return msg, err
-	} else {
-		e2e.Logf(podName+"# "+command+" *Output is* :\"%s\".", msg)
+		e2e.Logf("oc describe pod %s:\n%s", podName, describePod(oc, namespace, podName))
+		return output, errInfo
 	}
-	o.Expect(err).NotTo(o.HaveOccurred())
-	return msg, nil
+	return output, nil
 }
 
 // Wait for pods selected with selector name to be removed
@@ -379,14 +380,13 @@ func execCommandInSpecificPodWithLabel(oc *exutil.CLI, namespace string, labelNa
 	podflag := 0
 	var data, podDescribe string
 	for _, pod := range podsList {
-		command1 := []string{pod, "-n", namespace, "--", "/bin/sh", "-c", command}
-		msg, err := oc.WithoutNamespace().Run("exec").Args(command1...).Output()
+		msg, err := execCommandInSpecificPod(oc, namespace, pod, command)
 		if err != nil {
 			e2e.Logf("Execute command failed with  err: %v.", err)
 			podDescribe = describePod(oc, namespace, pod)
 			podflag = 1
 		} else {
-			e2e.Logf("Executed \"%s\" on pod \"%s\" result: %s", command1, pod, msg)
+			e2e.Logf("Executed \"%s\" on pod \"%s\" result: %s", command, pod, msg)
 			data = msg
 		}
 	}
@@ -510,6 +510,19 @@ func (dep *deployment) create(oc *exutil.CLI) {
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
+// Create new deployment with extra parameters for nodeSelector
+func (dep *deployment) createWithNodeSelector(oc *exutil.CLI, labelName string, labelValue string) {
+	if dep.namespace == "" {
+		dep.namespace = oc.Namespace()
+	}
+	extraParameters := map[string]interface{}{
+		"jsonPath": `items.0.spec.template.spec.nodeSelector.`,
+		labelName:  labelValue,
+	}
+	err := applyResourceFromTemplateWithExtraParametersAsAdmin(oc, extraParameters, "--ignore-unknown-parameters=true", "-f", dep.template, "-p", "DNAME="+dep.name, "DNAMESPACE="+dep.namespace, "PVCNAME="+dep.pvcname, "REPLICASNUM="+dep.replicasno, "DLABEL="+dep.applabel, "MPATH="+dep.mpath, "VOLUMETYPE="+dep.volumetype, "TYPEPATH="+dep.typepath)
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
 // Delete Deployment from the namespace
 func (dep *deployment) delete(oc *exutil.CLI) {
 	err := oc.WithoutNamespace().Run("delete").Args("deployment", dep.name, "-n", dep.namespace).Execute()
@@ -554,7 +567,7 @@ func (dep *deployment) describe(oc *exutil.CLI) string {
 
 // Waiting the deployment become ready
 func (dep *deployment) waitReady(oc *exutil.CLI) {
-	err := wait.Poll(5*time.Second, 120*time.Second, func() (bool, error) {
+	err := wait.Poll(5*time.Second, 180*time.Second, func() (bool, error) {
 		deploymentReady, err := dep.checkReady(oc)
 		if err != nil {
 			return deploymentReady, err
@@ -567,8 +580,8 @@ func (dep *deployment) waitReady(oc *exutil.CLI) {
 	})
 
 	if err != nil {
-		e2e.Logf("oc describe pod %v.", dep.name)
-		e2e.Logf(dep.describe(oc))
+		e2e.Logf("oc describe pod %s:\n%s", dep.name, dep.describe(oc))
+		describePersistentVolumeClaim(oc, dep.namespace, dep.pvcname)
 	}
 	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("Deployment %s not ready", dep.name))
 }
