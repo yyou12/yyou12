@@ -397,8 +397,10 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		o.Expect(sshKeyOut).Should(o.ContainSubstring("mco_test@redhat.com"))
 	})
 
-	g.It("Author:sregidor-NonPreRelease-High-46304-add new ssh authorized keys RHEL [Serial]", func() {
+	g.It("Author:sregidor-NonPreRelease-High-46304-add new ssh authorized keys RHEL. OCP<4.10 [Serial]", func() {
+		skipTestIfClusterVersion(oc, ">=", "4.10")
 		workerNode := skipTestIfOsIsNotRhelOs(oc)
+
 		g.By("Create new machine config with new authorized key")
 		mcName := "change-worker-add-ssh-authorized-key"
 		mcTemplate := generateTemplateAbsolutePath(mcName + ".yaml")
@@ -974,6 +976,17 @@ func createMcAndVerifyMCValue(oc *exutil.CLI, stepText string, mcName string, wo
 	o.Expect(err).NotTo(o.HaveOccurred())
 	o.Expect(podOut).Should(o.ContainSubstring(textToVerify.textToVerifyForNode))
 	e2e.Logf("%s is verified in the machine config daemon!", stepText)
+}
+
+// skipTestIfClusterVersion skips the test case if the provided version matches the constraints.
+func skipTestIfClusterVersion(oc *exutil.CLI, operator, constraintVersion string) {
+	clusterVersion, _, err := exutil.GetClusterVersion(oc)
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	if CompareVersions(clusterVersion, operator, constraintVersion) {
+		g.Skip(fmt.Sprintf("Test case skipped because current cluster version %s %s %s",
+			clusterVersion, operator, constraintVersion))
+	}
 }
 
 // skipTestIfOsIsNotCoreOs it will either skip the test case in case of worker node is not CoreOS or will return the CoreOS worker node
