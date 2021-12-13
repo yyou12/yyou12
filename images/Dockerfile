@@ -9,8 +9,7 @@ RUN make build; \
 
 FROM registry.ci.openshift.org/ocp/4.10:tools
 COPY --from=builder /tmp/build/extended-platform-tests /usr/bin/
-RUN curl --silent --location https://dl.yarnpkg.com/rpm/yarn.repo | tee /etc/yum.repos.d/yarn.repo && \
-    PACKAGES="git gzip zip util-linux openssh-clients httpd-tools nodejs yarn" && \
+RUN PACKAGES="git gzip zip util-linux openssh-clients" && \
     yum install --setopt=tsflags=nodocs -y $PACKAGES && yum clean all && rm -rf /var/cache/yum/* && \
     git config --system user.name test-private && \
     git config --system user.email test-private@test.com && \
