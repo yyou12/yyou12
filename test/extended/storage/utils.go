@@ -256,3 +256,18 @@ func debugLogf(format string, args ...interface{}) {
 		e2e.Logf(fmt.Sprintf(nowStamp()+": *STORAGE_DEBUG*: "+format+"\n", args...))
 	}
 }
+
+func getZonesFromWorker(oc *exutil.CLI) []string {
+	var workerZones []string
+	workerNodes, err := exutil.GetClusterNodesBy(oc, "worker")
+	o.Expect(err).NotTo(o.HaveOccurred())
+	for _, workerNode := range workerNodes {
+		zone, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("nodes/"+workerNode, "-o=jsonpath={.metadata.labels.failure-domain\\.beta\\.kubernetes\\.io\\/zone}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		if !contains(workerZones, zone) {
+			workerZones = append(workerZones, zone)
+		}
+	}
+
+	return workerZones
+}
