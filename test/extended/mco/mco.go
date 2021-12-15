@@ -414,6 +414,33 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		o.Expect(sshKeyOut).Should(o.ContainSubstring("mco_test@redhat.com"))
 	})
 
+	g.It("Author:sregidor-NonPreRelease-High-46897-add new ssh authorized keys RHEL. OCP>=4.10 [Serial]", func() {
+		skipTestIfClusterVersion(oc, "<", "4.10")
+		workerNode := skipTestIfOsIsNotRhelOs(oc)
+
+		g.By("Create new machine config with new authorized key")
+		mcName := "change-worker-add-ssh-authorized-key"
+		mcTemplate := generateTemplateAbsolutePath(mcName + ".yaml")
+		mc := MachineConfig{name: mcName, template: mcTemplate, pool: "worker"}
+		defer mc.delete(oc)
+		mc.create(oc)
+
+		g.By("Check that the logs are reporting correctly that the 'core' user does not exist")
+		errorString := "core user does not exist, and creating users is not supported, so ignoring configuration specified for core user"
+		podLogs, err := exutil.WaitAndGetSpecificPodLogs(oc, "openshift-machine-config-operator", "machine-config-daemon",
+			workerNode.GetMachineConfigDaemon(), "'"+errorString+"'")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(podLogs).Should(o.ContainSubstring(errorString))
+
+		g.By("Check that the authorized keys have not been created")
+		rf := NewRemoteFile(workerNode, "/home/core/.ssh/authorized_keys")
+		rferr := rf.Fetch().(*exutil.ExitError)
+		// There should be no "/home/core" directory, so the result of trying to read the keys should be a failure
+		o.Expect(rferr).To(o.HaveOccurred())
+		o.Expect(rferr.StdErr).Should(o.ContainSubstring("No such file or directory"))
+
+	})
+
 	g.It("Author:mhanss-NonPreRelease-Medium-43084-shutdown machine config daemon with SIGTERM [Disruptive]", func() {
 		g.By("Create new machine config to add additional ssh key")
 		mcName := "add-additional-ssh-authorized-key"
