@@ -55,7 +55,7 @@ var _ = g.Describe("[sig-scheduling] Workloads The Descheduler Operator automate
 	}
 
 	// author: knarra@redhat.com
-	g.It("Author:knarra-High-21205-Low-36584-Install descheduler operator via a deployment & verify it should not violate PDB [Slow][Disruptive]", func() {
+	g.It("Author:knarra-High-21205-Low-36584-Install descheduler operator via a deployment & verify it should not violate PDB [Slow] [Disruptive] [Flaky]", func() {
 		deploydpT := filepath.Join(buildPruningBaseDir, "deploy_duplicatepodsrs.yaml")
 
 		nodeList, err := e2enode.GetReadySchedulableNodes(oc.KubeFramework().ClientSet)
@@ -204,7 +204,7 @@ var _ = g.Describe("[sig-scheduling] Workloads The Descheduler Operator automate
 	})
 
 	// author: knarra@redhat.com
-	g.It("Author:knarra-High-37463-High-40055-Descheduler-Validate AffinityAndTaints and TopologyAndDuplicates profile [Disruptive][Slow]", func() {
+	g.It("Author:knarra-High-37463-High-40055-Descheduler-Validate AffinityAndTaints and TopologyAndDuplicates profile [Disruptive][Slow] [Flaky]", func() {
 		deployT := filepath.Join(buildPruningBaseDir, "deploy_nodeaffinity.yaml")
 		deploynT := filepath.Join(buildPruningBaseDir, "deploy_nodetaint.yaml")
 		deploypT := filepath.Join(buildPruningBaseDir, "deploy_interpodantiaffinity.yaml")

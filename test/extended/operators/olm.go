@@ -957,7 +957,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	})
 
 	// author: jiazha@redhat.com
-	g.It("ConnectedOnly-Author:jiazha-High-37260-should allow to create the default CatalogSource [Disruptive]", func() {
+	g.It("ConnectedOnly-Author:jiazha-High-37260-should allow to create the default CatalogSource [Disruptive] [Flaky]", func() {
 		g.By("1) Disable the default OperatorHub")
 		patchResource(oc, asAdmin, withoutNamespace, "operatorhub", "cluster", "-p", "{\"spec\": {\"disableAllDefaultSources\": true}}", "--type=merge")
 		defer patchResource(oc, asAdmin, withoutNamespace, "operatorhub", "cluster", "-p", "{\"spec\": {\"disableAllDefaultSources\": false}}", "--type=merge")
@@ -1211,7 +1211,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	})
 
 	// author: bandrade@redhat.com
-	g.It("Author:bandrade-High-24387-Any CRD upgrade is allowed if there is only one owner in a cluster [Disruptive]", func() {
+	g.It("Author:bandrade-High-24387-Any CRD upgrade is allowed if there is only one owner in a cluster [Disruptive] [Flaky]", func() {
 		var (
 			catName             = "cs-24387"
 			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
@@ -2424,7 +2424,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	})
 
 	// author: scolange@redhat.com
-	g.It("ConnectedOnly-Author:scolange-Medium-24738-CRD should update if previously defined schemas do not change [Disruptive]", func() {
+	g.It("ConnectedOnly-Author:scolange-Medium-24738-CRD should update if previously defined schemas do not change [Disruptive] [Flaky]", func() {
 		var buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
 		var cfgMap = filepath.Join(buildPruningBaseDir, "configmap-etcd.yaml")
 		var patchCfgMap = filepath.Join(buildPruningBaseDir, "configmap-ectd-alpha-beta.yaml")

@@ -132,7 +132,7 @@ var _ = g.Describe("[sig-auth] Authentication", func() {
 	// author: pmali@redhat.com
 	// It is destructive case, will make co/authentical Available=False for a while, so adding [Disruptive]
 
-	g.It("Author:pmali-High-33390-Network Stability check every level of a managed route [Disruptive]", func() {
+	g.It("Author:pmali-High-33390-Network Stability check every level of a managed route [Disruptive] [Flaky]", func() {
 		g.By("Check pods under openshift-authentication namespace is available")
 		err := wait.Poll(1*time.Second, 60*time.Second, func() (bool, error) {
 			output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-n", "openshift-authentication").Output()
