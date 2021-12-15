@@ -184,9 +184,9 @@ func (c *CLI) SetNamespace(ns string) *CLI {
 	return c
 }
 
-// WithoutNamespace instructs the command should be invoked without adding --namespace parameter
+// NotShowInfo instructs the command will not be logged
 func (c *CLI) NotShowInfo() *CLI {
-	c.showInfo = true
+	c.showInfo = false
 	return c
 }
 
