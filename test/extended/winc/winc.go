@@ -138,7 +138,7 @@ var _ = g.Describe("[sig-windows] Windows_Containers NonPreRelease", func() {
 		_, err = oc.WithoutNamespace().Run("delete").Args("secret", "windows-user-data", "-n", "openshift-machine-api").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		pollErr := wait.Poll(5*time.Second, 60*time.Second, func() (bool, error) {
-			msg, _ := oc.WithoutNamespace().Run("get").Args("secret", "windows-user-data", "-n", "openshift-machine-api").Output()
+			msg, _ := oc.WithoutNamespace().Run("get").Args("secret", "-n", "openshift-machine-api").Output()
 			if !strings.Contains(msg, "windows-user-data") {
 				e2e.Logf("Secret windows-user-data does not exist yet and wait up to 1 minute ...")
 				return false, nil
