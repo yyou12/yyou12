@@ -18,8 +18,17 @@ func GetFirstLinuxWorkerNode(oc *CLI) (string, error) {
 
 // GetAllNodes returns a list of the names of all linux/windows nodes in the cluster have both linux and windows node
 func GetAllNodesbyOSType(oc *CLI, ostype string) ([]string, error) {
+	var nodesArray []string
 	nodes, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("node", "-l", "kubernetes.io/os="+ostype, "-o", "jsonpath='{.items[*].metadata.name}'").Output()
-	return strings.Split(strings.Trim(nodes, "'"), " "), err
+	nodesStr := strings.Trim(nodes, "'")
+	//If split an empty string to string array, the default length string array is 1
+	//So need to check if string is empty.
+	if len(nodesStr) == 0 {
+		return nodesArray, err
+	} else {
+		nodesArray = strings.Split(nodesStr, " ")
+		return nodesArray, err
+	}
 }
 
 // GetAllNodes returns a list of the names of all nodes in the cluster

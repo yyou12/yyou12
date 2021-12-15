@@ -1,8 +1,6 @@
 package nto
 
 import (
-	"fmt"
-
 	g "github.com/onsi/ginkgo"
 	o "github.com/onsi/gomega"
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
@@ -353,7 +351,6 @@ var _ = g.Describe("[sig-node] PSAP should", func() {
 		}()
 		//Get the tuned pod name that run on first worker node
 		tunedNodeName, err := exutil.GetFirstLinuxWorkerNode(oc)
-		fmt.Println("tunedNodeName" + tunedNodeName)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		tunedPodName := getTunedPodNamebyNodeName(oc, tunedNodeName, ntoNamespace)
 
@@ -386,9 +383,66 @@ var _ = g.Describe("[sig-node] PSAP should", func() {
 		g.By("Delete labeled tuned pod by name")
 		oc.AsAdmin().WithoutNamespace().Run("delete").Args("pod", tunedPodName, "-n", ntoNamespace).Execute()
 
-		g.By("Check all nodes for vm.max_map_count value, all node should different from 128888")
+		g.By("Check all nodes for user.max_cgroup_namespaces value, all node should different from 128888")
 		compareSysctlDifferentFromSpecifiedValueByName(oc, "user.max_cgroup_namespaces", "128888")
 
 	})
 
+	g.It("NonPreRelease-Author:liqcui-Medium-23958-Test NTO for label pod in daemon mode [Disruptive]", func() {
+
+		// test requires NTO to be installed
+		if !isNTO {
+			g.Skip("NTO is not installed - skipping test ...")
+		}
+
+		ntoRes := ntoResource{
+			name:        "user-max-ipc-namespaces",
+			namespace:   ntoNamespace,
+			template:    podlabel_tuned_file,
+			sysctlparm:  "user.max_ipc_namespaces",
+			sysctlvalue: "121112",
+		}
+		defer func() {
+			g.By("Remove custom profile (if not already removed) and patch default tuned back to Managed")
+			ntoRes.delete(oc)
+		}()
+		//Get the tuned pod name that run on first worker node
+		tunedNodeName, err := exutil.GetFirstLinuxWorkerNode(oc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		tunedPodName := getTunedPodNamebyNodeName(oc, tunedNodeName, ntoNamespace)
+
+		defer func() {
+			g.By("Forcily remove label from the pod on first worker node in case compareSysctlDifferentFromSpecifiedValueByName step failure")
+			err = exutil.LabelPod(oc, ntoNamespace, tunedPodName, "tuned.openshift.io/elasticsearch-")
+		}()
+
+		g.By("Apply new profile from CR")
+		ntoRes.createPodLabelTunedIfNotExist(oc)
+
+		g.By("Check current profile for each node")
+		output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", ntoNamespace, "profile").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf("Current profile for each node: \n%v", output)
+
+		g.By("Check all nodes for user.max_ipc_namespaces value, all node should different from 121112")
+		compareSysctlDifferentFromSpecifiedValueByName(oc, "user.max_ipc_namespaces", "121112")
+
+		g.By("Label tuned pod as tuned.openshift.io/elasticsearch=")
+		err = exutil.LabelPod(oc, ntoNamespace, tunedPodName, "tuned.openshift.io/elasticsearch=")
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Check current profile for each node")
+		ntoRes.assertTunedProfileApplied(oc)
+
+		g.By("Compare if the value user.max_ipc_namespaces in on node with labeled pod, should be 121112")
+		compareSysctlValueOnSepcifiedNodeByName(oc, tunedNodeName, "user.max_ipc_namespaces", "", "121112")
+
+		g.By("Remove label from tuned pod as tuned.openshift.io/elasticsearch-")
+		err = exutil.LabelPod(oc, ntoNamespace, tunedPodName, "tuned.openshift.io/elasticsearch-")
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Check all nodes for user.max_ipc_namespaces value, all node should different from 121112")
+		compareSysctlDifferentFromSpecifiedValueByName(oc, "user.max_ipc_namespaces", "121112")
+
+	})
 })

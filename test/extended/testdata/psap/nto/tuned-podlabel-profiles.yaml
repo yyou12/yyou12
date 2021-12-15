@@ -7,6 +7,7 @@ objects:
   kind: Tuned
   metadata:
     name: ${TUNED_NAME}
+    namespace: openshift-cluster-node-tuning-operator
   spec:
     profile:
     - data: |
@@ -15,7 +16,7 @@ objects:
         include=openshift-node
   
         [sysctl]
-        ${SYSCTLPARM} = ${SYSCTLVALUE}
+        ${SYSCTLPARM}=${SYSCTLVALUE}
   
       name: ${TUNED_NAME}
   
