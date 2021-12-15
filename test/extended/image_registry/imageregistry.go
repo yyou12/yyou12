@@ -23,6 +23,7 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 		oc                   = exutil.NewCLI("default-image-registry", exutil.KubeConfigPath())
 		bcName               = "rails-postgresql-example"
 		bcNameOne            = fmt.Sprintf("%s-1", bcName)
+		errInfo              = "http.response.status=404"
 		logInfo              = `Unsupported value: "abc": supported values: "", "Normal", "Debug", "Trace", "TraceAll"`
 		updatePolicy         = `"maxSurge":0,"maxUnavailable":"10%"`
 		monitoringns         = "openshift-monitoring"
@@ -624,5 +625,67 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 			return true, nil
 		})
 		exutil.AssertWaitPollNoErr(err, "Image pulls failed")
+	})
+
+	// author: wewang@redhat.com
+	g.It("Author:wewang-Medium-23583-Registry should not try to pullthrough himself by any name [Serial]", func() {
+		g.By("Create additional routes by populating spec.Routes with additional routes")
+		defer oc.AsAdmin().Run("patch").Args("configs.imageregistry/cluster", "-p", `{"spec":{"defaultRoute":false}}`, "--type=merge").Execute()
+		err := oc.AsAdmin().Run("patch").Args("configs.imageregistry/cluster", "-p", `{"spec":{"defaultRoute":true}}`, "--type=merge").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		defroute := getRegistryDefaultRoute(oc)
+		userroute := strings.Replace(defroute, "default", "extra", 1)
+		patchInfo := fmt.Sprintf("{\"spec\":{\"routes\":[{\"hostname\": \"%s\", \"name\":\"extra-image-registry\", \"secretName\":\"\"}]}}", userroute)
+		defer oc.AsAdmin().Run("patch").Args("configs.imageregistry/cluster", "-p", `{"spec":{"routes":null}}`, "--type=merge").Execute()
+		err = oc.AsAdmin().Run("patch").Args("configs.imageregistry/cluster", "-p", patchInfo, "--type=merge").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Get token from secret")
+		oc.SetupProject()
+		token, err := oc.WithoutNamespace().AsAdmin().Run("serviceaccounts").Args("get-token", "builder", "-n", oc.Namespace()).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Create a secret for user-defined route")
+		err = oc.WithoutNamespace().AsAdmin().Run("create").Args("secret", "docker-registry", "mysecret", "--docker-server="+userroute, "--docker-username="+oc.Username(), "--docker-password="+token, "-n", oc.Namespace()).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Import an image")
+		err = oc.WithoutNamespace().AsAdmin().Run("import-image").Args("myimage", "--from=quay.io/openshifttest/busybox@sha256:afe605d272837ce1732f390966166c2afff5391208ddd57de10942748694049d", "--confirm", "-n", oc.Namespace()).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = exutil.WaitForAnImageStreamTag(oc, oc.Namespace(), "myimage", "latest")
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Tag the image point to itself address")
+		err = oc.WithoutNamespace().AsAdmin().Run("tag").Args(userroute+"/"+oc.Namespace()+"/myimage", "myimage:test", "--insecure=true", "-n", oc.Namespace()).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = exutil.WaitForAnImageStreamTag(oc, oc.Namespace(), "myimage", "test")
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Check import successfully")
+		err = wait.Poll(5*time.Second, 20*time.Second, func() (bool, error) {
+			successInfo := userroute + "/" + oc.Namespace() + "/myimage@sha256"
+			output, err := oc.WithoutNamespace().AsAdmin().Run("describe").Args("is", "myimage", "-n", oc.Namespace()).Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			if o.Expect(output).To(o.ContainSubstring(successInfo)) {
+				return true, nil
+			} else {
+				e2e.Logf("Continue to next round")
+				return false, nil
+			}
+		})
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("Import failed"))
+		g.By("Get blobs from the default registry")
+		getUrl := "curl -Lks -u \"" + oc.Username() + ":" + token + "\" -I HEAD https://" + defroute + "/v2/" + oc.Namespace() + "/myimage@sha256:0000000000000000000000000000000000000000000000000000000000000000"
+		curlOutput, err := exec.Command("bash", "-c", getUrl).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(string(curlOutput)).To(o.ContainSubstring("404 Not Found"))
+		podsOfImageRegistry := []corev1.Pod{}
+		podsOfImageRegistry = ListPodStartingWith("image-registry", oc, "openshift-image-registry")
+		if len(podsOfImageRegistry) == 0 {
+			e2e.Failf("Error retrieving logs")
+		}
+		foundErrLog := false
+		foundErrLog = DePodLogs(podsOfImageRegistry, oc, errInfo)
+		o.Expect(foundErrLog).To(o.BeTrue())
 	})
 })

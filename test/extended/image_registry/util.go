@@ -459,3 +459,19 @@ func (icspsrc *icspSource) delete(oc *exutil.CLI) {
 	err := oc.AsAdmin().WithoutNamespace().Run("delete").Args("imagecontentsourcepolicy", icspsrc.name, "--ignore-not-found=true").Execute()
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
+
+func getRegistryDefaultRoute(oc *exutil.CLI) (defaultroute string) {
+	err := wait.Poll(2*time.Second, 6*time.Second, func() (bool, error) {
+		defroute, err := oc.WithoutNamespace().AsAdmin().Run("get").Args("route/default-route", "-n", "openshift-image-registry", "-o=jsonpath={.spec.host}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		if len(defroute) == 0 {
+			e2e.Logf("Continue to next round")
+			return false, nil
+		} else {
+			defaultroute = defroute
+			return true, nil
+		}
+	})
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("Did not find registry route"))
+	return defaultroute
+}
