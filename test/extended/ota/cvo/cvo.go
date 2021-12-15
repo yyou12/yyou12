@@ -501,4 +501,19 @@ var _ = g.Describe("[sig-updates] OTA cvo should", func() {
 		})
 		exutil.AssertWaitPollNoErr(err, "alert is not disabled.")
 	})
+
+	//author: jiajliu@redhat.com
+	g.It("Author:jiajliu-Low-46922-check runlevel in cvo ns", func() {
+		g.By("Check runlevel in cvo namespace.")
+		runLevel, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("ns", "openshift-cluster-version", "-o=jsonpath={.metadata.labels.openshift\\.io/run-level}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(runLevel).To(o.Equal(""))
+
+		g.By("Check scc of cvo pod.")
+		podName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-n", "openshift-cluster-version", "-oname").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		scc, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", "openshift-cluster-version", podName, "-o=jsonpath={.metadata.annotations.openshift\\.io/scc}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(scc).To(o.Equal("hostaccess"))
+	})
 })
