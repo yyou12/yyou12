@@ -3947,6 +3947,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		o.Expect(strings.Compare(sub.installedCSV, sub.startingCSV) != 0).To(o.BeTrue())
 	})
 
+	// author: bandrade@redhat.com
 	g.It("ConnectedOnly-Author:bandrade-Critical-41026-OCS should only one installplan generated when creating subscription", func() {
 		var (
 			itName              = g.CurrentGinkgoTestDescription().TestText
@@ -3972,26 +3973,43 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 				singleNamespace:        true,
 			}
 		)
-
-		oc.SetupProject() //project and its resource are deleted automatically when out of It, so no need derfer or AfterEach
+		//project and its resource are deleted automatically when out of It, so no need defer or AfterEach
+		// but, sometimes, the namespaces are failed to remove, so, add some defer funcs.
+		oc.SetupProject()
 		og.namespace = oc.Namespace()
 		sub.namespace = oc.Namespace()
 
 		g.By("Create og")
+		defer og.delete(itName, dr)
 		og.create(oc, itName, dr)
 
 		g.By("Create operator")
+		defer sub.delete(itName, dr)
+		defer sub.deleteCSV(itName, dr)
 		sub.create(oc, itName, dr)
 		newCheck("expect", asAdmin, withNamespace, compare, "Succeeded", ok, []string{"csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
 
 		g.By("Check there is only one ip")
-		ips := getResource(oc, asAdmin, withoutNamespace, "installplan", "-n", sub.namespace, "--no-headers")
-		ipList := strings.Split(ips, "\n")
-		for _, ip := range ipList {
-			name := strings.Fields(ip)[0]
-			getResource(oc, asAdmin, withoutNamespace, "installplan", name, "-n", sub.namespace, "-o=json")
-		}
-		o.Expect(strings.Count(ips, sub.installedCSV)).To(o.Equal(1))
+		// Dec 14 22:53:22.080: INFO: $oc get [installplan -n e2e-test-olm-a-c938kxop-j6cjz --no-headers],
+		// the returned resource:install-s4zjq   mcg-operator.v4.9.0   Automatic   true
+		// waiting for the InstallPlan updated
+		err := wait.Poll(5*time.Second, 30*time.Second, func() (bool, error) {
+			ips := getResource(oc, asAdmin, withoutNamespace, "installplan", "-n", sub.namespace, "--no-headers")
+			ipList := strings.Split(ips, "\n")
+			count := 0
+			for _, ip := range ipList {
+				name := strings.Fields(ip)[0]
+				CSVs := getResource(oc, asAdmin, withoutNamespace, "installplan", name, "-n", sub.namespace, "-o=jsonpath={.spec.clusterServiceVersionNames}")
+				if strings.Contains(CSVs, sub.installedCSV) {
+					count += 1
+				}
+			}
+			if count != 1 {
+				return false, nil
+			}
+			return true, nil
+		})
+		exutil.AssertWaitPollNoErr(err, "the generated InstallPlan != 1")
 	})
 
 	// It will cover test case: OCP-24438, author: kuiwang@redhat.com
