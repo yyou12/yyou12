@@ -1,0 +1,36 @@
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: clusterpool-temp
+objects:
+- apiVersion: hive.openshift.io/v1
+  kind: ClusterPool
+  metadata:
+    creationTimestamp: null
+    name: "${NAME}"
+    namespace: "${NAMESPACE}"
+  spec:
+    baseDomain: "${BASEDOMAIN}"
+    imageSetRef:
+      name: "${IMAGESETREF}"
+    platform:
+      aws:
+        credentialsSecretRef:
+          name: "${CREDREF}"
+        privateLink:
+          enabled: false
+        region: "${REGION}"
+    pullSecretRef:
+      name: "${PULLSECRETREF}"
+    size: ${{SIZE}}
+    maxSize: ${{MAXSIZE}}
+parameters:
+- name: NAME
+- name: NAMESPACE
+- name: BASEDOMAIN
+- name: IMAGESETREF
+- name: CREDREF
+- name: REGION
+- name: PULLSECRETREF
+- name: SIZE
+- name: MAXSIZE

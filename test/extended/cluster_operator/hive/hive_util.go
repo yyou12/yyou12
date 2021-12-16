@@ -3,6 +3,8 @@ package hive
 import (
 	"fmt"
 	"math/rand"
+	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -11,6 +13,11 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 )
+
+type hiveNameSpace struct {
+	name     string
+	template string
+}
 
 type operatorGroup struct {
 	name      string
@@ -38,11 +45,54 @@ type hiveconfig struct {
 	template        string
 }
 
+type clusterImageSet struct {
+	name         string
+	releaseImage string
+	template     string
+}
+
+type clusterPool struct {
+	name          string
+	namespace     string
+	baseDomain    string
+	imageSetRef   string
+	credRef       string
+	region        string
+	pullSecretRef string
+	size          int
+	maxSize       int
+	template      string
+}
+
+type clusterClaim struct {
+	name            string
+	namespace       string
+	clusterPoolName string
+	template        string
+}
+
 type objectTableRef struct {
 	kind      string
 	namespace string
 	name      string
 }
+
+const (
+	HIVE_NAMESPACE            = "hive"
+	AWS_BASE_DOMAIN           = "qe.devcluster.openshift.com"
+	AWS_REGION                = "us-east-2"
+	OCP_RELEASE_IMAGE         = "quay.io/openshift-release-dev/ocp-release:4.9.0-rc.6-x86_64"
+	AWS_CREDS                 = "aws-creds"
+	PULL_SECRET               = "pull-secret"
+	CLUSTER_INSTALL_TIMEOUT   = 3600
+	DEFAULT_TIMEOUT           = 180
+	CLUSTER_RESUME_TIMEOUT    = 600
+	CLUSTER_UNINSTALL_TIMEOUT = 1800
+	CLUSTER_POOL              = "ClusterPool"
+	CLUSTER_DEPLOYMENT        = "ClusterDeployment"
+	CLUSTER_IMAGE_SET         = "ClusterImageSet"
+	CLUSTER_CLAIM             = "ClusterClaim"
+)
 
 func applyResourceFromTemplate(oc *exutil.CLI, parameters ...string) error {
 	var cfgFileJson string
@@ -71,7 +121,14 @@ func getRandomString() string {
 	return string(buffer)
 }
 
-func (og *operatorGroup) create(oc *exutil.CLI) {
+//Create hive namespace if not exist
+func (ns *hiveNameSpace) createIfNotExist(oc *exutil.CLI) {
+	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", ns.template, "-p", "NAME="+ns.name)
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+//Create operatorGroup for Hive if not exist
+func (og *operatorGroup) createIfNotExist(oc *exutil.CLI) {
 	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", og.template, "-p", "NAME="+og.name, "NAMESPACE="+og.namespace)
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
@@ -83,12 +140,35 @@ func (sub *subscription) create(oc *exutil.CLI) {
 	if strings.Compare(sub.approval, "Automatic") == 0 {
 		sub.findInstalledCSV(oc)
 	} else {
-		newCheck("expect", asAdmin, withoutNamespace, compare, "UpgradePending", ok, []string{"sub", sub.name, "-n", sub.namespace, "-o=jsonpath={.status.state}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "UpgradePending", ok, DEFAULT_TIMEOUT, []string{"sub", sub.name, "-n", sub.namespace, "-o=jsonpath={.status.state}"}).check(oc)
 	}
 }
 
+//Create subscription for Hive if not exist and wait for resource is ready
+func (sub *subscription) createIfNotExist(oc *exutil.CLI) {
+
+	output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("sub", "-n", sub.namespace).Output()
+	if strings.Contains(output, "NotFound") || strings.Contains(output, "No resources") || err != nil {
+		e2e.Logf("No hive subscription, Create it.")
+		err = applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", sub.template, "-p", "NAME="+sub.name, "NAMESPACE="+sub.namespace, "CHANNEL="+sub.channel,
+			"APPROVAL="+sub.approval, "OPERATORNAME="+sub.operatorName, "SOURCENAME="+sub.sourceName, "SOURCENAMESPACE="+sub.sourceNamespace, "STARTINGCSV="+sub.startingCSV)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		if strings.Compare(sub.approval, "Automatic") == 0 {
+			sub.findInstalledCSV(oc)
+		} else {
+			newCheck("expect", asAdmin, withoutNamespace, compare, "UpgradePending", ok, DEFAULT_TIMEOUT, []string{"sub", sub.name, "-n", sub.namespace, "-o=jsonpath={.status.state}"}).check(oc)
+		}
+		//wait for pod running
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Running", ok, DEFAULT_TIMEOUT, []string{"pod", "--selector=control-plane=hive-operator", "-n",
+			sub.namespace, "-o=jsonpath={.items[0].status.phase}"}).check(oc)
+	} else {
+		e2e.Logf("hive subscription already exists.")
+	}
+
+}
+
 func (sub *subscription) findInstalledCSV(oc *exutil.CLI) {
-	newCheck("expect", asAdmin, withoutNamespace, compare, "AtLatestKnown", ok, []string{"sub", sub.name, "-n", sub.namespace, "-o=jsonpath={.status.state}"}).check(oc)
+	newCheck("expect", asAdmin, withoutNamespace, compare, "AtLatestKnown", ok, DEFAULT_TIMEOUT, []string{"sub", sub.name, "-n", sub.namespace, "-o=jsonpath={.status.state}"}).check(oc)
 	installedCSV := getResource(oc, asAdmin, withoutNamespace, "sub", sub.name, "-n", sub.namespace, "-o=jsonpath={.status.installedCSV}")
 	o.Expect(installedCSV).NotTo(o.BeEmpty())
 	if strings.Compare(sub.installedCSV, installedCSV) != 0 {
@@ -99,6 +179,47 @@ func (sub *subscription) findInstalledCSV(oc *exutil.CLI) {
 
 func (hc *hiveconfig) create(oc *exutil.CLI) {
 	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", hc.template, "-p", "LOGLEVEL="+hc.logLevel, "TARGETNAMESPACE="+hc.targetNamespace)
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+//Create hivconfig if not exist and wait for resource is ready
+func (hc *hiveconfig) createIfNotExist(oc *exutil.CLI) {
+	output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("HiveConfig", "hive").Output()
+	if strings.Contains(output, "have a resource type") || err != nil {
+		e2e.Logf("No hivconfig, Create it.")
+		err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", hc.template, "-p", "LOGLEVEL="+hc.logLevel, "TARGETNAMESPACE="+hc.targetNamespace)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		//wait for pods running
+		newCheck("expect", asAdmin, withoutNamespace, contain, "hive-clustersync", ok, DEFAULT_TIMEOUT, []string{"pod", "--selector=control-plane=clustersync",
+			"-n", HIVE_NAMESPACE, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Running", ok, DEFAULT_TIMEOUT, []string{"pod", "--selector=control-plane=clustersync", "-n",
+			HIVE_NAMESPACE, "-o=jsonpath={.items[0].status.phase}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, contain, "hive-controllers", ok, DEFAULT_TIMEOUT, []string{"pod", "--selector=control-plane=controller-manager",
+			"-n", HIVE_NAMESPACE, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Running", ok, DEFAULT_TIMEOUT, []string{"pod", "--selector=control-plane=controller-manager", "-n",
+			HIVE_NAMESPACE, "-o=jsonpath={.items[0].status.phase}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, contain, "hiveadmission", ok, DEFAULT_TIMEOUT, []string{"pod", "--selector=app=hiveadmission",
+			"-n", HIVE_NAMESPACE, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Running Running", ok, DEFAULT_TIMEOUT, []string{"pod", "--selector=app=hiveadmission", "-n",
+			HIVE_NAMESPACE, "-o=jsonpath={.items[*].status.phase}"}).check(oc)
+	} else {
+		e2e.Logf("hivconfig already exists.")
+	}
+
+}
+
+func (imageset *clusterImageSet) create(oc *exutil.CLI) {
+	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", imageset.template, "-p", "NAME="+imageset.name, "RELEASEIMAGE="+imageset.releaseImage)
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+func (pool *clusterPool) create(oc *exutil.CLI) {
+	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", pool.template, "-p", "NAME="+pool.name, "NAMESPACE="+pool.namespace, "BASEDOMAIN="+pool.baseDomain, "IMAGESETREF="+pool.imageSetRef, "CREDREF="+pool.credRef, "REGION="+pool.region, "PULLSECRETREF="+pool.pullSecretRef, "SIZE="+strconv.Itoa(pool.size), "MAXSIZE="+strconv.Itoa(pool.maxSize))
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+func (claim *clusterClaim) create(oc *exutil.CLI) {
+	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", claim.template, "-p", "NAME="+claim.name, "NAMESPACE="+claim.namespace, "CLUSTERPOOLNAME="+claim.clusterPoolName)
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
@@ -135,7 +256,7 @@ func doAction(oc *exutil.CLI, action string, asAdmin bool, withoutNamespace bool
 }
 
 func newCheck(method string, executor bool, inlineNamespace bool, expectAction bool,
-	expectContent string, expect bool, resource []string) checkDescription {
+	expectContent string, expect bool, timeout int, resource []string) checkDescription {
 	return checkDescription{
 		method:          method,
 		executor:        executor,
@@ -143,6 +264,7 @@ func newCheck(method string, executor bool, inlineNamespace bool, expectAction b
 		expectAction:    expectAction,
 		expectContent:   expectContent,
 		expect:          expect,
+		timeout:         timeout,
 		resource:        resource,
 	}
 }
@@ -154,6 +276,7 @@ type checkDescription struct {
 	expectAction    bool
 	expectContent   string
 	expect          bool
+	timeout         int
 	resource        []string
 }
 
@@ -175,7 +298,7 @@ func (ck checkDescription) check(oc *exutil.CLI) {
 		ok := isPresentResource(oc, ck.executor, ck.inlineNamespace, ck.expectAction, ck.resource...)
 		o.Expect(ok).To(o.BeTrue())
 	case "expect":
-		err := expectedResource(oc, ck.executor, ck.inlineNamespace, ck.expectAction, ck.expectContent, ck.expect, ck.resource...)
+		err := expectedResource(oc, ck.executor, ck.inlineNamespace, ck.expectAction, ck.expectContent, ck.expect, ck.timeout, ck.resource...)
 		exutil.AssertWaitPollNoErr(err, "can not get expected result")
 	default:
 		err := fmt.Errorf("unknown method")
@@ -202,7 +325,7 @@ func isPresentResource(oc *exutil.CLI, asAdmin bool, withoutNamespace bool, pres
 	return err == nil
 }
 
-func expectedResource(oc *exutil.CLI, asAdmin bool, withoutNamespace bool, isCompare bool, content string, expect bool, parameters ...string) error {
+func expectedResource(oc *exutil.CLI, asAdmin bool, withoutNamespace bool, isCompare bool, content string, expect bool, timeout int, parameters ...string) error {
 	cc := func(a, b string, ic bool) bool {
 		bs := strings.Split(b, "+2+")
 		ret := false
@@ -213,7 +336,15 @@ func expectedResource(oc *exutil.CLI, asAdmin bool, withoutNamespace bool, isCom
 		}
 		return ret
 	}
-	return wait.Poll(3*time.Second, 150*time.Second, func() (bool, error) {
+	var interval, time_out time.Duration
+	if timeout >= CLUSTER_INSTALL_TIMEOUT {
+		time_out = time.Duration(timeout/60) * time.Minute
+		interval = 6 * time.Minute
+	} else {
+		time_out = time.Duration(timeout) * time.Second
+		interval = time.Duration(timeout/60) * time.Second
+	}
+	return wait.Poll(interval, time_out, func() (bool, error) {
 		output, err := doAction(oc, "get", asAdmin, withoutNamespace, parameters...)
 		if err != nil {
 			e2e.Logf("the get error is %v, and try next", err)
@@ -251,6 +382,11 @@ func cleanupObjects(oc *exutil.CLI, objs ...objectTableRef) {
 			_, err := oc.AsAdmin().WithoutNamespace().Run("delete").Args(v.kind, v.name).Output()
 			o.Expect(err).NotTo(o.HaveOccurred())
 		}
+		//For ClusterPool or ClusterDeployment, need to wait ClusterDeployment delete done
+		if v.kind == CLUSTER_POOL || v.kind == CLUSTER_DEPLOYMENT {
+			e2e.Logf("Wait ClusterDeployment delete done for %s", v.name)
+			newCheck("expect", asAdmin, withoutNamespace, contain, v.name, nok, CLUSTER_UNINSTALL_TIMEOUT, []string{CLUSTER_DEPLOYMENT, "-A"}).check(oc)
+		}
 	}
 }
 
@@ -265,4 +401,32 @@ func removeResource(oc *exutil.CLI, parameters ...string) {
 
 func (hc *hiveconfig) delete(oc *exutil.CLI) {
 	removeResource(oc, "hiveconfig", "hive")
+}
+
+//Create pull-secret in current project namespace
+func createPullSecret(oc *exutil.CLI, namespace string) {
+	dirname := "/tmp/" + oc.Namespace() + "-pull"
+	err := os.MkdirAll(dirname, 0777)
+	o.Expect(err).NotTo(o.HaveOccurred())
+	defer os.RemoveAll(dirname)
+
+	err = oc.AsAdmin().WithoutNamespace().Run("extract").Args("secret/pull-secret", "-n", "openshift-config", "--to="+dirname, "--confirm").Execute()
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	err = oc.Run("create").Args("secret", "generic", "pull-secret", "--from-file="+dirname+"/.dockerconfigjson", "-n", namespace).Execute()
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+//Create AWS credentials in current project namespace
+func createAWSCreds(oc *exutil.CLI, namespace string) {
+	dirname := "/tmp/" + oc.Namespace() + "-creds"
+	err := os.MkdirAll(dirname, 0777)
+	o.Expect(err).NotTo(o.HaveOccurred())
+	defer os.RemoveAll(dirname)
+
+	err = oc.AsAdmin().WithoutNamespace().Run("extract").Args("secret/aws-creds", "-n", "kube-system", "--to="+dirname, "--confirm").Execute()
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	err = oc.Run("create").Args("secret", "generic", "aws-creds", "--from-file="+dirname+"/aws_access_key_id", "--from-file="+dirname+"/aws_secret_access_key", "-n", namespace).Execute()
+	o.Expect(err).NotTo(o.HaveOccurred())
 }
