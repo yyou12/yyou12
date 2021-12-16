@@ -9,7 +9,7 @@ RUN make build; \
 
 FROM registry.ci.openshift.org/ocp/4.10:tools
 COPY --from=builder /tmp/build/extended-platform-tests /usr/bin/
-RUN PACKAGES="git gzip zip util-linux openssh-clients" && \
+RUN PACKAGES="git gzip zip util-linux openssh-clients make" && \
     yum install --setopt=tsflags=nodocs -y $PACKAGES && yum clean all && rm -rf /var/cache/yum/* && \
     git config --system user.name test-private && \
     git config --system user.email test-private@test.com && \
@@ -17,6 +17,8 @@ RUN PACKAGES="git gzip zip util-linux openssh-clients" && \
 RUN pip3 install dotmap minio pyyaml requests
 RUN curl -s -k https://dl.google.com/go/go1.16.6.linux-amd64.tar.gz -o go1.16.6.linux-amd64.tar.gz && \
     tar -C /usr/local -xzf go1.16.6.linux-amd64.tar.gz && rm -fr go1.16.6.linux-amd64.tar.gz && \
+    mkdir -p /tmp/goproject && mkdir -p /tmp/gocache && chmod -R g=u /tmp/goproject && \
+    chmod -R g+rw /tmp/goproject && chmod -R g=u /tmp/gocache && chmod -R g+rw /tmp/gocache && \
     curl -s -k https://mirror2.openshift.com/pub/openshift-v4/clients/ocp-dev-preview/latest-4.10/opm-linux.tar.gz -o opm-linux.tar.gz && \
     tar -C /usr/bin -xzvf opm-linux.tar.gz && rm -fr opm-linux.tar.gz && \
     curl -s -k https://mirror2.openshift.com/pub/openshift-v4/x86_64/clients/operator-sdk/ -o sdk.html && \
