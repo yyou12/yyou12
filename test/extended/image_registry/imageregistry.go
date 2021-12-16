@@ -372,11 +372,11 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 			podList, _ := oc.AdminKubeClient().CoreV1().Pods("openshift-image-registry").List(metav1.ListOptions{LabelSelector: "docker-registry=default"})
 			o.Expect(len(podList.Items)).To(o.Equal(2))
 			oc.SetupProject()
-			err := oc.Run("new-build").Args("openshift/ruby:latest~https://github.com/openshift/ruby-hello-world.git").Execute()
+			err := oc.Run("new-build").Args("-D", "FROM quay.io/openshifttest/busybox@sha256:afe605d272837ce1732f390966166c2afff5391208ddd57de10942748694049d", "--to=test-41414").Execute()
 			o.Expect(err).NotTo(o.HaveOccurred())
-			err = exutil.WaitForABuild(oc.BuildClient().BuildV1().Builds(oc.Namespace()), "ruby-hello-world-1", nil, nil, nil)
+			err = exutil.WaitForABuild(oc.BuildClient().BuildV1().Builds(oc.Namespace()), "test-41414-1", nil, nil, nil)
 			if err != nil {
-				exutil.DumpBuildLogs("ruby-hello-world", oc)
+				exutil.DumpBuildLogs("test-41414", oc)
 			}
 			exutil.AssertWaitPollNoErr(err, "build is not complete")
 		default:
