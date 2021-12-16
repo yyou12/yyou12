@@ -149,6 +149,10 @@ if [ "${pipelinetype}" != "None" ] && [ "${pipelinetype}" != "failtogetvalue" ] 
       echo "it is prod pipeline"
       profiletype="prod"
       ;;
+    upgradepipeline)
+      echo "it is prod pipeline"
+      profiletype="upgrade"
+      ;;
     *)
       echo "it is prerelease pipeline"
       profiletype="ci"
@@ -199,6 +203,12 @@ if [ "X${LAUNCHID}X" != "XX" ]; then
     fi
   elif [ "X${profiletype}X" == "XstageX" ]; then
     existing=`ls ${WORKSPACE}"/cip/"${profiletype}"/"${VERSION}"/"|grep "${PROFILENAME}"".test"|grep "test_run.yaml"|wc -l|xargs`
+  elif [ "X${profiletype}X" == "XupgradeX" ]; then
+    if [ -d "${WORKSPACE}/cip/${VERSION}/upgrade/upgradetestrun" ]; then
+      existing=`ls ${WORKSPACE}"/cip/"${VERSION}"/upgrade/upgradetestrun"|grep "${PROFILENAME}"".test"|grep "test_run.yaml"|wc -l|xargs`
+    else
+      existing="0"
+    fi
   else
     existing=`ls ${WORKSPACE}"/misc/jenkins/"${profiletype}"/"${VERSION}"/"|grep "${PROFILENAME}"".test"|grep "test_run.yaml"|wc -l|xargs`
   fi
@@ -234,6 +244,8 @@ if [ "X${LAUNCHID}X" != "XX" ]; then
       fi
     elif [ "X${profiletype}X" == "XstageX" ]; then
       ppath="../cip/"${profiletype}"/"${VERSION}"/"
+    elif [ "X${profiletype}X" == "XupgradeX" ]; then
+      ppath="../cip/"${VERSION}"/upgrade/upgradetestrun/"
     else
       ppath="../misc/jenkins/"${profiletype}"/"${VERSION}"/"
     fi
