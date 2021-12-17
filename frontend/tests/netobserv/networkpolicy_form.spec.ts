@@ -4,7 +4,7 @@ import { OCCreds, OCCli } from '../../views/cluster-cliops';
 import { podsPageUtils } from '../../views/pods';
 import testFixture from '../../fixtures/network_policy_form_test.json'
 import * as utils from '../../views/utils'
-import { helperfuncs, VerifyPolicyForm } from '../../views/nwpolicy-utils'
+import { VerifyPolicyForm } from '../../views/nwpolicy-utils'
 
 const projects: string[] = ['test0', 'test1', 'test2']
 const podLabels: string[] = ["test-pods", 'test-pods2']
@@ -21,8 +21,6 @@ before('root-level: any test suite', function () {
     cy.switchPerspective('Administrator');
     this.cli = new OCCli(creds)
     this.creds = creds
-
-    helperfuncs.setNetworkProviderAlias()
 
     // create projects and deploy pods.
     for (let i = 0; i < projects.length; i++) {
@@ -75,18 +73,17 @@ describe('Console Network Policies form tests (OCP-41858, OCP-45303, NETOBSERV)'
 
             cy.get('input[id="name"]').should('have.attr', 'name')
             cy.byTestID('Deny all ingress traffic__checkbox').should('not.be.checked')
+            cy.byTestID('Deny all egress traffic__checkbox').should('not.be.checked')
             cy.get('button').contains('Add ingress rule').click()
 
-            // verify ingress sources.
-            var src_dest_options = ['Allow pods from the same namespace', 'Allow pods from inside the cluster', 'Allow peers by IP block']
+            // verify ingress sources
+            cy.byTestID(nwpolicyPageSelectors.addIngress).should('exist').click()
+            nwpolicyPage.verifyIngressEgressOpts("Ingress")
 
-            const buttonCount = 3;
-            for (let i = 0; i < buttonCount; i++) {
-                cy.get('button.pf-c-dropdown__toggle.pf-c-button.pf-m-secondary').should('have.text', 'Add allowed source').click()
-                cy.get(nwpolicyPageSelectors.srcDestOptions[i]).then(($elem) => {
-                    cy.wrap($elem).should('have.text', src_dest_options[i]).click()
-                })
-            }
+            // verify egress destinations
+            cy.byTestID(nwpolicyPageSelectors.addEgress).should('exist').click()
+            nwpolicyPage.verifyIngressEgressOpts("Egress")
+
             cy.get('button').contains('Remove')
 
             // verify create and cancel button.
@@ -168,10 +165,6 @@ describe('Console Network Policies form tests (OCP-41858, OCP-45303, NETOBSERV)'
         })
 
         beforeEach('end-to-end test', function () {
-            if (this.currentTest.parent.fullTitle().includes('OVN') && this.networkprovider.includes('OpenShiftSDN')) {
-                this.skip()
-            }
-
             cy.visit('/k8s/all-namespaces/networkpolicies')
             cy.get('span.pf-c-menu-toggle__text').should('have.text', 'Project: All Projects').click()
             cy.get('span.pf-c-menu__item-text').contains('test0').click()
@@ -316,7 +309,7 @@ describe('Console Network Policies form tests (OCP-41858, OCP-45303, NETOBSERV)'
             })
         })
 
-        describe('egress policies tests (OVN)', function () {
+        describe('egress policies tests', function () {
             beforeEach('egress test', function () {
                 nwpolicyPage.creatPolicyForm()
                 cy.get(nwpolicyPageSelectors.nwPolicyName).type(utils.getRandomName())

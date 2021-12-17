@@ -44,6 +44,26 @@ export const nwpolicyPage = {
             cy.get(nwpolicyPageSelectors.label).type(key)
             cy.get(nwpolicyPageSelectors.selector).type(value)
         })
+    },
+    verifyIngressEgressOpts: (text) => {
+        let buttonText;
+        let index;
+        if (text == "Ingress") {
+            buttonText = 'Add allowed source'
+            index = 1
+        }
+        else if (text == 'Egress') {
+            buttonText = 'Add allowed destination'
+            index = 2
+        }
+        const buttonCount = 3;
+        const src_dest_options = ['Allow pods from the same namespace', 'Allow pods from inside the cluster', 'Allow peers by IP block']
+        for (let i = 0; i < buttonCount; i++) {
+            cy.get('.pf-c-dropdown__toggle.pf-m-secondary').eq(index).should('have.text', buttonText).click()
+            cy.get(nwpolicyPageSelectors.srcDestOptions[i]).then(($elem) => {
+                cy.wrap($elem).should('have.text', src_dest_options[i]).click()
+            })
+        }
     }
 };
 
@@ -67,6 +87,7 @@ export namespace nwpolicyPageSelectors {
     export const labelName = 'pairs-list-name'
     export const labelValue = 'pairs-list-value'
     export const addIngress = 'add-ingress'
+    export const addEgress = 'add-egress'
     export const showIngressPods = 'show-affected-pods-ingress'
     export const podsTreeViewBtn = '.pf-c-tree-view__node-toggle-icon > svg'
     export const dropdownBtn = 'button[data-test-id="dropdown-button"]'
