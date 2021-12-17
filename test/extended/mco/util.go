@@ -29,8 +29,8 @@ type MachineConfig struct {
 }
 
 type MachineConfigPool struct {
-	name     string
 	template string
+	*Resource
 }
 
 type PodDisruptionBudget struct {
@@ -61,6 +61,10 @@ type TextToVerify struct {
 	needChroot          bool
 }
 
+func NewMachineConfigPool(oc *exutil.CLI, name string) *MachineConfigPool {
+	return &MachineConfigPool{Resource: NewResource(oc, "mcp", name)}
+}
+
 func (mc *MachineConfig) create(oc *exutil.CLI) {
 	mc.name = mc.name + "-" + exutil.GetRandomString()
 	params := []string{"--ignore-unknown-parameters=true", "-f", mc.template, "-p", "NAME=" + mc.name, "POOL=" + mc.pool}
@@ -82,8 +86,8 @@ func (mc *MachineConfig) create(oc *exutil.CLI) {
 	exutil.AssertWaitPollNoErr(pollerr, fmt.Sprintf("create machine config %v failed", mc.name))
 
 	if !mc.skipWaitForMcp {
-		mcp := MachineConfigPool{name: mc.pool}
-		mcp.waitForComplete(oc)
+		mcp := NewMachineConfigPool(oc.AsAdmin(), mc.pool)
+		mcp.waitForComplete()
 	}
 
 }
@@ -91,8 +95,8 @@ func (mc *MachineConfig) create(oc *exutil.CLI) {
 func (mc *MachineConfig) delete(oc *exutil.CLI) {
 	err := oc.AsAdmin().WithoutNamespace().Run("delete").Args("mc", mc.name, "--ignore-not-found=true").Execute()
 	o.Expect(err).NotTo(o.HaveOccurred())
-	mcp := MachineConfigPool{name: mc.pool}
-	mcp.waitForComplete(oc)
+	mcp := NewMachineConfigPool(oc.AsAdmin(), mc.pool)
+	mcp.waitForComplete()
 }
 
 func (kc *KubeletConfig) create(oc *exutil.CLI) {
@@ -137,67 +141,67 @@ func (pdb *PodDisruptionBudget) delete(oc *exutil.CLI) {
 
 func (icsp *ImageContentSourcePolicy) create(oc *exutil.CLI) {
 	exutil.CreateClusterResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", icsp.template, "-p", "NAME="+icsp.name)
-	mcp := MachineConfigPool{name: "worker"}
-	mcp.waitForComplete(oc)
+	mcp := NewMachineConfigPool(oc.AsAdmin(), "worker")
+	mcp.waitForComplete()
 	mcp.name = "master"
-	mcp.waitForComplete(oc)
+	mcp.waitForComplete()
 }
 
 func (icsp *ImageContentSourcePolicy) delete(oc *exutil.CLI) {
 	e2e.Logf("deleting icsp config: %s", icsp.name)
 	err := oc.AsAdmin().WithoutNamespace().Run("delete").Args("imagecontentsourcepolicy", icsp.name, "--ignore-not-found=true").Execute()
 	o.Expect(err).NotTo(o.HaveOccurred())
-	mcp := MachineConfigPool{name: "worker"}
-	mcp.waitForComplete(oc)
+	mcp := NewMachineConfigPool(oc.AsAdmin(), "worker")
+	mcp.waitForComplete()
 	mcp.name = "master"
-	mcp.waitForComplete(oc)
+	mcp.waitForComplete()
 }
 
 func (cr *ContainerRuntimeConfig) create(oc *exutil.CLI) {
 	exutil.CreateClusterResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", cr.template, "-p", "NAME="+cr.name)
-	mcp := MachineConfigPool{name: "worker"}
-	mcp.waitForComplete(oc)
+	mcp := NewMachineConfigPool(oc.AsAdmin(), "worker")
+	mcp.waitForComplete()
 }
 
 func (cr *ContainerRuntimeConfig) delete(oc *exutil.CLI) {
 	e2e.Logf("deleting container runtime config: %s", cr.name)
 	err := oc.AsAdmin().WithoutNamespace().Run("delete").Args("ctrcfg", cr.name, "--ignore-not-found=true").Execute()
 	o.Expect(err).NotTo(o.HaveOccurred())
-	mcp := MachineConfigPool{name: "worker"}
-	mcp.waitForComplete(oc)
+	mcp := NewMachineConfigPool(oc.AsAdmin(), "worker")
+	mcp.waitForComplete()
 }
 
-func (mcp *MachineConfigPool) create(oc *exutil.CLI) {
-	exutil.CreateClusterResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", mcp.template, "-p", "NAME="+mcp.name)
-	mcp.waitForComplete(oc)
+func (mcp *MachineConfigPool) create() {
+	exutil.CreateClusterResourceFromTemplate(mcp.oc, "--ignore-unknown-parameters=true", "-f", mcp.template, "-p", "NAME="+mcp.name)
+	mcp.waitForComplete()
 }
 
-func (mcp *MachineConfigPool) delete(oc *exutil.CLI) {
+func (mcp *MachineConfigPool) delete() {
 	e2e.Logf("deleting custom mcp: %s", mcp.name)
-	err := oc.AsAdmin().WithoutNamespace().Run("delete").Args("mcp", mcp.name, "--ignore-not-found=true").Execute()
+	err := mcp.oc.AsAdmin().WithoutNamespace().Run("delete").Args("mcp", mcp.name, "--ignore-not-found=true").Execute()
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
-func (mcp *MachineConfigPool) pause(oc *exutil.CLI, enable bool) {
+func (mcp *MachineConfigPool) pause(enable bool) {
 	e2e.Logf("patch mcp %v, change spec.paused to %v", mcp.name, enable)
-	err := oc.AsAdmin().Run("patch").Args("mcp", mcp.name, "--type=merge", "-p", `{"spec":{"paused": `+strconv.FormatBool(enable)+`}}`).Execute()
+	err := mcp.Patch("merge", `{"spec":{"paused": `+strconv.FormatBool(enable)+`}}`)
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
-func (mcp *MachineConfigPool) getConfigNameOfSpec(oc *exutil.CLI) (string, error) {
-	output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("mcp", mcp.name, "-o", "jsonpath='{.spec.configuration.name}'").Output()
+func (mcp *MachineConfigPool) getConfigNameOfSpec() (string, error) {
+	output, err := mcp.Get(`{.spec.configuration.name}`)
 	e2e.Logf("spec.configuration.name of mcp/%v is %v", mcp.name, output)
 	return output, err
 }
 
-func (mcp *MachineConfigPool) getConfigNameOfStatus(oc *exutil.CLI) (string, error) {
-	output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("mcp", mcp.name, "-o", "jsonpath='{.status.configuration.name}'").Output()
+func (mcp *MachineConfigPool) getConfigNameOfStatus() (string, error) {
+	output, err := mcp.Get(`{.status.configuration.name}`)
 	e2e.Logf("status.configuration.name of mcp/%v is %v", mcp.name, output)
 	return output, err
 }
 
-func (mcp *MachineConfigPool) getMachineCount(oc *exutil.CLI) (int, error) {
-	machineCountStr, ocErr := oc.AsAdmin().WithoutNamespace().Run("get").Args("mcp", mcp.name, "-o", "jsonpath={.status.machineCount}").Output()
+func (mcp *MachineConfigPool) getMachineCount() (int, error) {
+	machineCountStr, ocErr := mcp.Get(`{.status.machineCount}`)
 	if ocErr != nil {
 		e2e.Logf("Error getting machineCount: %s", ocErr)
 		return -1, ocErr
@@ -212,13 +216,29 @@ func (mcp *MachineConfigPool) getMachineCount(oc *exutil.CLI) (int, error) {
 	return machineCount, nil
 }
 
-func (mcp *MachineConfigPool) waitForComplete(oc *exutil.CLI) {
+func (mcp *MachineConfigPool) getDegradedMachineCount() (int, error) {
+	dmachineCountStr, ocErr := mcp.Get(`{.status.degradedMachineCount}`)
+	if ocErr != nil {
+		e2e.Logf("Error getting degradedmachineCount: %s", ocErr)
+		return -1, ocErr
+	}
+	dmachineCount, convErr := strconv.Atoi(dmachineCountStr)
+
+	if convErr != nil {
+		e2e.Logf("Error converting degradedmachineCount to integer: %s", ocErr)
+		return -1, convErr
+	}
+
+	return dmachineCount, nil
+}
+
+func (mcp *MachineConfigPool) waitForComplete() {
 
 	var totalNodes int
 
 	o.Eventually(func() int {
 		var err error
-		totalNodes, err = mcp.getMachineCount(oc)
+		totalNodes, err = mcp.getMachineCount()
 		if err != nil {
 			return -1
 		}
@@ -231,17 +251,17 @@ func (mcp *MachineConfigPool) waitForComplete(oc *exutil.CLI) {
 
 	err := wait.Poll(1*time.Minute, timeToWait, func() (bool, error) {
 		// If there are degraded machines, stop polling, directly fail
-		degradedstdout, degradederr := oc.AsAdmin().WithoutNamespace().Run("get").Args("mcp/"+mcp.name, "-o", "jsonpath={.status.degradedMachineCount}").Output()
+		degradedstdout, degradederr := mcp.getDegradedMachineCount()
 		if degradederr != nil {
 			e2e.Logf("the err:%v, and try next round", degradederr)
 			return false, nil
 		}
 
-		if degradedstdout != "0" {
-			exutil.AssertWaitPollNoErr(fmt.Errorf("Degraded machines"), fmt.Sprintf("mcp %s has degraded %s machines", mcp.name, degradedstdout))
+		if degradedstdout != 0 {
+			exutil.AssertWaitPollNoErr(fmt.Errorf("Degraded machines"), fmt.Sprintf("mcp %s has degraded %d machines", mcp.name, degradedstdout))
 		}
 
-		stdout, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("mcp/"+mcp.name, "-o", "jsonpath={.status.conditions[?(@.type==\"Updated\")].status}").Output()
+		stdout, err := mcp.Get(`{.status.conditions[?(@.type=="Updated")].status}`)
 		if err != nil {
 			e2e.Logf("the err:%v, and try next round", err)
 			return false, nil

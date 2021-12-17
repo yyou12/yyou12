@@ -116,15 +116,16 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		g.By("Create custom infra mcp")
 		mcpName := "infra"
 		mcpTemplate := generateTemplateAbsolutePath("custom-machine-config-pool.yaml")
-		mcp := MachineConfigPool{name: mcpName, template: mcpTemplate}
-		defer mcp.delete(oc)
+		mcp := NewMachineConfigPool(oc.AsAdmin(), mcpName)
+		mcp.template = mcpTemplate
+		defer mcp.delete()
 		defer waitForNodeDoesNotContain(oc, workerNode.name, mcpName)
 		defer func() {
 			// ignore output, just focus on error handling, if error is occurred, fail this case
 			_, deletefailure := workerNode.DeleteCustomLabel(mcpName)
 			o.Expect(deletefailure).NotTo(o.HaveOccurred())
 		}()
-		mcp.create(oc)
+		mcp.create()
 		e2e.Logf("Custom mcp is created successfully!")
 
 		g.By("Remove custom label from the node")
@@ -146,7 +147,7 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		o.Expect(len(infraNodes)).Should(o.Equal(0))
 
 		g.By("Remove custom infra mcp")
-		mcp.delete(oc)
+		mcp.delete()
 
 		g.By("Check custom infra mcp is deleted")
 		mcpOut, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("mcp/" + mcpName).Output()
@@ -255,13 +256,13 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		kc := KubeletConfig{name: kcName, template: kcTemplate}
 		defer func() {
 			kc.delete(oc)
-			mcp := MachineConfigPool{name: "worker"}
-			mcp.waitForComplete(oc)
+			mcp := NewMachineConfigPool(oc.AsAdmin(), "worker")
+			mcp.waitForComplete()
 		}()
 		kc.create(oc)
 		kc.waitUntilSuccess(oc, "10s")
-		mcp := MachineConfigPool{name: "worker"}
-		mcp.waitForComplete(oc)
+		mcp := NewMachineConfigPool(oc.AsAdmin(), "worker")
+		mcp.waitForComplete()
 		e2e.Logf("Kubelet config is created successfully!")
 
 		g.By("Check max pods in the created kubelet config")
@@ -508,9 +509,9 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 
 	g.It("Author:rioliu-Longduration-NonPreRelease-High-42704-disable auto reboot for mco [Disruptive]", func() {
 		g.By("pause mcp worker")
-		mcp := MachineConfigPool{name: "worker"}
-		defer mcp.pause(oc, false)
-		mcp.pause(oc, true)
+		mcp := NewMachineConfigPool(oc.AsAdmin(), "worker")
+		defer mcp.pause(false)
+		mcp.pause(true)
 
 		g.By("create new mc")
 		mcName := "change-workers-chrony-configuration"
@@ -520,17 +521,17 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		mc.create(oc)
 
 		g.By("compare config name b/w spec.configuration.name and status.configuration.name, they're different")
-		specConf, specErr := mcp.getConfigNameOfSpec(oc)
+		specConf, specErr := mcp.getConfigNameOfSpec()
 		o.Expect(specErr).NotTo(o.HaveOccurred())
-		statusConf, statusErr := mcp.getConfigNameOfStatus(oc)
+		statusConf, statusErr := mcp.getConfigNameOfStatus()
 		o.Expect(statusErr).NotTo(o.HaveOccurred())
 		o.Expect(specConf).ShouldNot(o.Equal(statusConf))
 
 		g.By("check mcp status condition, expected: UPDATED=False && UPDATING=False")
 		var updated, updating string
 		pollerr := wait.Poll(5*time.Second, 10*time.Second, func() (bool, error) {
-			stdouta, erra := oc.AsAdmin().WithoutNamespace().Run("get").Args("mcp/worker", "-o", "jsonpath='{.status.conditions[?(@.type==\"Updated\")].status}'").Output()
-			stdoutb, errb := oc.AsAdmin().WithoutNamespace().Run("get").Args("mcp/worker", "-o", "jsonpath='{.status.conditions[?(@.type==\"Updating\")].status}'").Output()
+			stdouta, erra := mcp.Get(`{.status.conditions[?(@.type=="Updated")].status}`)
+			stdoutb, errb := mcp.Get(`{.status.conditions[?(@.type=="Updating")].status}`)
 			updated = strings.Trim(stdouta, "'")
 			updating = strings.Trim(stdoutb, "'")
 			if erra != nil || errb != nil {
@@ -548,8 +549,8 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		o.Expect(updating).Should(o.Equal("False"))
 
 		g.By("unpause mcp worker, then verify whether the new mc can be applied on mcp/worker")
-		mcp.pause(oc, false)
-		mcp.waitForComplete(oc)
+		mcp.pause(false)
+		mcp.waitForComplete()
 	})
 
 	g.It("Author:rioliu-NonPreRelease-High-42681-rotate kubernetes certificate authority [Disruptive]", func() {
@@ -558,10 +559,10 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		o.Expect(patchErr).NotTo(o.HaveOccurred())
 
 		g.By("monitor update progress of mcp master and worker, new configs should be applied successfully")
-		mcpMaster := MachineConfigPool{name: "master"}
-		mcpWorker := MachineConfigPool{name: "worker"}
-		mcpMaster.waitForComplete(oc)
-		mcpWorker.waitForComplete(oc)
+		mcpMaster := NewMachineConfigPool(oc.AsAdmin(), "master")
+		mcpWorker := NewMachineConfigPool(oc.AsAdmin(), "worker")
+		mcpMaster.waitForComplete()
+		mcpWorker.waitForComplete()
 
 		g.By("check new generated rendered configs for kuberlet CA")
 		renderedConfs, renderedErr := oc.AsAdmin().WithoutNamespace().Run("get").Args("mc", "--sort-by=metadata.creationTimestamp", "-o", "jsonpath='{.items[-2:].metadata.name}'").Output()
@@ -768,10 +769,10 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		o.Expect(setData).Should(o.Equal("secret/pull-secret data updated"))
 
 		g.By("Wait for configuration to be applied in master and worker pools")
-		mcpWorker := MachineConfigPool{name: "worker"}
-		mcpMaster := MachineConfigPool{name: "master"}
-		mcpWorker.waitForComplete(oc)
-		mcpMaster.waitForComplete(oc)
+		mcpWorker := NewMachineConfigPool(oc.AsAdmin(), "worker")
+		mcpMaster := NewMachineConfigPool(oc.AsAdmin(), "master")
+		mcpWorker.waitForComplete()
+		mcpMaster.waitForComplete()
 
 		g.By("Check new generated rendered configs for newly added pull secret")
 		renderedConfs, renderedErr := oc.AsAdmin().WithoutNamespace().Run("get").Args("mc", "--sort-by=metadata.creationTimestamp", "-o", "jsonpath='{.items[-2:].metadata.name}'").Output()
@@ -809,9 +810,9 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 
 	g.It("Author:sregidor-NonPreRelease-High-45239-KubeletConfig has a limit of 10 per cluster [Disruptive]", func() {
 		g.By("Pause mcp worker")
-		mcp := MachineConfigPool{name: "worker"}
-		defer mcp.pause(oc, false)
-		mcp.pause(oc, true)
+		mcp := NewMachineConfigPool(oc.AsAdmin(), "worker")
+		defer mcp.pause(false)
+		mcp.pause(true)
 
 		g.By("Create 10 kubelet config to add 500 max pods")
 		allKcs := []KubeletConfig{}
@@ -886,8 +887,8 @@ nulla pariatur.`
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		g.By("Wait until worker MachineConfigPool has finished the configuration")
-		mcp := MachineConfigPool{name: "worker"}
-		mcp.waitForComplete(oc)
+		mcp := NewMachineConfigPool(oc.AsAdmin(), "worker")
+		mcp.waitForComplete()
 
 		g.By("Verfiy that the file has been properly provisioned")
 		node := NewNodeList(oc).GetAllWorkerNodesOrFail()[0]
@@ -949,8 +950,8 @@ nulla pariatur.`
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		g.By("Wait until worker MachineConfigPool has finished the configuration")
-		mcp := MachineConfigPool{name: "worker"}
-		mcp.waitForComplete(oc)
+		mcp := NewMachineConfigPool(oc.AsAdmin(), "worker")
+		mcp.waitForComplete()
 
 		g.By("Validate that the chronyd service is masked")
 		svcMaskedOuput, _ := workerNode.DebugNodeWithChroot("systemctl", "status", "chronyd")
@@ -967,7 +968,7 @@ nulla pariatur.`
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		g.By("Wait until worker MachineConfigPool has finished the configuration")
-		mcp.waitForComplete(oc)
+		mcp.waitForComplete()
 
 		g.By("Validate that the chronyd service is unmasked")
 		svcUnMaskedOuput, err := workerNode.DebugNodeWithChroot("systemctl", "status", "chronyd")

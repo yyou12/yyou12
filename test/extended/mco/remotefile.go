@@ -64,6 +64,24 @@ func (rf *RemoteFile) fetchTextContent() error {
 	return nil
 }
 
+// Modify the remote file's permissions, setting the provided new permissions using `chmod newperm`
+func (rf *RemoteFile) PushNewPermissions(newperm string) error {
+	_, err := rf.node.DebugNodeWithChroot("sh", "-c", fmt.Sprintf("chmod %s %s", newperm, rf.fullPath))
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// Modify the remote file's content
+func (rf *RemoteFile) PushNewTextContent(newTextContent string) error {
+	_, err := rf.node.DebugNodeWithChroot("sh", "-c", fmt.Sprintf("echo -n '%s' > '%s'", newTextContent, rf.fullPath))
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // GetTextContent return the content of the text file. If the file contains binary data this method cannot be used to retreive the file's content
 func (rf *RemoteFile) GetTextContent() string {
 	return rf.content
