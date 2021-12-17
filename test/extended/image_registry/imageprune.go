@@ -1,13 +1,15 @@
 package image_registry
 
 import (
+	"fmt"
+	"time"
+
 	g "github.com/onsi/ginkgo"
 	o "github.com/onsi/gomega"
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
-	"time"
 )
 
 var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
@@ -212,5 +214,38 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 		foundImagePruneLog := false
 		foundImagePruneLog = DePodLogs(podsOfImagePrune, oc, logInfo)
 		o.Expect(foundImagePruneLog).To(o.BeTrue())
+	})
+
+	//Author: xiuwang@redhat.com
+	g.It("NonPreRelease-ConnectedOnly-Author:xiuwang-Medium-44107-Image pruner should skip images that has already been deleted [Serial][Slow]", func() {
+		g.By("Setup imagepruner")
+		defer oc.AsAdmin().Run("patch").Args("imagepruner/cluster", "-p", `{"spec":{"keepTagRevisions":3,"keepYoungerThanDuration":null,"schedule":""}}`, "--type=merge").Execute()
+		err := oc.AsAdmin().Run("patch").Args("imagepruner/cluster", "-p", `{"spec":{"keepTagRevisions":0,"keepYoungerThanDuration":"0s","schedule": "* * * * *"}}`, "--type=merge").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Image pruner should tolerate concurrent deletion of image objects")
+		oc.SetupProject()
+		for i := 0; i < 6; i++ {
+			bcName := getRandomString()
+			err = oc.AsAdmin().WithoutNamespace().Run("new-app").Args("openshift/httpd~https://github.com/openshift/httpd-ex.git", fmt.Sprintf("--name=%s", bcName), "-n", oc.Namespace()).Execute()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			err = exutil.WaitForABuild(oc.BuildClient().BuildV1().Builds(oc.Namespace()), fmt.Sprintf("%s-1", bcName), nil, nil, nil)
+			if err != nil {
+				exutil.DumpBuildLogs(bcName, oc)
+			}
+			exutil.AssertWaitPollNoErr(err, "build is not complete")
+
+			g.By("Delete imagestreamtag when the pruner is processing")
+			err = oc.AsAdmin().WithoutNamespace().Run("delete").Args("istag", fmt.Sprintf("%s:latest", bcName), "-n", oc.Namespace()).Execute()
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			foundPruneLog := true
+			foundPruneLog = imagePruneLog(oc, fmt.Sprintf("%s", bcName))
+			o.Expect(foundPruneLog).To(o.BeFalse())
+		}
+
+		g.By("Check if imagepruner degraded image registry")
+		out := getResource(oc, asAdmin, withoutNamespace, "imagepruner/cluster", "-o=jsonpath={.status.conditions}")
+		o.Expect(out).To(o.ContainSubstring(`"reason":"Complete"`))
 	})
 })

@@ -137,7 +137,7 @@ func applyResourceFromTemplate(oc *exutil.CLI, parameters ...string) error {
 }
 
 func getRandomString() string {
-	chars := "abcdefghijklmnopqrstuvwxyz0123456789"
+	chars := "abcdefghijklmnopqrstuvwxyz"
 	seed := rand.New(rand.NewSource(time.Now().UnixNano()))
 	buffer := make([]byte, 8)
 	for index := range buffer {
