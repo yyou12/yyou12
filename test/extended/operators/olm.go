@@ -6997,6 +6997,8 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 			}
 			return false, nil
 		})
+		e2e.Logf("sub %v %v\n", err, msg)
+
 		exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("The installplan name was not found in the subscription: %s", msg))
 
 		g.By("Wait for error in the install plan status")
@@ -7101,6 +7103,9 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		defer sub.deleteCSV(itName, dr)
 		sub.createWithoutCheck(oc, itName, dr)
 
+		msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("ip", "--no-headers", "-n", oc.Namespace()).Output()
+		e2e.Logf("installplan %v:\n %v\n", err, msg)
+
 		g.By("Wait for sub to create the installplan")
 		waitErr = wait.Poll(10*time.Second, snooze*time.Second, func() (bool, error) {
 			msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("sub", "-n", oc.Namespace(), sub.subName, "-o=jsonpath={.status.installplan}").Output()
@@ -7109,11 +7114,19 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 			}
 			return false, nil
 		})
+
+		if waitErr != nil { // add to the log
+			e2e.Logf("loop timed out\nsub installplan msg %v %v", err, msg)
+			msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("sub", "-n", oc.Namespace(), sub.subName, "-o=jsonpath={.status}").Output()
+			e2e.Logf("sub statis\n %v %v\n", err, msg)
+			msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("ip", "--no-headers", "-n", oc.Namespace()).Output()
+			e2e.Logf("ip %v %v", err, msg)
+		}
 		exutil.AssertWaitPollNoErr(waitErr, "cannot get installplan status in subscription")
 
 		g.By("Get the installplan name")
 		ip, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("sub", "-n", oc.Namespace(), sub.subName, "-o=jsonpath={.status.installplan.name}").Output()
-		e2e.Logf("installplan is %v", ip)
+		e2e.Logf("installplan is %v %v", ip, err)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(ip).NotTo(o.BeEmpty())
 
@@ -7127,7 +7140,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 			}
 			return false, nil
 		})
-		e2e.Logf("Actual installplan error: %v", msg)
+		e2e.Logf("Actual installplan error: %v %v", msg, err)
 		exutil.AssertWaitPollNoErr(waitErr, "cannot get expected installplan status")
 
 		g.By("Check sub for the same message")
