@@ -48,11 +48,12 @@ do
         sleep 10
     fi
 done
+echo "authentication operator finished updating"
 
 # clone upstream console repo and create soft link
-git clone -b master git@github.com:openshift/console.git upstream_console && cd upstream_console/frontend && yarn install 
-cd ../../frontend
-ln -s ../upstream_console/frontend/packages/integration-tests-cypress upstream
+git clone -b master https://github.com/openshift/console.git upstream_console && cd upstream_console/frontend && yarn install 
+cd ../../
+ln -s ./upstream_console/frontend/packages/integration-tests-cypress upstream
 
 # in frontend dir, install deps and trigger tests
 yarn install
