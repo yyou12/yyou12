@@ -516,4 +516,59 @@ var _ = g.Describe("[sig-updates] OTA cvo should", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(scc).To(o.Equal("hostaccess"))
 	})
+
+	//author: yanyang@redhat.com
+	g.It("Author:yanyang-Medium-46724-cvo defaults deployment replicas to one if it's unset in manifest", func() {
+		g.By("Check the replicas for openshift-insights/insights-operator is unset in manifest")
+		manifestDir := fmt.Sprintf("manifest-%d", time.Now().Unix())
+		dockerconfigDir := fmt.Sprintf("dockerconfig-%d", time.Now().Unix())
+		defer exec.Command("rm", "-rf", manifestDir, dockerconfigDir).Output()
+		_, err := exec.Command("mkdir", "-p", dockerconfigDir).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		_, err = oc.AsAdmin().Run("extract").Args("secret/pull-secret", "-n", "openshift-config", "--confirm", "--to="+dockerconfigDir).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		err = oc.AsAdmin().WithoutNamespace().Run("adm").Args("release", "extract", "--to", manifestDir, "-a", dockerconfigDir+"/.dockerconfigjson").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		namespace, name := "openshift-insights", "insights-operator"
+		cmd := fmt.Sprintf("grep -rlZ 'kind: Deployment' %s | xargs -0 grep -l 'name: %s\\|namespace: %s' | xargs grep replicas", manifestDir, name, namespace)
+		e2e.Logf(cmd)
+		out, _ := exec.Command("bash", "-c", cmd).Output()
+		o.Expect(out).To(o.BeEmpty())
+
+		g.By("Check only one insights-operator pod in a fresh installed cluster")
+		num, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("deployment", name, "-o=jsonpath={.spec.replicas}", "-n", namespace).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(num).To(o.Equal("1"))
+
+		defer oc.AsAdmin().WithoutNamespace().Run("scale").Args("--replicas", "1", fmt.Sprintf("deployment/%s", name), "-n", namespace).Output()
+
+		g.By("Scale down insights-operator replica to 0")
+		_, err = oc.AsAdmin().WithoutNamespace().Run("scale").Args("--replicas", "0", fmt.Sprintf("deployment/%s", name), "-n", namespace).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Check the insights-operator replica recovers to one")
+		err = wait.Poll(30*time.Second, 3*time.Minute, func() (bool, error) {
+			num, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("deployment", name, "-o=jsonpath={.spec.replicas}", "-n", namespace).Output()
+			if num != "1" {
+				return false, nil
+			}
+			return true, nil
+		})
+		exutil.AssertWaitPollNoErr(err, "insights-operator replicas is not 1")
+
+		g.By("Scale up insights-operator replica to 2")
+		_, err = oc.AsAdmin().WithoutNamespace().Run("scale").Args("--replicas", "2", fmt.Sprintf("deployment/%s", name), "-n", namespace).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Check the insights-operator replica recovers to one")
+		err = wait.Poll(30*time.Second, 5*time.Minute, func() (bool, error) {
+			num, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("deployment", name, "-o=jsonpath={.spec.replicas}", "-n", namespace).Output()
+			if num != "1" {
+				return false, nil
+			}
+			return true, nil
+		})
+		exutil.AssertWaitPollNoErr(err, "insights-operator replicas is not 1")
+	})
 })
