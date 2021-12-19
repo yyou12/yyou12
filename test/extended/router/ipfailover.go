@@ -17,7 +17,7 @@ var _ = g.Describe("[sig-network-edge] Network_Edge should", func() {
 
 	// author: hongli@redhat.com
 	// might conflict with other ipfailover cases so set it as Serial
-	g.It("Author:hongli-ConnectedOnly-Critical-41025-support to deploy ipfailover", func() {
+	g.It("Author:hongli-ConnectedOnly-Critical-41025-support to deploy ipfailover [Flaky]", func() {
 		buildPruningBaseDir := exutil.FixturePath("testdata", "router")
 		customTemp := filepath.Join(buildPruningBaseDir, "ipfailover.yaml")
 		var (
