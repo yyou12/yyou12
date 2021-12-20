@@ -2,14 +2,6 @@
 
 set -euo pipefail
 
-function generateReport {
-  yarn run cypress-postreport
-  if test -f frontend/cypress-a11y-report.json; then
-    yarn cypress-a11y-report
-  fi
-}
-trap generateReport EXIT
-
 ## Add IDP for testing
 
 # prepare users
@@ -65,7 +57,5 @@ export LOGIN_IDP=uiauto-htpasswd-idp
 export LOGIN_USERNAME=testuser-1
 export LOGIN_PASSWORD=$(echo $users | awk -F ',' '{print $1}' | awk -F ':' '{print $2}')
 yarn run test-cypress-console-headless
-yarn run cypress-a11y-report
-yarn cypress-postreport
 
 # TODO: archive gui_test_screenshots
