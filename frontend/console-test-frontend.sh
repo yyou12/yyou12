@@ -56,6 +56,6 @@ export BRIDGE_BASE_ADDRESS=https://$console_route
 export LOGIN_IDP=uiauto-htpasswd-idp
 export LOGIN_USERNAME=testuser-1
 export LOGIN_PASSWORD=$(echo $users | awk -F ',' '{print $1}' | awk -F ':' '{print $2}')
+echo "triggering tests"
 yarn run test-cypress-console-headless
-
 # TODO: archive gui_test_screenshots
