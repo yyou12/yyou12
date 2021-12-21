@@ -596,7 +596,7 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 		g.By("Check registry configs in all nodes")
 		err = wait.Poll(25*time.Second, 2*time.Minute, func() (bool, error) {
 			for _, nodeName := range nodeList {
-				output, err := exutil.DebugNodeWithChroot(oc, nodeName, "cat", "/etc/containers/registries.conf")
+				output, err := exutil.DebugNodeWithChroot(oc, nodeName, "bash", "-c", "cat /etc/containers/registries.conf | grep fake.rhcloud.com")
 				o.Expect(err).NotTo(o.HaveOccurred())
 				if !strings.Contains(output, "fake.rhcloud.com") {
 					e2e.Logf("Continue to next round")
