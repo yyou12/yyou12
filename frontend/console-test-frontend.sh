@@ -52,7 +52,7 @@ ln -s ./upstream_console/frontend/packages/integration-tests-cypress upstream
 yarn install
 
 # trigger tests
-console_route=$(oc get route console -n openshift-console -o yaml | grep "host.*console-openshift-console.apps.*com" | head -n 1 | awk -F ' ' '{print $2}')
+console_route=$(oc get route console -n openshift-console -o jsonpath='{.spec.host}')
 export BRIDGE_BASE_ADDRESS=https://$console_route
 export LOGIN_IDP=uiauto-htpasswd-idp
 export LOGIN_USERNAME=testuser-1
