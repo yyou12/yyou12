@@ -37,8 +37,8 @@ var _ = g.Describe("[sig-network-edge] Network_Edge should", func() {
 		g.By("create another custom ingresscontroller")
 		baseDomain := getBaseDomain(oc)
 		ingctrl.domain = ingctrl.name + "." + baseDomain
-		ingctrl.create(oc)
 		defer ingctrl.delete(oc)
+		ingctrl.create(oc)
 		err = waitForCustomIngressControllerAvailable(oc, ingctrl.name)
 		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("ingresscontroller %s conditions not available", ingctrl.name))
 

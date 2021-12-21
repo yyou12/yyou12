@@ -33,8 +33,8 @@ var _ = g.Describe("[sig-network-edge] Network_Edge should", func() {
 		g.By("Create a NP ingresscontroller with PROXY protocol set")
 		baseDomain := getBaseDomain(oc)
 		ingctrl.domain = ingctrl.name + "." + baseDomain
-		ingctrl.create(oc)
 		defer ingctrl.delete(oc)
+		ingctrl.create(oc)
 		err := waitForCustomIngressControllerAvailable(oc, ingctrl.name)
 		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("ingresscontroller %s conditions not available", ingctrl.name))
 
@@ -60,8 +60,8 @@ var _ = g.Describe("[sig-network-edge] Network_Edge should", func() {
 		g.By("Create a NP ingresscontroller with PROXY protocol set")
 		baseDomain := getBaseDomain(oc)
 		ingctrl.domain = ingctrl.name + "." + baseDomain
-		ingctrl.create(oc)
 		defer ingctrl.delete(oc)
+		ingctrl.create(oc)
 		err := waitForCustomIngressControllerAvailable(oc, ingctrl.name)
 		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("ingresscontroller %s conditions not available", ingctrl.name))
 
@@ -103,8 +103,8 @@ var _ = g.Describe("[sig-network-edge] Network_Edge should", func() {
 		g.By("1. create a custom ingresscontroller, and get its router name")
 		baseDomain := getBaseDomain(oc)
 		ingctrl.domain = ingctrl.name + "." + baseDomain
-		ingctrl.create(oc)
 		defer ingctrl.delete(oc)
+		ingctrl.create(oc)
 		err := waitForCustomIngressControllerAvailable(oc, ingctrl.name)
 		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("ingresscontroller %s conditions not available", ingctrl.name))
 		originalRouterpod := getRouterPod(oc, ingctrl.name)
@@ -170,8 +170,8 @@ var _ = g.Describe("[sig-network-edge] Network_Edge should", func() {
 		g.By("Create a custom ingresscontroller, and get its router name")
 		baseDomain := getBaseDomain(oc)
 		ingctrl.domain = ingctrl.name + "." + baseDomain
-		ingctrl.create(oc)
 		defer ingctrl.delete(oc)
+		ingctrl.create(oc)
 		err := waitForCustomIngressControllerAvailable(oc, ingctrl.name)
 		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("ingresscontroller %s conditions not available", ingctrl.name))
 		routerpod := getRouterPod(oc, ingctrl.name)
@@ -215,8 +215,8 @@ var _ = g.Describe("[sig-network-edge] Network_Edge should", func() {
 		g.By("Create a custom ingresscontroller, and get its router name")
 		baseDomain := getBaseDomain(oc)
 		ingctrl.domain = ingctrl.name + "." + baseDomain
-		ingctrl.create(oc)
 		defer ingctrl.delete(oc)
+		ingctrl.create(oc)
 		err := waitForCustomIngressControllerAvailable(oc, ingctrl.name)
 		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("ingresscontroller %s conditions not available", ingctrl.name))
 		routerpod := getRouterPod(oc, ingctrl.name)
@@ -255,8 +255,8 @@ var _ = g.Describe("[sig-network-edge] Network_Edge should", func() {
 		g.By("Create a custom ingresscontroller, and get its router name")
 		baseDomain := getBaseDomain(oc)
 		ingctrl.domain = ingctrl.name + "." + baseDomain
-		ingctrl.create(oc)
 		defer ingctrl.delete(oc)
+		ingctrl.create(oc)
 		err := waitForCustomIngressControllerAvailable(oc, ingctrl.name)
 		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("ingresscontroller %s conditions not available", ingctrl.name))
 		routerpod := getRouterPod(oc, ingctrl.name)
@@ -295,8 +295,8 @@ var _ = g.Describe("[sig-network-edge] Network_Edge should", func() {
 		g.By("Create a custom ingresscontroller, and get its router name")
 		baseDomain := getBaseDomain(oc)
 		ingctrl.domain = ingctrl.name + "." + baseDomain
-		ingctrl.create(oc)
 		defer ingctrl.delete(oc)
+		ingctrl.create(oc)
 		err := waitForCustomIngressControllerAvailable(oc, ingctrl.name)
 		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("ingresscontroller %s conditions not available", ingctrl.name))
 		routerpod := getRouterPod(oc, ingctrl.name)
@@ -335,8 +335,8 @@ var _ = g.Describe("[sig-network-edge] Network_Edge should", func() {
 		g.By("Create a custom ingresscontroller, and get its router name")
 		baseDomain := getBaseDomain(oc)
 		ingctrl.domain = ingctrl.name + "." + baseDomain
-		ingctrl.create(oc)
 		defer ingctrl.delete(oc)
+		ingctrl.create(oc)
 		err := waitForCustomIngressControllerAvailable(oc, ingctrl.name)
 		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("ingresscontroller %s conditions not available", ingctrl.name))
 		routerpod := getRouterPod(oc, ingctrl.name)
@@ -374,8 +374,8 @@ var _ = g.Describe("[sig-network-edge] Network_Edge should", func() {
 		g.By("Create a custom ingresscontroller, and get its router name")
 		baseDomain := getBaseDomain(oc)
 		ingctrl.domain = ingctrl.name + "." + baseDomain
-		ingctrl.create(oc)
 		defer ingctrl.delete(oc)
+		ingctrl.create(oc)
 		err := waitForCustomIngressControllerAvailable(oc, ingctrl.name)
 		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("ingresscontroller %s conditions not available", ingctrl.name))
 		routerpod := getRouterPod(oc, ingctrl.name)
@@ -415,8 +415,8 @@ var _ = g.Describe("[sig-network-edge] Network_Edge should", func() {
 		g.By("Create a custom ingresscontroller, and get its router name")
 		baseDomain := getBaseDomain(oc)
 		ingctrl.domain = ingctrl.name + "." + baseDomain
-		ingctrl.create(oc)
 		defer ingctrl.delete(oc)
+		ingctrl.create(oc)
 		err := waitForCustomIngressControllerAvailable(oc, ingctrl.name)
 		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("ingresscontroller %s conditions not available", ingctrl.name))
 		routerpod := getRouterPod(oc, ingctrl.name)

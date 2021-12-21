@@ -30,14 +30,14 @@ var _ = g.Describe("[sig-network-edge] Network_Edge should", func() {
 		)
 
 		g.By("create configmap client-ca-xxxxx in namespace openshift-config")
-		createConfigMapFromFile(oc, "openshift-config", "client-ca-43300", cmFile)
 		defer deleteConfigMap(oc, "openshift-config", "client-ca-43300")
+		createConfigMapFromFile(oc, "openshift-config", "client-ca-43300", cmFile)
 
 		g.By("create custom ingresscontroller")
 		baseDomain := getBaseDomain(oc)
 		ingctrl.domain = ingctrl.name + "." + baseDomain
-		ingctrl.create(oc)
 		defer ingctrl.delete(oc)
+		ingctrl.create(oc)
 		err := waitForCustomIngressControllerAvailable(oc, ingctrl.name)
 		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("ingresscontroller %s conditions not available", ingctrl.name))
 
@@ -69,14 +69,14 @@ var _ = g.Describe("[sig-network-edge] Network_Edge should", func() {
 		)
 
 		g.By("create configmap client-ca-xxxxx in namespace openshift-config")
-		createConfigMapFromFile(oc, "openshift-config", "client-ca-43301", cmFile)
 		defer deleteConfigMap(oc, "openshift-config", "client-ca-43301")
+		createConfigMapFromFile(oc, "openshift-config", "client-ca-43301", cmFile)
 
 		g.By("create custom ingresscontroller")
 		baseDomain := getBaseDomain(oc)
 		ingctrl.domain = ingctrl.name + "." + baseDomain
-		ingctrl.create(oc)
 		defer ingctrl.delete(oc)
+		ingctrl.create(oc)
 		err := waitForCustomIngressControllerAvailable(oc, ingctrl.name)
 		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("ingresscontroller %s conditions not available", ingctrl.name))
 
