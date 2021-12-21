@@ -915,7 +915,8 @@ nulla pariatur.`
 		o.Expect(mcoPods).To(o.HaveLen(1))
 		mcoPod := mcoPods[0]
 		scc := mcoPod.GetOrFail(`{.metadata.annotations.openshift\.io/scc}`)
-		o.Expect(scc).To(o.Equal("hostmount-anyuid"))
+		// on baremetal cluster, value of openshift.io/scc is nfs-provisioner, on AWS cluster it is hostmount-anyuid
+		o.Expect(scc).Should(o.SatisfyAny(o.Equal("hostmount-anyuid"), o.Equal("nfs-provisioner")))
 
 		g.By("Validate machine-config-daemon clusterrole")
 		mcdCR := NewResource(oc.AsAdmin(), "clusterrole", "machine-config-daemon")
