@@ -688,4 +688,92 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 		foundErrLog = DePodLogs(podsOfImageRegistry, oc, errInfo)
 		o.Expect(foundErrLog).To(o.BeTrue())
 	})
+
+	// author: jitli@redhat.com
+	g.It("NonPreRelease-Longduration-Author:jitli-ConnectedOnly-VMonly-Medium-33051-Images can be imported from an insecure registry without 'insecure: true' if it is in insecureRegistries in image.config/cluster [Disruptive]", func() {
+
+		g.By("import image from an insecure registry directly without --insecure=true")
+		output, err := oc.WithoutNamespace().AsAdmin().Run("import-image").Args("image-33051", "--from=registry.access.redhat.com/rhel7").Output()
+		o.Expect(err).To(o.HaveOccurred())
+		if err != nil {
+			e2e.Logf(output)
+		}
+
+		g.By("Create route")
+		defer oc.AsAdmin().Run("patch").Args("configs.imageregistry/cluster", "-p", `{"spec":{"defaultRoute":false}}`, "--type=merge").Execute()
+		output, err = oc.AsAdmin().Run("patch").Args("configs.imageregistry/cluster", "-p", `{"spec":{"defaultRoute":true}}`, "--type=merge").Output()
+		if err != nil {
+			e2e.Logf(output)
+		}
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring("patched"))
+
+		g.By("Get server host")
+		host, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("route", "-n", "openshift-image-registry", "default-route", "-o=jsonpath={.spec.host}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf(host)
+
+		g.By("Get token from secret")
+		oc.SetupProject()
+		token, err := oc.WithoutNamespace().AsAdmin().Run("serviceaccounts").Args("get-token", "builder", "-n", oc.Namespace()).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Create a secret for user-defined route")
+		err = oc.WithoutNamespace().AsAdmin().Run("create").Args("secret", "docker-registry", "secret33051", "--docker-server="+host, "--docker-username="+oc.Username(), "--docker-password="+token, "-n", oc.Namespace()).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Add the insecure registry to images.config.openshift.io cluster")
+		defer oc.AsAdmin().Run("patch").Args("images.config.openshift.io/cluster", "-p", `{"spec": {"registrySources": null}}`, "--type=merge").Execute()
+		output, err = oc.AsAdmin().Run("patch").Args("images.config.openshift.io/cluster", "-p", `{"spec": {"registrySources": {"insecureRegistries": ["`+host+`"]}}}`, "--type=merge").Output()
+		e2e.Logf(output)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring("patched"))
+
+		g.By("registries.conf gets updated")
+		workNode, _ := exutil.GetFirstWorkerNode(oc)
+		e2e.Logf(workNode)
+		err = wait.Poll(30*time.Second, 6*time.Minute, func() (bool, error) {
+			registriesstatus, _ := exutil.DebugNodeWithChroot(oc, workNode, "bash", "-c", "cat /etc/containers/registries.conf | grep default-route-openshift-image-registry.apps")
+			if strings.Contains(registriesstatus, "default-route-openshift-image-registry.apps") {
+				e2e.Logf("registries.conf updated")
+				return true, nil
+			} else {
+				e2e.Logf("registries.conf not update")
+				return false, nil
+			}
+		})
+		exutil.AssertWaitPollNoErr(err, "registries.conf not update")
+
+		g.By("Tag the image")
+		output, err = oc.WithoutNamespace().AsAdmin().Run("tag").Args(host+"/openshift/ruby:latest", "ruby:33051", "-n", oc.Namespace()).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring("Tag ruby:33051 set"))
+
+		g.By("Add docker.io to blockedRegistries list")
+		defer oc.AsAdmin().Run("patch").Args("images.config.openshift.io/cluster", "-p", `{"spec": {"additionalTrustedCA": null,"registrySources": null}}`, "--type=merge").Execute()
+		output, err = oc.AsAdmin().Run("patch").Args("images.config.openshift.io/cluster", "-p", `{"spec": {"additionalTrustedCA": {"name": ""},"registrySources": {"blockedRegistries": ["docker.io"]}}}`, "--type=merge").Output()
+		e2e.Logf(output)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring("patched"))
+
+		g.By("registries.conf gets updated")
+		err = wait.Poll(30*time.Second, 6*time.Minute, func() (bool, error) {
+			registriesstatus, _ := exutil.DebugNodeWithChroot(oc, workNode, "bash", "-c", "cat /etc/containers/registries.conf | grep \"docker.io\"")
+			if strings.Contains(registriesstatus, "location = \"docker.io\"") {
+				e2e.Logf("registries.conf updated")
+				return true, nil
+			} else {
+				e2e.Logf("registries.conf not update")
+				return false, nil
+			}
+		})
+		exutil.AssertWaitPollNoErr(err, "registries.conf not contains docker.io")
+
+		g.By("Import an image from docker.io")
+		output, err = oc.WithoutNamespace().AsAdmin().Run("import-image").Args("image2-33051", "--from=docker.io/centos/ruby-22-centos7", "--confirm=true").Output()
+		e2e.Logf(output)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring("error: Import failed (Forbidden): forbidden: registry docker.io blocked"))
+
+	})
 })
