@@ -1,7 +1,6 @@
 #!/bin/bash
 
 set -euo pipefail
-set -x
 
 ## Add IDP for testing
 
@@ -44,6 +43,7 @@ done
 echo "authentication operator finished updating"
 
 # clone upstream console repo and create soft link
+set -x
 git clone -b master https://github.com/openshift/console.git upstream_console && cd upstream_console/frontend && yarn install 
 cd ../../
 ln -s ./upstream_console/frontend/packages/integration-tests-cypress upstream
@@ -52,6 +52,7 @@ ln -s ./upstream_console/frontend/packages/integration-tests-cypress upstream
 yarn install
 
 # trigger tests
+set +x
 console_route=$(oc get route console -n openshift-console -o jsonpath='{.spec.host}')
 export BRIDGE_BASE_ADDRESS=https://$console_route
 export LOGIN_IDP=uiauto-htpasswd-idp
@@ -59,5 +60,6 @@ export LOGIN_USERNAME=testuser-1
 export LOGIN_PASSWORD=$(echo $users | awk -F ',' '{print $1}' | awk -F ':' '{print $2}')
 ls -ltr
 echo "triggering tests"
+set -x
 yarn run test-cypress-console-headless
 # TODO: archive gui_test_screenshots
