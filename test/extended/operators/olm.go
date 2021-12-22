@@ -8457,7 +8457,7 @@ var _ = g.Describe("[sig-operators] OLM on VM for an end user handle within a na
 	// OCP-43641 author: jitli@redhat.com
 	g.It("Author:jitli-ConnectedOnly-VMonly-Medium-43641-opm index add fails during image extraction", func() {
 		containerCLI := container.NewPodmanCLI()
-		bundleImage := "quay.io/olmqe/etcd:0.9.4"
+		bundleImage := "quay.io/olmqe/etcd:0.9.4-43641"
 		indexImage := "quay.io/olmqe/etcd-index:v1-4.8"
 		defer containerCLI.RemoveImage(bundleImage)
 		defer containerCLI.RemoveImage(indexImage)

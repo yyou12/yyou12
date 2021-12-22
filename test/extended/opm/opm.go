@@ -1217,7 +1217,7 @@ var _ = g.Describe("[sig-operators] OLM opm with podman", func() {
 		o.Expect(string(output)).NotTo(o.ContainSubstring("ditto-operator.v0.1.0"))
 
 		g.By("re-adding the bundle")
-		output, err = opmCLI.Run("index").Args("add", "-b", "quay.io/olmqe/ditto-operator:0.1.1,quay.io/olmqe/ditto-operator:0.2.0", "-f", indexImageDep, "-t", indexImageOW, "--overwrite-latest", "-c", containerTool).Output()
+		output, err = opmCLI.Run("index").Args("add", "-b", "quay.io/olmqe/ditto-operator:0.2.0-43147", "-f", indexImageDep, "-t", indexImageOW, "--overwrite-latest", "-c", containerTool).Output()
 		if err != nil {
 			e2e.Logf(output)
 		}
