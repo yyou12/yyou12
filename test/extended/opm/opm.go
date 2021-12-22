@@ -62,6 +62,18 @@ var _ = g.Describe("[sig-operators] OLM opm should", func() {
 
 	})
 
+    // author: scolange@redhat.com
+	g.It("Author:scolange-VMonly-Medium-47222-can't remove package from index: database is locked", func() {
+		
+		g.By("remove package from index")
+		
+		output1, err := opmCLI.Run("index").Args("rm","--generate","--binary-image","registry.redhat.io/openshift4/ose-operator-registry:v4.7","--from-index","registry.redhat.io/redhat/certified-operator-index:v4.7","--operators","cert-manager-operator","--pull-tool=podman").Output()
+		e2e.Logf(output1)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		g.By("test case 47222 SUCCESS")
+
+	})
+
 	// author: kuiwang@redhat.com
 	g.It("Author:kuiwang-Medium-43185-DC based opm subcommands out of alpha", func() {
 		g.By("check init, serve, render and validate under opm")
