@@ -15,7 +15,7 @@ import (
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 )
 
-var _ = g.Describe("[sig-windows] Windows_Containers NonPreRelease", func() {
+var _ = g.Describe("[sig-windows] Windows_Containers CPaasrunOnly", func() {
 	defer g.GinkgoRecover()
 
 	var (
@@ -247,18 +247,8 @@ var _ = g.Describe("[sig-windows] Windows_Containers NonPreRelease", func() {
 		}
 	})
 
-	// author: sgao@redhat.com TODO to be delete
-	g.It("Author:sgao-High-29411-Reconcile Windows node [Slow][Disruptive]", func() {
-		windowsMachineSetName := getWindowsMachineSetName(oc)
-		g.By("Scale up the MachineSet")
-		scaleWindowsMachineSet(oc, windowsMachineSetName, 3)
-		defer scaleWindowsMachineSet(oc, windowsMachineSetName, 2)
-		// Windows node is taking roughly 12 minutes to be shown up in the cluster, set timeout as 20 minutes
-		waitWindowsNodesReady(oc, 3, 60*time.Second, 1200*time.Second)
-	})
-
 	// author: sgao@redhat.com refactored:v1
-	g.It("Author:sgao-Critical-28632-Windows and Linux east west network during a long time [Serial]", func() {
+	g.It("Author:sgao-Critical-28632-Windows and Linux east west network during a long time", func() {
 		// Note: Flexy alredy created workload in winc-test, here we check it still works after a long time
 		namespace := "winc-test"
 		g.By("Check communication: Windows pod <--> Linux pod")
@@ -312,7 +302,7 @@ var _ = g.Describe("[sig-windows] Windows_Containers NonPreRelease", func() {
 	})
 
 	// author rrasouli@redhat.com
-	g.It("Longduration-Author:rrasouli-High-37096-Schedule Windows workloads with cluster running multiple Windows OS variants [Slow][Disruptive]", func() {
+	g.It("Longduration-Author:rrasouli-NonPreRelease-High-37096-Schedule Windows workloads with cluster running multiple Windows OS variants [Slow][Disruptive]", func() {
 
 		// we assume 2 Windows Nodes created with the default server 2019 image, here we create new server
 		namespace := "winc-37096"
@@ -354,7 +344,7 @@ var _ = g.Describe("[sig-windows] Windows_Containers NonPreRelease", func() {
 		}
 	})
 
-	g.It("Author:rrasouli-Critical-42496-byoh-Configure Windows instance with DNS [Slow][Disruptive]", func() {
+	g.It("Author:rrasouli-NonPreRelease-Critical-42496-byoh-Configure Windows instance with DNS [Slow][Disruptive]", func() {
 		namespace := "winc-42496"
 		user := "Administrator"
 		winVersion := "2019"
@@ -383,7 +373,7 @@ var _ = g.Describe("[sig-windows] Windows_Containers NonPreRelease", func() {
 		}
 	})
 	// author rrasouli@redhat.com
-	g.It("Author:rrasouli-High-39451-Access Windows workload through clusterIP [Slow][Disruptive]", func() {
+	g.It("Author:rrasouli-NonPreRelease-High-39451-Access Windows workload through clusterIP [Slow][Disruptive]", func() {
 		namespace := "winc-39451"
 		defer deleteProject(oc, namespace)
 		createProject(oc, namespace)
@@ -596,7 +586,7 @@ var _ = g.Describe("[sig-windows] Windows_Containers NonPreRelease", func() {
 	})
 
 	// author: sgao@redhat.com
-	g.It("Author:sgao-Critical-33783-Enable must gather on Windows node [Slow][Disruptive]", func() {
+	g.It("Author:sgao-NonPreRelease-Critical-33783-Enable must gather on Windows node [Slow][Disruptive]", func() {
 		g.By("Check must-gather on Windows node")
 		// Note: Marked as [Disruptive] in case of /tmp folder full
 		msg, err := oc.WithoutNamespace().Run("adm").Args("must-gather", "--dest-dir=/tmp/must-gather-33783").Output()
@@ -626,7 +616,7 @@ var _ = g.Describe("[sig-windows] Windows_Containers NonPreRelease", func() {
 	})
 
 	// author: sgao@redhat.com
-	g.It("Author:sgao-High-33794-Watch cloud private key secret [Slow][Disruptive]", func() {
+	g.It("Author:sgao-NonPreRelease-High-33794-Watch cloud private key secret [Slow][Disruptive]", func() {
 		g.By("Check watch cloud-private-key secret")
 		oc.WithoutNamespace().Run("delete").Args("secret", "cloud-private-key", "-n", "openshift-windows-machine-config-operator").Output()
 		defer oc.WithoutNamespace().Run("create").Args("secret", "generic", "cloud-private-key", "--from-file=private-key.pem="+privateKey, "-n", "openshift-windows-machine-config-operator").Output()
@@ -653,7 +643,7 @@ var _ = g.Describe("[sig-windows] Windows_Containers NonPreRelease", func() {
 	})
 
 	// author: sgao@redhat.com
-	g.It("Author:sgao-Medium-37472-Idempotent check of service running in Windows node [Slow][Disruptive]", func() {
+	g.It("Author:sgao-NonPreRelease-Medium-37472-Idempotent check of service running in Windows node [Slow][Disruptive]", func() {
 		namespace := "winc-37472"
 		defer deleteProject(oc, namespace)
 		createProject(oc, namespace)
@@ -683,7 +673,7 @@ var _ = g.Describe("[sig-windows] Windows_Containers NonPreRelease", func() {
 	})
 
 	// author: sgao@redhat.com
-	g.It("Author:sgao-Medium-39030-Re queue on Windows machine's edge cases [Slow][Disruptive]", func() {
+	g.It("Author:sgao-NonPreRelease-Medium-39030-Re queue on Windows machine's edge cases [Slow][Disruptive]", func() {
 		g.By("Scale down WMCO")
 		namespace := "openshift-windows-machine-config-operator"
 		scaleDownWMCO(oc)
