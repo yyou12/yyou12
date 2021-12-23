@@ -158,6 +158,11 @@ func setAnnotation(oc *exutil.CLI, ns, resource, annotation string) {
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
+func setEnvVariable(oc *exutil.CLI, ns, resource, envstring string) {
+	err := oc.WithoutNamespace().Run("set").Args("env", "-n", ns, resource, envstring).Execute()
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
 // for collecting a single pod name for general use.
 //usage example: podname := getRouterPod(oc, "default/labelname")
 func getRouterPod(oc *exutil.CLI, icname string) string {
@@ -170,8 +175,15 @@ func getRouterPod(oc *exutil.CLI, icname string) string {
 // For collecting env details with grep from router pod [usage example: readDeploymentData(oc, podname, "search string")] .
 // NOTE: This requires getRouterPod function to collect the podname variable first!
 func readRouterPodEnv(oc *exutil.CLI, routername, envname string) string {
+	ns := "openshift-ingress"
+	output := readPodEnv(oc, routername, ns, envname)
+	return output
+}
+
+// For collecting env details with grep [usage example: readDeploymentData(oc, namespace, podname, "search string")]
+func readPodEnv(oc *exutil.CLI, routername, ns string, envname string) string {
 	cmd := fmt.Sprintf("/usr/bin/env | grep %s", envname)
-	output, err := oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-ingress", routername, "--", "bash", "-c", cmd).Output()
+	output, err := oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", ns, routername, "--", "bash", "-c", cmd).Output()
 	o.Expect(err).NotTo(o.HaveOccurred())
 	e2e.Logf("the matched Env are: %v", output)
 	return output
@@ -299,4 +311,38 @@ func exposeEdgeRoute(oc *exutil.CLI, ns, route, service, edgecert, edgekey, host
 func patchGlobalResourceAsAdmin(oc *exutil.CLI, resource, patch string) {
 	err := oc.AsAdmin().WithoutNamespace().Run("patch").Args(resource, "--patch="+patch, "--type=json").Execute()
 	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+// this function helps to get the ipv4 address of the given pod
+func getPodv4Address(oc *exutil.CLI, podName, namespace string) string {
+	podIPv4, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-n", podName, namespace, "-o=jsonpath={.status.podIP}").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	e2e.Logf("IP of the %s pod in namespace %s is %q ", podName, namespace, podIPv4)
+	return podIPv4
+}
+
+//this function will describe the given pod details
+func describePod(oc *exutil.CLI, podName, namespace string) string {
+	podDescribe, err := oc.AsAdmin().WithoutNamespace().Run("describe").Args("pod", "-n", podName, namespace).Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	return podDescribe
+}
+
+// this function will replace the octate of the ipaddress with the given value
+func replaceIpOctet(ipaddress string, octet int, octetValue string) string {
+	ipList := strings.Split(ipaddress, ".")
+	ipList[octet] = octetValue
+	vip := strings.Join(ipList, ".")
+	e2e.Logf("The modified ipaddress is %s ", vip)
+	return vip
+}
+
+// this function is to obtain the pod name based on the particular label
+func getPodName(oc *exutil.CLI, namespace string, label string) []string {
+	var podName []string
+	podNameAll, err := oc.AsAdmin().Run("get").Args("-n", namespace, "pod", "-l", label, "-ojsonpath={.items..metadata.name}").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	podName = strings.Split(podNameAll, " ")
+	e2e.Logf("The pod(s) are  %v ", podName)
+	return podName
 }
