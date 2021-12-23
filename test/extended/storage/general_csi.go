@@ -450,8 +450,8 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 	})
 
 	// author: wduan@redhat.com
-	// OCP-46358 - [CSI Clone] Clone a pvc with filesystem VolumeMode
-	g.It("Author:wduan-Critical-46358-[CSI Clone] Clone a pvc with filesystem VolumeMode", func() {
+	// OCP-46358 - [CSI Driver] [CSI Clone] Clone a pvc with filesystem VolumeMode
+	g.It("Author:wduan-Critical-46358-[CSI Driver] [CSI Clone] Clone a pvc with filesystem VolumeMode", func() {
 		// Define the test scenario support provisioners
 		scenarioSupportProvisioners := []string{"disk.csi.azure.com", "cinder.csi.openstack.org"}
 		// Set the resource template for the scenario
@@ -518,8 +518,81 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 	})
 
 	// author: wduan@redhat.com
-	// OCP-46813 - [CSI Clone] Clone a pvc with Raw Block VolumeMode
-	g.It("Author:wduan-Critical-46813-[CSI Clone] Clone a pvc with Raw Block VolumeMode", func() {
+	// OCP-47224 - [CSI Driver] [CSI Clone] [Filesystem] provisioning volume with pvc data source larger than original volume
+	g.It("Author:wduan-High-47224-[CSI Driver] [CSI Clone] [Filesystem] provisioning volume with pvc data source larger than original volume", func() {
+		// Define the test scenario support provisioners
+		scenarioSupportProvisioners := []string{"disk.csi.azure.com", "cinder.csi.openstack.org"}
+		// Set the resource template for the scenario
+		var (
+			storageTeamBaseDir  = exutil.FixturePath("testdata", "storage")
+			pvcTemplate         = filepath.Join(storageTeamBaseDir, "pvc-template.yaml")
+			podTemplate         = filepath.Join(storageTeamBaseDir, "pod-template.yaml")
+			supportProvisioners = sliceIntersect(scenarioSupportProvisioners, getSupportProvisionersByCloudProvider(cloudProvider))
+		)
+		if len(supportProvisioners) == 0 {
+			g.Skip("Skip for scenario non-supported provisioner!!!")
+		}
+
+		g.By("Create new project for the scenario")
+		oc.SetupProject() //create new project
+		for _, provisioner := range supportProvisioners {
+			g.By("******" + cloudProvider + " csi driver: \"" + provisioner + "\" test phase start" + "******")
+			// Set the resource definition for the original
+			pvc_ori := newPersistentVolumeClaim(setPersistentVolumeClaimTemplate(pvcTemplate), setPersistentVolumeClaimCapacity("1Gi"))
+			pod_ori := newPod(setPodTemplate(podTemplate), setPodPersistentVolumeClaim(pvc_ori.name))
+
+			g.By("Create a pvc with the preset csi storageclass")
+			pvc_ori.scname = getPresetStorageClassNameByProvisioner(cloudProvider, provisioner)
+			e2e.Logf("%s", pvc_ori.scname)
+			pvc_ori.create(oc)
+			defer pvc_ori.deleteAsAdmin(oc)
+
+			g.By("Create pod with the created pvc and wait for the pod ready")
+			pod_ori.create(oc)
+			defer pod_ori.deleteAsAdmin(oc)
+			pod_ori.waitReady(oc)
+			nodeName := getNodeNameByPod(oc, pod_ori.namespace, pod_ori.name)
+
+			g.By("Write file to volume")
+			pod_ori.checkMountedVolumeCouldRW(oc)
+			pod_ori.execCommand(oc, "sync")
+
+			// Set the resource definition for the clone
+			pvc_clone := newPersistentVolumeClaim(setPersistentVolumeClaimTemplate(pvcTemplate), setPersistentVolumeClaimDataSourceName(pvc_ori.name), setPersistentVolumeClaimCapacity("2Gi"))
+			pod_clone := newPod(setPodTemplate(podTemplate), setPodPersistentVolumeClaim(pvc_clone.name))
+
+			g.By("Create a clone pvc with the preset csi storageclass")
+			pvc_clone.scname = getPresetStorageClassNameByProvisioner(cloudProvider, provisioner)
+			pvc_clone.createWithCloneDataSource(oc)
+			defer pvc_clone.deleteAsAdmin(oc)
+
+			g.By("Create pod with the cloned pvc and wait for the pod ready")
+			pod_clone.createWithNodeSelector(oc, "kubernetes\\.io/hostname", nodeName)
+			defer pod_clone.deleteAsAdmin(oc)
+			pod_clone.waitReady(oc)
+
+			g.By("Check the cloned pvc size is 2Gi")
+			pvc_clone_size, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pvc", pvc_clone.name, "-n", pvc_clone.namespace, "-o=jsonpath={.status.capacity.storage}").Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			e2e.Logf("The pvc.status.capacity.storage is %s", pvc_clone_size)
+			o.Expect(pvc_clone_size).To(o.Equal("2Gi"))
+
+			g.By("Check the file exist in cloned volume")
+			output, err := pod_clone.execCommand(oc, "cat "+pod_clone.mountPath+"/testfile")
+			o.Expect(err).NotTo(o.HaveOccurred())
+			o.Expect(output).To(o.ContainSubstring("storage test"))
+
+			g.By("Check could write more data")
+			output1, err := pod_clone.execCommand(oc, "/bin/dd  if=/dev/zero of="+pod_clone.mountPath+"/testfile1 bs=1M count=1500")
+			o.Expect(output1).NotTo(o.ContainSubstring("No space left on device"))
+
+			g.By("******" + cloudProvider + " csi driver: \"" + provisioner + "\" test phase finished" + "******")
+		}
+	})
+
+	// author: wduan@redhat.com
+	// OCP-46813 - [CSI Driver] [CSI Clone] Clone a pvc with Raw Block VolumeMode
+	g.It("Author:wduan-Critical-46813-[CSI Driver][CSI Clone] Clone a pvc with Raw Block VolumeMode", func() {
 		// Define the test scenario support provisioners
 		scenarioSupportProvisioners := []string{"disk.csi.azure.com", "cinder.csi.openstack.org"}
 		// Set the resource template for the scenario
@@ -578,6 +651,73 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 		}
 	})
 
+	// author: wduan@redhat.com
+	// OCP-47225 - [CSI Driver] [CSI Clone] [Raw Block] provisioning volume with pvc data source larger than original volume
+	g.It("Author:wduan-High-47225-[CSI Driver] [CSI Clone] [Raw Block] provisioning volume with pvc data source larger than original volume", func() {
+		// Define the test scenario support provisioners
+		scenarioSupportProvisioners := []string{"disk.csi.azure.com", "cinder.csi.openstack.org"}
+		// Set the resource template for the scenario
+		var (
+			storageTeamBaseDir  = exutil.FixturePath("testdata", "storage")
+			pvcTemplate         = filepath.Join(storageTeamBaseDir, "pvc-template.yaml")
+			podTemplate         = filepath.Join(storageTeamBaseDir, "pod-template.yaml")
+			supportProvisioners = sliceIntersect(scenarioSupportProvisioners, getSupportProvisionersByCloudProvider(cloudProvider))
+		)
+		if len(supportProvisioners) == 0 {
+			g.Skip("Skip for scenario non-supported provisioner!!!")
+		}
+
+		g.By("Create new project for the scenario")
+		oc.SetupProject() //create new project
+
+		for _, provisioner := range supportProvisioners {
+			g.By("******" + cloudProvider + " csi driver: \"" + provisioner + "\" test phase start" + "******")
+			// Set the resource definition for the original
+			pvc_ori := newPersistentVolumeClaim(setPersistentVolumeClaimTemplate(pvcTemplate), setPersistentVolumeClaimVolumemode("Block"), setPersistentVolumeClaimCapacity("1Gi"))
+			pod_ori := newPod(setPodTemplate(podTemplate), setPodPersistentVolumeClaim(pvc_ori.name), setPodVolumeType("volumeDevices"), setPodPathType("devicePath"), setPodMountPath("/dev/dblock"))
+
+			g.By("Create a pvc with the preset csi storageclass")
+			pvc_ori.scname = getPresetStorageClassNameByProvisioner(cloudProvider, provisioner)
+			pvc_ori.create(oc)
+			defer pvc_ori.deleteAsAdmin(oc)
+
+			g.By("Create pod with the created pvc and wait for the pod ready")
+			pod_ori.create(oc)
+			defer pod_ori.deleteAsAdmin(oc)
+			pod_ori.waitReady(oc)
+			nodeName := getNodeNameByPod(oc, pod_ori.namespace, pod_ori.name)
+
+			g.By("Write data to volume")
+			pod_ori.writeDataIntoRawBlockVolume(oc)
+			pod_ori.execCommand(oc, "sync")
+
+			// Set the resource definition for the clone
+			pvc_clone := newPersistentVolumeClaim(setPersistentVolumeClaimTemplate(pvcTemplate), setPersistentVolumeClaimVolumemode("Block"), setPersistentVolumeClaimDataSourceName(pvc_ori.name), setPersistentVolumeClaimCapacity("2Gi"))
+			pod_clone := newPod(setPodTemplate(podTemplate), setPodPersistentVolumeClaim(pvc_clone.name), setPodVolumeType("volumeDevices"), setPodPathType("devicePath"), setPodMountPath("/dev/dblock"))
+
+			g.By("Create a clone pvc with the preset csi storageclass")
+			pvc_clone.scname = getPresetStorageClassNameByProvisioner(cloudProvider, provisioner)
+			pvc_clone.createWithCloneDataSource(oc)
+			defer pvc_clone.deleteAsAdmin(oc)
+
+			g.By("Create pod with the cloned pvc and wait for the pod ready")
+			pod_clone.createWithNodeSelector(oc, "kubernetes\\.io/hostname", nodeName)
+			defer pod_clone.deleteAsAdmin(oc)
+			pod_clone.waitReady(oc)
+
+			g.By("Check the cloned pvc size is 2Gi")
+			pvc_clone_size, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pvc", pvc_clone.name, "-n", pvc_clone.namespace, "-o=jsonpath={.status.capacity.storage}").Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			e2e.Logf("The pvc.status.capacity.storage is %s", pvc_clone_size)
+			o.Expect(pvc_clone_size).To(o.Equal("2Gi"))
+
+			g.By("Check the data exist in cloned volume")
+			pod_clone.checkDataInRawBlockVolume(oc)
+
+			g.By("******" + cloudProvider + " csi driver: \"" + provisioner + "\" test phase finished" + "******")
+		}
+	})
+
 	// author: pewang@redhat.com
 	// OCP-44909 [CSI Driver] Volume should mount again after `oc adm drain`
 	g.It("Author:pewang-High-44909-[CSI Driver] Volume should mount again after `oc adm drain` [Disruptive]", func() {
@@ -585,10 +725,10 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 		scenarioSupportProvisioners := []string{"ebs.csi.aws.com", "disk.csi.azure.com", "cinder.csi.openstack.org", "pd.csi.storage.gke.io", "csi.vsphere.vmware.com"}
 		// Set the resource template for the scenario
 		var (
-			storageTeamBaseDir                 = exutil.FixturePath("testdata", "storage")
-			pvcTemplate                        = filepath.Join(storageTeamBaseDir, "pvc-template.yaml")
-			deploymentTemplate                 = filepath.Join(storageTeamBaseDir, "dep-template.yaml")
-			supportProvisioners                = sliceIntersect(scenarioSupportProvisioners, getSupportProvisionersByCloudProvider(cloudProvider))
+			storageTeamBaseDir                   = exutil.FixturePath("testdata", "storage")
+			pvcTemplate                          = filepath.Join(storageTeamBaseDir, "pvc-template.yaml")
+			deploymentTemplate                   = filepath.Join(storageTeamBaseDir, "dep-template.yaml")
+			supportProvisioners                  = sliceIntersect(scenarioSupportProvisioners, getSupportProvisionersByCloudProvider(cloudProvider))
 			schedulableWorkersWithSameAz, azName = getSchedulableWorkersWithSameAz(oc)
 		)
 		if len(supportProvisioners) == 0 {
