@@ -18,7 +18,7 @@ var _ = g.Describe("[sig-updates] OTA osus should", func() {
 	var oc = exutil.NewCLI("osus", exutil.KubeConfigPath())
 
 	//author: jiajliu@redhat.com
-	g.It("Author:jiajliu-High-35869-install/uninstall osus operator from OperatorHub through CLI", func() {
+	g.It("Author:jiajliu-High-35869-install/uninstall osus operator from OperatorHub through CLI [Flaky]", func() {
 
 		testDataDir := exutil.FixturePath("testdata", "ota/osus")
 		ogTemp := filepath.Join(testDataDir, "operatorgroup.yaml")

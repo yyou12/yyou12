@@ -518,7 +518,7 @@ var _ = g.Describe("[sig-updates] OTA cvo should", func() {
 	})
 
 	//author: yanyang@redhat.com
-	g.It("Author:yanyang-Medium-46724-cvo defaults deployment replicas to one if it's unset in manifest", func() {
+	g.It("Author:yanyang-Medium-46724-cvo defaults deployment replicas to one if it's unset in manifest [Flaky]", func() {
 		g.By("Check the replicas for openshift-insights/insights-operator is unset in manifest")
 		manifestDir := fmt.Sprintf("manifest-%d", time.Now().Unix())
 		dockerconfigDir := fmt.Sprintf("dockerconfig-%d", time.Now().Unix())
