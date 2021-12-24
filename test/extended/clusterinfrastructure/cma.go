@@ -1,7 +1,6 @@
 package clusterinfrastructure
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -52,22 +51,28 @@ var _ = g.Describe("[sig-cluster-lifecycle] Cluster_Infrastructure", func() {
 			e2e.Logf("The deployment machine-approver is successfully scaled")
 			return true, nil
 		})
-		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("Check pod failed"))
+		exutil.AssertWaitPollNoErr(err, "Check pod failed")
 
-		g.By("Check only one pod is leader")
 		podNames, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-o=jsonpath={.items[*].metadata.name}", "-n", "openshift-cluster-machine-approver").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		podNameList := strings.Split(podNames, " ")
 
-		logsOfPod1, err := oc.AsAdmin().WithoutNamespace().Run("logs").Args(podNameList[0], "-n", "openshift-cluster-machine-approver", "-c", "machine-approver-controller").Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(logsOfPod1).To(o.ContainSubstring(attemptAcquireLeaderLeaseStr))
+		var logsOfPod1, logsOfPod2 string
 
-		logsOfPod2, err := oc.AsAdmin().WithoutNamespace().Run("logs").Args(podNameList[1], "-n", "openshift-cluster-machine-approver", "-c", "machine-approver-controller").Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(logsOfPod2).To(o.ContainSubstring(attemptAcquireLeaderLeaseStr))
+		g.By("Wait both pods are attempting to acquire leader lease")
+		err = wait.Poll(5*time.Second, 90*time.Second, func() (bool, error) {
+			logsOfPod1, _ = oc.AsAdmin().WithoutNamespace().Run("logs").Args(podNameList[0], "-n", "openshift-cluster-machine-approver", "-c", "machine-approver-controller").Output()
+			logsOfPod2, _ = oc.AsAdmin().WithoutNamespace().Run("logs").Args(podNameList[1], "-n", "openshift-cluster-machine-approver", "-c", "machine-approver-controller").Output()
+			if !strings.Contains(logsOfPod1, attemptAcquireLeaderLeaseStr) || !strings.Contains(logsOfPod2, attemptAcquireLeaderLeaseStr) {
+				e2e.Logf("At least one pod is not attempting to acquire leader lease and waiting up to 5 seconds ...")
+				return false, nil
+			}
+			e2e.Logf("Both pods are attempting to acquire leader lease")
+			return true, nil
+		})
+		exutil.AssertWaitPollNoErr(err, "Check pod attempting to acquire leader lease failed")
 
-		//check only one pod is leader
+		g.By("Check only one pod is leader")
 		o.Expect((strings.Contains(logsOfPod1, acquiredLeaseStr) && !strings.Contains(logsOfPod2, acquiredLeaseStr)) || (!strings.Contains(logsOfPod1, acquiredLeaseStr) && strings.Contains(logsOfPod2, acquiredLeaseStr))).To(o.BeTrue())
 	})
 })
