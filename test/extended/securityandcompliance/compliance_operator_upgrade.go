@@ -100,8 +100,6 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance Pre-check and post-check f
 				"-o=jsonpath={.status.phase}"}).check(oc)
 			newCheck("expect", asAdmin, withoutNamespace, contain, "AGGREGATING", ok, []string{"compliancesuite", ssb.name, "-n", ns1,
 				"-o=jsonpath={.status.phase}"}).check(oc)
-			newCheck("expect", asAdmin, withoutNamespace, contain, "AGGREGATING", ok, []string{"compliancesuite", ssb2.name, "-n", ns2,
-				"-o=jsonpath={.status.phase}"}).check(oc)
 			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", ssb.name, "-n", ns1,
 				"-o=jsonpath={.status.phase}"}).check(oc)
 			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", ssb2.name, "-n", ns2,
@@ -134,8 +132,6 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance Pre-check and post-check f
 			newCheck("expect", asAdmin, withoutNamespace, contain, "RUNNING", ok, []string{"compliancesuite", ssb2.name, "-n", ns2,
 				"-o=jsonpath={.status.phase}"}).check(oc)
 			newCheck("expect", asAdmin, withoutNamespace, contain, "AGGREGATING", ok, []string{"compliancesuite", ssb.name, "-n", ns1,
-				"-o=jsonpath={.status.phase}"}).check(oc)
-			newCheck("expect", asAdmin, withoutNamespace, contain, "AGGREGATING", ok, []string{"compliancesuite", ssb2.name, "-n", ns2,
 				"-o=jsonpath={.status.phase}"}).check(oc)
 			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", ssb.name, "-n", ns1,
 				"-o=jsonpath={.status.phase}"}).check(oc)
