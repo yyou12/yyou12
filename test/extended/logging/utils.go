@@ -1,7 +1,9 @@
 package logging
 
 import (
+	"context"
 	"crypto/tls"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -22,7 +24,21 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
+	"github.com/tidwall/gjson"
 )
+
+// TBD: a common receiver interface
+type logReceiver interface {
+	infrastructureLogsFound() bool
+	auditLogsFound() bool
+	applicationLogsFound() bool
+	logsFound() bool
+}
 
 // SubscriptionObjects objects are used to create operators via OLM
 type SubscriptionObjects struct {
@@ -1090,4 +1106,597 @@ func (f fluentdServer) checkData(oc *exutil.CLI, expect bool, filename string) {
 		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("The %s exists", filename))
 	}
 
+}
+
+// return the infrastructureName. For example:  anli922-jglp4 
+func getInfrastructureName(oc *exutil.CLI) string {
+	infrastructureName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("infrastructure/cluster", "-o=jsonpath={.status.infrastructureName}").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	return infrastructureName
+}
+
+// return the nodeNames
+func getNodeNames(oc *exutil.CLI, node_label string) []string {
+	var nodeNames []string
+	output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("node", "-l", node_label, "-o=jsonpath={.items[*].metadata.name}").Output()
+	if err == nil {
+		nodeNames = strings.Split(output, " ")
+	} else {
+		e2e.Logf("Warning: failed to get nodes names ")
+	}
+	return nodeNames
+}
+
+// cloudWatchSpec the basic object which describe all common test options 
+type cloudwatchSpec struct {
+	groupPrefix        string   // the prefix of the cloudwatch group, the default values is the cluster infrastructureName. For example: anli23ovn-fwm5l
+	groupType          string   // `default: "logType"`, the group type to classify logs. logType,namespaceName,namespaceUUID
+	secretName         string   // `default: "cw-secret"`, the name of the secret for the collector to use
+	secretNamespace    string   // `default: "openshift-logging"`, the namespace where the clusterloggingfoward deployed
+	awsKeyID           string   // aws_access_key_id file
+	awsKey             string   // aws_access_key file
+	awsRegion          string   // `default: "us-east-2"` //aws region
+	selNamespacesUUID  []string // The app namespaces should be collected
+	disNamespacesUUID  []string // The app namespaces should not be collected
+	//Generical variables
+	nodes              []string // Cluster Nodes Names
+	ovnEnabled         bool     //`default: "false"`//  if ovn is enabled. default: false
+	logTypes           []string //`default: "['infrastructure','application', 'audit']"` // logTypes in {"application","infrastructure","audit"}
+	selInfraNamespaces []string //The infra namespaces should be collected and verified
+	selAppNamespaces   []string //The app namespaces should be collected and verified
+	disAppNamespaces   []string //The namespaces should not be collected and verified
+	selInfraPods       []string // The infra pods should be collected and verified.
+	selAppPods         []string // The app pods should be collected and verified
+	disAppPods         []string // The pods shouldn't be collected and verified
+	selInfraContainres []string // The infra containers should be collected and verified
+	selAppContainres   []string // The app containers should be collected and verified
+	disAppContainers   []string // The containers shouldn't be collected verified
+	jsonPods           []string // pods which produce json logs
+	multilinePods      []string // pods which produce multilines logs
+}
+
+// TBD: The Spec of the logs records
+type logRecordsSpec struct {
+	namespace     string   //The namespace of the pod generate this record
+	podname       string   //The name of the pod this record
+	containerName string   //The container name generate this record
+	format        string   //The log format of this record. Flat, json, multiline and etc
+	content       string   //The content of record, only one record can be specified. most of time, we use format and content together to determine the final result. For example: enable json
+	number        int      //The total number of the records. 
+}
+
+// Set the default values to the cloudwatchSpec Object, you need to change the default in It if needs
+func (cw cloudwatchSpec) init(oc *exutil.CLI) cloudwatchSpec {
+	cw.groupPrefix = getInfrastructureName(oc)
+	cw.groupType = "logType"
+	cw.secretName = "cw-secret"
+	cw.secretNamespace = "openshift-logging"
+	cw.awsRegion = "us-east-2"
+	cw.nodes = getNodeNames(oc, "kubernetes.io/os=linux")
+	cw.logTypes = []string{"infrastructure", "application", "audit"}
+	cw.setRegion("us-east-2")
+	cw.ovnEnabled = false
+	/* May enable it after OVN audit logs producer is enabled by default
+	if checkNetworkType(oc) == "ovnkubernetes" {
+		cw.ovnEnabled = true
+	}
+	*/
+	e2e.Logf("Init cloudwatchSpec done ")
+	return cw
+}
+
+// Get the AWS key from cluster
+func (cw cloudwatchSpec) getAWSKey(oc *exutil.CLI) (string, string) {
+	credential, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("secret/aws-creds", "-n", "kube-system", "-o", "json").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	accessKeyIdBase64, secureKeyBase64 := gjson.Get(credential, `data.aws_access_key_id`).Str, gjson.Get(credential, `data.aws_secret_access_key`).Str
+	accessKeyId, err1 := base64.StdEncoding.DecodeString(accessKeyIdBase64)
+	o.Expect(err1).NotTo(o.HaveOccurred())
+	secureKey, err2 := base64.StdEncoding.DecodeString(secureKeyBase64)
+	o.Expect(err2).NotTo(o.HaveOccurred())
+	return string(accessKeyId), string(secureKey)
+}
+
+// Create Cloudwatch Secret. note: use credential files can avoid leak in output
+func (cw cloudwatchSpec) createClfSecret(oc *exutil.CLI) {
+	dirname := "/tmp/" + oc.Namespace() + "-creds"
+	err := os.MkdirAll(dirname, 0777)
+	o.Expect(err).NotTo(o.HaveOccurred())
+	defer os.RemoveAll(dirname)
+
+	f1, err1 := os.Create(dirname+"/aws_access_key_id")
+	defer f1.Close()
+	o.Expect(err1).NotTo(o.HaveOccurred())
+
+	_, err = f1.WriteString(cw.awsKeyID)
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	f2, err2 := os.Create(dirname+"/aws_secret_access_key")
+	defer f2.Close()
+	o.Expect(err2).NotTo(o.HaveOccurred())
+
+	_, err = f2.WriteString(cw.awsKey)
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	err = oc.AsAdmin().WithoutNamespace().Run("create").Args("secret", "generic", cw.secretName, "--from-file="+dirname+"/aws_access_key_id", "--from-file="+dirname+"/aws_secret_access_key", "-n", cw.secretNamespace).Execute()
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+// Set AWS Region Env
+func (cw cloudwatchSpec) setRegion( regionName string) {
+	if regionName == "" {
+		regionName=cw.awsRegion
+	}
+	os.Setenv("AWS_DEFAULT_REGION", regionName)
+}
+
+// Return Cloudwatch GroupNames
+func (cw cloudwatchSpec) getGroupNames(client *cloudwatchlogs.Client, groupPrefix string) []string {
+	var groupNames []string
+	if groupPrefix == "" {
+		groupPrefix=cw.groupPrefix
+	}
+
+	logGroupDesc, err := client.DescribeLogGroups(context.TODO(), &cloudwatchlogs.DescribeLogGroupsInput{
+		LogGroupNamePrefix: aws.String(groupPrefix),
+	})
+
+	if err != nil {
+		e2e.Logf("Error: DescribeLogGroups failed \n %v", err)
+		return groupNames
+	}
+	for _, group := range logGroupDesc.LogGroups {
+		groupNames = append(groupNames, *group.LogGroupName)
+	}
+
+	e2e.Logf("found cloudWatchLog groupNames %v", groupNames)
+	return groupNames
+}
+
+// trigger DeleteLogGroup once the case is over
+func (cw cloudwatchSpec) deleteGroups() {
+	cfg, err := config.LoadDefaultConfig(context.TODO(),
+		// Hard coded credentials.
+		config.WithCredentialsProvider(credentials.StaticCredentialsProvider{
+			Value: aws.Credentials{
+				AccessKeyID: cw.awsKeyID, SecretAccessKey: cw.awsKey,
+			},
+	}))
+	if err != nil {
+		e2e.Logf("Error: failed to login to AWS\n delete groups are skipped")
+		return 
+	}
+	// Create a Cloudwatch service client
+	client := cloudwatchlogs.NewFromConfig(cfg)
+
+	logGroupDesc, err := client.DescribeLogGroups(context.TODO(), &cloudwatchlogs.DescribeLogGroupsInput{
+		LogGroupNamePrefix: aws.String(cw.groupPrefix),})
+
+	if err != nil {
+		e2e.Logf("Error: DescribeLogGroups failed \n delete groups are skipped \n %v", err)
+	}else{
+		for _, group := range logGroupDesc.LogGroups {
+			e2e.Logf("Delete LogGroups" + *group.LogGroupName)
+			_, err := client.DeleteLogGroup(context.TODO(), &cloudwatchlogs.DeleteLogGroupInput{
+				LogGroupName: group.LogGroupName,
+			})
+			if err != nil {e2e.Logf("Waring: " + *group.LogGroupName + " is not deleted")}
+		}
+	}
+}
+
+// TBD: Get groups storage size matching the groupNamePrefix, But sometimes, storebyte is zero, although  there is logs under it.  Research Needs .
+func (cw cloudwatchSpec) getGroupSize(client *cloudwatchlogs.Client, groupName string) int64 {
+	const int64zero int64 = 0
+	logGroupDesc, err := client.DescribeLogGroups(context.TODO(), &cloudwatchlogs.DescribeLogGroupsInput{
+		LogGroupNamePrefix: aws.String(groupName),
+	})
+	if err != nil {
+		e2e.Logf("Error: DescribeLogGroups failed \n %v", err)
+		return int64zero
+	}
+	var totalStoreBytes int64 = int64zero
+	for _, group := range logGroupDesc.LogGroups {
+		if *group.StoredBytes > int64zero { totalStoreBytes = totalStoreBytes + *group.StoredBytes }
+	}
+	return totalStoreBytes
+}
+
+// Get Stream names matching the logTypes and containerName.
+func (cw cloudwatchSpec) getStreamNames(client *cloudwatchlogs.Client, groupName string, streamPrefix string) []string {
+	var logStreamNames []string
+	var err error
+	var logStreamDesc *cloudwatchlogs.DescribeLogStreamsOutput 
+	if streamPrefix == "" {
+		logStreamDesc, err = client.DescribeLogStreams(context.TODO(), &cloudwatchlogs.DescribeLogStreamsInput{
+			LogGroupName: aws.String(groupName),
+		})
+	}else{
+		logStreamDesc, err = client.DescribeLogStreams(context.TODO(), &cloudwatchlogs.DescribeLogStreamsInput{
+			LogGroupName: aws.String(groupName), LogStreamNamePrefix: aws.String(streamPrefix),
+		})
+	}
+	if err != nil {
+		e2e.Logf("Error:DescribeLogStreams failed \n %v", err)
+		return logStreamNames
+	}
+
+	for _, stream := range logStreamDesc.LogStreams {
+		logStreamNames = append(logStreamNames, *stream.LogStreamName)
+	}
+	return logStreamNames
+}
+
+// TBD: Checking the byte is the correct way to ensure the logs can be sent to Cloudwatchlogs. But sometimes, the logs are under group, but storebyte is zero.  Research Needs .
+func (cw cloudwatchSpec) storeByteFound(client *cloudwatchlogs.Client) bool {
+	const int64zero int64 = 0
+	var firstLogSize int64 = int64zero
+
+	if len(cw.logTypes) == 0 {
+		e2e.Logf("Warning: No LogTypes")
+		return false
+	}
+
+	for _, logType := range cw.logTypes {
+		if logType == "infrastructure" {
+			firstLogSize = firstLogSize + cw.getGroupSize(client, cw.groupPrefix+".infrastructure")
+		}
+		if logType == "audit" {
+			firstLogSize = firstLogSize + cw.getGroupSize(client, cw.groupPrefix+".audit")
+		}
+		if logType == "application" && cw.groupType == "logType" {
+			firstLogSize = firstLogSize + cw.getGroupSize(client, cw.groupPrefix+".application")
+		}
+		if logType == "application" && cw.groupType == "namespaceName" {
+			for _, projectName := range cw.selAppNamespaces {
+				e2e.Logf(cw.groupPrefix + "." + projectName)
+				firstLogSize = firstLogSize + cw.getGroupSize(client, cw.groupPrefix+"."+projectName)
+			}
+		}
+		if logType == "application" && cw.groupType == "namespaceUUID" {
+			for _, projectUUID := range cw.selNamespacesUUID {
+				firstLogSize = firstLogSize + cw.getGroupSize(client, cw.groupPrefix+"."+projectUUID)
+			}
+		}
+	}
+
+	if firstLogSize > int64zero {
+		return true 
+	}else {
+		e2e.Logf("Warning: LogSize <= 0")
+		return false
+	}
+}
+
+// The stream present status 
+type cloudwatchStreamResult struct {
+	streamPattern  string
+	logType  string  //container,journal, audit
+	streamFound bool
+}
+
+// In this function, verify all infra logs from all nodes infra (both journal and container) are present on Cloudwatch
+func (cw cloudwatchSpec) infrastructureLogsFound(client *cloudwatchlogs.Client) bool {
+	var infraLogGroupNames [] string
+	var logFoundAll bool = true
+	var streamsFound []*cloudwatchStreamResult
+
+	logGroupNames := cw.getGroupNames(client, cw.groupPrefix)
+	for _,e := range logGroupNames {
+		match1, _ := regexp.MatchString(".*\\.infrastructure$", e)
+		if match1 {
+			infraLogGroupNames=append(infraLogGroupNames, e)
+		}
+	}
+	if len(infraLogGroupNames) == 0 { return false }
+
+	for _, e := range cw.nodes {
+		streamsFound = append(streamsFound, &cloudwatchStreamResult{ streamPattern: strings.Split(e, ".")[0] + ".journal.system", logType: "journal", streamFound: false})
+		streamsFound = append(streamsFound, &cloudwatchStreamResult{ streamPattern: e + ".kubernetes.var.log.containers", logType: "container", streamFound: false})
+	}
+
+	for _, e := range streamsFound {
+		logStreams := cw.getStreamNames(client, infraLogGroupNames[0], e.streamPattern)
+		if len(logStreams) > 0 {
+			e.streamFound = true
+		}
+	}
+
+	for _, e := range streamsFound {
+		if e.streamFound == false {
+			e2e.Logf("error: can not find the stream matching " + e.streamPattern)
+			logFoundAll = false
+		}
+	}
+	return logFoundAll
+}
+
+// In this function, verify all type of audit logs can be found.
+// Note: ovc-audit logs only be present when OVN are enabled
+// LogStream Example:
+//    anli48022-gwbb4-master-2.k8s-audit.log
+//    anli48022-gwbb4-master-2.openshift-audit.log
+//    anli48022-gwbb4-master-1.k8s-audit.log
+//    ip-10-0-136-31.us-east-2.compute.internal.linux-audit.log
+func (cw cloudwatchSpec) auditLogsFound(client *cloudwatchlogs.Client) bool {
+	var logFoundAll bool = true
+	var auditLogGroupNames [] string
+	var streamsFound []*cloudwatchStreamResult
+
+	for _,e := range cw.getGroupNames(client, cw.groupPrefix) {
+		match1, _ := regexp.MatchString(".*\\.audit$", e)
+		if match1 {
+			auditLogGroupNames = append(auditLogGroupNames, e)
+		}
+	}
+
+	if len(auditLogGroupNames) == 0 { return false }
+
+	var ovnFoundInit bool = true
+	if cw.ovnEnabled { ovnFoundInit = false }
+
+	//Method 1: Not all type of audit logs can be are produced on each node. so this method is comment comment
+	/*for _, e := range cw.masters {
+		streamsFound = append(streamsFound, &cloudwatchStreamResult{ streamPattern: e+".k8s-audit.log", logType: "k8saudit", streamFound: false})
+		streamsFound = append(streamsFound, &cloudwatchStreamResult{ streamPattern: e+".openshift-audit.log", logType: "ocpaudit", streamFound: false})
+		streamsFound = append(streamsFound, &cloudwatchStreamResult{ streamPattern: e+".linux-audit.log", logType: "linuxaudit", streamFound: false})
+		streamsFound = append(streamsFound, &cloudwatchStreamResult{ streamPattern: e+".ovn-audit.log", logType: "ovnaudit", streamFound: ovnFoundInit})
+	}
+
+	for _, e := range cw.workers {
+		streamsFound = append(streamsFound, &cloudwatchStreamResult{ streamPattern: e+".k8s-audit.log", logType: "k8saudit", streamFound: false})
+		streamsFound = append(streamsFound, &cloudwatchStreamResult{ streamPattern: e+".openshift-audit.log", logType: "ocpaudit", streamFound: false})
+		streamsFound = append(streamsFound, &cloudwatchStreamResult{ streamPattern: e+".linux-audit.log", logType: "linuxaudit", streamFound: false})
+		streamsFound = append(streamsFound, &cloudwatchStreamResult{ streamPattern: e+".ovn-audit.log", logType: "ovnaudit", streamFound: ovnFoundInit})
+	}
+
+
+	for _, e := range streamsFound {
+		logStreams := cw.getStreamNames(client, auditLogGroupNames[0], e.streamPattern)
+		if len(logStreams)>0 {
+			e.streamFound=true
+		}
+	}*/
+
+	// Method 2: Only search logstream whose suffix is audit.log. the potential issues 1) No audit log on all nodes 2) The stream size > the buffer to large cluster.
+	// TBD: produce audit message on every node
+	streamsFound = append(streamsFound, &cloudwatchStreamResult{ streamPattern: ".k8s-audit.log$", logType: "k8saudit", streamFound: false})
+	streamsFound = append(streamsFound, &cloudwatchStreamResult{ streamPattern: ".openshift-audit.log$", logType: "ocpaudit", streamFound: false})
+	streamsFound = append(streamsFound, &cloudwatchStreamResult{ streamPattern: ".linux-audit.log$", logType: "linuxaudit", streamFound: false})
+	streamsFound = append(streamsFound, &cloudwatchStreamResult{ streamPattern: ".ovn-audit.log", logType: "ovnaudit", streamFound: ovnFoundInit})
+
+	logStreams := cw.getStreamNames(client, auditLogGroupNames[0], "")
+
+	for _, e := range streamsFound{
+		for _, streamName := range  logStreams {
+			match, _ := regexp.MatchString(e.streamPattern, streamName)
+			if match {
+				e.streamFound = true
+			}
+		}
+	}
+
+	for _, e := range streamsFound {
+		 if e.streamFound == false {
+			e2e.Logf("error: failed to find stream matching " + e.streamPattern)
+			logFoundAll = false
+		 }
+	}
+	return  logFoundAll
+}
+
+// In this function, verify the pod's groupNames can be found in cloudwatch
+// GroupName example:
+//   uuid-.0471c739-e38c-4590-8a96-fdd5298d47ae,uuid-.audit,uuid-.infrastructure
+func (cw cloudwatchSpec) applicationLogsFoundUUID(client *cloudwatchlogs.Client) bool {
+	var appLogGroupNames [] string
+	var logFound bool = true
+	if len( cw.selNamespacesUUID) ==0 {
+		logGroupNames := cw.getGroupNames(client, cw.groupPrefix)
+		for _,e := range logGroupNames {
+			match1, _ := regexp.MatchString(".*\\.infrastructure$", e)
+			if match1 {
+				continue
+			}
+			match2, _ := regexp.MatchString(".*\\.audit$", e)
+			if match2 {
+				continue
+			}
+			appLogGroupNames = append(appLogGroupNames, e)
+		}
+		if len(appLogGroupNames) > 0 {
+			return true
+		}else{
+			return false
+		}
+	}
+
+	for _, project_UUID := range cw.selNamespacesUUID{
+		logGroupNames := cw.getGroupNames(client, cw.groupPrefix + "." + project_UUID )
+		if len(logGroupNames) == 0 {
+			e2e.Logf("Error: Can not find groupnames for project " + project_UUID)
+			logFound = false
+		}
+	}
+	return logFound
+}
+
+// In this function, we verify the pod's groupNames can be found in cloudwatch
+// GroupName:
+//   prefix.aosqe-log-json-1638788875,prefix.audit,prefix.infrastructure
+func (cw cloudwatchSpec) applicationLogsFoundNamespaceName(client *cloudwatchlogs.Client) bool {
+	var appLogGroupNames [] string
+	var logFoundAll bool = true
+	if len( cw.selAppNamespaces) == 0 {
+		logGroupNames := cw.getGroupNames(client, cw.groupPrefix)
+		for _,e := range logGroupNames {
+			match1, _ := regexp.MatchString(".*\\.infrastructure$", e)
+			if match1 {
+				continue
+			}
+			match2, _ := regexp.MatchString(".*\\.audit$", e)
+			if match2 {
+				continue
+			}
+			appLogGroupNames = append(appLogGroupNames, e)
+		}
+		if len(appLogGroupNames) > 0 {
+			return true
+		}else{
+			return false
+		}
+	}
+
+	for _, project_name := range cw.selAppNamespaces{
+		logGroupNames := cw.getGroupNames(client, cw.groupPrefix + "." + project_name )
+		if len(logGroupNames) == 0 {
+			e2e.Logf("Error: Can not find groupnames for project " + project_name)
+			logFoundAll = false
+		}
+	}
+	return logFoundAll
+}
+
+// In this function, verify the logStream can be found under application groupName
+// GroupName Example:
+//    anli48022-gwbb4.application
+// logStream Example:
+//    kubernetes.var.log.containers.centos-logtest-tvffh_aosqe-log-json-1638427743_centos-logtest-56a00a8f6a2e43281bce6d44d33e93b600352f2234610a093c4d254a49d9bf4e.log
+//    kubernetes.var.log.containers.loki-server-6f8485b8ff-b4p8w_loki-aosqe_loki-c7a4e4fa4370062e53803ac5acecc57f6217eb2bb603143ac013755819ed5fdb.log
+func (cw cloudwatchSpec) applicationLogsFoundLogType(client *cloudwatchlogs.Client) bool {
+	var logFoundAll bool = true
+	var appLogGroupNames [] string
+
+	logGroupNames := cw.getGroupNames(client, "")
+	for _,e := range logGroupNames {
+	        match1, _ := regexp.MatchString(".*\\.application$", e)
+		if match1 {
+			appLogGroupNames = append(appLogGroupNames, e)
+		}
+	}
+	// Retrun false if can not find app group
+	if len(appLogGroupNames) == 0 {
+		e2e.Logf("Error: Can not find app groupnames")
+		return false
+	}
+
+	if len(appLogGroupNames) > 1 {
+		//e2e.Logf("Error: multiple App GroupNames found [%v ], Please clean up LogGroup in Cloudwatch", strings.Join(appLogGroupNames,","))
+		e2e.Logf("Error: multiple App GroupNames found [%v ], Please clean up LogGroup in Cloudwatch", appLogGroupNames)
+		return false
+	}
+	e2e.Logf("Info: found logGroup", appLogGroupNames[0])
+
+	//Return true, if no selNamespaces is pre-defined, Else search the defined namespaces
+	if len( cw.selAppNamespaces) == 0 {
+		return true
+	}
+
+	logStreams := cw.getStreamNames(client, appLogGroupNames[0], "")
+	for _, project_name := range  cw.selAppNamespaces {
+		var streamFields [] string
+		var project_found bool = false
+		for _,e := range logStreams {
+			streamFields=strings.Split(e, "_")
+			if  streamFields[1] == project_name {
+				project_found = true
+			}
+		}
+		if project_found == false {
+			logFoundAll = false
+			e2e.Logf("Error: Can not find the logStream for project " + project_name)
+
+		}
+	}
+	// TBD: disSelAppNamespaces, select by pod, containers ....
+	return logFoundAll
+}
+
+// The index to find application logs
+// GroupType
+//   logType: anli48022-gwbb4.application
+//   namespaceName:  anli48022-gwbb4.aosqe-log-json-1638788875
+//   namespaceUUID:   anli48022-gwbb4.0471c739-e38c-4590-8a96-fdd5298d47ae,uuid.audit,uuid.infrastructure
+func (cw cloudwatchSpec) applicationLogsFound(client *cloudwatchlogs.Client) bool {
+	var logFound bool = true
+	switch cw.groupType {
+	case "logType":
+		logFound = cw.applicationLogsFoundLogType(client)
+	case "namespaceName":
+		logFound = cw.applicationLogsFoundNamespaceName(client)
+	case "namespaceUUID":
+		logFound = cw.applicationLogsFoundUUID(client)
+	default:
+		logFound = false
+	}
+	return logFound
+}
+
+// The common function to verify if logs can be found or not. In general, customized the cloudwatchSpec before call this function
+func (cw cloudwatchSpec) logsFound() bool {
+	var appFound bool = false
+	var infraFound bool = false
+	var auditFound bool = false
+
+	cfg, err := config.LoadDefaultConfig(context.TODO(),
+		config.WithCredentialsProvider(credentials.StaticCredentialsProvider{
+			Value: aws.Credentials{
+				AccessKeyID: cw.awsKeyID, SecretAccessKey: cw.awsKey,
+			},
+	}))
+
+	if err != nil {
+		e2e.Logf("Error: LoadDefaultConfig failed to AWS  \n %v", err)
+		return false
+	}
+
+	// Create a Cloudwatch service client
+	client := cloudwatchlogs.NewFromConfig(cfg)
+
+	for _, logType := range cw.logTypes {
+		if logType == "infrastructure" {
+			err1 := wait.Poll(5*time.Second, 60*time.Second, func() (done bool, err error) {
+				return cw.infrastructureLogsFound(client), nil
+			})
+			if err1 == nil {
+				e2e.Logf("Found InfraLogs finally")
+				infraFound = true
+			}else{
+				e2e.Logf("Failed to find infrastructure in given time\n %v",err1)
+			}
+		}
+		if logType == "audit" {
+			err2 := wait.Poll(5*time.Second, 60*time.Second, func() (done bool, err error) {
+				return cw.auditLogsFound(client), nil
+			})
+			if err2 == nil {
+				e2e.Logf("Found auditLogs finally")
+				auditFound = true
+			}else{
+				e2e.Logf("Failed to find auditLogs in given time\n %v",err2)
+			}
+		}
+		if logType == "application" {
+			err3 := wait.Poll(5*time.Second, 60*time.Second, func() (done bool, err error) {
+				return cw.applicationLogsFound(client), nil
+			})
+			if err3 == nil {
+				e2e.Logf("Found AppLogs finally")
+				appFound = true
+			}else{
+				e2e.Logf("Failed to find AppLogs in given time\n %v",err3)
+			}
+		}
+	}
+
+	if infraFound && auditFound && appFound {
+		e2e.Logf("Found all expected logs")
+		return true
+	}else{
+		e2e.Logf("Error: some logs can not be found. Possible causes: logs aren't produced; Connect to aws failed/timeout; Bugs")
+		e2e.Logf("infraFound: %t", infraFound)
+		e2e.Logf("auditFound: %t", auditFound)
+		e2e.Logf("appFound: %t", appFound)
+		return false
+	}
 }

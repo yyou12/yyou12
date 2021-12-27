@@ -10,6 +10,8 @@ import (
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
+        clusterinfra "github.com/openshift/openshift-tests-private/test/extended/util/clusterinfrastructure"
+
 )
 
 var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
@@ -575,6 +577,61 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			o.Expect(appLogs.Data.Stats.Summary.BytesProcessedPerSecond).ShouldNot(o.BeZero())
 			e2e.Logf("Application Logs Query using namespace as tenantKey is a success")
 
+		})
+	})
+	g.Context("Log Forward to Cloudwatch", func() {
+		var (
+			subTemplate       = exutil.FixturePath("testdata", "logging", "subscription", "sub-template.yaml")
+			SingleNamespaceOG = exutil.FixturePath("testdata", "logging", "subscription", "singlenamespace-og.yaml")
+			jsonLogFile       = exutil.FixturePath("testdata", "logging", "generatelog", "container_json_log_template.json")
+		)
+		cloNS := "openshift-logging"
+		CLO := SubscriptionObjects{clo, cloNS, SingleNamespaceOG, subTemplate, cloPackageName, CatalogSourceObjects{}}
+		var cw cloudwatchSpec
+
+		g.BeforeEach(func() {
+			g.By("deploy CLO")
+			CLO.SubscribeLoggingOperators(oc)
+			oc.SetupProject()
+			g.By("init Cloudwatch test spec")
+			cw = cw.init(oc)
+		})
+		g.AfterEach(func() {
+			cw.deleteGroups()
+		})
+
+		g.It("CPaasrunOnly-Author:anli-critial-43443-Fluentd Forward logs to Cloudwatch by logtype [Serial][Slow]", func() {
+			platform := clusterinfra.CheckPlatform(oc)
+			if platform != "aws" {
+				g.Skip("Skip for non-supported platform, the support platform is AWS!!!")
+			}
+		        cw.awsKeyID, cw.awsKey = cw.getAWSKey(oc)
+
+			g.By("create log producer")
+			app_proj := oc.Namespace()
+			err := oc.WithoutNamespace().Run("new-app").Args("-n", app_proj, "-f", jsonLogFile).Execute()
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			g.By("create clusterlogforwarder/instance")
+			s := resource{"secret", cw.secretName, cw.secretNamespace}
+			defer s.clear(oc)
+			cw.createClfSecret(oc)
+
+			clfTemplate := exutil.FixturePath("testdata", "logging", "clusterlogforwarder", "43443.yaml")
+			clf := resource{"clusterlogforwarder", "instance", cloNS}
+			defer clf.clear(oc)
+			err = clf.applyFromTemplate(oc, "-n", clf.namespace, "-f", clfTemplate, "-p", "SECRETNAME="+cw.secretName, "-p", "REGION="+cw.awsRegion)
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			g.By("deploy fluentd pods")
+			instance := exutil.FixturePath("testdata", "logging", "clusterlogging", "fluentd_only.yaml")
+			cl := resource{"clusterlogging", "instance", cloNS}
+			defer cl.deleteClusterLogging(oc)
+			cl.createClusterLogging(oc, "-n", cl.namespace, "-f", instance, "-p", "NAMESPACE="+cl.namespace)
+			WaitForDaemonsetPodsToBeReady(oc, cloNS, "collector")
+
+			g.By("check logs in Cloudwatch")
+			o.Expect(cw.logsFound()).To(o.BeTrue())
 		})
 	})
 })
