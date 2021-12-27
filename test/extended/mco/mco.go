@@ -1002,6 +1002,38 @@ nulla pariatur.`
 		o.Expect(cmdOut).Should(o.ContainSubstring("active"))
 
 	})
+
+	g.It("Author:rioliu-NonPreRelease-High-47062-change policy.json on worker nodes [Serial]", func() {
+
+		g.By("create new machine config to change /etc/containers/policy.json")
+		mcName := "change-policy-json"
+		mcTemplate := generateTemplateAbsolutePath("change-policy-json.yaml")
+		mc := MachineConfig{name: mcName, pool: "worker", template: mcTemplate}
+		defer mc.delete(oc)
+		mc.create(oc)
+
+		g.By("verify file content changes")
+		workerNode := NewNodeList(oc).GetAllWorkerNodesOrFail()[0]
+		fileContent, fileErr := workerNode.DebugNodeWithChroot("cat", "/etc/containers/policy.json")
+		o.Expect(fileErr).NotTo(o.HaveOccurred())
+		e2e.Logf(fileContent)
+		o.Expect(fileContent).Should(o.ContainSubstring(`{"default": [{"type": "insecureAcceptAnything"}]}`))
+		o.Expect(fileContent).ShouldNot(o.ContainSubstring("transports"))
+
+		g.By("checkout machine config daemon logs to make sure node drain/reboot are skipped")
+		log, err := exutil.GetSpecificPodLogs(oc, "openshift-machine-config-operator", "machine-config-daemon", workerNode.GetMachineConfigDaemon(), "")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(log).Should(o.ContainSubstring("/etc/containers/policy.json"))
+		o.Expect(log).Should(o.ContainSubstring("Changes do not require drain, skipping"))
+		o.Expect(log).Should(o.ContainSubstring("crio config reloaded successfully"))
+		o.Expect(log).Should(o.ContainSubstring("skipping reboot"))
+
+		g.By("verify crio.service status")
+		cmdOut, cmdErr := workerNode.DebugNodeWithChroot("systemctl", "is-active", "crio.service")
+		o.Expect(cmdErr).NotTo(o.HaveOccurred())
+		o.Expect(cmdOut).Should(o.ContainSubstring("active"))
+
+	})
 })
 
 func createMcAndVerifyMCValue(oc *exutil.CLI, stepText string, mcName string, workerNode node, textToVerify TextToVerify, cmd ...string) {
