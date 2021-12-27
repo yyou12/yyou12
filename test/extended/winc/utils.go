@@ -305,17 +305,18 @@ func getMachineset(oc *exutil.CLI, iaasPlatform, winVersion string, machineSetNa
 
 	windowsMachineSet := ""
 	infrastructureID := ""
-	region := ""
-	zone := ""
 	if iaasPlatform == "aws" {
 		windowsMachineSet = getFileContent("winc", fileName)
 		infrastructureID, err = oc.WithoutNamespace().Run("get").Args("infrastructure", "cluster", "-o=jsonpath={.status.infrastructureName}").Output()
+		// TODO fetch region/zone from configmap
+		region := "us-east-2"
+		zone := "us-east-2a"
 		region, err = oc.WithoutNamespace().Run("get").Args("infrastructure", "cluster", "-o=jsonpath={.status.platformStatus.aws.region}").Output()
 		zone, err = oc.WithoutNamespace().Run("get").Args("machines", "-n", "openshift-machine-api", "-o=jsonpath={.items[0].metadata.labels.machine\\.openshift\\.io\\/zone}").Output()
 		// TODO, remove hard coded, default is server 2019
-		windowsAMI := "ami-06d96a43543089121"
-		if winVersion == "2004" {
-			windowsAMI = "ami-0d93b5fd197b5d399"
+		windowsAMI := getConfigMapData(oc, "windows_container_ami")
+		if winVersion == "20H2" {
+			windowsAMI = getConfigMapData(oc, "windows_container_ami_20H2")
 		}
 		windowsMachineSet = strings.ReplaceAll(windowsMachineSet, "<name>", machineSetName)
 		windowsMachineSet = strings.ReplaceAll(windowsMachineSet, "<infrastructureID>", infrastructureID)

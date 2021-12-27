@@ -306,31 +306,29 @@ var _ = g.Describe("[sig-windows] Windows_Containers CPaasrunOnly", func() {
 
 		// we assume 2 Windows Nodes created with the default server 2019 image, here we create new server
 		namespace := "winc-37096"
-		winVersion := "2004"
-		machinesetName := "win2004"
-		machineset2004FileName := "aws_windows_machineset.yaml"
+		winVersion := "20H2"
+		machinesetName := "win20h2"
+		machinesetMultiOSFileName := "aws_windows_machineset.yaml"
 		if iaasPlatform == "azure" {
-			machineset2004FileName = "azure_windows_machineset.yaml"
+			machinesetMultiOSFileName = "azure_windows_machineset.yaml"
 		}
-		machineset2004, err := getMachineset(oc, iaasPlatform, winVersion, machinesetName, machineset2004FileName)
+		mutliOSMachineset, err := getMachineset(oc, iaasPlatform, winVersion, machinesetName, machinesetMultiOSFileName)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		defer oc.WithoutNamespace().Run("delete").Args("machineset", machineset2004, "-n", "openshift-machine-api").Output()
-		createMachineset(oc, "availWindowsMachineSetwin2004", machineset2004)
-		waitForMachinesetReady(oc, machineset2004, 10, 1)
+		defer oc.WithoutNamespace().Run("delete").Args("machineset", mutliOSMachineset, "-n", "openshift-machine-api").Output()
+		createMachineset(oc, "availWindowsMachineSet"+machinesetName, mutliOSMachineset)
+		waitForMachinesetReady(oc, mutliOSMachineset, 10, 1)
 		// Here we fetch machine IP from machineset
-		machineIP := fetchAddress(oc, "IP", machineset2004)
+		machineIP := fetchAddress(oc, "IP", mutliOSMachineset)
 		nodeName, err := getNodeNameFromIP(oc, machineIP[0], iaasPlatform)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		// here we update the runtime class file with the Kernel ID of Windows 2004
-		defer oc.WithoutNamespace().Run("delete").Args("runtimeclass", "windows-server-ver-2004")
+		// here we update the runtime class file with the Kernel ID of multiple OS
+		defer oc.WithoutNamespace().Run("delete").Args("runtimeclass", "multiple-windows-os")
 		createRuntimeClass(oc, "runtime-class.yaml", nodeName)
 		// here we provision 1 webservers with a runtime class ID, up to 20 minutes due to pull image on AWS
-		instanceDeadTime := 20
 		defer deleteProject(oc, namespace)
-		if !createWinWorkloadsSimple(oc, namespace, "windows_webserver_runtime_class.yaml", instanceDeadTime) {
-			e2e.Failf("Windows workload is not ready after waiting up to %v minutes ...", instanceDeadTime)
-		}
-		// here we scale the deployment to 5 workloads
+		createProject(oc, namespace)
+		createWindowsWorkload(oc, namespace, "windows_webserver_runtime_class.yaml", getConfigMapData(oc, "windows_container_ami_20H2"))
+		e2e.Logf("-------- Windows workload scaled on node IP %v -------------", machineIP[0])
 		e2e.Logf("-------- Scaling up workloads to 5 -------------")
 		scaleDeployment(oc, "windows", 5, namespace)
 		// we get a list of all hostIPs all should be on the same host
@@ -338,9 +336,9 @@ var _ = g.Describe("[sig-windows] Windows_Containers CPaasrunOnly", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 		// we check that all workloads hostIP are similar for all pods
 		if !checkPodsHaveSimilarHostIP(oc, pods, machineIP[0]) {
-			e2e.Failf("Windows workloads did not bootstraped on the same host...")
+			e2e.Failf("Windows workloads did not bootstrap on the same host...")
 		} else {
-			e2e.Logf("Windows workloads succesfully bootstraped on the same host %v", nodeName)
+			e2e.Logf("Windows workloads succesfully bootstrap on the same host %v", nodeName)
 		}
 	})
 

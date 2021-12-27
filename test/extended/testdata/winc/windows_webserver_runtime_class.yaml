@@ -30,10 +30,10 @@ spec:
         app: win-webserver
       name: win-webserver
     spec:
-      runtimeClassName: windows-server-ver-2004
+      runtimeClassName: multiple-windows-os
       containers:
       - name: windowswebserver
-        image: mcr.microsoft.com/windows/servercore:2004
+        image: <windows_container_image>
         imagePullPolicy: IfNotPresent
         command:
         - powershell.exe
