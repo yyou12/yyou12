@@ -977,6 +977,31 @@ nulla pariatur.`
 		o.Expect(svcUnMaskedOuput).Should(o.ContainSubstring(activeString))
 		o.Expect(svcUnMaskedOuput).ShouldNot(o.ContainSubstring(inactiveString))
 	})
+
+	g.It("Author:rioliu-NonPreRelease-High-46965-Avoid workload disruption for GPG Public Key Rotation [Serial]", func() {
+
+		g.By("create new machine config with base64 encoded gpg public key")
+		mcName := "add-gpg-pub-key"
+		mcTemplate := generateTemplateAbsolutePath("add-gpg-pub-key.yaml")
+		mc := MachineConfig{name: mcName, pool: "worker", template: mcTemplate}
+		defer mc.delete(oc)
+		mc.create(oc)
+
+		g.By("checkout machine config daemon logs to verify ")
+		workerNode := NewNodeList(oc).GetAllWorkerNodesOrFail()[0]
+		log, err := exutil.GetSpecificPodLogs(oc, "openshift-machine-config-operator", "machine-config-daemon", workerNode.GetMachineConfigDaemon(), "")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(log).Should(o.ContainSubstring("/etc/machine-config-daemon/no-reboot/containers-gpg.pub"))
+		o.Expect(log).Should(o.ContainSubstring("Changes do not require drain, skipping"))
+		o.Expect(log).Should(o.ContainSubstring("crio config reloaded successfully"))
+		o.Expect(log).Should(o.ContainSubstring("skipping reboot"))
+
+		g.By("verify crio.service status")
+		cmdOut, cmdErr := workerNode.DebugNodeWithChroot("systemctl", "is-active", "crio.service")
+		o.Expect(cmdErr).NotTo(o.HaveOccurred())
+		o.Expect(cmdOut).Should(o.ContainSubstring("active"))
+
+	})
 })
 
 func createMcAndVerifyMCValue(oc *exutil.CLI, stepText string, mcName string, workerNode node, textToVerify TextToVerify, cmd ...string) {
