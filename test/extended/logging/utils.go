@@ -1242,14 +1242,14 @@ func (cw cloudwatchSpec) getGroupNames(client *cloudwatchlogs.Client, groupPrefi
 	})
 
 	if err != nil {
-		e2e.Logf("Error: DescribeLogGroups failed \n %v", err)
+		e2e.Logf("Warn: DescribeLogGroups failed \n %v", err)
 		return groupNames
 	}
 	for _, group := range logGroupDesc.LogGroups {
 		groupNames = append(groupNames, *group.LogGroupName)
 	}
 
-	e2e.Logf("found cloudWatchLog groupNames %v", groupNames)
+	e2e.Logf("Found cloudWatchLog groupNames %v", groupNames)
 	return groupNames
 }
 
@@ -1263,7 +1263,7 @@ func (cw cloudwatchSpec) deleteGroups() {
 			},
 	}))
 	if err != nil {
-		e2e.Logf("Error: failed to login to AWS\n delete groups are skipped")
+		e2e.Logf("Warn: failed to login to AWS\n delete groups are skipped")
 		return 
 	}
 	// Create a Cloudwatch service client
@@ -1273,7 +1273,7 @@ func (cw cloudwatchSpec) deleteGroups() {
 		LogGroupNamePrefix: aws.String(cw.groupPrefix),})
 
 	if err != nil {
-		e2e.Logf("Error: DescribeLogGroups failed \n delete groups are skipped \n %v", err)
+		e2e.Logf("Warn: DescribeLogGroups failed \n delete groups are skipped \n %v", err)
 	}else{
 		for _, group := range logGroupDesc.LogGroups {
 			e2e.Logf("Delete LogGroups" + *group.LogGroupName)
@@ -1292,7 +1292,7 @@ func (cw cloudwatchSpec) getGroupSize(client *cloudwatchlogs.Client, groupName s
 		LogGroupNamePrefix: aws.String(groupName),
 	})
 	if err != nil {
-		e2e.Logf("Error: DescribeLogGroups failed \n %v", err)
+		e2e.Logf("Warn: DescribeLogGroups failed \n %v", err)
 		return int64zero
 	}
 	var totalStoreBytes int64 = int64zero
@@ -1317,7 +1317,7 @@ func (cw cloudwatchSpec) getStreamNames(client *cloudwatchlogs.Client, groupName
 		})
 	}
 	if err != nil {
-		e2e.Logf("Error:DescribeLogStreams failed \n %v", err)
+		e2e.Logf("Warn:DescribeLogStreams failed \n %v", err)
 		return logStreamNames
 	}
 
@@ -1404,7 +1404,7 @@ func (cw cloudwatchSpec) infrastructureLogsFound(client *cloudwatchlogs.Client) 
 
 	for _, e := range streamsFound {
 		if e.streamFound == false {
-			e2e.Logf("error: can not find the stream matching " + e.streamPattern)
+			e2e.Logf("Warn: can not find the stream matching " + e.streamPattern)
 			logFoundAll = false
 		}
 	}
@@ -1478,7 +1478,7 @@ func (cw cloudwatchSpec) auditLogsFound(client *cloudwatchlogs.Client) bool {
 
 	for _, e := range streamsFound {
 		 if e.streamFound == false {
-			e2e.Logf("error: failed to find stream matching " + e.streamPattern)
+			e2e.Logf("Warn: failed to find stream matching " + e.streamPattern)
 			logFoundAll = false
 		 }
 	}
@@ -1504,6 +1504,7 @@ func (cw cloudwatchSpec) applicationLogsFoundUUID(client *cloudwatchlogs.Client)
 			}
 			appLogGroupNames = append(appLogGroupNames, e)
 		}
+
 		if len(appLogGroupNames) > 0 {
 			return true
 		}else{
@@ -1514,7 +1515,7 @@ func (cw cloudwatchSpec) applicationLogsFoundUUID(client *cloudwatchlogs.Client)
 	for _, project_UUID := range cw.selNamespacesUUID{
 		logGroupNames := cw.getGroupNames(client, cw.groupPrefix + "." + project_UUID )
 		if len(logGroupNames) == 0 {
-			e2e.Logf("Error: Can not find groupnames for project " + project_UUID)
+			e2e.Logf("Warn: Can not find groupnames for project " + project_UUID)
 			logFound = false
 		}
 	}
@@ -1550,7 +1551,7 @@ func (cw cloudwatchSpec) applicationLogsFoundNamespaceName(client *cloudwatchlog
 	for _, project_name := range cw.selAppNamespaces{
 		logGroupNames := cw.getGroupNames(client, cw.groupPrefix + "." + project_name )
 		if len(logGroupNames) == 0 {
-			e2e.Logf("Error: Can not find groupnames for project " + project_name)
+			e2e.Logf("Warn: Can not find groupnames for project " + project_name)
 			logFoundAll = false
 		}
 	}
@@ -1576,16 +1577,16 @@ func (cw cloudwatchSpec) applicationLogsFoundLogType(client *cloudwatchlogs.Clie
 	}
 	// Retrun false if can not find app group
 	if len(appLogGroupNames) == 0 {
-		e2e.Logf("Error: Can not find app groupnames")
+		e2e.Logf("Warn: Can not find app groupnames")
 		return false
 	}
 
 	if len(appLogGroupNames) > 1 {
 		//e2e.Logf("Error: multiple App GroupNames found [%v ], Please clean up LogGroup in Cloudwatch", strings.Join(appLogGroupNames,","))
-		e2e.Logf("Error: multiple App GroupNames found [%v ], Please clean up LogGroup in Cloudwatch", appLogGroupNames)
+		e2e.Logf("Warn: multiple App GroupNames found [%v ], Please clean up LogGroup in Cloudwatch", appLogGroupNames)
 		return false
 	}
-	e2e.Logf("Info: found logGroup", appLogGroupNames[0])
+	e2e.Logf("Found logGroup", appLogGroupNames[0])
 
 	//Return true, if no selNamespaces is pre-defined, Else search the defined namespaces
 	if len( cw.selAppNamespaces) == 0 {
@@ -1604,7 +1605,7 @@ func (cw cloudwatchSpec) applicationLogsFoundLogType(client *cloudwatchlogs.Clie
 		}
 		if project_found == false {
 			logFoundAll = false
-			e2e.Logf("Error: Can not find the logStream for project " + project_name)
+			e2e.Logf("Warn: Can not find the logStream for project " + project_name)
 
 		}
 	}
@@ -1634,9 +1635,9 @@ func (cw cloudwatchSpec) applicationLogsFound(client *cloudwatchlogs.Client) boo
 
 // The common function to verify if logs can be found or not. In general, customized the cloudwatchSpec before call this function
 func (cw cloudwatchSpec) logsFound() bool {
-	var appFound bool = false
-	var infraFound bool = false
-	var auditFound bool = false
+	var appFound bool = true
+	var infraFound bool = true
+	var auditFound bool = true
 
 	cfg, err := config.LoadDefaultConfig(context.TODO(),
 		config.WithCredentialsProvider(credentials.StaticCredentialsProvider{
@@ -1655,36 +1656,36 @@ func (cw cloudwatchSpec) logsFound() bool {
 
 	for _, logType := range cw.logTypes {
 		if logType == "infrastructure" {
-			err1 := wait.Poll(5*time.Second, 60*time.Second, func() (done bool, err error) {
+			err1 := wait.Poll(15*time.Second, 90*time.Second, func() (done bool, err error) {
 				return cw.infrastructureLogsFound(client), nil
 			})
-			if err1 == nil {
-				e2e.Logf("Found InfraLogs finally")
-				infraFound = true
-			}else{
+			if err1 != nil {
+				infraFound = false
 				e2e.Logf("Failed to find infrastructure in given time\n %v",err1)
+			}else{
+				e2e.Logf("Found InfraLogs finally")
 			}
 		}
 		if logType == "audit" {
-			err2 := wait.Poll(5*time.Second, 60*time.Second, func() (done bool, err error) {
+			err2 := wait.Poll(15*time.Second, 90*time.Second, func() (done bool, err error) {
 				return cw.auditLogsFound(client), nil
 			})
-			if err2 == nil {
-				e2e.Logf("Found auditLogs finally")
-				auditFound = true
-			}else{
+			if err2 != nil {
+				auditFound = false
 				e2e.Logf("Failed to find auditLogs in given time\n %v",err2)
+			}else{
+				e2e.Logf("Found auditLogs finally")
 			}
 		}
 		if logType == "application" {
-			err3 := wait.Poll(5*time.Second, 60*time.Second, func() (done bool, err error) {
+			err3 := wait.Poll(15*time.Second, 90*time.Second, func() (done bool, err error) {
 				return cw.applicationLogsFound(client), nil
 			})
-			if err3 == nil {
-				e2e.Logf("Found AppLogs finally")
-				appFound = true
-			}else{
+			if err3 != nil {
+				appFound = false
 				e2e.Logf("Failed to find AppLogs in given time\n %v",err3)
+			}else{
+				e2e.Logf("Found AppLogs finally")
 			}
 		}
 	}
@@ -1693,7 +1694,7 @@ func (cw cloudwatchSpec) logsFound() bool {
 		e2e.Logf("Found all expected logs")
 		return true
 	}else{
-		e2e.Logf("Error: some logs can not be found. Possible causes: logs aren't produced; Connect to aws failed/timeout; Bugs")
+		e2e.Logf("Error: couldn't find some type of logs. Possible reason: logs weren't generated; connect to AWS failure/timeout; Logging Bugs")
 		e2e.Logf("infraFound: %t", infraFound)
 		e2e.Logf("auditFound: %t", auditFound)
 		e2e.Logf("appFound: %t", appFound)
