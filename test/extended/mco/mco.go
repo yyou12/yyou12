@@ -475,12 +475,9 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		o.Expect(mcdLogs).ShouldNot(o.ContainSubstring("SIGTERM"))
 	})
 
-	g.It("Author:mhanss-Longduration-NonPreRelease-High-42682-change container registry config on ocp 4.6 [Disruptive]", func() {
-		clusterVersion, _, err := exutil.GetClusterVersion(oc)
-		o.Expect(err).NotTo(o.HaveOccurred())
-		if clusterVersion != "4.6" {
-			g.Skip("Cluster version 4.6 is required to execute this test case!")
-		}
+	g.It("Author:mhanss-Longduration-NonPreRelease-High-42682-change container registry config on ocp 4.6+ [Disruptive]", func() {
+
+		skipTestIfClusterVersion(oc, "<", "4.6")
 
 		g.By("Create new machine config to add quay.io to unqualified-search-registries list")
 		mcName := "change-workers-container-reg"
@@ -497,14 +494,22 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		o.Expect(regOut).Should(o.ContainSubstring("quay.io"))
 
 		g.By("Check MCD logs to make sure drain is successful and pods are evicted")
-		podLogs, err := exutil.GetSpecificPodLogs(oc, "openshift-machine-config-operator", "machine-config-daemon", workerNode.GetMachineConfigDaemon(), "\"evicted\\|drain\"")
+		podLogs, err := exutil.GetSpecificPodLogs(oc, "openshift-machine-config-operator", "machine-config-daemon", workerNode.GetMachineConfigDaemon(), "\"evicted\\|drain\\|crio\"")
 		o.Expect(err).NotTo(o.HaveOccurred())
-		e2e.Logf("Pod logs for node drain and pods evicted :\n %v", podLogs)
+		e2e.Logf("Pod logs for node drain, pods evicted and crio service reload :\n %v", podLogs)
 		o.Expect(podLogs).Should(
 			o.And(
 				o.ContainSubstring("Update prepared; beginning drain"),
 				o.ContainSubstring("Evicted pod openshift-image-registry/image-registry"),
 				o.ContainSubstring("drain complete")))
+		// check whether crio.service is reloaded in 4.10+ env
+		cv, _, cvErr := exutil.GetClusterVersion(oc)
+		o.Expect(cvErr).NotTo(o.HaveOccurred())
+		if CompareVersions(cv, ">=", "4.10") {
+			e2e.Logf("cluster version is >= 4.10, need to check crio service is reloaded or not")
+			o.Expect(podLogs).Should(o.ContainSubstring("crio config reloaded successfully"))
+		}
+
 	})
 
 	g.It("Author:rioliu-Longduration-NonPreRelease-High-42704-disable auto reboot for mco [Disruptive]", func() {
