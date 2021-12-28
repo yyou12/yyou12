@@ -28,6 +28,16 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 		updatePolicy         = `"maxSurge":0,"maxUnavailable":"10%"`
 		monitoringns         = "openshift-monitoring"
 		promPod              = "prometheus-k8s-0"
+		patchAuthUrl         = `"authURL":"invalid"`
+		patchRegion          = `"regionName":"invaild"`
+		patchDomain          = `"domain":"invaild"`
+		patchDomainId        = `"domainID":"invalid"`
+		patchTenantId        = `"tenantID":"invalid"`
+		authErrInfo          = `Get "invalid/": unsupported`
+		regionErrInfo        = "No suitable endpoint could be found"
+		domainErrInfo        = "Failed to authenticate provider client"
+		domainIdErrInfo      = "You must provide exactly one of DomainID or DomainName"
+		tenantIdErrInfo      = "Authentication failed"
 		queryCredentialMode  = "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query=cco_credentials_mode"
 		imageRegistryBaseDir = exutil.FixturePath("testdata", "image_registry")
 	)
@@ -775,5 +785,52 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(output).To(o.ContainSubstring("error: Import failed (Forbidden): forbidden: registry docker.io blocked"))
 
+	})
+
+	// author: wewang@redhat.com
+	g.It("NonPreRelease-Author:wewang-Critical-24838-Registry OpenStack Storage test with invalid settings [Disruptive]", func() {
+		output, err := oc.WithoutNamespace().AsAdmin().Run("get").Args("infrastructure", "cluster", "-o=jsonpath={.status.platformStatus.type}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		if !strings.Contains(output, "OpenStack") {
+			g.Skip("Skip for non-supported platform")
+		}
+
+		g.By("Set a different container in registry config")
+		oricontainer, err := oc.WithoutNamespace().AsAdmin().Run("get").Args("configs.imageregistry/cluster", "-o=jsonpath={.spec.storage.swift.container}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		newcontainer := strings.Replace(oricontainer, "image", "images", 1)
+		defer func() {
+			err = oc.AsAdmin().Run("patch").Args("configs.imageregistry/cluster", "-p", `{"spec":{"storage":{"swift":{"container": "`+oricontainer+`"}}}}`, "--type=merge").Execute()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			recoverRegistryDefaultPods(oc)
+		}()
+		err = oc.AsAdmin().Run("patch").Args("configs.imageregistry/cluster", "-p", `{"spec":{"storage":{"swift":{"container": "`+newcontainer+`"}}}}`, "--type=merge").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		recoverRegistryDefaultPods(oc)
+
+		g.By("Set invalid authURL in image registry crd")
+		foundErrLog := false
+		foundErrLog = setImageregistryConfigs(oc, patchAuthUrl, authErrInfo)
+		o.Expect(foundErrLog).To(o.BeTrue())
+
+		g.By("Set invalid regionName")
+		foundErrLog = false
+		foundErrLog = setImageregistryConfigs(oc, patchRegion, regionErrInfo)
+		o.Expect(foundErrLog).To(o.BeTrue())
+
+		g.By("Set invalid domain")
+		foundErrLog = false
+		foundErrLog = setImageregistryConfigs(oc, patchDomain, domainErrInfo)
+		o.Expect(foundErrLog).To(o.BeTrue())
+
+		g.By("Set invalid domainID")
+		foundErrLog = false
+		foundErrLog = setImageregistryConfigs(oc, patchDomainId, domainIdErrInfo)
+		o.Expect(foundErrLog).To(o.BeTrue())
+
+		g.By("Set invalid tenantID")
+		foundErrLog = false
+		foundErrLog = setImageregistryConfigs(oc, patchTenantId, tenantIdErrInfo)
+		o.Expect(foundErrLog).To(o.BeTrue())
 	})
 })

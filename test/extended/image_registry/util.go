@@ -478,3 +478,40 @@ func getRegistryDefaultRoute(oc *exutil.CLI) (defaultroute string) {
 	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("Did not find registry route"))
 	return defaultroute
 }
+
+func setImageregistryConfigs(oc *exutil.CLI, pathinfo string, matchlogs string) bool {
+	foundInfo := false
+	defer recoverRegistrySwiftSet(oc)
+	err := oc.WithoutNamespace().AsAdmin().Run("patch").Args("configs.imageregistry/cluster", "-p", `{"spec":{"storage":{"swift":{`+pathinfo+`}}}}`, "--type=merge").Execute()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	err = wait.Poll(5*time.Second, 20*time.Second, func() (bool, error) {
+		output, err := oc.WithoutNamespace().AsAdmin().Run("get").Args("co/image-registry").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		if strings.Contains(output, matchlogs) {
+			foundInfo = true
+			return true, nil
+		} else {
+			e2e.Logf("Continue to next round")
+			return false, nil
+		}
+	})
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("No image registry error info found"))
+	return foundInfo
+}
+
+func recoverRegistrySwiftSet(oc *exutil.CLI) {
+	matchInfo := "True False False"
+	err := oc.WithoutNamespace().AsAdmin().Run("patch").Args("configs.imageregistry/cluster", "-p", `{"spec":{"storage":{"swift":{"authURL":null, "regionName":null, "regionID":null, "domainID":null, "domain":null, "tenantID":null}}}}`, "--type=merge").Execute()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	err = wait.Poll(4*time.Second, 20*time.Second, func() (bool, error) {
+		output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("co/image-registry", "-o=jsonpath={.status.conditions[*].status}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		if strings.Contains(output, matchInfo) {
+			return true, nil
+		} else {
+			e2e.Logf("Continue to next round")
+			return false, nil
+		}
+	})
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("Image registry is degrade"))
+}
