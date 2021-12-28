@@ -67,7 +67,7 @@ set +x
 console_route=$(oc get route console -n openshift-console -o jsonpath='{.spec.host}')
 export BRIDGE_BASE_ADDRESS=https://$console_route
 export LOGIN_IDP=uiauto-htpasswd-idp
-export LOGIN_USERNAME=testuser-1
+export LOGIN_USERNAME=uiauto-test-1
 export LOGIN_PASSWORD=$(echo $users | awk -F ',' '{print $1}' | awk -F ':' '{print $2}')
 ls -ltr
 echo "triggering tests"
