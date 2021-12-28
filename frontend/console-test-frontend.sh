@@ -2,8 +2,18 @@
 
 set -euo pipefail
 
-## Add IDP for testing
+ARTIFACT_DIR=${ARTIFACT_DIR:=/tmp/artifacts}
+mkdir -p $ARTIFACT_DIR
+SCREENSHOTS_DIR=gui_test_screenshots
 
+function copyArtifacts {
+  if [ -d "$ARTIFACT_DIR" ] && [ -d "$SCREENSHOTS_DIR" ]; then
+    echo "Copying artifacts from $(pwd)..."
+    cp -r "$SCREENSHOTS_DIR" "${ARTIFACT_DIR}/gui_test_screenshots"
+  fi
+}
+
+## Add IDP for testing
 # prepare users
 users=""
 htpass_file=/tmp/users.htpasswd
@@ -41,6 +51,7 @@ do
     fi
 done
 echo "authentication operator finished updating"
+trap copyArtifacts EXIT
 
 # clone upstream console repo and create soft link
 set -x
@@ -62,4 +73,3 @@ ls -ltr
 echo "triggering tests"
 set -x
 yarn run test-cypress-console-headless
-# TODO: archive gui_test_screenshots
