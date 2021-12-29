@@ -2,6 +2,7 @@ package image_registry
 
 import (
 	"fmt"
+	"path/filepath"
 	"time"
 
 	g "github.com/onsi/ginkgo"
@@ -247,5 +248,39 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 		g.By("Check if imagepruner degraded image registry")
 		out := getResource(oc, asAdmin, withoutNamespace, "imagepruner/cluster", "-o=jsonpath={.status.conditions}")
 		o.Expect(out).To(o.ContainSubstring(`"reason":"Complete"`))
+	})
+
+	// author: xiuwang@redhat.com
+	g.It("Author:xiuwang-Medium-33708-Verify spec.ignoreInvalidImageReference with invalid image reference [Serial]", func() {
+		var (
+			imageRegistryBaseDir = exutil.FixturePath("testdata", "image_registry")
+			podFile              = filepath.Join(imageRegistryBaseDir, "single-pod.yaml")
+			podsrc               = podSource{
+				name:      "pod-pull-with-invalid-image",
+				namespace: "",
+				image:     "quay.io/openshifttest/hello-pod@",
+				template:  podFile,
+			}
+		)
+
+		g.By("Setup imagepruner running every minute")
+		defer oc.AsAdmin().Run("patch").Args("imagepruner/cluster", "-p", `{"spec":{"schedule":""}}`, "--type=merge").Execute()
+		err := oc.AsAdmin().Run("patch").Args("imagepruner/cluster", "-p", `{"spec":{"schedule": "* * * * *"}}`, "--type=merge").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Create pod with invalid image")
+		oc.SetupProject()
+		podsrc.namespace = oc.Namespace()
+		podsrc.create(oc)
+		foundPruneLog := false
+		err = wait.PollImmediate(5*time.Second, 2*time.Minute, func() (bool, error) {
+			foundPruneLog = imagePruneLog(oc, `"quay.io/openshifttest/hello-pod@": invalid reference format - skipping`)
+			if foundPruneLog != true {
+				e2e.Logf("wait for next round")
+				return false, nil
+			}
+			return true, nil
+		})
+		exutil.AssertWaitPollNoErr(err, "Don't find the value")
 	})
 })

@@ -515,3 +515,15 @@ func recoverRegistrySwiftSet(oc *exutil.CLI) {
 	})
 	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("Image registry is degrade"))
 }
+
+type podSource struct {
+	name      string
+	namespace string
+	image     string
+	template  string
+}
+
+func (podsrc *podSource) create(oc *exutil.CLI) {
+	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", podsrc.template, "-p", "NAME="+podsrc.name, "NAMESPACE="+podsrc.namespace, "IMAGE="+podsrc.image)
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
