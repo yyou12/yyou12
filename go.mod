@@ -6,6 +6,10 @@ require (
 	cloud.google.com/go v0.38.0
 	github.com/RangelReale/osincli v0.0.0-20160924135400-fababb0555f2
 	github.com/aws/aws-sdk-go v1.16.26
+	github.com/aws/aws-sdk-go-v2 v1.11.2
+	github.com/aws/aws-sdk-go-v2/config v1.11.1
+	github.com/aws/aws-sdk-go-v2/credentials v1.6.5
+	github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs v1.11.0
 	github.com/blang/semver v3.5.0+incompatible
 	github.com/davecgh/go-spew v1.1.1
 	github.com/docker/docker v0.7.3-0.20190327010347-be7ac8be2ae0
