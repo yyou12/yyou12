@@ -1,20 +1,21 @@
 package mco
 
 import (
-	e2e "k8s.io/kubernetes/test/e2e/framework"
 	"strconv"
 	"strings"
+
+	e2e "k8s.io/kubernetes/test/e2e/framework"
 )
 
 var operators = map[string][]int{
-	"<":  []int{1},
-	">":  []int{-1},
-	"=":  []int{0},
-	"==": []int{0},
-	"<=": []int{0, 1},
-	"=<": []int{0, 1},
-	">=": []int{0, -1},
-	"=>": []int{0, -1},
+	"<":  {1},
+	">":  {-1},
+	"=":  {0},
+	"==": {0},
+	"<=": {0, 1},
+	"=<": {0, 1},
+	">=": {0, -1},
+	"=>": {0, -1},
 }
 
 func validateOperator(operator string) {

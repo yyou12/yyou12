@@ -13,6 +13,7 @@ import (
 	"time"
 
 	b64 "encoding/base64"
+
 	o "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/util/wait"
 
@@ -371,12 +372,6 @@ func getGoVersion(component string, commitId string) (float64, error) {
 	}
 	goVersion := string(curlOutput)[3:]
 	return strconv.ParseFloat(strings.TrimSuffix(goVersion, "\n"), 64)
-}
-
-func getMachineConfigDaemon(oc *exutil.CLI, node string) string {
-	machineConfigDaemon, err := exutil.GetPodName(oc, "openshift-machine-config-operator", "k8s-app=machine-config-daemon", node)
-	o.Expect(err).NotTo(o.HaveOccurred())
-	return machineConfigDaemon
 }
 
 func getContainerRuntimeConfigDetails(oc *exutil.CLI, crName string) (string, error) {
