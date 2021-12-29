@@ -1,11 +1,11 @@
 package winc
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -112,9 +112,10 @@ func getWindowsInternalIPs(oc *exutil.CLI) []string {
 func getSSHBastionHost(oc *exutil.CLI) string {
 	msg, err := oc.WithoutNamespace().Run("get").Args("service", "--all-namespaces", "-l=run=ssh-bastion", "-o=go-template='{{ with (index (index .items 0).status.loadBalancer.ingress 0) }}{{ or .hostname .ip }}{{end}}'").Output()
 	if err != nil || msg == "" {
-		e2e.Failf("SSH bastion is not install yet")
+		e2e.Failf("SSH bastion is not installed yet")
 	}
-	return msg
+	msg = removeOuterQuotes(msg)
+	return (msg)
 }
 
 // A private function to translate the workload/pod/deployment name
@@ -131,19 +132,18 @@ func getWorkloadName(os string) string {
 }
 
 // A private function to determine username by platform
-func getAdministratorNameByPlatform(iaasPlatform string) string {
-	admin := ""
+func getAdministratorNameByPlatform(iaasPlatform string) (admin string) {
 	if iaasPlatform == "azure" {
-		admin = "capi"
-	} else {
-		admin = "Administrator"
+		return "capi"
 	}
-	return admin
+	return "Administrator"
 }
 
 func runPSCommand(bastionHost string, windowsHost string, command string, privateKey string, iaasPlatform string) (result string, err error) {
 	windowsUser := getAdministratorNameByPlatform(iaasPlatform)
-	msg, err := exec.Command("bash", "-c", "chmod 600 "+privateKey+"; ssh -i "+privateKey+" -t -o StrictHostKeyChecking=no -o ProxyCommand=\"ssh -i "+privateKey+" -A -o StrictHostKeyChecking=no -o ServerAliveInterval=30 -W %h:%p core@"+bastionHost+"\" "+windowsUser+"@"+windowsHost+" \"powershell "+command+"\"").CombinedOutput()
+	command = "\"" + command + "\""
+	cmd := "chmod 600 " + privateKey + "; ssh -i " + privateKey + " -t -o StrictHostKeyChecking=no -o ProxyCommand=\"ssh -i " + privateKey + " -A -o StrictHostKeyChecking=no -o ServerAliveInterval=30 -W %h:%p core@" + bastionHost + "\" " + windowsUser + "@" + windowsHost + " 'powershell " + command + "'"
+	msg, err := exec.Command("bash", "-c", cmd).CombinedOutput()
 	return string(msg), err
 }
 
@@ -291,7 +291,12 @@ func scaleDownWMCO(oc *exutil.CLI) error {
 
 // The output from JSON contains quotes, here we remove them
 func removeOuterQuotes(s string) string {
-	return regexp.MustCompile(`^"(.*)"$`).ReplaceAllString(s, `$1`)
+	if len(s) >= 2 {
+		if c := s[len(s)-1]; s[0] == c && (c == '"' || c == '\'') {
+			return s[1 : len(s)-1]
+		}
+	}
+	return s
 }
 
 // we truncate the go version to major Go version, e.g. 1.15.13 --> 1.15
@@ -436,4 +441,62 @@ func setConfigmap(oc *exutil.CLI, address string, administrator string, configMa
 	ioutil.WriteFile("configMapFile", []byte(configmap), 0644)
 	_, err := oc.WithoutNamespace().Run("create").Args("-f", "configMapFile").Output()
 	return err
+}
+
+func getWinSVCs(bastionHost string, addr string, privateKey string, iaasPlatform string) (map[string]string, error) {
+	cmd := "Get-Service | Select-Object -Property Name,Status | ConvertTo-Csv -NoTypeInformation"
+	msg, err := runPSCommand(bastionHost, addr, cmd, privateKey, iaasPlatform)
+	o.Expect(err).NotTo(o.HaveOccurred())
+	if err != nil {
+		e2e.Failf("error running SSH job")
+	}
+	svcSplit := strings.SplitAfterN(msg, "\"Name\",\"Status\"\r\n", 2)
+	if len(svcSplit) != 2 {
+		e2e.Logf("unexpected command output: " + msg)
+	}
+	svcTrimmed := strings.TrimSpace(svcSplit[1])
+	services := make(map[string]string)
+	lines := strings.Split(svcTrimmed, "\r\n")
+	for _, line := range lines {
+		fields := strings.Split(line, ",")
+		if len(fields) != 2 {
+			e2e.Logf("expected comma separated values, found: " + line)
+		}
+		services[strings.Trim(fields[0], "\"")] = strings.Trim(fields[1], "\"")
+	}
+	return services, nil
+}
+
+func checkRunningServicesOnWindowsNode(bastionHost string, winInternalIP string, svcs map[int]string, winServices map[string]string, privateKey string, iaasPlatform string) (expectedService bool, svc string) {
+	for _, svc = range svcs {
+		_, expectedService := winServices[svc]
+		if !expectedService {
+			e2e.Logf("Service %v does not exist", svc)
+		} else {
+			e2e.Logf("Service %v exists", svc)
+		}
+	}
+	return expectedService, svc
+}
+
+func checkFoldersDoNotExist(bastionHost string, winInternalIP string, folder string, privateKey string, iaasPlatform string) bool {
+	msg, _ := runPSCommand(bastionHost, winInternalIP, fmt.Sprintf("Get-Item %v", folder), privateKey, iaasPlatform)
+	if !strings.Contains(msg, "ItemNotFoundException") {
+		return true
+	}
+	return false
+}
+
+// currently not available need to be fix logic
+func waitUntilWMCOStatusChanged(oc *exutil.CLI, message string) {
+	waitLogErr := wait.Poll(10*time.Second, 15*time.Minute, func() (bool, error) {
+		msg, err := oc.WithoutNamespace().Run("logs").Args("deployment.apps/windows-machine-config-operator", "-n", "openshift-windows-machine-config-operator").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		if strings.Contains(msg, message) {
+			e2e.Logf("Failed to check %v, try next round", message)
+			return false, nil
+		}
+		return true, nil
+	})
+	exutil.AssertWaitPollNoErr(waitLogErr, fmt.Sprintf("%v still watch label", message))
 }

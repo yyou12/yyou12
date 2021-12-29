@@ -2,6 +2,7 @@ package winc
 
 import (
 	"encoding/base64"
+	"fmt"
 	"io/ioutil"
 	"os/exec"
 	"path/filepath"
@@ -23,6 +24,17 @@ var _ = g.Describe("[sig-windows] Windows_Containers CPaasrunOnly", func() {
 		iaasPlatform string
 		privateKey   = "../internal/config/keys/openshift-qe.pem"
 		publicKey    = "../internal/config/keys/openshift-qe.pub"
+		svcs         = map[int]string{
+			0: "windows_exporter",
+			1: "kubelet",
+			2: "hybrid-overlay-node",
+			3: "kube-proxy",
+		}
+		folders = map[int]string{
+			1: "c:\\k",
+			2: "c:\\temp",
+			3: "c:\\var\\log",
+		}
 	)
 
 	g.BeforeEach(func() {
@@ -342,34 +354,81 @@ var _ = g.Describe("[sig-windows] Windows_Containers CPaasrunOnly", func() {
 		}
 	})
 
-	g.It("Author:rrasouli-NonPreRelease-Critical-42496-byoh-Configure Windows instance with DNS [Slow][Disruptive]", func() {
-		namespace := "winc-42496"
-		user := "Administrator"
+	// author rrasouli@redhat.com
+	g.It("Author:rrasouli-NonPreRelease-Longduration-Critical-42496-byoh-Configure Windows instance with DNS [Slow] [Disruptive]", func() {
+		bastionHost := getSSHBastionHost(oc)
 		winVersion := "2019"
 		machinesetName := "byoh"
+		addressType := "dns"
+		user := getAdministratorNameByPlatform(iaasPlatform)
 		machinesetFileName := "aws_byoh_machineset.yaml"
-
 		if iaasPlatform == "azure" {
 			machinesetFileName = "azure_byoh_machineset.yaml"
-			user = "capi"
 		}
+		// creating byoh machineset
 		machineset, err := getMachineset(oc, iaasPlatform, winVersion, machinesetName, machinesetFileName)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		defer oc.WithoutNamespace().Run("delete").Args("machineset", machineset, "-n", "openshift-machine-api").Output()
 		createMachineset(oc, "availWindowsMachineSetbyoh", machineset)
-		addressType := "dns"
 		address := fetchAddress(oc, addressType, machineset)
-		e2e.Logf("--------- Address is ------ %v", address)
 		setConfigmap(oc, address[0], user, "config-map.yaml")
 		defer oc.WithoutNamespace().Run("delete").Args("configmap", "windows-instances", "-n", "openshift-windows-machine-config-operator").Output()
-		e2e.Logf("--------- Machineset is ------ %v", machineset)
 		waitForMachinesetReady(oc, machineset, 10, 1)
-		instanceDeadTime := 5
-		defer deleteProject(oc, namespace)
-		if !createWinWorkloadsSimple(oc, namespace, "windows_web_server.yaml", instanceDeadTime) {
-			e2e.Failf("Windows workload is not ready after waiting up to %v minutes ...", instanceDeadTime)
+		// removing the config map
+		g.By("Delete the BYOH congigmap for node deconfiguration")
+		oc.WithoutNamespace().Run("delete").Args("configmap", "windows-instances", "-n", "openshift-windows-machine-config-operator").Output()
+		// adding 12 minutes sleep here
+		e2e.Logf("Temporarly using sleep of 12 minutes")
+		// TODO find a better way not to use sleep but waitUntilStatusChanged function, currently the function isn't working properly and always return values
+		// which are not equivelant with the WMCO log
+		// waitUntilStatusChanged(oc, "instance has been deconfigured")
+		time.Sleep(12 * time.Minute)
+		//  check services are not running
+		g.By("Check services are not running after deleting the Windows Node")
+		runningServices, err := getWinSVCs(bastionHost, address[0], privateKey, iaasPlatform)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		svcBool, svc := checkRunningServicesOnWindowsNode(bastionHost, address[0], *&svcs, runningServices, privateKey, iaasPlatform)
+		if svcBool {
+			e2e.Failf("Service %v still running on Windows node after deconfiguration", svc)
 		}
+		g.By("Check folder do not exist after deleting the Windows Node")
+		for _, folder := range *&folders {
+			if checkFoldersDoNotExist(bastionHost, address[0], fmt.Sprintf("%v", folder), privateKey, iaasPlatform) {
+				e2e.Failf("Folders still exists on a deleted node %v", fmt.Sprintf("%v", folder))
+			}
+		}
+		// TODO check network removal test
+
 	})
+
+	// author rrasouli@redhat.com
+	g.It("Author:rrasouli-NonPreRelease-Longduration-Critical-42516-byoh-Configure Windows instance with IP [Slow][Disruptive]", func() {
+		namespace := "winc-42516"
+		user := getAdministratorNameByPlatform(iaasPlatform)
+		winVersion := "2019"
+		machinesetName := "byoh"
+		machinesetFileName := "aws_byoh_machineset.yaml"
+		if iaasPlatform == "azure" {
+			machinesetFileName = "azure_byoh_machineset.yaml"
+		}
+		addressType := "ip"
+		machineset, err := getMachineset(oc, iaasPlatform, winVersion, machinesetName, machinesetFileName)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		defer oc.WithoutNamespace().Run("delete").Args("machineset", machineset, "-n", "openshift-machine-api").Output()
+		createMachineset(oc, "availWindowsMachineSetbyoh", machineset)
+		address := fetchAddress(oc, addressType, machineset)
+		defer oc.WithoutNamespace().Run("delete").Args("configmap", "windows-instances", "-n", "openshift-windows-machine-config-operator").Output()
+		setConfigmap(oc, address[0], user, "config-map.yaml")
+		waitForMachinesetReady(oc, machineset, 10, 1)
+		defer deleteProject(oc, namespace)
+		createProject(oc, namespace)
+		createWindowsWorkload(oc, namespace, "windows_web_server_byoh.yaml", getConfigMapData(oc, "windows_container_image"))
+		scaleDeployment(oc, "windows", 5, namespace)
+		msg, err := oc.WithoutNamespace().Run("get").Args("pods", "-n", namespace).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf(msg)
+	})
+
 	// author rrasouli@redhat.com
 	g.It("Author:rrasouli-NonPreRelease-High-39451-Access Windows workload through clusterIP [Slow][Disruptive]", func() {
 		namespace := "winc-39451"
@@ -476,6 +535,11 @@ var _ = g.Describe("[sig-windows] Windows_Containers CPaasrunOnly", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		g.By("Check communication: Windows pod <--> Linux pod")
+		winPodNameArray, err = getWorkloadsNames(oc, "windows", namespace)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		linuxPodNameArray, err = getWorkloadsNames(oc, "linux", namespace)
+		winPodIPArray, err = getWorkloadsIP(oc, "windows", namespace)
+		linuxPodIPArray, err = getWorkloadsIP(oc, "linux", namespace)
 		command := []string{"exec", "-n", namespace, linuxPodNameArray[0], "--", "curl", winPodIPArray[0]}
 		msg, err := oc.WithoutNamespace().Run(command...).Args().Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
