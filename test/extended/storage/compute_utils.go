@@ -106,26 +106,27 @@ func getSchedulableWorkersWithSameAz(oc *exutil.CLI) (schedulableWorkersWithSame
 	)
 	for _, worker := range workers {
 		scheduleFlag := gjson.Get(workersInfo, "items.#(metadata.name="+worker+").spec.unschedulable").String()
-		if scheduleFlag != "true" {
+		workerOS := gjson.Get(workersInfo, "items.#(metadata.name="+worker+").metadata.labels.kubernetes\\.io\\/os").String()
+		if scheduleFlag != "true" && workerOS == "linux" {
 			azName = gjson.Get(workersInfo, "items.#(metadata.name="+worker+")."+zonePath).String()
 			if azName == "" {
 				azName = "noneAzCluster"
 			}
 			if _, ok := schedulableWorkersWithAz[azName]; ok {
-				e2e.Logf("Schedulable workers with Same Az: %s,%s", worker, schedulableWorkersWithAz[azName])
+				e2e.Logf("Schedulable workers %s,%s in the same az %s", worker, schedulableWorkersWithAz[azName], azName)
 				return append(schedulableWorkersWithSameAz, worker, schedulableWorkersWithAz[azName]), azName
 			}
 			schedulableWorkersWithAz[azName] = worker
 		}
 	}
-	e2e.Logf("*** The test cluster has less than two schedulable workers in each avaiable zone! ***")
+	e2e.Logf("*** The test cluster has less than two schedulable linux workers in each avaiable zone! ***")
 	return nil, azName
 }
 
 // Drain specified node
 func drainSpecificNode(oc *exutil.CLI, nodeName string) {
-	e2e.Logf("oc adm drain nodes/" + nodeName + " --ignore-daemonsets --delete-emptydir-data --force")
-	err := oc.AsAdmin().WithoutNamespace().Run("adm").Args("drain", "nodes/"+nodeName, "--ignore-daemonsets", "--delete-emptydir-data", "--force").Execute()
+	e2e.Logf("oc adm drain nodes/" + nodeName + " --ignore-daemonsets --delete-emptydir-data --force --timeout=600s")
+	err := oc.AsAdmin().WithoutNamespace().Run("adm").Args("drain", "nodes/"+nodeName, "--ignore-daemonsets", "--delete-emptydir-data", "--force", "--timeout=600s").Execute()
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
