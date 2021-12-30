@@ -108,28 +108,12 @@ var _ = g.Describe("[sig-windows] Windows_Containers CPaasrunOnly", func() {
 
 		bastionHost := getSSHBastionHost(oc)
 		winInternalIP := getWindowsInternalIPs(oc)[0]
-		g.By("Check windows_exporter service is running")
-		msg, _ = runPSCommand(bastionHost, winInternalIP, "Get-Service windows_exporter", privateKey, iaasPlatform)
-		if !strings.Contains(msg, "Running") {
-			e2e.Failf("Failed to check windows_exporter service is running: %s", msg)
-		}
-
-		g.By("Check kubelet service is running")
-		msg, _ = runPSCommand(bastionHost, winInternalIP, "Get-Service kubelet", privateKey, iaasPlatform)
-		if !strings.Contains(msg, "Running") {
-			e2e.Failf("Failed to check kubelet service is running: %s", msg)
-		}
-
-		g.By("Check hybrid-overlay-node service is running")
-		msg, _ = runPSCommand(bastionHost, winInternalIP, "Get-Service hybrid-overlay-node", privateKey, iaasPlatform)
-		if !strings.Contains(msg, "Running") {
-			e2e.Failf("Failed to check hybrid-overlay-node service is running: %s", msg)
-		}
-
-		g.By("Check kube-proxy service is running")
-		msg, _ = runPSCommand(bastionHost, winInternalIP, "Get-Service kube-proxy", privateKey, iaasPlatform)
-		if !strings.Contains(msg, "Running") {
-			e2e.Failf("Failed to check kube-proxy service is running: %s", msg)
+		for _, svc := range svcs {
+			g.By(fmt.Sprintf("Check %v service is running", svc))
+			msg, _ = runPSCommand(bastionHost, winInternalIP, fmt.Sprintf("Get-Service %v", svc), privateKey, iaasPlatform)
+			if !strings.Contains(msg, "Running") {
+				e2e.Failf("Failed to check %v service is running: %s", svc, msg)
+			}
 		}
 	})
 
