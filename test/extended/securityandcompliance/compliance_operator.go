@@ -1365,10 +1365,10 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			subD.getScanExitCodeFromConfigmap(oc, "2")
 
 			g.By("Verify compliance scan result compliancecheckresult through label ...!!!\n")
-			newCheck("expect", asAdmin, withoutNamespace, contain, "worker-scan-etcd-unique-ca", ok, []string{"compliancecheckresult",
-				"--selector=compliance.openshift.io/check-status=NOT-APPLICABLE", "-n", subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
-			newCheck("expect", asAdmin, withoutNamespace, contain, "NOT-APPLICABLE", ok, []string{"compliancecheckresult",
-				"worker-scan-etcd-unique-ca", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "worker-scan-kubelet-configure-event-creation", ok, []string{"compliancecheckresult",
+				"--selector=compliance.openshift.io/check-status=FAIL", "-n", subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "FAIL", ok, []string{"compliancecheckresult",
+				"worker-scan-kubelet-configure-event-creation", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
 
 			g.By("Remove worker-compliancesuite object.. !!!\n")
 			csuiteD.delete(itName, dr)
@@ -1977,7 +1977,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 					template:     tprofileWithoutVarTemplate,
 				}
 				ss = scanSettingDescription{
-					autoapplyremediations: true,
+					autoapplyremediations: false,
 					name:                  "myss",
 					namespace:             "",
 					roles1:                "master",
@@ -2162,10 +2162,6 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			csvName := getResource(oc, asAdmin, withoutNamespace, "csv", "-n", oc.Namespace(), "-o=jsonpath={.items[0].metadata.name}")
 			newCheck("expect", asAdmin, withoutNamespace, contain, "[\"disconnected\", \"fips\", \"proxy-aware\"]", ok, []string{"csv",
 				csvName, "-n", oc.Namespace(), "-o=jsonpath={.metadata.annotations.operators\\.openshift\\.io/infrastructure-features}"}).check(oc)
-
-			g.By("check the infrastructure-features for packagemanifest!!!\n")
-			newCheck("expect", asAdmin, withoutNamespace, contain, "[\"disconnected\", \"fips\", \"proxy-aware\"]", ok, []string{"packagemanifest", subD.operatorPackage,
-				"-n", oc.Namespace(), "-o=jsonpath={.status.channels[0].currentCSVDesc.annotations.operators\\.openshift\\.io/infrastructure-features}"}).check(oc)
 		})
 
 		// author: xiyuan@redhat.com
@@ -2424,6 +2420,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			subD.getScanExitCodeFromConfigmap(oc, "2 unschedulable")
 		})
 
+		/* Disabling the test, it may be needed in future
 		// author: xiyuan@redhat.com
 		g.It("Author:xiyuan-Medium-40226-NOT APPLICABLE rule should report NOT APPLICABLE status in 'ComplianceCheckResult' instead of SKIP [Slow]", func() {
 			var (
@@ -2459,8 +2456,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 
 			g.By("Check the warnings of NOT-APPLICABLE rules !!!\n")
 			checkWarnings(oc, "rule is only applicable", "compliancecheckresult", "-l", "compliance.openshift.io/check-status=NOT-APPLICABLE", "--no-headers", "-n", subD.namespace)
-
-		})
+		})*/
 
 		// author: pdhamdhe@redhat.com
 		g.It("Author:pdhamdhe-High-41861-Verify fips mode checking rules are working as expected [Slow]", func() {
