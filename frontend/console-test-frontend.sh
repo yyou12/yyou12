@@ -69,6 +69,7 @@ export BRIDGE_BASE_ADDRESS=https://$console_route
 export LOGIN_IDP=uiauto-htpasswd-idp
 export LOGIN_USERNAME=uiauto-test-1
 export LOGIN_PASSWORD=$(echo $users | awk -F ',' '{print $1}' | awk -F ':' '{print $2}')
+export KUBECONFIG=${KUBECONFIG}
 ls -ltr
 echo "triggering tests"
 set -x

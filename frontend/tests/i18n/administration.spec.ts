@@ -4,6 +4,7 @@ import { listPage, ListPageSelector } from '../../upstream/views/list-page';
 
 describe('Administration pages pesudo translation (OCP-35766,admin)', () => {
   before(() => {
+    cy.exec(`oc adm policy add-cluster-role-to-user cluster-admin  ${Cypress.env('LOGIN_USERNAME')}`);
   	cy.login(Cypress.env('LOGIN_IDP'), Cypress.env('LOGIN_USERNAME'), Cypress.env('LOGIN_PASSWORD'));
   });
 
@@ -12,6 +13,7 @@ describe('Administration pages pesudo translation (OCP-35766,admin)', () => {
   });
 
   after(() => {
+    cy.exec(`oc adm policy remove-cluster-role-from-user cluster-admin  ${Cypress.env('LOGIN_USERNAME')}`);
   	cy.logout;
   });
 
