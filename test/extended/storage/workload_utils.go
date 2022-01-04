@@ -115,9 +115,25 @@ func (pod *pod) create(oc *exutil.CLI) {
 
 // Create new pod with extra parameters for readonly
 func (pod *pod) createWithReadOnlyVolume(oc *exutil.CLI) {
+	if pod.namespace == "" {
+		pod.namespace = oc.Namespace()
+	}
 	extraParameters := map[string]interface{}{
 		"jsonPath": `items.0.spec.containers.0.volumeMounts.0.`,
 		"readOnly": true,
+	}
+	err := applyResourceFromTemplateWithExtraParametersAsAdmin(oc, extraParameters, "--ignore-unknown-parameters=true", "-f", pod.template, "-p", "PODNAME="+pod.name, "PODNAMESPACE="+pod.namespace, "PVCNAME="+pod.pvcname, "PODIMAGE="+pod.image, "VOLUMETYPE="+pod.volumeType, "PATHTYPE="+pod.pathType, "PODMOUNTPATH="+pod.mountPath)
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+// Create new pod with subpath
+func (pod *pod) createWithSubpathVolume(oc *exutil.CLI, subPath string) {
+	if pod.namespace == "" {
+		pod.namespace = oc.Namespace()
+	}
+	extraParameters := map[string]interface{}{
+		"jsonPath": `items.0.spec.containers.0.volumeMounts.0.`,
+		"subPath":  subPath,
 	}
 	err := applyResourceFromTemplateWithExtraParametersAsAdmin(oc, extraParameters, "--ignore-unknown-parameters=true", "-f", pod.template, "-p", "PODNAME="+pod.name, "PODNAMESPACE="+pod.namespace, "PVCNAME="+pod.pvcname, "PODIMAGE="+pod.image, "VOLUMETYPE="+pod.volumeType, "PATHTYPE="+pod.pathType, "PODMOUNTPATH="+pod.mountPath)
 	o.Expect(err).NotTo(o.HaveOccurred())

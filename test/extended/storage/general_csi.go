@@ -391,6 +391,77 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 		}
 	})
 
+	// OCP-47370 -[CSI Driver] [Dynamic PV] [Filesystem] provisioning volume with subpath
+	g.It("Author:pewang-High-47370-[CSI Driver] [Dynamic PV] [Filesystem] provisioning volume with subpath", func() {
+		// Define the test scenario support provisioners
+		scenarioSupportProvisioners := []string{"ebs.csi.aws.com", "disk.csi.azure.com", "cinder.csi.openstack.org", "pd.csi.storage.gke.io", "csi.vsphere.vmware.com"}
+		// Set the resource template for the scenario
+		var (
+			storageTeamBaseDir  = exutil.FixturePath("testdata", "storage")
+			pvcTemplate         = filepath.Join(storageTeamBaseDir, "pvc-template.yaml")
+			podTemplate         = filepath.Join(storageTeamBaseDir, "pod-template.yaml")
+			supportProvisioners = sliceIntersect(scenarioSupportProvisioners, getSupportProvisionersByCloudProvider(cloudProvider))
+		)
+		if len(supportProvisioners) == 0 {
+			g.Skip("Skip for scenario non-supported provisioner!!!")
+		}
+		// Set up a specified project share for all the phases
+		g.By("0. Create new project for the scenario")
+		oc.SetupProject() //create new project
+		for _, provisioner := range supportProvisioners {
+			g.By("******" + cloudProvider + " csi driver: \"" + provisioner + "\" test phase start" + "******")
+			// Set the resource definition for the scenario
+			pvc := newPersistentVolumeClaim(setPersistentVolumeClaimTemplate(pvcTemplate))
+			podWithSubpathA := newPod(setPodTemplate(podTemplate), setPodPersistentVolumeClaim(pvc.name))
+			podWithSubpathB := newPod(setPodTemplate(podTemplate), setPodPersistentVolumeClaim(pvc.name))
+			podWithSubpathC := newPod(setPodTemplate(podTemplate), setPodPersistentVolumeClaim(pvc.name))
+			podWithNoneSubpath := newPod(setPodTemplate(podTemplate), setPodPersistentVolumeClaim(pvc.name))
+
+			g.By("# Create a pvc with the preset csi storageclass")
+			pvc.scname = getPresetStorageClassNameByProvisioner(cloudProvider, provisioner)
+			e2e.Logf("The preset storage class name is: %s", pvc.scname)
+			pvc.create(oc)
+			defer pvc.deleteAsAdmin(oc)
+
+			g.By("# Create podWithSubpathA, podWithSubpathB, podWithNoneSubpath with the created pvc and wait for the pods ready")
+			podWithSubpathA.createWithSubpathVolume(oc, "subpathA")
+			defer podWithSubpathA.deleteAsAdmin(oc)
+			podWithSubpathB.createWithSubpathVolume(oc, "subpathB")
+			defer podWithSubpathB.deleteAsAdmin(oc)
+			podWithNoneSubpath.create(oc)
+			defer podWithNoneSubpath.deleteAsAdmin(oc)
+			podWithSubpathA.waitReady(oc)
+			podWithSubpathB.waitReady(oc)
+			podWithNoneSubpath.waitReady(oc)
+
+			g.By("# Check the podWithSubpathA's volume could be read, written, exec and podWithSubpathB couldn't see the written content")
+			podWithSubpathA.checkMountedVolumeCouldRW(oc)
+			podWithSubpathA.checkMountedVolumeHaveExecRight(oc)
+			output, err := podWithSubpathB.execCommand(oc, "ls /mnt/storage")
+			o.Expect(err).ShouldNot(o.HaveOccurred())
+			o.Expect(output).ShouldNot(o.ContainSubstring("testfile"))
+
+			g.By("# Check the podWithNoneSubpath could see both 'subpathA' and 'subpathB' folders with 'container_file_t' label")
+			output, err = podWithNoneSubpath.execCommand(oc, "ls -Z /mnt/storage")
+			o.Expect(err).NotTo(o.HaveOccurred())
+			o.Expect(output).Should(o.ContainSubstring("subpathA"))
+			o.Expect(output).Should(o.ContainSubstring("subpathB"))
+			o.Expect(output).Should(o.ContainSubstring("container_file_t"))
+
+			g.By("# Use the same subpath 'subpathA' create podWithSubpathC and wait for the pod ready")
+			podWithSubpathC.createWithSubpathVolume(oc, "subpathA")
+			defer podWithSubpathC.deleteAsAdmin(oc)
+			podWithSubpathC.waitReady(oc)
+
+			g.By("# Check the subpathA's data still exist not be covered and podWithSubpathC could also see the file content")
+			output, err = podWithSubpathC.execCommand(oc, "cat /mnt/storage/testfile")
+			o.Expect(err).NotTo(o.HaveOccurred())
+			o.Expect(output).Should(o.ContainSubstring("storage test"))
+
+			g.By("******" + cloudProvider + " csi driver: \"" + provisioner + "\" test phase finished" + "******")
+		}
+	})
+
 	// author: wduan@redhat.com
 	// OCP-44905 - [CSI-Driver] [Dynamic PV] [block volume] volumes should store data
 	g.It("Author:wduan-Critical-44905-[CSI-Driver] [Dynamic PV] [block volume] volumes should store data", func() {
