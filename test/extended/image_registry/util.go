@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
+	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -313,13 +314,13 @@ func restoreRegistryStorageConfig(oc *exutil.CLI) string {
 		storageinfo, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("config.image", "cluster", "-o=jsonpath={.spec.storage.gcs.bucket}").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 	case "OpenStack":
-		storageinfo, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("config.image", "cluster", "-o=jsonpath={.spec.storage.swift.container").Output()
+		storageinfo, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("config.image", "cluster", "-o=jsonpath={.spec.storage.swift.container}").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 	case "None", "VSphere":
-		storageinfo, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("config.image", "cluster", "-o=jsonpath={.spec.storage.pvc.claim").Output()
+		storageinfo, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("config.image", "cluster", "-o=jsonpath={.spec.storage.pvc.claim}").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		if storageinfo == "" {
-			storageinfo, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("config.image", "cluster", "-o=jsonpath={.spec.storage.emptyDir").Output()
+			storageinfo, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("config.image", "cluster", "-o=jsonpath={.spec.storage.emptyDir}").Output()
 			o.Expect(err).NotTo(o.HaveOccurred())
 		}
 	default:
@@ -526,4 +527,22 @@ type podSource struct {
 func (podsrc *podSource) create(oc *exutil.CLI) {
 	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", podsrc.template, "-p", "NAME="+podsrc.name, "NAMESPACE="+podsrc.namespace, "IMAGE="+podsrc.image)
 	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+func checkRegistryUsingFSVolume(oc *exutil.CLI) bool {
+	storageinfo, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("config.image", "cluster", "-o=jsonpath={.spec.storage}").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	if strings.Contains(storageinfo, "pvc") || strings.Contains(storageinfo, "emptyDir") {
+		return true
+	}
+	return false
+}
+
+func saveImageMetadataName(oc *exutil.CLI, image string) string {
+	imagemetadata, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("images").OutputToFile("imagemetadata.txt")
+	o.Expect(err).NotTo(o.HaveOccurred())
+	defer os.Remove("imagemetadata.txt")
+	manifest, err := exec.Command("bash", "-c", "cat "+imagemetadata+" | grep "+image+" | awk '{print $1}'").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	return strings.TrimSuffix(string(manifest), "\n")
 }

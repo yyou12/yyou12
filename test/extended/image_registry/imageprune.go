@@ -283,4 +283,44 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 		})
 		exutil.AssertWaitPollNoErr(err, "Don't find the value")
 	})
+
+	//Author: xiuwang@redhat.com
+	g.It("NonPreRelease-Author:xiuwang-Medium-15126-Registry hard prune procedure works well [Serial]", func() {
+		if !checkRegistryUsingFSVolume(oc) {
+			g.Skip("Skip for cloud storage")
+		}
+		g.By("Push uniqe images to internal registry")
+		oc.SetupProject()
+		err := oc.Run("new-build").Args("-D", "FROM quay.io/openshifttest/busybox@sha256:c5439d7db88ab5423999530349d327b04279ad3161d7596d2126dfb5b02bfd1f", "--to=image-15126").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = exutil.WaitForABuild(oc.BuildClient().BuildV1().Builds(oc.Namespace()), "image-15126-1", nil, nil, nil)
+		if err != nil {
+			exutil.DumpBuildLogs("image-15126", oc)
+		}
+		exutil.AssertWaitPollNoErr(err, "build is not complete")
+		err = exutil.WaitForAnImageStreamTag(oc, oc.Namespace(), "image-15126", "latest")
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		manifest := saveImageMetadataName(oc, oc.Namespace()+"/image-15126")
+		if len(manifest) == 0 {
+			e2e.Failf("Expect image not existing")
+		}
+
+		g.By("Delete image from etcd manually")
+		err = oc.AsAdmin().WithoutNamespace().Run("delete").Args("image", manifest).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Add system:image-pruner role to system:serviceaccount:openshift-image-registry:registry")
+		defer oc.AsAdmin().WithoutNamespace().Run("adm").Args("policy", "remove-cluster-role-from-user", "system:image-pruner", "system:serviceaccount:openshift-image-registry:registry").Execute()
+		err = oc.AsAdmin().WithoutNamespace().Run("adm").Args("policy", "add-cluster-role-to-user", "system:image-pruner", "system:serviceaccount:openshift-image-registry:registry").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Check invaild image source can be pruned")
+		output, err := oc.AsAdmin().WithoutNamespace().Run("rsh").Args("-n", "openshift-image-registry", "deployment.apps/image-registry", "/usr/bin/dockerregistry", "-prune=check").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring(`Would delete manifest link: %s/image-15126`, oc.Namespace()))
+		output, err = oc.AsAdmin().WithoutNamespace().Run("rsh").Args("-n", "openshift-image-registry", "deployment.apps/image-registry", "/usr/bin/dockerregistry", "-prune=delete").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring(`Deleting manifest link: %s/image-15126`, oc.Namespace()))
+	})
 })
