@@ -2,6 +2,7 @@ package opm
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
@@ -62,12 +63,12 @@ var _ = g.Describe("[sig-operators] OLM opm should", func() {
 
 	})
 
-    // author: scolange@redhat.com
+	// author: scolange@redhat.com
 	g.It("Author:scolange-VMonly-Medium-47222-can't remove package from index: database is locked", func() {
-		
+
 		g.By("remove package from index")
-		
-		output1, err := opmCLI.Run("index").Args("rm","--generate","--binary-image","registry.redhat.io/openshift4/ose-operator-registry:v4.7","--from-index","registry.redhat.io/redhat/certified-operator-index:v4.7","--operators","cert-manager-operator","--pull-tool=podman").Output()
+
+		output1, err := opmCLI.Run("index").Args("rm", "--generate", "--binary-image", "registry.redhat.io/openshift4/ose-operator-registry:v4.7", "--from-index", "registry.redhat.io/redhat/certified-operator-index:v4.7", "--operators", "cert-manager-operator", "--pull-tool=podman").Output()
 		e2e.Logf(output1)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		g.By("test case 47222 SUCCESS")
@@ -1668,6 +1669,111 @@ var _ = g.Describe("[sig-operators] OLM opm with podman", func() {
 		o.Expect(err).To(o.HaveOccurred())
 		o.Expect(output).To(o.MatchRegexp("(?i)mkdir .* permission denied(?i)"))
 		g.By("45403 SUCCESS")
+	})
+
+	// author: xzha@redhat.com
+	g.It("Author:xzha-ConnectedOnly-Medium-45317-Filter by Operator channel", func() {
+		opmBaseDir := exutil.FixturePath("testdata", "opm")
+		tmpPath := filepath.Join(opmBaseDir, "temp"+getRandomString())
+		defer DeleteDir(tmpPath, "fixture-testdata")
+		g.By("step: mkdir with mode 0755")
+		err := os.MkdirAll(tmpPath, 0755)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		opmCLI.ExecCommandPath = tmpPath
+
+		imageTag := "quay.io/olmqe/catalog-test:45317"
+		imageTagOld := "quay.io/olmqe/catalog-test:45317-old"
+
+		g.By("step: create include files")
+		includeFilePath1 := filepath.Join(tmpPath, "include-1.yaml")
+		includeContent1 := `packages: 
+  - name: ditto-operator
+    channels:
+    - name: alpha-3
+  - name: etcd
+    channels: 
+    - name: single-1
+    - name: single-2`
+		if err = ioutil.WriteFile(includeFilePath1, []byte(includeContent1), 0644); err != nil {
+			e2e.Failf(fmt.Sprintf("Writefile %s Error: %v", includeFilePath1, err))
+		}
+
+		includeFilePath2 := filepath.Join(tmpPath, "include-2.yaml")
+		includeContent2 := `packages: 
+  - name: ditto-operator
+    channels:
+    - name: alpha-2
+  - name: etcd
+    channels: 
+    - name: clusterwide`
+		if err = ioutil.WriteFile(includeFilePath2, []byte(includeContent2), 0644); err != nil {
+			e2e.Failf(fmt.Sprintf("Writefile %s Error: %v", includeFilePath2, err))
+		}
+
+		includeFilePath3 := filepath.Join(tmpPath, "include-3.yaml")
+		includeContent3 := `packages: 
+  - name: ditto-operator
+    channels:
+    - name: alpha-4
+  - name: etcd
+    channels: 
+    - name: single-1
+    - name: single-3`
+		if err = ioutil.WriteFile(includeFilePath3, []byte(includeContent3), 0644); err != nil {
+			e2e.Failf(fmt.Sprintf("Writefile %s Error: %v", includeFilePath3, err))
+		}
+
+		g.By("step: heads-only: opm index diff without --include-additive")
+		output, err := opmCLI.Run("alpha").Args("diff", imageTag, "-i", includeFilePath1, "-oyaml").Output()
+		if err != nil {
+			e2e.Logf(output)
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(string(output)).NotTo(o.ContainSubstring("name: ditto-operator.v0.1.0\n"))
+		o.Expect(string(output)).To(o.ContainSubstring("name: ditto-operator.v0.1.1\n"))
+		o.Expect(string(output)).To(o.ContainSubstring("name: ditto-operator.v0.2.0\n"))
+		o.Expect(string(output)).To(o.ContainSubstring("name: etcdoperator.v0.9.2\n"))
+		o.Expect(string(output)).To(o.ContainSubstring("name: etcdoperator.v0.9.4\n"))
+		o.Expect(string(output)).NotTo(o.ContainSubstring("name: etcdoperator.v0.9.2-clusterwide\n"))
+		o.Expect(string(output)).NotTo(o.ContainSubstring("name: etcdoperator.v0.9.4-clusterwide\n"))
+
+		g.By("step: heads-only: opm index diff with --include-additive")
+		output, err = opmCLI.Run("alpha").Args("diff", imageTag, "-i", includeFilePath2, "--include-additive", "-oyaml").Output()
+		if err != nil {
+			e2e.Logf(output)
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(string(output)).To(o.ContainSubstring("name: ditto-operator.v0.1.0\n"))
+		o.Expect(string(output)).To(o.ContainSubstring("name: ditto-operator.v0.1.1\n"))
+		o.Expect(string(output)).To(o.ContainSubstring("name: ditto-operator.v0.2.0\n"))
+		o.Expect(string(output)).NotTo(o.ContainSubstring("name: etcdoperator.v0.9.2\n"))
+		o.Expect(string(output)).To(o.ContainSubstring("name: etcdoperator.v0.9.4\n"))
+		o.Expect(string(output)).To(o.ContainSubstring("name: etcdoperator.v0.9.2-clusterwide\n"))
+		o.Expect(string(output)).To(o.ContainSubstring("name: etcdoperator.v0.9.4-clusterwide\n"))
+
+		g.By("step: latest: opm index diff without --include-additive")
+		output, err = opmCLI.Run("alpha").Args("diff", imageTagOld, imageTag, "-i", includeFilePath1, "-oyaml").Output()
+		if err != nil {
+			e2e.Logf(output)
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(string(output)).NotTo(o.ContainSubstring("name: ditto-operator.v0.1.0\n"))
+		o.Expect(string(output)).To(o.ContainSubstring("name: ditto-operator.v0.1.1\n"))
+		o.Expect(string(output)).To(o.ContainSubstring("name: ditto-operator.v0.2.0\n"))
+		o.Expect(string(output)).To(o.ContainSubstring("name: etcdoperator.v0.9.2\n"))
+		o.Expect(string(output)).To(o.ContainSubstring("name: etcdoperator.v0.9.4\n"))
+		o.Expect(string(output)).NotTo(o.ContainSubstring("name: etcdoperator.v0.9.2-clusterwide\n"))
+		o.Expect(string(output)).NotTo(o.ContainSubstring("name: etcdoperator.v0.9.4-clusterwide\n"))
+
+		g.By("step: opm raise error when channel does not exist")
+		output, err = opmCLI.Run("alpha").Args("diff", imageTag, "-i", includeFilePath3, "-oyaml").Output()
+		o.Expect(err).To(o.HaveOccurred())
+		o.Expect(string(output)).To(o.ContainSubstring("channel does not exist"))
+		o.Expect(string(output)).To(o.ContainSubstring("alpha-4"))
+		o.Expect(string(output)).To(o.ContainSubstring("single-3"))
 	})
 
 	// author: scolange@redhat.com
