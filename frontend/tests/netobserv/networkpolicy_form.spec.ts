@@ -12,29 +12,25 @@ const pod_label_key = 'name';
 const ns_label_key = 'kubernetes.io/metadata.name'
 const fixtureFile = 'network_policy_form_test'
 
-before('root-level: any test suite', function () {
-    let tmpFile = `/tmp/${utils.getRandomName()}`
-    cy.writeFile(tmpFile, JSON.stringify(testFixture))
-
-    let creds: OCCreds = { idp: Cypress.env('LOGIN_IDP'), user: Cypress.env('LOGIN_USERNAME'), password: Cypress.env('LOGIN_PASSWORD') }
-    cy.login(creds.idp, creds.user, creds.password);
-    cy.switchPerspective('Administrator');
-    this.cli = new OCCli(creds)
-    this.creds = creds
-
-    // create projects and deploy pods.
-    for (let i = 0; i < projects.length; i++) {
-        cy.createProject(projects[i])
-        this.cli.createPods(tmpFile, projects[i])
-    }
-
-    cy.fixture(fixtureFile).as('testData')
-    cy.exec(`rm ${tmpFile}`);
-
-});
-
-describe('Console Network Policies form tests (OCP-41858, OCP-45303, NETOBSERV)', function () {
+describe.skip('Console Network Policies form tests (OCP-41858, OCP-45303, NETOBSERV)', function () {
     before('any test', function () {
+        let tmpFile = `/tmp/${utils.getRandomName()}`
+        cy.writeFile(tmpFile, JSON.stringify(testFixture))
+
+        let creds: OCCreds = { idp: Cypress.env('LOGIN_IDP'), user: Cypress.env('LOGIN_USERNAME'), password: Cypress.env('LOGIN_PASSWORD') }
+        cy.login(creds.idp, creds.user, creds.password);
+        cy.switchPerspective('Administrator');
+        this.cli = new OCCli(creds)
+        this.creds = creds
+
+        // create projects and deploy pods.
+        for (let i = 0; i < projects.length; i++) {
+            cy.createProject(projects[i])
+            this.cli.createPods(tmpFile, projects[i])
+        }
+
+        cy.fixture(fixtureFile).as('testData')
+        cy.exec(`rm ${tmpFile}`);
 
         /* set pod names aliases */
         projects.forEach((project) => {
@@ -65,7 +61,7 @@ describe('Console Network Policies form tests (OCP-41858, OCP-45303, NETOBSERV)'
         cy.logout();
     })
 
-    describe("UI validating tests", function () {
+    describe.skip("UI validating tests", function () {
 
         it('should validate network policy form (OCP-41858)', function () {
             nwpolicyPage.goToNetworkPolicy()
@@ -144,7 +140,7 @@ describe('Console Network Policies form tests (OCP-41858, OCP-45303, NETOBSERV)'
         })
     })
 
-    describe("network policy end-to-end tests (OCP-41858)", function () {
+    describe.skip("network policy end-to-end tests (OCP-41858)", function () {
         before('any end-to-end test', function () {
             /* map labels to number replicas for pods to those labels */
             const labels_npods = new Map()
