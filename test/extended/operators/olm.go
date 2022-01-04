@@ -6975,6 +6975,143 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		o.Expect(conditions).To(o.ContainSubstring("Bundle unpacking failed"))
 	})
 
+	//author:xzha@redhat.com
+	g.It("ConnectedOnly-Author:xzha-Medium-47322-Arbitrary Constraints can be defined as bundle properties", func() {
+		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
+		ogSingleTemplate := filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+		subTemplate := filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+		catsrcImageTemplate := filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
+		oc.SetupProject()
+		namespaceName := oc.Namespace()
+		var (
+			og = operatorGroupDescription{
+				name:      "test-og",
+				namespace: namespaceName,
+				template:  ogSingleTemplate,
+			}
+			catsrc = catalogSourceDescription{
+				name:        "catsrc-47322",
+				namespace:   namespaceName,
+				displayName: "Test 47322",
+				publisher:   "OLM QE",
+				sourceType:  "grpc",
+				address:     "quay.io/olmqe/etcd-index:47322-single",
+				template:    catsrcImageTemplate,
+			}
+			sub = subscriptionDescription{
+				subName:                "etcd-47322",
+				namespace:              namespaceName,
+				catalogSourceName:      "catsrc-47322",
+				catalogSourceNamespace: namespaceName,
+				channel:                "alpha-1",
+				ipApproval:             "Automatic",
+				operatorPackage:        "etcd",
+				singleNamespace:        true,
+				template:               subTemplate,
+			}
+		)
+		itName := g.CurrentGinkgoTestDescription().TestText
+
+		g.By(fmt.Sprintf("1) create the catsrc in project: %s", namespaceName))
+		defer catsrc.delete(itName, dr)
+		catsrc.createWithCheck(oc, itName, dr)
+
+		g.By("2) install og")
+		og.createwithCheck(oc, itName, dr)
+
+		g.By("3) install sub with channel alpha-1")
+		sub.create(oc, itName, dr)
+
+		g.By("4) check csv")
+		err := wait.Poll(10*time.Second, 300*time.Second, func() (bool, error) {
+			status1 := getResource(oc, asAdmin, withoutNamespace, "csv", "etcdoperator.v0.9.2", "-n", sub.namespace, "-o=jsonpath={.status.phase}")
+			if strings.Compare(status1, "Succeeded") != 0 {
+				e2e.Logf("csv etcdoperator.v0.9.2 status is not Succeeded, go next round")
+				return false, nil
+			}
+			status2 := getResource(oc, asAdmin, withoutNamespace, "csv", "ditto-operator.v0.1.1", "-n", sub.namespace, "-o=jsonpath={.status.phase}")
+			if strings.Compare(status2, "Succeeded") != 0 {
+				e2e.Logf("csv ditto-operator.v0.1.1 status is not Succeeded, go next round")
+				return false, nil
+			}
+			return true, nil
+		})
+		if err != nil {
+			getResource(oc, asAdmin, withoutNamespace, "sub", sub.subName, "-n", namespaceName, "-o=jsonpath={.status}")
+		}
+		exutil.AssertWaitPollNoErr(err, "csv etcdoperator.v0.9.2 or ditto-operator.v0.1.1 is not Succeeded")
+
+		g.By("5) delete sub etcd-47322 and csv etcdoperator.v0.9.2")
+		sub.findInstalledCSV(oc, itName, dr)
+		sub.delete(itName, dr)
+		sub.deleteCSV(itName, dr)
+
+		g.By("6) install sub with channel alpha-2")
+		sub.channel = "alpha-2"
+		sub.createWithoutCheck(oc, itName, dr)
+
+		g.By("7) check sub")
+		newCheck("expect", asUser, withoutNamespace, contain, "ConstraintsNotSatisfiable", ok, []string{"sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.conditions[*].reason}"}).check(oc)
+		newCheck("expect", asUser, withoutNamespace, contain, "require to have the property olm.type3 with value value31", ok, []string{"sub", sub.subName, "-n", sub.namespace, "-o=jsonpath={.status.conditions[*].message}"}).check(oc)
+
+		g.By("8) delete sub and csv ditto-operator.v0.1.1")
+		selectorStr := "--selector=operators.coreos.com/ditto-operator." + namespaceName
+		subDepName := getResource(oc, asAdmin, withoutNamespace, "sub", selectorStr, "-n", sub.namespace, "-o=jsonpath={..metadata.name}")
+		o.Expect(subDepName).To(o.ContainSubstring("ditto-operator"))
+		_, err = oc.AsAdmin().WithoutNamespace().Run("delete").Args("sub", subDepName, "-n", oc.Namespace()).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		_, err = oc.AsAdmin().WithoutNamespace().Run("delete").Args("csv", "ditto-operator.v0.1.1", "-n", oc.Namespace()).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = wait.Poll(3*time.Second, 30*time.Second, func() (bool, error) {
+			output := getResource(oc, asAdmin, withoutNamespace, "csv", "-n", sub.namespace)
+			if strings.Contains(output, "ditto-operator.v0.1.1") {
+				e2e.Logf("csv ditto-operator.v0.1.1 still exist, go next round")
+				return false, nil
+			}
+			output = getResource(oc, asAdmin, withoutNamespace, "sub", "-n", sub.namespace)
+			if strings.Contains(output, subDepName) {
+				e2e.Logf("sub still exist, go next round")
+				return false, nil
+			}
+			return true, nil
+		})
+		exutil.AssertWaitPollNoErr(err, "delete sub and csv failed")
+
+		g.By("9) check status of csv etcdoperator.v0.9.4 and ditto-operator.v0.2.0")
+		err = wait.Poll(10*time.Second, 300*time.Second, func() (bool, error) {
+			status1 := getResource(oc, asAdmin, withoutNamespace, "csv", "etcdoperator.v0.9.4", "-n", sub.namespace, "-o=jsonpath={.status.phase}")
+			if strings.Compare(status1, "Succeeded") == 0 {
+				e2e.Logf("csv etcdoperator.v0.9.4 status is Succeeded")
+				return true, nil
+			}
+			e2e.Logf("csv etcdoperator.v0.9.4 status is not Succeeded, go next round")
+			return false, nil
+		})
+		if err != nil {
+			getResource(oc, asAdmin, withoutNamespace, "csv", sub.subName, "-n", namespaceName)
+			getResource(oc, asAdmin, withoutNamespace, "sub", sub.subName, "-n", namespaceName)
+			getResource(oc, asAdmin, withoutNamespace, "sub", sub.subName, "-n", namespaceName, "-o=jsonpath={.status}")
+		}
+		exutil.AssertWaitPollNoErr(err, "csv etcdoperator.v0.9.4 is not Succeeded")
+
+		err = wait.Poll(10*time.Second, 300*time.Second, func() (bool, error) {
+			status2 := getResource(oc, asAdmin, withoutNamespace, "csv", "ditto-operator.v0.2.0", "-n", sub.namespace, "-o=jsonpath={.status.phase}")
+			if strings.Compare(status2, "Succeeded") == 0 {
+				e2e.Logf("csv ditto-operator.v0.2.0 status is Succeeded")
+				return true, nil
+			}
+			e2e.Logf("csv ditto-operator.v0.2.0 status is not Succeeded, go next round")
+			return false, nil
+		})
+		if err != nil {
+			getResource(oc, asAdmin, withoutNamespace, "csv", sub.subName, "-n", namespaceName)
+			getResource(oc, asAdmin, withoutNamespace, "sub", sub.subName, "-n", namespaceName)
+			getResource(oc, asAdmin, withoutNamespace, "sub", sub.subName, "-n", namespaceName, "-o=jsonpath={.status}")
+		}
+		exutil.AssertWaitPollNoErr(err, "csv ditto-operator.v0.2.0 is not Succeeded")
+
+	})
+
 	// author: tbuskey@redhat.com, test case OCP-43114
 	g.It("Author:tbuskey-High-43114-Subscription status should show the message for InstallPlan failure conditions", func() {
 		var (
