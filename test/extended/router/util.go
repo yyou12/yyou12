@@ -346,3 +346,95 @@ func getPodName(oc *exutil.CLI, namespace string, label string) []string {
 	e2e.Logf("The pod(s) are  %v ", podName)
 	return podName
 }
+
+// get one of the DNS pods name
+func getDNSPodName(oc *exutil.CLI) string {
+	ns := "openshift-dns"
+	podName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", ns, "pods", "-l", "dns.operator.openshift.io/daemonset-dns=default", "-o=jsonpath={.items[0].metadata.name}").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	e2e.Logf("The DNS pod name is: %v", podName)
+	return podName
+}
+
+// to read the Corefile content in DNS pod
+// searchString is to locate the specified section since Corefile might has multiple zones
+// that containing same config strings
+// grepOptions can specify the lines of the context, e.g. "-A20" or "-C10"
+func readDNSCorefile(oc *exutil.CLI, DNSPodName, searchString, grepOption string) string {
+	ns := "openshift-dns"
+	cmd := fmt.Sprintf("grep \"%s\" /etc/coredns/Corefile %s", searchString, grepOption)
+	output, err := oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", ns, DNSPodName, "--", "bash", "-c", cmd).Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	e2e.Logf("the part of Corefile that matching \"%s\" is: %v", searchString, output)
+	return output
+}
+
+// wait for "Progressing" is True
+func ensureClusterOperatorProgress(oc *exutil.CLI, coName string) {
+	e2e.Logf("waiting for CO %v to start rolling update......", coName)
+	jsonPath := "-o=jsonpath={.status.conditions[?(@.type==\"Progressing\")].status}"
+	waitErr := wait.Poll(3*time.Second, 120*time.Second, func() (bool, error) {
+		status, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("co/"+coName, jsonPath).Output()
+		if strings.Compare(status, "True") == 0 {
+			e2e.Logf("Progressing status is True.")
+			return true, nil
+		} else {
+			e2e.Logf("Progressing status is not True, wait and try again...")
+			return false, nil
+		}
+	})
+	exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("reached max time allowed but CO %v didn't goto Progressing status."))
+}
+
+// wait for the cluster operator back to normal status ("True False False")
+// wait until get 5 successive normal status to ensure it is stable
+func ensureClusterOperatorNormal(oc *exutil.CLI, coName string) {
+	jsonPath := "-o=jsonpath={.status.conditions[?(@.type==\"Available\")].status}{.status.conditions[?(@.type==\"Progressing\")].status}{.status.conditions[?(@.type==\"Degraded\")].status}"
+
+	e2e.Logf("waiting for CO %v back to normal status......", coName)
+	var count = 0
+	waitErr := wait.Poll(3*time.Second, 300*time.Second, func() (bool, error) {
+		status, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("co/"+coName, jsonPath).Output()
+		if strings.Compare(status, "TrueFalseFalse") == 0 {
+			count++
+			if count == 5 {
+				e2e.Logf("got %v successive good status (%v), the CO is stable!", count, status)
+				return true, nil
+			} else {
+				e2e.Logf("got %v successive good status (%v), try again...", count, status)
+				return false, nil
+			}
+		} else {
+			count = 0
+			e2e.Logf("CO status is still abnormal (%v), wait and try again...", status)
+			return false, nil
+		}
+	})
+	exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("reached max time allowed but CO %v is still abnoraml.", coName))
+}
+
+// to ensure DNS rolling upgrade is done after updating the global resource "dns.operator/default"
+// 1st, co/dns go to Progressing status
+// 2nd, co/dns is back to normal and stable
+func ensureDNSRollingUpdateDone(oc *exutil.CLI) {
+	ensureClusterOperatorProgress(oc, "dns")
+	ensureClusterOperatorNormal(oc, "dns")
+}
+
+// patch the dns.operator/default with the original value
+func restoreDNSOperatorDefault(oc *exutil.CLI) {
+	// the json value might be different in different version
+	jsonPatch := "[{\"op\":\"replace\", \"path\":\"/spec\", \"value\":{\"logLevel\":\"Normal\",\"nodePlacement\":{},\"operatorLogLevel\":\"Normal\",\"upstreamResolvers\":{\"policy\":\"Sequential\",\"upstreams\":[{\"port\":53,\"type\":\"SystemResolvConf\"}]}}}]"
+
+	e2e.Logf("restore(patch) dns.operator/default with original settings.")
+	output, err := oc.AsAdmin().WithoutNamespace().Run("patch").Args("dns.operator/default", "-p", jsonPatch, "--type=json").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	// patched but got "no change" that means no DNS rolling update, shouldn't goto Progressing
+	if strings.Contains(output, "no change") {
+		e2e.Logf("skip the Progressing check step.")
+	} else {
+		ensureClusterOperatorProgress(oc, "dns")
+	}
+	ensureClusterOperatorNormal(oc, "dns")
+}
