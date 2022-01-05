@@ -12,6 +12,7 @@ type storageClass struct {
 	provisioner       string
 	reclaimPolicy     string
 	volumeBindingMode string
+	negativeTest      bool
 }
 
 // function option mode to change the default value of storageclass parameters, e.g. name, provisioner, reclaimPolicy, volumeBindingMode
@@ -81,9 +82,20 @@ func (sc *storageClass) deleteAsAdmin(oc *exutil.CLI) {
 	oc.AsAdmin().WithoutNamespace().Run("delete").Args("sc", sc.name).Execute()
 }
 
-//  Create a new customized storageclass with
-func (sc *storageClass) createWithExtraParameters(oc *exutil.CLI, extraParameters map[string]interface{}) {
+//  Create a new customized storageclass with extra parameters
+func (sc *storageClass) createWithExtraParameters(oc *exutil.CLI, extraParameters map[string]interface{}) error {
 	err := applyResourceFromTemplateWithExtraParametersAsAdmin(oc, extraParameters, "--ignore-unknown-parameters=true", "-f", sc.template, "-p",
 		"SCNAME="+sc.name, "RECLAIMPOLICY="+sc.reclaimPolicy, "PROVISIONER="+sc.provisioner, "VOLUMEBINDINGMODE="+sc.volumeBindingMode)
+	if sc.negativeTest {
+		o.Expect(err).Should(o.HaveOccurred())
+		return err
+	}
 	o.Expect(err).NotTo(o.HaveOccurred())
+	return err
+}
+
+// Storageclass negative test enable
+func (sc *storageClass) negative() *storageClass {
+	sc.negativeTest = true
+	return sc
 }
