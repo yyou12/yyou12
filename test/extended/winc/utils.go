@@ -349,7 +349,7 @@ func getMachineset(oc *exutil.CLI, iaasPlatform, winVersion string, machineSetNa
 	return windowsMachineSetName, err
 }
 
-func createMachineset(oc *exutil.CLI, file string, machinesetName string) error {
+func createMachineset(oc *exutil.CLI, file string) error {
 	_, err := oc.WithoutNamespace().Run("create").Args("-f", file).Output()
 	return err
 }

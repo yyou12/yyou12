@@ -3,7 +3,6 @@ package winc
 import (
 	"encoding/base64"
 	"fmt"
-	"io/ioutil"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -185,62 +184,15 @@ var _ = g.Describe("[sig-windows] Windows_Containers CPaasrunOnly", func() {
 
 	// author: sgao@redhat.com
 	g.It("Author:sgao-Critical-32856-wmco watch machineset with Windows label", func() {
+		winVersion := "2019"
+		machinesetName := "nolabel"
 		// Note: Create machineset with Windows label covered in Flexy post action
 		g.By("Check create machineset without Windows label")
-		windowsMachineSetName := ""
-		if iaasPlatform == "aws" {
-			windowsMachineSet := getFileContent("winc", "aws_windows_machineset_no_label.yaml")
-			infrastructureID, err := oc.WithoutNamespace().Run("get").Args("infrastructure", "cluster", "-o=jsonpath={.status.infrastructureName}").Output()
-			o.Expect(err).NotTo(o.HaveOccurred())
-			region, err := oc.WithoutNamespace().Run("get").Args("infrastructure", "cluster", "-o=jsonpath={.status.platformStatus.aws.region}").Output()
-			o.Expect(err).NotTo(o.HaveOccurred())
-			// TODO, remove hard code
-			zone := "us-east-2a"
-			// TODO, remove hard code
-			windowsAMI := "ami-0c7a9c9d17f8a5b64"
-			windowsMachineSet = strings.ReplaceAll(windowsMachineSet, "<infrastructureID>", infrastructureID)
-			windowsMachineSet = strings.ReplaceAll(windowsMachineSet, "<region>", region)
-			windowsMachineSet = strings.ReplaceAll(windowsMachineSet, "<zone>", zone)
-			windowsMachineSet = strings.ReplaceAll(windowsMachineSet, "<windows_image_with_container_runtime_installed>", windowsAMI)
-			ioutil.WriteFile("availWindowsMachineSetWithoutLabel", []byte(windowsMachineSet), 0644)
-			windowsMachineSetName = infrastructureID + "-windows-without-label-worker-" + zone
-		} else if iaasPlatform == "azure" {
-			windowsMachineSetName = "winnol"
-			windowsMachineSet := getFileContent("winc", "azure_windows_machineset_no_label.yaml")
-			infrastructureID, err := oc.WithoutNamespace().Run("get").Args("infrastructure", "cluster", "-o=jsonpath={.status.infrastructureName}").Output()
-			o.Expect(err).NotTo(o.HaveOccurred())
-			location := "centralus"
-			windowsMachineSet = strings.ReplaceAll(windowsMachineSet, "<infrastructureID>", infrastructureID)
-			windowsMachineSet = strings.ReplaceAll(windowsMachineSet, "<location>", location)
-			windowsMachineSet = strings.ReplaceAll(windowsMachineSet, "<name>", windowsMachineSetName)
-			ioutil.WriteFile("availWindowsMachineSetWithoutLabel", []byte(windowsMachineSet), 0644)
-		} else {
-			e2e.Failf("IAAS platform: %s is not automated yet", iaasPlatform)
-		}
-
-		// Make sure Windows machineset without label deleted
+		windowsMachineSetName, err := getMachineset(oc, iaasPlatform, winVersion, machinesetName, "aws_windows_machineset_no_label.yaml")
+		o.Expect(err).NotTo(o.HaveOccurred())
 		defer oc.WithoutNamespace().Run("delete").Args("machineset", windowsMachineSetName, "-n", "openshift-machine-api").Output()
-		_, err := oc.WithoutNamespace().Run("create").Args("-f", "availWindowsMachineSetWithoutLabel").Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		// Wait up to 3 minutes for Windows machine to be "Provisioned"
-		pollErr := wait.Poll(10*time.Second, 180*time.Second, func() (bool, error) {
-			msg, _ := oc.WithoutNamespace().Run("get").Args("machineset", windowsMachineSetName, "-o=jsonpath={.status.observedGeneration}", "-n", "openshift-machine-api").Output()
-			if msg != "1" {
-				e2e.Logf("Windows machine is not provisioned yet and waiting up to 3 minutes ...")
-				return false, nil
-			}
-			e2e.Logf("Windows machine is provisioned")
-			return true, nil
-		})
-		if pollErr != nil {
-			e2e.Failf("Windows machine is not provisioned after waiting up to 3 minutes ...")
-		}
-		// WMCO should NOT watch machines created without Windows label
-		msg, err := oc.WithoutNamespace().Run("logs").Args("deployment.apps/windows-machine-config-operator", "-n", "openshift-windows-machine-config-operator").Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		if strings.Contains(msg, windowsMachineSetName) {
-			e2e.Failf("Failed to check create machineset without Windows label")
-		}
+		createMachineset(oc, "availWindowsMachineSet")
+		waitUntilWMCOStatusChanged(oc, windowsMachineSetName)
 	})
 
 	// author: sgao@redhat.com refactored:v1
@@ -311,7 +263,7 @@ var _ = g.Describe("[sig-windows] Windows_Containers CPaasrunOnly", func() {
 		mutliOSMachineset, err := getMachineset(oc, iaasPlatform, winVersion, machinesetName, machinesetMultiOSFileName)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		defer oc.WithoutNamespace().Run("delete").Args("machineset", mutliOSMachineset, "-n", "openshift-machine-api").Output()
-		createMachineset(oc, "availWindowsMachineSet"+machinesetName, mutliOSMachineset)
+		createMachineset(oc, "availWindowsMachineSet"+machinesetName)
 		waitForMachinesetReady(oc, mutliOSMachineset, 10, 1)
 		// Here we fetch machine IP from machineset
 		machineIP := fetchAddress(oc, "IP", mutliOSMachineset)
@@ -353,7 +305,7 @@ var _ = g.Describe("[sig-windows] Windows_Containers CPaasrunOnly", func() {
 		machineset, err := getMachineset(oc, iaasPlatform, winVersion, machinesetName, machinesetFileName)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		defer oc.WithoutNamespace().Run("delete").Args("machineset", machineset, "-n", "openshift-machine-api").Output()
-		createMachineset(oc, "availWindowsMachineSetbyoh", machineset)
+		createMachineset(oc, "availWindowsMachineSetbyoh")
 		address := fetchAddress(oc, addressType, machineset)
 		setConfigmap(oc, address[0], user, "config-map.yaml")
 		defer oc.WithoutNamespace().Run("delete").Args("configmap", "windows-instances", "-n", "openshift-windows-machine-config-operator").Output()
@@ -399,7 +351,7 @@ var _ = g.Describe("[sig-windows] Windows_Containers CPaasrunOnly", func() {
 		machineset, err := getMachineset(oc, iaasPlatform, winVersion, machinesetName, machinesetFileName)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		defer oc.WithoutNamespace().Run("delete").Args("machineset", machineset, "-n", "openshift-machine-api").Output()
-		createMachineset(oc, "availWindowsMachineSetbyoh", machineset)
+		createMachineset(oc, "availWindowsMachineSetbyoh")
 		address := fetchAddress(oc, addressType, machineset)
 		defer oc.WithoutNamespace().Run("delete").Args("configmap", "windows-instances", "-n", "openshift-windows-machine-config-operator").Output()
 		setConfigmap(oc, address[0], user, "config-map.yaml")
@@ -522,8 +474,11 @@ var _ = g.Describe("[sig-windows] Windows_Containers CPaasrunOnly", func() {
 		winPodNameArray, err = getWorkloadsNames(oc, "windows", namespace)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		linuxPodNameArray, err = getWorkloadsNames(oc, "linux", namespace)
+		o.Expect(err).NotTo(o.HaveOccurred())
 		winPodIPArray, err = getWorkloadsIP(oc, "windows", namespace)
+		o.Expect(err).NotTo(o.HaveOccurred())
 		linuxPodIPArray, err = getWorkloadsIP(oc, "linux", namespace)
+		o.Expect(err).NotTo(o.HaveOccurred())
 		command := []string{"exec", "-n", namespace, linuxPodNameArray[0], "--", "curl", winPodIPArray[0]}
 		msg, err := oc.WithoutNamespace().Run(command...).Args().Output()
 		o.Expect(err).NotTo(o.HaveOccurred())

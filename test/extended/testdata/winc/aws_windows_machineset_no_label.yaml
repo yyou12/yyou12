@@ -3,22 +3,21 @@ kind: MachineSet
 metadata:
   labels:
     machine.openshift.io/cluster-api-cluster: <infrastructureID>
-  name: <infrastructureID>-windows-without-label-worker-<zone>
+  name: <infrastructureID>-<name>-worker-<zone>
   namespace: openshift-machine-api
 spec:
   replicas: 1
   selector:
     matchLabels:
       machine.openshift.io/cluster-api-cluster: <infrastructureID>
-      machine.openshift.io/cluster-api-machineset: <infrastructureID>-windows-without-label-worker-<zone>
+      machine.openshift.io/cluster-api-machineset: <infrastructureID>-<name>-worker-<zone>
   template:
     metadata:
       labels:
         machine.openshift.io/cluster-api-cluster: <infrastructureID>
         machine.openshift.io/cluster-api-machine-role: worker
         machine.openshift.io/cluster-api-machine-type: worker
-        machine.openshift.io/cluster-api-machineset: <infrastructureID>-windows-without-label-worker-<zone>
-
+        machine.openshift.io/cluster-api-machineset: <infrastructureID>-<name>-worker-<zone>
     spec:
       metadata:
         labels:
@@ -56,3 +55,6 @@ spec:
           tags:
             - name: kubernetes.io/cluster/<infrastructureID>
               value: owned
+          userDataSecret:
+            name: windows-user-data
+            namespace: openshift-machine-api          
