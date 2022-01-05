@@ -215,7 +215,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease operators upgr
 
 	// author: qitang@redhat.com
 	g.It("Longduration-CPaasrunOnly-Author:qitang-High-44983-Logging auto upgrade in minor version[Disruptive][Slow]", func() {
-		var targetchannel = "stable-5.3"
+		var targetchannel = "stable"
 		var oh OperatorHub
 		g.By("check source/redhat-operators status in operatorhub")
 		output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("operatorhub/cluster", "-ojson").Output()
@@ -292,7 +292,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease operators upgr
 			pvc, _ := oc.AdminKubeClient().CoreV1().PersistentVolumeClaims(cloNS).List(metav1.ListOptions{LabelSelector: "logging-cluster=elasticsearch"})
 			o.Expect(len(pvc.Items) == 3).To(o.BeTrue())
 
-			g.By("checking if the fluentd can collect logs after upgrading")
+			g.By("checking if the collector can collect logs after upgrading")
 			oc.SetupProject()
 			app_proj := oc.Namespace()
 			jsonLogFile := exutil.FixturePath("testdata", "logging", "generatelog", "container_json_log_template.json")
@@ -306,15 +306,15 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease operators upgr
 
 	// author: qitang@redhat.com
 	g.It("Longduration-CPaasrunOnly-Author:qitang-Medium-40508-upgrade from prior version to current version[Serial][Slow]", func() {
-		// to add logging 5.2, create a new catalog source with image: quay.io/openshift-qe-optional-operators/ocp4-index:latest
+		// to add logging 5.3, create a new catalog source with image: quay.io/openshift-qe-optional-operators/ocp4-index:latest
 		catsrcTemplate := exutil.FixturePath("testdata", "logging", "subscription", "catsrc.yaml")
 		catsrc := resource{"catsrc", "logging-upgrade-" + getRandomString(), "openshift-marketplace"}
 		defer catsrc.clear(oc)
 		catsrc.applyFromTemplate(oc, "-f", catsrcTemplate, "-n", catsrc.namespace, "-p", "NAME="+catsrc.name, "-p", "IMAGE=quay.io/openshift-qe-optional-operators/ocp4-index:latest")
 		waitForPodReadyWithLabel(oc, catsrc.namespace, "olm.catalogSource="+catsrc.name)
 
-		// for 5.3, test upgrade from 5.2 to 5.3
-		preSource := CatalogSourceObjects{"stable-5.2", catsrc.name, catsrc.namespace}
+		// for 5.4, test upgrade from 5.3 to 5.4
+		preSource := CatalogSourceObjects{"stable-5.3", catsrc.name, catsrc.namespace}
 		g.By(fmt.Sprintf("Subscribe operators to %s channel", preSource.Channel))
 		preCLO := SubscriptionObjects{clo, cloNS, SingleNamespaceOG, subTemplate, cloPackageName, preSource}
 		preEO := SubscriptionObjects{eo, eoNS, AllNamespaceOG, subTemplate, eoPackageName, preSource}
@@ -330,15 +330,10 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease operators upgr
 		cl := resource{"clusterlogging", "instance", preCLO.Namespace}
 		defer cl.deleteClusterLogging(oc)
 		cl.createClusterLogging(oc, "-n", cl.namespace, "-f", instance, "-p", "NAMESPACE="+cl.namespace, "-p", "STORAGE_CLASS="+sc, "-p", "ES_NODE_COUNT=3", "-p", "REDUNDANCY_POLICY=SingleRedundancy")
-		esDeployNames := GetDeploymentsNameByLabel(oc, preCLO.Namespace, "cluster-name=elasticsearch")
-		for _, name := range esDeployNames {
-			WaitForDeploymentPodsToBeReady(oc, preCLO.Namespace, name)
-		}
-		WaitForDeploymentPodsToBeReady(oc, preCLO.Namespace, "kibana")
-		WaitForDaemonsetPodsToBeReady(oc, preCLO.Namespace, "fluentd")
+		WaitForEFKPodsToBeReady(oc, preCLO.Namespace)
 
 		//change channel, and wait for the new operators to be ready
-		var source = CatalogSourceObjects{"stable-5.3", "qe-app-registry", "openshift-marketplace"}
+		var source = CatalogSourceObjects{"stable-5.4", "qe-app-registry", "openshift-marketplace"}
 		//change channel, and wait for the new operators to be ready
 		version := strings.Split(source.Channel, "-")[1]
 		g.By(fmt.Sprintf("upgrade CLO&EO to %s", source.Channel))
@@ -370,7 +365,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease operators upgr
 		pvc, _ := oc.AdminKubeClient().CoreV1().PersistentVolumeClaims(cloNS).List(metav1.ListOptions{LabelSelector: "logging-cluster=elasticsearch"})
 		o.Expect(len(pvc.Items) == 3).To(o.BeTrue())
 
-		g.By("checking if the fluentd can collect logs after upgrading")
+		g.By("checking if the collector can collect logs after upgrading")
 		oc.SetupProject()
 		app_proj := oc.Namespace()
 		jsonLogFile := exutil.FixturePath("testdata", "logging", "generatelog", "container_json_log_template.json")

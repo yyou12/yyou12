@@ -8,10 +8,9 @@ import (
 	g "github.com/onsi/ginkgo"
 	o "github.com/onsi/gomega"
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
+	clusterinfra "github.com/openshift/openshift-tests-private/test/extended/util/clusterinfrastructure"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
-        clusterinfra "github.com/openshift/openshift-tests-private/test/extended/util/clusterinfrastructure"
-
 )
 
 var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
@@ -605,7 +604,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			if platform != "aws" {
 				g.Skip("Skip for non-supported platform, the support platform is AWS!!!")
 			}
-		        cw.awsKeyID, cw.awsKey = cw.getAWSKey(oc)
+			cw.awsKeyID, cw.awsKey = cw.getAWSKey(oc)
 
 			g.By("create log producer")
 			app_proj := oc.Namespace()
@@ -633,13 +632,14 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			g.By("check logs in Cloudwatch")
 			o.Expect(cw.logsFound()).To(o.BeTrue())
 		})
+
 		g.It("CPaasrunOnly-Author:anli-High-43839-Fluentd logs to Cloudwatch group by namespaceName and groupPrefix [Serial][Slow]", func() {
 			platform := clusterinfra.CheckPlatform(oc)
 			if platform != "aws" {
 				g.Skip("Skip for non-supported platform, the support platform is AWS!!!")
 			}
-		        cw.awsKeyID, cw.awsKey = cw.getAWSKey(oc)
-		        cw.groupPrefix = "qeauto" +  getInfrastructureName(oc)
+			cw.awsKeyID, cw.awsKey = cw.getAWSKey(oc)
+			cw.groupPrefix = "qeauto" + getInfrastructureName(oc)
 			cw.groupType = "namespaceName"
 			// Disable audit, so the test be more stable
 			cw.logTypes = []string{"infrastructure", "application"}
@@ -657,7 +657,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			clfTemplate := exutil.FixturePath("testdata", "logging", "clusterlogforwarder", "clf-cloudwatch.yaml")
 			clf := resource{"clusterlogforwarder", "instance", cloNS}
 			defer clf.clear(oc)
-			err = clf.applyFromTemplate(oc, "-n", clf.namespace, "-f", clfTemplate, "-p", "SECRETNAME="+cw.secretName, "-p", "REGION="+cw.awsRegion, "-p", "PREFIX="+cw.groupPrefix, "-p", "GROUPTYPE="+cw.groupType )
+			err = clf.applyFromTemplate(oc, "-n", clf.namespace, "-f", clfTemplate, "-p", "SECRETNAME="+cw.secretName, "-p", "REGION="+cw.awsRegion, "-p", "PREFIX="+cw.groupPrefix, "-p", "GROUPTYPE="+cw.groupType)
 			o.Expect(err).NotTo(o.HaveOccurred())
 
 			g.By("deploy fluentd pods")
@@ -670,13 +670,14 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			g.By("check logs in Cloudwatch")
 			o.Expect(cw.logsFound()).To(o.BeTrue())
 		})
+
 		g.It("CPaasrunOnly-Author:anli-High-43840-Forward logs to Cloudwatch group by namespaceUUID and groupPrefix [Serial][Slow]", func() {
 			platform := clusterinfra.CheckPlatform(oc)
 			if platform != "aws" {
 				g.Skip("Skip for non-supported platform, the support platform is AWS!!!")
 			}
-		        cw.awsKeyID, cw.awsKey = cw.getAWSKey(oc)
-		        cw.groupPrefix = "qeauto" +  getInfrastructureName(oc)
+			cw.awsKeyID, cw.awsKey = cw.getAWSKey(oc)
+			cw.groupPrefix = "qeauto" + getInfrastructureName(oc)
 			cw.groupType = "namespaceUUID"
 			// Disable audit, so the test be more stable
 			cw.logTypes = []string{"infrastructure", "application"}
@@ -693,7 +694,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 
 			clfTemplate := exutil.FixturePath("testdata", "logging", "clusterlogforwarder", "clf-cloudwatch.yaml")
 			clf := resource{"clusterlogforwarder", "instance", cloNS}
-			err = clf.applyFromTemplate(oc, "-n", clf.namespace, "-f", clfTemplate, "-p", "SECRETNAME="+cw.secretName, "-p", "REGION="+cw.awsRegion, "-p", "PREFIX="+cw.groupPrefix, "-p", "GROUPTYPE="+cw.groupType )
+			err = clf.applyFromTemplate(oc, "-n", clf.namespace, "-f", clfTemplate, "-p", "SECRETNAME="+cw.secretName, "-p", "REGION="+cw.awsRegion, "-p", "PREFIX="+cw.groupPrefix, "-p", "GROUPTYPE="+cw.groupType)
 			defer clf.clear(oc)
 			o.Expect(err).NotTo(o.HaveOccurred())
 
