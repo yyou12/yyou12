@@ -1756,7 +1756,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		})
 
 		// author: pdhamdhe@redhat.com
-		g.It("Author:pdhamdhe-Medium-32814-High-45729-The compliance operator by default creates ProfileBundles", func() {
+		g.It("Author:pdhamdhe-Medium-32814-High-45729-The compliance operator by default creates ProfileBundles and profiles", func() {
 			g.By("Check default profilebundles name and status.. !!!\n")
 			subD.getProfileBundleNameandStatus(oc, "ocp4", "VALID")
 			subD.getProfileBundleNameandStatus(oc, "rhcos4", "VALID")
@@ -1769,6 +1769,8 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			subD.getProfileName(oc, "ocp4-moderate-node")
 			subD.getProfileName(oc, "ocp4-nerc-cip")
 			subD.getProfileName(oc, "ocp4-nerc-cip-node")
+			subD.getProfileName(oc, "ocp4-pci-dss")
+			subD.getProfileName(oc, "ocp4-pci-dss-node")
 			subD.getProfileName(oc, "rhcos4-e8")
 			subD.getProfileName(oc, "rhcos4-moderate")
 			subD.getProfileName(oc, "rhcos4-nerc-cip")
@@ -2567,6 +2569,44 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			extractResultFromConfigMap(oc, "worker", ssb.namespace)
 			extractResultFromConfigMap(oc, "master", ssb.namespace)
 			g.By("All CIS rules has instructions & nodeName is available in target & identifier elements of complianceScan XCCDF format result..!!!\n")
+		})
+
+		// author: pdhamdhe@redhat.com
+		g.It("Author:pdhamdhe-High-47044-Verify the ocp4 moderate profiles perform scan as expected with default scanSettings [Slow]", func() {
+			var (
+				ssb = scanSettingBindingDescription{
+					name:            "moderate-test",
+					namespace:       "",
+					profilekind1:    "Profile",
+					profilename1:    "ocp4-moderate",
+					profilename2:    "ocp4-moderate-node",
+					scansettingname: "default",
+					template:        scansettingbindingTemplate,
+				}
+				itName = g.CurrentGinkgoTestDescription().TestText
+			)
+
+			g.By("Check default profiles name ocp4-moderate .. !!!\n")
+			subD.getProfileName(oc, "ocp4-moderate")
+			g.By("Check default profiles name ocp4-moderate-node .. !!!\n")
+			subD.getProfileName(oc, "ocp4-moderate-node")
+
+			g.By("Create scansettingbinding !!!\n")
+			ssb.namespace = subD.namespace
+			defer cleanupObjects(oc, objectTableRef{"scansettingbinding", subD.namespace, ssb.name})
+			ssb.create(oc, itName, dr)
+			newCheck("expect", asAdmin, withoutNamespace, contain, ssb.name, ok, []string{"scansettingbinding", "-n", ssb.namespace,
+				"-o=jsonpath={.items[0].metadata.name}"}).check(oc)
+			g.By("Check ComplianceSuite status !!!\n")
+			checkComplianceSuiteStatus(oc, ssb.name, subD.namespace, "DONE")
+
+			g.By("Check complianceSuite name and result.. !!!\n")
+			subD.complianceSuiteName(oc, ssb.name)
+			subD.complianceSuiteResult(oc, ssb.name, "NON-COMPLIANT INCONSISTENT")
+			g.By("Check complianceSuite result through exit-code.. !!!\n")
+			subD.getScanExitCodeFromConfigmap(oc, "2")
+
+			g.By("ocp-47044 The ocp4 moderate profiles perform scan as expected with default scanSettings... !!!\n")
 		})
 
 		// author: pdhamdhe@redhat.com
@@ -3462,13 +3502,13 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			g.By("Create scansetting !!!\n")
 			ss.namespace = subD.namespace
 			ss.create(oc, itName, dr)
-			newCheck("expect", asAdmin, withoutNamespace, contain, "nodestrict", ok, []string{"scansetting", ss.name, "-n", ss.namespace,
+			newCheck("expect", asAdmin, withoutNamespace, contain, ss.name, ok, []string{"scansetting", ss.name, "-n", ss.namespace,
 				"-o=jsonpath={.metadata.name}"}).check(oc)
 
 			g.By("Create scansettingbinding !!!\n")
 			ssb.namespace = subD.namespace
 			ssb.create(oc, itName, dr)
-			newCheck("expect", asAdmin, withoutNamespace, contain, "rhcos4-test", ok, []string{"scansettingbinding", "-n", ssb.namespace,
+			newCheck("expect", asAdmin, withoutNamespace, contain, ssb.name, ok, []string{"scansettingbinding", "-n", ssb.namespace,
 				"-o=jsonpath={.items[0].metadata.name}"}).check(oc)
 
 			g.By("Check ComplianceSuite status !!!\n")
@@ -3488,13 +3528,145 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			g.By("Again create scansettingbinding !!!\n")
 			ssb.namespace = subD.namespace
 			ssb.create(oc, itName, dr)
-			newCheck("expect", asAdmin, withoutNamespace, contain, "rhcos4-test", ok, []string{"scansettingbinding", "-n", ssb.namespace,
+			newCheck("expect", asAdmin, withoutNamespace, contain, ssb.name, ok, []string{"scansettingbinding", "-n", ssb.namespace,
 				"-o=jsonpath={.items[0].metadata.name}"}).check(oc)
 
 			g.By("Check ComplianceSuite status !!!\n")
 			newCheck("expect", asAdmin, withoutNamespace, contain, "PENDING", ok, []string{"compliancesuite", ssb.name, "-n", ssb.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
 
 			g.By("ocp-45421 Successfully verify the scan scheduling option strict or not strict are configurable through scan objects... !!!\n")
+		})
+
+		// author: pdhamdhe@redhat.com
+		g.It("Author:pdhamdhe-NonPreRelease-CPaasrunOnly-Longduration-High-45692-Verify scan and manual fix work as expected for NERC CIP profiles with default scanSettings [Disruptive][Slow]", func() {
+			var (
+				ss = scanSettingDescription{
+					autoapplyremediations: false,
+					name:                  "nerc-ss",
+					namespace:             "",
+					roles1:                "worker",
+					rotation:              5,
+					schedule:              "0 1 * * *",
+					strictnodescan:        false,
+					size:                  "2Gi",
+					template:              scansettingSingleTemplate,
+				}
+				ssb = scanSettingBindingDescription{
+					name:            "nerc-ocp4-test",
+					namespace:       "",
+					profilekind1:    "Profile",
+					profilename1:    "ocp4-nerc-cip",
+					profilename2:    "ocp4-nerc-cip-node",
+					scansettingname: "default",
+					template:        scansettingbindingTemplate,
+				}
+				ssb1 = scanSettingBindingDescription{
+					name:            "nerc-rhcos4-test",
+					namespace:       "",
+					profilekind1:    "Profile",
+					profilename1:    "rhcos4-nerc-cip",
+					scansettingname: "nerc-ss",
+					template:        scansettingbindingSingleTemplate,
+				}
+				itName = g.CurrentGinkgoTestDescription().TestText
+			)
+
+			defer func() {
+				g.By("Remove motd configmap and scansettingbinding objects.. !!!\n")
+				cleanupObjects(oc, objectTableRef{"configmap", "openshift", "motd"})
+				cleanupObjects(oc, objectTableRef{"scansetting", subD.namespace, ss.name})
+				cleanupObjects(oc, objectTableRef{"scansettingbinding", subD.namespace, ssb.name})
+				cleanupObjects(oc, objectTableRef{"scansettingbinding", subD.namespace, ssb1.name})
+			}()
+
+			g.By("Check default NERC profiles.. !!!\n")
+			subD.getProfileName(oc, "ocp4-nerc-cip")
+			subD.getProfileName(oc, "ocp4-nerc-cip-node")
+			subD.getProfileName(oc, "rhcos4-nerc-cip")
+
+			g.By("Create scansetting !!!\n")
+			ss.namespace = subD.namespace
+			ss.create(oc, itName, dr)
+			newCheck("expect", asAdmin, withoutNamespace, contain, ss.name, ok, []string{"scansetting", ss.name, "-n", ss.namespace,
+				"-o=jsonpath={.metadata.name}"}).check(oc)
+
+			g.By("Create scansettingbindings !!!\n")
+			ssb.namespace = subD.namespace
+			ssb.create(oc, itName, dr)
+			newCheck("expect", asAdmin, withoutNamespace, contain, ssb.name, ok, []string{"scansettingbinding", ssb.name, "-n", ssb.namespace,
+				"-o=jsonpath={.metadata.name}"}).check(oc)
+			g.By("Check ComplianceSuite status !!!\n")
+			checkComplianceSuiteStatus(oc, ssb.name, subD.namespace, "DONE")
+
+			g.By("Check complianceSuite name and result.. !!!\n")
+			subD.complianceSuiteName(oc, ssb.name)
+			subD.complianceSuiteResult(oc, ssb.name, "NON-COMPLIANT INCONSISTENT")
+
+			g.By("Create scansettingbindings for rhcos4-nerc.. !!!\n")
+			ssb1.namespace = subD.namespace
+			ssb1.create(oc, itName, dr)
+			newCheck("expect", asAdmin, withoutNamespace, contain, ssb1.name, ok, []string{"scansettingbinding", ssb1.name, "-n", ssb1.namespace,
+				"-o=jsonpath={.metadata.name}"}).check(oc)
+			g.By("Check ComplianceSuite status !!!\n")
+			checkComplianceSuiteStatus(oc, ssb1.name, subD.namespace, "DONE")
+
+			g.By("Check complianceSuite name and result.. !!!\n")
+			subD.complianceSuiteName(oc, ssb1.name)
+			subD.complianceSuiteResult(oc, ssb1.name, "NON-COMPLIANT INCONSISTENT")
+
+			g.By("Create motd configMap object.. !!!\n")
+			_, err := oc.AsAdmin().WithoutNamespace().Run("create").Args("-n", "openshift", "-f", motdConfigMapYAML).Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			newCheck("expect", asAdmin, withoutNamespace, contain, "motd", ok, []string{"configmap", "-n", "openshift", "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
+
+			g.By("Rerun scan using oc-compliance plugin.. !!")
+			_, err1 := OcComplianceCLI().Run("rerun-now").Args("scansettingbinding", ssb.name, "-n", subD.namespace).Output()
+			o.Expect(err1).NotTo(o.HaveOccurred())
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", ssb.name, "-n", subD.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+
+			g.By("Verify motd and banner or login rules status again through compliancecheck result.. !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "PASS", ok, []string{"compliancecheckresult",
+				"ocp4-nerc-cip-openshift-motd-exists", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
+
+			g.By("ocp-45692 The NERC CIP compliance profiles perform scan and manual fix as expected with default scanSettings... !!!\n")
+		})
+
+		// author: pdhamdhe@redhat.com
+		g.It("Author:pdhamdhe-High-46991-Check the PCI DSS compliance profiles perform scan as expected with default scanSettings [Slow]", func() {
+			var (
+				ssb = scanSettingBindingDescription{
+					name:            "pci-dss-test",
+					namespace:       "",
+					profilekind1:    "Profile",
+					profilename1:    "ocp4-pci-dss",
+					profilename2:    "ocp4-pci-dss-node",
+					scansettingname: "default",
+					template:        scansettingbindingTemplate,
+				}
+				itName = g.CurrentGinkgoTestDescription().TestText
+			)
+
+			g.By("Check default profiles name ocp4-pci-dss .. !!!\n")
+			subD.getProfileName(oc, "ocp4-pci-dss")
+			g.By("Check default profiles name ocp4-pci-dss-node .. !!!\n")
+			subD.getProfileName(oc, "ocp4-pci-dss-node")
+
+			g.By("Create scansettingbinding !!!\n")
+			ssb.namespace = subD.namespace
+			defer cleanupObjects(oc, objectTableRef{"scansettingbinding", subD.namespace, ssb.name})
+			ssb.create(oc, itName, dr)
+			newCheck("expect", asAdmin, withoutNamespace, contain, ssb.name, ok, []string{"scansettingbinding", "-n", ssb.namespace,
+				"-o=jsonpath={.items[0].metadata.name}"}).check(oc)
+			g.By("Check ComplianceSuite status !!!\n")
+			checkComplianceSuiteStatus(oc, ssb.name, subD.namespace, "DONE")
+
+			g.By("Check complianceSuite name and result.. !!!\n")
+			subD.complianceSuiteName(oc, ssb.name)
+			subD.complianceSuiteResult(oc, ssb.name, "NON-COMPLIANT INCONSISTENT")
+			g.By("Check complianceSuite result through exit-code.. !!!\n")
+			subD.getScanExitCodeFromConfigmap(oc, "2")
+
+			g.By("ocp-46991 The PCI DSS compliance profiles perform scan as expected with default scanSettings... !!!\n")
 		})
 	})
 })
