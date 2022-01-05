@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"os/exec"
 	"path/filepath"
 	"regexp"
@@ -231,6 +232,18 @@ func (mcp *MachineConfigPool) getDegradedMachineCount() (int, error) {
 	}
 
 	return dmachineCount, nil
+}
+
+func (mcp *MachineConfigPool) pollDegradedMachineCount() func() string {
+	return mcp.Poll(`{.status.degradedMachineCount}`)
+}
+
+func (mcp *MachineConfigPool) pollDegradedStatus() func() string {
+	return mcp.Poll(`{.status.conditions[?(@.type=="Degraded")].status}`)
+}
+
+func (mcp *MachineConfigPool) pollUpdatedStatus() func() string {
+	return mcp.Poll(`{.status.conditions[?(@.type=="Updated")].status}`)
 }
 
 func (mcp *MachineConfigPool) waitForComplete() {
@@ -470,6 +483,19 @@ func gZipData(data []byte) (compressedData []byte, err error) {
 	compressedData = b.Bytes()
 
 	return compressedData, nil
+}
+
+func getUrlEncodedFileConfig(destinationPath string, content string, mode string) string {
+	encodedContent := url.PathEscape(content)
+
+	var fileConfig string
+	if mode == "" {
+		fileConfig = fmt.Sprintf(`{"contents": {"source": "data:,%s"}, "path": "%s"}`, encodedContent, destinationPath)
+	} else {
+		fileConfig = fmt.Sprintf(`{"contents": {"source": "data:,%s"}, "path": "%s", mode: %s}`, encodedContent, destinationPath, mode)
+	}
+
+	return fileConfig
 }
 
 func getGzipFileJSONConfig(destinationPath string, fileContent string) string {

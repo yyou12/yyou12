@@ -134,6 +134,12 @@ func (r *Resource) Patch(patchType string, patch string) error {
 	return err
 }
 
+// GetAnnotationOrFail returns the value
+func (r *Resource) GetAnnotationOrFail(annotation string) string {
+	scapedAnnotation := strings.Replace(annotation, `.`, `\.`, -1)
+	return r.GetOrFail(fmt.Sprintf(`{.metadata.annotations.%s}`, scapedAnnotation))
+}
+
 // NewMCOTemplate creates a new template using the MCO fixture directory as the base path of the template file
 func NewMCOTemplate(oc *exutil.CLI, fileName string) *Template {
 	return &Template{oc: oc, templateFile: generateTemplateAbsolutePath(fileName)}

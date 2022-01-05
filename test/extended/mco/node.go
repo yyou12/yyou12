@@ -39,16 +39,19 @@ func (n *node) DebugNode(cmd ...string) (string, error) {
 	return exutil.DebugNode(n.oc, n.name, cmd...)
 }
 
+// AddCustomLabel add the given label to the node
 func (n *node) AddCustomLabel(label string) (string, error) {
 	return exutil.AddCustomLabelToNode(n.oc, n.name, label)
 
 }
 
+// DeleteCustomLabel removes the given label from the node
 func (n *node) DeleteCustomLabel(label string) (string, error) {
 	return exutil.DeleteCustomLabelFromNode(n.oc, n.name, label)
 
 }
 
+// GetMachineConfigDaemon returns the name of the ConfigDaemon pod for this node
 func (n *node) GetMachineConfigDaemon() string {
 	machineConfigDaemon, err := exutil.GetPodName(n.oc, "openshift-machine-config-operator", "k8s-app=machine-config-daemon", n.name)
 	o.Expect(err).NotTo(o.HaveOccurred())
@@ -58,6 +61,12 @@ func (n *node) GetMachineConfigDaemon() string {
 // GetNodeHostname returns the cluster node hostname
 func (n *node) GetNodeHostname() (string, error) {
 	return exutil.GetNodeHostname(n.oc, n.name)
+}
+
+func (n *node) ForceReapplyConfiguration() error {
+	_, err := n.DebugNodeWithChroot("touch", "/run/machine-config-daemon-force")
+
+	return err
 }
 
 //GetAll returns a []node list with all existing nodes
