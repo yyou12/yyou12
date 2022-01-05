@@ -546,3 +546,40 @@ func saveImageMetadataName(oc *exutil.CLI, image string) string {
 	o.Expect(err).NotTo(o.HaveOccurred())
 	return strings.TrimSuffix(string(manifest), "\n")
 }
+
+func checkRegistryFunctionFine(oc *exutil.CLI, bcname string, namespace string) {
+	//Check if could push images to image registry
+	err := oc.AsAdmin().WithoutNamespace().Run("new-build").Args("-D", "FROM quay.io/openshifttest/busybox@sha256:c5439d7db88ab5423999530349d327b04279ad3161d7596d2126dfb5b02bfd1f", "--to="+bcname, "-n", namespace).Execute()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	err = exutil.WaitForABuild(oc.BuildClient().BuildV1().Builds(namespace), bcname+"-1", nil, nil, nil)
+	if err != nil {
+		exutil.DumpBuildLogs(bcname, oc)
+	}
+	exutil.AssertWaitPollNoErr(err, "build is not complete")
+	err = exutil.WaitForAnImageStreamTag(oc, namespace, bcname, "latest")
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	//Check if could pull images from image registry
+	imagename := "image-registry.openshift-image-registry.svc:5000/" + namespace + "/" + bcname + ":latest"
+	err = oc.AsAdmin().WithoutNamespace().Run("run").Args(bcname, "--image", imagename, "-n", namespace, "--command", "--", "/bin/sleep", "120").Execute()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	err = wait.Poll(5*time.Second, 30*time.Second, func() (bool, error) {
+		output, err := oc.AsAdmin().WithoutNamespace().Run("describe").Args("pod", bcname, "-n", namespace).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		if strings.Contains(output, `Successfully pulled image "image-registry.openshift-image-registry.svc:5000`) {
+			return true, nil
+		}
+		return false, nil
+	})
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("Image registry is broken, can't pull image"))
+}
+
+func checkRegistryDegraded(oc *exutil.CLI) bool {
+	status := "TrueFalseFalse"
+	output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("co/image-registry", "-o=jsonpath={.status.conditions[?(@.type==\"Available\")].status}{.status.conditions[?(@.type==\"Progressing\")].status}{.status.conditions[?(@.type==\"Degraded\")].status}").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	if strings.Contains(output, status) {
+		return false
+	}
+	return true
+}

@@ -833,4 +833,88 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 		foundErrLog = setImageregistryConfigs(oc, patchTenantId, tenantIdErrInfo)
 		o.Expect(foundErrLog).To(o.BeTrue())
 	})
+
+	// author: xiuwang@redhat.com
+	g.It("Author:xiuwang-Critical-47274-Image registry works with OSS storage on alibaba cloud", func() {
+		output, err := oc.WithoutNamespace().AsAdmin().Run("get").Args("infrastructure", "cluster", "-o=jsonpath={.status.platformStatus.type}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		if !strings.Contains(output, "AlibabaCloud") {
+			g.Skip("Skip for non-supported platform")
+		}
+
+		g.By("Check OSS storage")
+		output, err = oc.WithoutNamespace().AsAdmin().Run("get").Args("config.image/cluster", "-o=jsonpath={.status.storage.oss}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring("bucket"))
+		o.Expect(output).To(o.ContainSubstring(`"endpointAccessibility":"Internal"`))
+		o.Expect(output).To(o.ContainSubstring("region"))
+		output, err = oc.WithoutNamespace().AsAdmin().Run("get").Args("config.image/cluster", "-o=jsonpath={.status.conditions[?(@.type==\"StorageEncrypted\")].message}{.status.conditions[?(@.type==\"StorageEncrypted\")].status}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring("Default AES256 encryption was successfully enabled on the OSS bucketTrue"))
+
+		g.By("Check if registry operator degraded")
+		registryDegrade := checkRegistryDegraded(oc)
+		if registryDegrade {
+			e2e.Failf("Image registry is degraded")
+		}
+
+		g.By("Check if registry works well")
+		oc.SetupProject()
+		checkRegistryFunctionFine(oc, "test-47274", oc.Namespace())
+
+		g.By("Check if registry interact with OSS used the internal endpoint")
+		output, err = oc.WithoutNamespace().AsAdmin().Run("logs").Args("deploy/image-registry", "--since=30s", "-n", "openshift-image-registry").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring("internal.aliyuncs.com"))
+
+	})
+
+	// author: xiuwang@redhat.com
+	g.It("NonPreRelease-Author:xiuwang-Medium-47342-Configure image registry works with OSS parameters [Disruptive]", func() {
+		output, err := oc.WithoutNamespace().AsAdmin().Run("get").Args("infrastructure", "cluster", "-o=jsonpath={.status.platformStatus.type}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		if !strings.Contains(output, "AlibabaCloud") {
+			g.Skip("Skip for non-supported platform")
+		}
+
+		g.By("Configure OSS with Public endpoint")
+		defer oc.AsAdmin().Run("patch").Args("configs.imageregistry/cluster", "-p", `{"spec":{"storage":{"oss":{"endpointAccessibility":null}}}}`, "--type=merge").Execute()
+		output, err = oc.AsAdmin().Run("patch").Args("configs.imageregistry/cluster", "-p", `{"spec":{"storage":{"oss":{"endpointAccessibility":"Public"}}}}`, "--type=merge").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = wait.PollImmediate(10*time.Second, 2*time.Minute, func() (bool, error) {
+			registryDegrade := checkRegistryDegraded(oc)
+			if registryDegrade {
+				e2e.Logf("wait for next round")
+				return false, nil
+			}
+			return true, nil
+		})
+		exutil.AssertWaitPollNoErr(err, "Image registry is degraded")
+		oc.SetupProject()
+		checkRegistryFunctionFine(oc, "test-47342", oc.Namespace())
+		output, err = oc.WithoutNamespace().AsAdmin().Run("logs").Args("deploy/image-registry", "--since=1m", "-n", "openshift-image-registry").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).NotTo(o.ContainSubstring("internal.aliyuncs.com"))
+
+		g.By("Configure registry to use KMS encryption type")
+		defer oc.AsAdmin().Run("patch").Args("configs.imageregistry/cluster", "-p", `{"spec":{"storage":{"oss":{"encryption":null}}}}`, "--type=merge").Execute()
+		output, err = oc.AsAdmin().Run("patch").Args("configs.imageregistry/cluster", "-p", `{"spec":{"storage":{"oss":{"encryption":{"method":"KMS","kms":{"keyID":"invalidid"}}}}}}`, "--type=merge").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = wait.PollImmediate(10*time.Second, 2*time.Minute, func() (bool, error) {
+			output, err = oc.WithoutNamespace().AsAdmin().Run("get").Args("config.image", "cluster", "-o=jsonpath={.status.conditions[?(@.type==\"StorageEncrypted\")].message}").Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			if !strings.Contains(output, "Default KMS encryption was successfully enabled on the OSS bucket") {
+				e2e.Logf("wait for next round")
+				return false, nil
+			}
+			return true, nil
+		})
+		exutil.AssertWaitPollNoErr(err, "Default encryption can't be changed")
+		br, err := exutil.StartBuildAndWait(oc, "test-47342")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		br.AssertFailure()
+		output, err = oc.WithoutNamespace().AsAdmin().Run("logs").Args("deploy/image-registry", "--since=1m", "-n", "openshift-image-registry").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring("The specified parameter KMS keyId is not valid"))
+	})
 })
