@@ -250,8 +250,16 @@ var _ = g.Describe("[sig-updates] OTA cvo should", func() {
 
 	//author: yanyang@redhat.com
 	g.It("Author:yanyang-High-42543-the removed resources are not created in a fresh installed cluster", func() {
+		g.By("Check the annotation delete:true for imagestream/hello-openshift is set in manifest")
 		manifestDir := fmt.Sprintf("manifest-%d", time.Now().Unix())
-		err := oc.AsAdmin().WithoutNamespace().Run("adm").Args("release", "extract", "--to", manifestDir).Execute()
+		dockerconfigDir := fmt.Sprintf("dockerconfig-%d", time.Now().Unix())
+		defer exec.Command("rm", "-rf", manifestDir, dockerconfigDir).Output()
+		_, err := exec.Command("mkdir", "-p", dockerconfigDir).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		_, err = oc.AsAdmin().Run("extract").Args("secret/pull-secret", "-n", "openshift-config", "--confirm", "--to="+dockerconfigDir).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		err = oc.AsAdmin().WithoutNamespace().Run("adm").Args("release", "extract", "--to", manifestDir, "-a", dockerconfigDir+"/.dockerconfigjson").Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		out, _ := exec.Command("bash", "-c", fmt.Sprintf("grep -rl \"name: hello-openshift\" %s", manifestDir)).Output()
 		o.Expect(string(out)).NotTo(o.BeEmpty())
