@@ -123,7 +123,7 @@ var _ = g.Describe("[sig-hive] Cluster_Operator hive should", func() {
 	//author: jshu@redhat.com
 	//default duration is 15m for extended-platform-tests and 35m for jenkins job, need to reset for ClusterPool and ClusterDeployment cases
 	//example: ./bin/extended-platform-tests run all --dry-run|grep "33832"|./bin/extended-platform-tests run --timeout 60m -f -
-	g.It("NonPreRelease-ConnectedOnly-Author:jshu-Medium-33832-[aws]Hive supports ClusterPool", func() {
+	g.It("Longduration-NonPreRelease-ConnectedOnly-Author:jshu-Medium-33832-[aws]Hive supports ClusterPool [Serial]", func() {
 		if iaasPlatform != "aws" {
 			g.Skip("IAAS platform is " + iaasPlatform + " while 33832 is for AWS - skipping test ...")
 		}
@@ -133,7 +133,7 @@ var _ = g.Describe("[sig-hive] Cluster_Operator hive should", func() {
 		imageSetTemp := filepath.Join(testDataDir, "clusterimageset.yaml")
 		imageSet := clusterImageSet{
 			name:         imageSetName,
-			releaseImage: OCP_RELEASE_IMAGE,
+			releaseImage: OCP49_RELEASE_IMAGE,
 			template:     imageSetTemp,
 		}
 
@@ -155,16 +155,21 @@ var _ = g.Describe("[sig-hive] Cluster_Operator hive should", func() {
 		g.By("Create ClusterPool...")
 		poolTemp := filepath.Join(testDataDir, "clusterpool.yaml")
 		pool := clusterPool{
-			name:          poolName,
-			namespace:     oc.Namespace(),
-			baseDomain:    AWS_BASE_DOMAIN,
-			imageSetRef:   imageSetName,
-			credRef:       AWS_CREDS,
-			region:        AWS_REGION,
-			pullSecretRef: PULL_SECRET,
-			size:          1,
-			maxSize:       1,
-			template:      poolTemp,
+			name:           poolName,
+			namespace:      oc.Namespace(),
+			fake:           "false",
+			baseDomain:     AWS_BASE_DOMAIN,
+			imageSetRef:    imageSetName,
+			platformType:   "aws",
+			credRef:        AWS_CREDS,
+			region:         AWS_REGION,
+			pullSecretRef:  PULL_SECRET,
+			size:           1,
+			maxSize:        1,
+			runningCount:   0,
+			maxConcurrent:  1,
+			hibernateAfter: "360m",
+			template:       poolTemp,
 		}
 		defer cleanupObjects(oc, objectTableRef{CLUSTER_POOL, oc.Namespace(), poolName})
 		pool.create(oc)
@@ -187,5 +192,80 @@ var _ = g.Describe("[sig-hive] Cluster_Operator hive should", func() {
 		g.By("Check if ClusterClaim created successfully and become running")
 		newCheck("expect", asAdmin, withoutNamespace, contain, claimName, ok, DEFAULT_TIMEOUT, []string{CLUSTER_CLAIM, "-n", oc.Namespace()}).check(oc)
 		newCheck("expect", asAdmin, withoutNamespace, contain, "Running", ok, CLUSTER_RESUME_TIMEOUT, []string{CLUSTER_CLAIM, "-n", oc.Namespace()}).check(oc)
+	})
+
+	//author: jshu@redhat.com
+	//default duration is 15m for extended-platform-tests and 35m for jenkins job, need to reset for ClusterPool and ClusterDeployment cases
+	//example: ./bin/extended-platform-tests run all --dry-run|grep "25310"|./bin/extended-platform-tests run --timeout 60m -f -
+	g.It("Longduration-NonPreRelease-ConnectedOnly-Author:jshu-Medium-25310-[aws]Hive ClusterDeployment Check installed and version [Serial]", func() {
+		if iaasPlatform != "aws" {
+			g.Skip("IAAS platform is " + iaasPlatform + " while 25310 is for AWS - skipping test ...")
+		}
+		testCaseId := "25310"
+		cdName := "cluster-" + testCaseId
+		imageSetName := cdName + "-imageset"
+		imageSetTemp := filepath.Join(testDataDir, "clusterimageset.yaml")
+		imageSet := clusterImageSet{
+			name:         imageSetName,
+			releaseImage: OCP49_RELEASE_IMAGE,
+			template:     imageSetTemp,
+		}
+
+		g.By("Create ClusterImageSet...")
+		defer cleanupObjects(oc, objectTableRef{CLUSTER_IMAGE_SET, "", imageSetName})
+		imageSet.create(oc)
+
+		oc.SetupProject()
+		//secrets can be accessed by pod in the same namespace, so copy pull-secret and aws-creds to target namespace for the pool
+		g.By("Copy AWS platform credentials...")
+		createAWSCreds(oc, oc.Namespace())
+
+		g.By("Copy pull-secret...")
+		createPullSecret(oc, oc.Namespace())
+
+		g.By("Create Install-Config Secret...")
+		installConfigTemp := filepath.Join(testDataDir, "aws-install-config.yaml")
+		installConfigSecretName := cdName + "-install-config"
+		installConfigSecret := installConfig{
+			name1:      installConfigSecretName,
+			namespace:  oc.Namespace(),
+			baseDomain: AWS_BASE_DOMAIN,
+			name2:      cdName,
+			region:     AWS_REGION,
+			template:   installConfigTemp,
+		}
+		defer cleanupObjects(oc, objectTableRef{"secret", oc.Namespace(), installConfigSecretName})
+		installConfigSecret.create(oc)
+
+		g.By("Create ClusterDeployment...")
+		clusterTemp := filepath.Join(testDataDir, "clusterdeployment.yaml")
+		cluster := clusterDeployment{
+			fake:                "false",
+			name:                cdName,
+			namespace:           oc.Namespace(),
+			baseDomain:          AWS_BASE_DOMAIN,
+			clusterName:         cdName,
+			platformType:        "aws",
+			credRef:             AWS_CREDS,
+			region:              AWS_REGION,
+			imageSetRef:         imageSetName,
+			installConfigSecret: installConfigSecretName,
+			pullSecretRef:       PULL_SECRET,
+			template:            clusterTemp,
+		}
+		defer cleanupObjects(oc, objectTableRef{CLUSTER_DEPLOYMENT, oc.Namespace(), cdName})
+		cluster.create(oc)
+		g.By("Check if ClusterDeployment created successfully and become Provisioned")
+		//OCP-25310
+		newCheck("expect", asAdmin, withoutNamespace, contain, "true", ok, CLUSTER_INSTALL_TIMEOUT, []string{CLUSTER_DEPLOYMENT, cdName, "-n", oc.Namespace(), "-o=jsonpath={.spec.installed}"}).check(oc)
+		//OCP-33374
+		ocp_version := extractRelfromImg(OCP49_RELEASE_IMAGE)
+		if ocp_version != "" {
+			newCheck("expect", asAdmin, withoutNamespace, contain, ocp_version, ok, DEFAULT_TIMEOUT, []string{CLUSTER_DEPLOYMENT, cdName, "-n", oc.Namespace(), "-o=jsonpath={.metadata.labels}"}).check(oc)
+		}
+		//OCP-39747
+		if ocp_version != "" {
+			newCheck("expect", asAdmin, withoutNamespace, contain, ocp_version, ok, DEFAULT_TIMEOUT, []string{CLUSTER_DEPLOYMENT, cdName, "-n", oc.Namespace(), "-o=jsonpath={.status.installVersion}"}).check(oc)
+		}
 	})
 })

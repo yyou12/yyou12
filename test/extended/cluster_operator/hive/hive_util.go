@@ -52,16 +52,21 @@ type clusterImageSet struct {
 }
 
 type clusterPool struct {
-	name          string
-	namespace     string
-	baseDomain    string
-	imageSetRef   string
-	credRef       string
-	region        string
-	pullSecretRef string
-	size          int
-	maxSize       int
-	template      string
+	name           string
+	namespace      string
+	fake           string
+	baseDomain     string
+	imageSetRef    string
+	platformType   string
+	credRef        string
+	region         string
+	pullSecretRef  string
+	size           int
+	maxSize        int
+	runningCount   int
+	maxConcurrent  int
+	hibernateAfter string
+	template       string
 }
 
 type clusterClaim struct {
@@ -69,6 +74,30 @@ type clusterClaim struct {
 	namespace       string
 	clusterPoolName string
 	template        string
+}
+
+type installConfig struct {
+	name1      string
+	namespace  string
+	baseDomain string
+	name2      string
+	region     string
+	template   string
+}
+
+type clusterDeployment struct {
+	fake                string
+	name                string
+	namespace           string
+	baseDomain          string
+	clusterName         string
+	platformType        string
+	credRef             string
+	region              string
+	imageSetRef         string
+	installConfigSecret string
+	pullSecretRef       string
+	template            string
 }
 
 type objectTableRef struct {
@@ -81,7 +110,7 @@ const (
 	HIVE_NAMESPACE            = "hive"
 	AWS_BASE_DOMAIN           = "qe.devcluster.openshift.com"
 	AWS_REGION                = "us-east-2"
-	OCP_RELEASE_IMAGE         = "quay.io/openshift-release-dev/ocp-release:4.9.0-rc.6-x86_64"
+	OCP49_RELEASE_IMAGE       = "quay.io/openshift-release-dev/ocp-release:4.9.0-rc.6-x86_64"
 	AWS_CREDS                 = "aws-creds"
 	PULL_SECRET               = "pull-secret"
 	CLUSTER_INSTALL_TIMEOUT   = 3600
@@ -214,12 +243,22 @@ func (imageset *clusterImageSet) create(oc *exutil.CLI) {
 }
 
 func (pool *clusterPool) create(oc *exutil.CLI) {
-	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", pool.template, "-p", "NAME="+pool.name, "NAMESPACE="+pool.namespace, "BASEDOMAIN="+pool.baseDomain, "IMAGESETREF="+pool.imageSetRef, "CREDREF="+pool.credRef, "REGION="+pool.region, "PULLSECRETREF="+pool.pullSecretRef, "SIZE="+strconv.Itoa(pool.size), "MAXSIZE="+strconv.Itoa(pool.maxSize))
+	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", pool.template, "-p", "NAME="+pool.name, "NAMESPACE="+pool.namespace, "FAKE="+pool.fake, "BASEDOMAIN="+pool.baseDomain, "IMAGESETREF="+pool.imageSetRef, "PLATFORMTYPE="+pool.platformType, "CREDREF="+pool.credRef, "REGION="+pool.region, "PULLSECRETREF="+pool.pullSecretRef, "SIZE="+strconv.Itoa(pool.size), "MAXSIZE="+strconv.Itoa(pool.maxSize), "RUNNINGCOUNT="+strconv.Itoa(pool.runningCount), "MAXCONCURRENT="+strconv.Itoa(pool.maxConcurrent), "HIBERNATEAFTER="+pool.hibernateAfter)
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
 func (claim *clusterClaim) create(oc *exutil.CLI) {
 	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", claim.template, "-p", "NAME="+claim.name, "NAMESPACE="+claim.namespace, "CLUSTERPOOLNAME="+claim.clusterPoolName)
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+func (config *installConfig) create(oc *exutil.CLI) {
+	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", config.template, "-p", "NAME1="+config.name1, "NAMESPACE="+config.namespace, "BASEDOMAIN="+config.baseDomain, "NAME2="+config.name2, "REGION="+config.region)
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+func (cluster *clusterDeployment) create(oc *exutil.CLI) {
+	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", cluster.template, "-p", "FAKE="+cluster.fake, "NAME="+cluster.name, "NAMESPACE="+cluster.namespace, "BASEDOMAIN="+cluster.baseDomain, "CLUSTERNAME="+cluster.clusterName, "PLATFORMTYPE="+cluster.platformType, "CREDREF="+cluster.credRef, "REGION="+cluster.region, "IMAGESETREF="+cluster.imageSetRef, "INSTALLCONFIGSECRET="+cluster.installConfigSecret, "PULLSECRETREF="+cluster.pullSecretRef)
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
@@ -429,4 +468,18 @@ func createAWSCreds(oc *exutil.CLI, namespace string) {
 
 	err = oc.Run("create").Args("secret", "generic", "aws-creds", "--from-file="+dirname+"/aws_access_key_id", "--from-file="+dirname+"/aws_secret_access_key", "-n", namespace).Execute()
 	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+func extractRelfromImg(image string) string {
+	index := strings.Index(image, ":")
+	if index != -1 {
+		temp_str := image[index+1 : len(image)]
+		index = strings.Index(temp_str, "-")
+		if index != -1 {
+			e2e.Logf("Extracted OCP release: %s", temp_str[:index])
+			return temp_str[:index]
+		}
+	}
+	e2e.Logf("Failed to extract OCP release from Image.")
+	return ""
 }
