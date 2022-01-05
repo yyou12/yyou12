@@ -1988,6 +1988,59 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		newCheck("expect", asUser, withoutNamespace, compare, "Succeeded", ok, []string{"csv", "prometheusoperator.0.47.0", "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
 	})
 
+	// author: bandrade@redhat.com
+	g.It("ConnectedOnly-Author:bandrade-Medium-47179-Disjunctive constraint of one package and one GVK", func() {
+		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
+		oc.SetupProject()
+		namespace := oc.Namespace()
+		ogTemplate := filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+		subTemplate := filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+		csImageTemplate := filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
+
+		g.By("Start to create the CatalogSource CR")
+		cs := catalogSourceDescription{
+			name:        "ocp-47179",
+			namespace:   namespace,
+			displayName: "ocp-47179",
+			publisher:   "OLM QE",
+			sourceType:  "grpc",
+			address:     "quay.io/olmqe/etcd-47179:1.0",
+			template:    csImageTemplate,
+		}
+		dr := make(describerResrouce)
+		itName := g.CurrentGinkgoTestDescription().TestText
+		dr.addIr(itName)
+		defer cs.delete(itName, dr)
+		cs.createWithCheck(oc, itName, dr)
+
+		// create the OperatorGroup resource
+		og := operatorGroupDescription{
+			name:      "test-og-47179",
+			namespace: namespace,
+			template:  ogTemplate,
+		}
+
+		g.By("1) Create the OperatorGroup without service account")
+		og.createwithCheck(oc, itName, dr)
+
+		g.By("2) Create a Subscription")
+		sub := subscriptionDescription{
+			subName:                "etcd",
+			namespace:              namespace,
+			catalogSourceName:      "ocp-47179",
+			catalogSourceNamespace: namespace,
+			channel:                "singlenamespace-alpha",
+			ipApproval:             "Automatic",
+			operatorPackage:        "etcd",
+			singleNamespace:        true,
+			template:               subTemplate,
+		}
+		sub.create(oc, itName, dr)
+
+		g.By("3) Checking the state of CSV")
+		newCheck("expect", asUser, withoutNamespace, compare, "Succeeded", ok, []string{"csv", "red-hat-camel-k-operator.v1.6.2", "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+	})
+
 	// author: jiazha@redhat.com
 	g.It("Author:jiazha-High-32559-catalog operator crashed", func() {
 		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
