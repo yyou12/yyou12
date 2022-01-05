@@ -1,6 +1,8 @@
 package winc
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -318,7 +320,6 @@ func getMachineset(oc *exutil.CLI, iaasPlatform, winVersion string, machineSetNa
 		zone := "us-east-2a"
 		region, err = oc.WithoutNamespace().Run("get").Args("infrastructure", "cluster", "-o=jsonpath={.status.platformStatus.aws.region}").Output()
 		zone, err = oc.WithoutNamespace().Run("get").Args("machines", "-n", "openshift-machine-api", "-o=jsonpath={.items[0].metadata.labels.machine\\.openshift\\.io\\/zone}").Output()
-		// TODO, remove hard coded, default is server 2019
 		windowsAMI := getConfigMapData(oc, "windows_container_ami")
 		if winVersion == "20H2" {
 			windowsAMI = getConfigMapData(oc, "windows_container_ami_20H2")
@@ -499,4 +500,12 @@ func waitUntilWMCOStatusChanged(oc *exutil.CLI, message string) {
 		return true, nil
 	})
 	exutil.AssertWaitPollNoErr(waitLogErr, fmt.Sprintf("%v still watch label", message))
+}
+
+func getRandomString(len int) string {
+	buff := make([]byte, len)
+	rand.Read(buff)
+	str := base64.StdEncoding.EncodeToString(buff)
+	// Base 64 can be longer than len
+	return str[:len]
 }

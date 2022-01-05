@@ -3,6 +3,8 @@ package winc
 import (
 	"encoding/base64"
 	"fmt"
+	"io/ioutil"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -769,5 +771,46 @@ var _ = g.Describe("[sig-windows] Windows_Containers CPaasrunOnly", func() {
 				}
 			}
 		}
+	})
+
+	// author: rrasouli@redhat.com refactored:v1
+	g.It("Author:rrasouli-Medium-42204-Create Windows pod with a Projected Volume", func() {
+		namespace := "winc-42204"
+		defer deleteProject(oc, namespace)
+		createProject(oc, namespace)
+		username := "admin"
+		password := getRandomString(8)
+
+		// we write files with the content of username/password
+		ioutil.WriteFile("username-42204.txt", []byte(username), 0644)
+		defer os.Remove("username-42204.txt")
+		ioutil.WriteFile("password-42204.txt", []byte(password), 0644)
+		defer os.Remove("password-42204.txt")
+
+		g.By("Create username and password secrets")
+		_, err := oc.WithoutNamespace().Run("create").Args("secret", "generic", "user", "--from-file=username=username-42204.txt", "-n", namespace).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		_, err = oc.WithoutNamespace().Run("create").Args("secret", "generic", "pass", "--from-file=password=password-42204.txt", "-n", namespace).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Create Windows Pod with Projected Volume")
+		createWindowsWorkload(oc, namespace, "windows_webserver_projected_volume.yaml", getConfigMapData(oc, "windows_container_image"))
+		winpod, err := getWorkloadsNames(oc, "windows", namespace)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		g.By("Check in Windows pod, the projected-volume directory contains your projected sources")
+		command := []string{"exec", winpod[0], "-n", namespace, "--", "powershell", " ls .\\projected-volume", ";", "ls C:\\var\\run\\secrets\\kubernetes.io\\serviceaccount"}
+		msg, err := oc.WithoutNamespace().Run(command...).Args().Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf("Projected volume output is:\n %v", msg)
+
+		g.By("Check username and password exist on projected volume pod")
+		command = []string{"exec", winpod[0], "-n", namespace, "--", "powershell", "cat C:\\projected-volume\\username"}
+		msg, err = oc.WithoutNamespace().Run(command...).Args().Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf("Username output is:\n %v", msg)
+		command = []string{"exec", winpod[0], "-n", namespace, "--", "powershell", "cat C:\\projected-volume\\password"}
+		msg, err = oc.WithoutNamespace().Run(command...).Args().Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf("Password output is:\n %v", msg)
 	})
 })
