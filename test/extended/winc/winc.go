@@ -184,19 +184,6 @@ var _ = g.Describe("[sig-windows] Windows_Containers CPaasrunOnly", func() {
 		}
 	})
 
-	// author: sgao@redhat.com
-	g.It("Author:sgao-Critical-32856-wmco watch machineset with Windows label", func() {
-		winVersion := "2019"
-		machinesetName := "nolabel"
-		// Note: Create machineset with Windows label covered in Flexy post action
-		g.By("Check create machineset without Windows label")
-		windowsMachineSetName, err := getMachineset(oc, iaasPlatform, winVersion, machinesetName, "aws_windows_machineset_no_label.yaml")
-		o.Expect(err).NotTo(o.HaveOccurred())
-		defer oc.WithoutNamespace().Run("delete").Args("machineset", windowsMachineSetName, "-n", "openshift-machine-api").Output()
-		createMachineset(oc, "availWindowsMachineSet")
-		waitUntilWMCOStatusChanged(oc, windowsMachineSetName)
-	})
-
 	// author: sgao@redhat.com refactored:v1
 	g.It("Author:sgao-Critical-28632-Windows and Linux east west network during a long time", func() {
 		// Note: Flexy alredy created workload in winc-test, here we check it still works after a long time
