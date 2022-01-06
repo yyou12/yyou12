@@ -687,7 +687,7 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		o.Expect(sslOutput).Should(o.ContainSubstring("TLSv1.3"))
 
 		g.By("verify whether the unsafe cipher is disabled")
-		cipherOutput, cipherErr := masterNode.DebugNodeWithOptions([]string{"--image=drwetter/testssl.sh", "-n", "openshift-machine-config-operator"}, "testssl.sh", "--quiet", "--sweet32", "localhost:6443")
+		cipherOutput, cipherErr := masterNode.DebugNodeWithOptions([]string{"--image=quay.io/openshifttest/testssl@sha256:0dd9e580af54c6be3fb249d47bdd4f0e7ab646a184931bc10c358e3ef63556ee", "-n", "openshift-machine-config-operator"}, "testssl.sh", "--quiet", "--sweet32", "localhost:6443")
 		e2e.Logf("test ssh script output:\n %s", cipherOutput)
 		o.Expect(cipherErr).NotTo(o.HaveOccurred())
 		o.Expect(cipherOutput).Should(o.ContainSubstring("not vulnerable (OK)"))
@@ -1175,64 +1175,64 @@ func verifyKcRenderedMcs(oc *exutil.CLI, allKcs []KubeletConfig) []string {
 }
 
 func verifyDriftConfig(mcp *MachineConfigPool, rf *RemoteFile, newMode string) {
-		workerNode := rf.node
-		origContent := rf.content
-		origMode := rf.GetNpermissions()
+	workerNode := rf.node
+	origContent := rf.content
+	origMode := rf.GetNpermissions()
 
-		g.By("Modify file content and check degraded status")
-		newContent := origContent + "Extra Info"
-		rf.PushNewTextContent(newContent)
-		rferr := rf.Fetch()
-		o.Expect(rferr).NotTo(o.HaveOccurred())
+	g.By("Modify file content and check degraded status")
+	newContent := origContent + "Extra Info"
+	rf.PushNewTextContent(newContent)
+	rferr := rf.Fetch()
+	o.Expect(rferr).NotTo(o.HaveOccurred())
 
-		o.Expect(rf.GetTextContent()).To(o.Equal(newContent), "File content should be updated")
-		o.Eventually(mcp.pollDegradedMachineCount(), "1m", "5s").Should(o.Equal("1"), "There should be 1 degraded machine")
-		o.Eventually(mcp.pollDegradedStatus(), "1m", "5s").Should(o.Equal("True"), "The worker MCP should report a True Degraded status")
-		o.Eventually(mcp.pollUpdatedStatus(), "1m", "5s").Should(o.Equal("False"), "The worker MCP should report a False Updated status")
+	o.Expect(rf.GetTextContent()).To(o.Equal(newContent), "File content should be updated")
+	o.Eventually(mcp.pollDegradedMachineCount(), "1m", "5s").Should(o.Equal("1"), "There should be 1 degraded machine")
+	o.Eventually(mcp.pollDegradedStatus(), "1m", "5s").Should(o.Equal("True"), "The worker MCP should report a True Degraded status")
+	o.Eventually(mcp.pollUpdatedStatus(), "1m", "5s").Should(o.Equal("False"), "The worker MCP should report a False Updated status")
 
-		g.By("Verify that node annotations describe the reason for the Degraded status")
-		reason := workerNode.GetAnnotationOrFail("machineconfiguration.openshift.io/reason")
-		o.Expect(reason).To(o.Equal(fmt.Sprintf(`content mismatch for file "%s"`, rf.fullPath)))
+	g.By("Verify that node annotations describe the reason for the Degraded status")
+	reason := workerNode.GetAnnotationOrFail("machineconfiguration.openshift.io/reason")
+	o.Expect(reason).To(o.Equal(fmt.Sprintf(`content mismatch for file "%s"`, rf.fullPath)))
 
-		g.By("Restore original content and wait until pool is ready again")
-		rf.PushNewTextContent(origContent)
-		rferr = rf.Fetch()
-		o.Expect(rferr).NotTo(o.HaveOccurred())
+	g.By("Restore original content and wait until pool is ready again")
+	rf.PushNewTextContent(origContent)
+	rferr = rf.Fetch()
+	o.Expect(rferr).NotTo(o.HaveOccurred())
 
-		o.Expect(rf.GetTextContent()).To(o.Equal(origContent), "Original file content should be restored")
-		o.Eventually(mcp.pollDegradedMachineCount(), "1m", "5s").Should(o.Equal("0"), "There should be no degraded machines")
-		o.Eventually(mcp.pollDegradedStatus(), "1m", "5s").Should(o.Equal("False"), "The worker MCP should report a False Degraded status")
-		o.Eventually(mcp.pollUpdatedStatus(), "1m", "5s").Should(o.Equal("True"), "The worker MCP should report a True Updated status")
+	o.Expect(rf.GetTextContent()).To(o.Equal(origContent), "Original file content should be restored")
+	o.Eventually(mcp.pollDegradedMachineCount(), "1m", "5s").Should(o.Equal("0"), "There should be no degraded machines")
+	o.Eventually(mcp.pollDegradedStatus(), "1m", "5s").Should(o.Equal("False"), "The worker MCP should report a False Degraded status")
+	o.Eventually(mcp.pollUpdatedStatus(), "1m", "5s").Should(o.Equal("True"), "The worker MCP should report a True Updated status")
 
-		g.By("Verify that node annotations have been cleaned")
-		reason = workerNode.GetAnnotationOrFail("machineconfiguration.openshift.io/reason")
-		o.Expect(reason).To(o.Equal(``))
+	g.By("Verify that node annotations have been cleaned")
+	reason = workerNode.GetAnnotationOrFail("machineconfiguration.openshift.io/reason")
+	o.Expect(reason).To(o.Equal(``))
 
-		g.By(fmt.Sprintf("Manually modify the file permissions to %s", newMode))
-		rf.PushNewPermissions(newMode)
-		rferr = rf.Fetch()
-		o.Expect(rferr).NotTo(o.HaveOccurred())
+	g.By(fmt.Sprintf("Manually modify the file permissions to %s", newMode))
+	rf.PushNewPermissions(newMode)
+	rferr = rf.Fetch()
+	o.Expect(rferr).NotTo(o.HaveOccurred())
 
-		o.Expect(rf.GetNpermissions()).To(o.Equal(newMode), "%s File permissions should be %s", rf.fullPath, newMode)
-		o.Eventually(mcp.pollDegradedMachineCount(), "1m", "5s").Should(o.Equal("1"), "There should be 1 degraded machine")
-		o.Eventually(mcp.pollDegradedStatus(), "1m", "5s").Should(o.Equal("True"), "The worker MCP should report a True Degraded status")
-		o.Eventually(mcp.pollUpdatedStatus(), "1m", "5s").Should(o.Equal("False"), "The worker MCP should report a False Updated status")
+	o.Expect(rf.GetNpermissions()).To(o.Equal(newMode), "%s File permissions should be %s", rf.fullPath, newMode)
+	o.Eventually(mcp.pollDegradedMachineCount(), "1m", "5s").Should(o.Equal("1"), "There should be 1 degraded machine")
+	o.Eventually(mcp.pollDegradedStatus(), "1m", "5s").Should(o.Equal("True"), "The worker MCP should report a True Degraded status")
+	o.Eventually(mcp.pollUpdatedStatus(), "1m", "5s").Should(o.Equal("False"), "The worker MCP should report a False Updated status")
 
-		g.By("Verify that node annotations describe the reason for the Degraded status")
-		reason = workerNode.GetAnnotationOrFail("machineconfiguration.openshift.io/reason")
-		o.Expect(reason).To(o.MatchRegexp(fmt.Sprintf(`mode mismatch for file: "%s"; expected: .+/%s; received: .+/%s`, rf.fullPath, origMode, newMode)))
+	g.By("Verify that node annotations describe the reason for the Degraded status")
+	reason = workerNode.GetAnnotationOrFail("machineconfiguration.openshift.io/reason")
+	o.Expect(reason).To(o.MatchRegexp(fmt.Sprintf(`mode mismatch for file: "%s"; expected: .+/%s; received: .+/%s`, rf.fullPath, origMode, newMode)))
 
-		g.By("Restore the original file permissions")
-		rf.PushNewPermissions(origMode)
-		rferr = rf.Fetch()
-		o.Expect(rferr).NotTo(o.HaveOccurred())
+	g.By("Restore the original file permissions")
+	rf.PushNewPermissions(origMode)
+	rferr = rf.Fetch()
+	o.Expect(rferr).NotTo(o.HaveOccurred())
 
-		o.Expect(rf.GetNpermissions()).To(o.Equal(origMode), "%s File permissions should be %s", rf.fullPath, origMode)
-		o.Eventually(mcp.pollDegradedMachineCount(), "1m", "5s").Should(o.Equal("0"), "There should be no degraded machines")
-		o.Eventually(mcp.pollDegradedStatus(), "1m", "5s").Should(o.Equal("False"), "The worker MCP should report a False Degraded status")
-		o.Eventually(mcp.pollUpdatedStatus(), "1m", "5s").Should(o.Equal("True"), "The worker MCP should report a True Updated status")
+	o.Expect(rf.GetNpermissions()).To(o.Equal(origMode), "%s File permissions should be %s", rf.fullPath, origMode)
+	o.Eventually(mcp.pollDegradedMachineCount(), "1m", "5s").Should(o.Equal("0"), "There should be no degraded machines")
+	o.Eventually(mcp.pollDegradedStatus(), "1m", "5s").Should(o.Equal("False"), "The worker MCP should report a False Degraded status")
+	o.Eventually(mcp.pollUpdatedStatus(), "1m", "5s").Should(o.Equal("True"), "The worker MCP should report a True Updated status")
 
-		g.By("Verify that node annotations have been cleaned")
-		reason = workerNode.GetAnnotationOrFail("machineconfiguration.openshift.io/reason")
-		o.Expect(reason).To(o.Equal(``))
+	g.By("Verify that node annotations have been cleaned")
+	reason = workerNode.GetAnnotationOrFail("machineconfiguration.openshift.io/reason")
+	o.Expect(reason).To(o.Equal(``))
 }
