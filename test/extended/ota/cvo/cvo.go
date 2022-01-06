@@ -128,7 +128,7 @@ var _ = g.Describe("[sig-updates] OTA cvo should", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 		defer client.Close()
 
-		graphURL, bucket, object, err := buildGraph(client, oc, projectID)
+		graphURL, bucket, object, _, _, err := buildGraph(client, oc, projectID)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		defer DeleteBucket(client, bucket)
 		defer DeleteObject(client, bucket, object)
@@ -279,6 +279,7 @@ var _ = g.Describe("[sig-updates] OTA cvo should", func() {
 		orgUpstream, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("clusterversion", "-o=jsonpath={.items[].spec.upstream}").Output()
 		orgChannel, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("clusterversion", "-o=jsonpath={.items[].spec.channel}").Output()
 
+		//fmt.Printf("The original upstream is %s", orgUpstream)
 		defer restoreCVSpec(orgUpstream, orgChannel, oc)
 
 		g.By("Check when upstream is unset")
@@ -317,7 +318,7 @@ var _ = g.Describe("[sig-updates] OTA cvo should", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 		defer client.Close()
 
-		graphURL, bucket, object, err := buildGraph(client, oc, projectID)
+		graphURL, bucket, object, targetVersion, targetPayload, err := buildGraph(client, oc, projectID)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		defer DeleteBucket(client, bucket)
 		defer DeleteObject(client, bucket, object)
@@ -329,6 +330,12 @@ var _ = g.Describe("[sig-updates] OTA cvo should", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(cmdOut).To(o.ContainSubstring(fmt.Sprintf("Upstream: %s", graphURL)))
 		o.Expect(cmdOut).To(o.ContainSubstring("Channel: channel-a (available channels: channel-a, channel-b)"))
+		o.Expect(cmdOut).To(o.ContainSubstring("Recommended updates:"))
+		o.Expect(cmdOut).To(o.ContainSubstring(targetVersion + " " + targetPayload))
+
+		cmdOut, err = oc.AsAdmin().WithoutNamespace().Run("adm").Args("upgrade", "--include-not-recommended").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(cmdOut).To(o.ContainSubstring("No updates which are not recommended based on your cluster configuration are available"))
 
 		g.By("Check when channel is unset")
 		_, err = oc.AsAdmin().WithoutNamespace().Run("adm").Args("upgrade", "channel", "--allow-explicit-channel").Output()
@@ -556,7 +563,7 @@ var _ = g.Describe("[sig-updates] OTA cvo should", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		g.By("Check the insights-operator replica recovers to one")
-		err = wait.Poll(30*time.Second, 3*time.Minute, func() (bool, error) {
+		err = wait.Poll(30*time.Second, 5*time.Minute, func() (bool, error) {
 			num, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("deployment", name, "-o=jsonpath={.spec.replicas}", "-n", namespace).Output()
 			if num != "1" {
 				return false, nil

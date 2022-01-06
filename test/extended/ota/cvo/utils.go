@@ -312,9 +312,11 @@ func GenerateReleasePayload(oc *exutil.CLI) string {
 }
 
 // updateGraph updates the cincy.json
-// return value: string: filename
+// return value: string: graph json filename
+// return value: string: target version
+// return value: string: target payload
 // return value: error: any error
-func updateGraph(oc *exutil.CLI) (string, error) {
+func updateGraph(oc *exutil.CLI) (string, string, string, error) {
 	graphDataDir := exutil.FixturePath("testdata", "ota/cvo")
 	graphTemplate := filepath.Join(graphDataDir, "cincy.json")
 
@@ -323,20 +325,20 @@ func updateGraph(oc *exutil.CLI) (string, error) {
 	// Assume the cluster is not being upgraded, then desired version will be the current version
 	sourceVersion, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("clusterversion/version", "-o=jsonpath={.status.desired.version}").Output()
 	if err != nil {
-		return "", err
+		return "", "", "", err
 	}
 	sourcePayload, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("clusterversion/version", "-o=jsonpath={.status.desired.image}").Output()
 	if err != nil {
-		return "", err
+		return "", "", "", err
 	}
 
 	targetVersion := GenerateReleaseVersion(oc)
 	if targetVersion == "" {
-		return "", fmt.Errorf("error get target version")
+		return "", "", "", fmt.Errorf("error get target version")
 	}
 	targetPayload := GenerateReleasePayload(oc)
 	if targetPayload == "" {
-		return "", fmt.Errorf("error get target payload")
+		return "", "", "", fmt.Errorf("error get target payload")
 	}
 
 	// Give the new graph a unique name
@@ -345,10 +347,10 @@ func updateGraph(oc *exutil.CLI) (string, error) {
 	sedCmd := fmt.Sprintf("sed -i -e 's|sourceversion|%s|; s|sourcepayload|%s|; s|targetversion|%s|; s|targetpayload|%s|' %s", sourceVersion, sourcePayload, targetVersion, targetPayload, graphTemplate)
 	//fmt.Println(sedCmd)
 	if err := exec.Command("bash", "-c", sedCmd).Run(); err == nil {
-		return graphTemplate, nil
+		return graphTemplate, targetVersion, targetPayload, nil
 	} else {
 		e2e.Logf("Error on sed command: %v", err.Error())
-		return "", err
+		return "", "", "", err
 	}
 }
 
@@ -357,35 +359,37 @@ func updateGraph(oc *exutil.CLI) (string, error) {
 // return value: string: the public url of the object
 // return value: string: the bucket name
 // return value: string: the object name
+// return value: string: the target version
+// return value: string: the target payload
 // return value: error: any error
-func buildGraph(client *storage.Client, oc *exutil.CLI, projectID string) (string, string, string, error) {
-	graphFile, err := updateGraph(oc)
+func buildGraph(client *storage.Client, oc *exutil.CLI, projectID string) (string, string, string, string, string, error) {
+	graphFile, targetVersion, targetPayload, err := updateGraph(oc)
 	if err != nil {
-		return "", "", "", err
+		return "", "", "", "", "", err
 	}
 	e2e.Logf("Graph file: %v updated", graphFile)
 
 	// Give the bucket a unique name
 	bucket := fmt.Sprintf("ocp-ota-%d", time.Now().Unix())
 	if err := CreateBucket(client, projectID, bucket); err != nil {
-		return "", "", "", err
+		return "", "", "", "", "", err
 	}
 	e2e.Logf("Bucket: %v created", bucket)
 
 	// Give the object a unique name
 	object := fmt.Sprintf("graph-%d", time.Now().Unix())
 	if err := UploadFile(client, bucket, object, graphFile); err != nil {
-		return "", bucket, "", err
+		return "", bucket, "", "", "", err
 	}
 	e2e.Logf("Object: %v uploaded", object)
 
 	// Make the object public
 	if err := MakePublic(client, bucket, object); err != nil {
-		return "", bucket, object, err
+		return "", bucket, object, "", "", err
 	}
 	e2e.Logf("Object: %v public", object)
 
-	return fmt.Sprintf("https://storage.googleapis.com/%s/%s", bucket, object), bucket, object, nil
+	return fmt.Sprintf("https://storage.googleapis.com/%s/%s", bucket, object), bucket, object, targetVersion, targetPayload, nil
 }
 
 //restoreCVSpec restores upstream and channel of clusterversion
