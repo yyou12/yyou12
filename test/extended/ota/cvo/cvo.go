@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
@@ -251,16 +252,10 @@ var _ = g.Describe("[sig-updates] OTA cvo should", func() {
 	//author: yanyang@redhat.com
 	g.It("Author:yanyang-High-42543-the removed resources are not created in a fresh installed cluster", func() {
 		g.By("Check the annotation delete:true for imagestream/hello-openshift is set in manifest")
-		manifestDir := fmt.Sprintf("manifest-%d", time.Now().Unix())
-		dockerconfigDir := fmt.Sprintf("dockerconfig-%d", time.Now().Unix())
-		defer exec.Command("rm", "-rf", manifestDir, dockerconfigDir).Output()
-		_, err := exec.Command("mkdir", "-p", dockerconfigDir).Output()
+		tempDataDir, err := extractManifest(oc)
+		defer os.RemoveAll(tempDataDir)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		_, err = oc.AsAdmin().Run("extract").Args("secret/pull-secret", "-n", "openshift-config", "--confirm", "--to="+dockerconfigDir).Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		err = oc.AsAdmin().WithoutNamespace().Run("adm").Args("release", "extract", "--to", manifestDir, "-a", dockerconfigDir+"/.dockerconfigjson").Execute()
-		o.Expect(err).NotTo(o.HaveOccurred())
+		manifestDir := filepath.Join(tempDataDir, "manifest")
 		out, _ := exec.Command("bash", "-c", fmt.Sprintf("grep -rl \"name: hello-openshift\" %s", manifestDir)).Output()
 		o.Expect(string(out)).NotTo(o.BeEmpty())
 		file := strings.TrimSpace(string(out))
@@ -585,5 +580,27 @@ var _ = g.Describe("[sig-updates] OTA cvo should", func() {
 			return true, nil
 		})
 		exutil.AssertWaitPollNoErr(err, "insights-operator replicas is not 1")
+	})
+
+	//author: jiajliu@redhat.com
+	g.It("Author:jiajliu-Medium-47198-Techpreview operator will not be installed on a fresh installed", func() {
+		tpOperatorNamespace := "openshift-cluster-api"
+		tpOperatorName := "cluster-api"
+		g.By("Check annotation release.openshift.io/feature-gate=TechPreviewNoUpgrade in manifests are correct.")
+		tempDataDir, err := extractManifest(oc)
+		defer os.RemoveAll(tempDataDir)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		manifestDir := filepath.Join(tempDataDir, "manifest")
+		featuregateTotalNum, _ := exec.Command("bash", "-c", fmt.Sprintf("grep -r 'release.openshift.io/feature-gate' %s|wc -l", manifestDir)).Output()
+		featuregateNoUpgradeNum, _ := exec.Command("bash", "-c", fmt.Sprintf("grep -r 'release.openshift.io/feature-gate: \"TechPreviewNoUpgrade\"' %s|wc -l", manifestDir)).Output()
+		o.Expect(featuregateNoUpgradeNum).To(o.Equal(featuregateTotalNum))
+
+		g.By("Check no TP operator cluster-api installed by default.")
+		output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("ns", tpOperatorNamespace).Output()
+		o.Expect(err).To(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring("NotFound"))
+		output, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("co", tpOperatorName).Output()
+		o.Expect(err).To(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring("NotFound"))
 	})
 })

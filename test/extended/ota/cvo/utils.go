@@ -2,12 +2,12 @@ package cvo
 
 import (
 	"context"
-	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -409,4 +409,36 @@ func restoreCVSpec(upstream string, channel string, oc *exutil.CLI) {
 	if currUpstream != upstream {
 		e2e.Logf("Error on upstream recovery, expected %s, but got %s", upstream, currUpstream)
 	}
+}
+
+// Run "oc adm release extract" cmd to extract manifests from current live cluster
+func extractManifest(oc *exutil.CLI) (string, error) {
+	tempDataDir := filepath.Join("/tmp/", fmt.Sprintf("ota-%s", getRandomString()))
+	err := os.Mkdir(tempDataDir, 0755)
+	if err != nil {
+		e2e.Logf("Fail to create directory: %v", err)
+		return tempDataDir, err
+	}
+	manifestDir := filepath.Join(tempDataDir, "manifest")
+	err = oc.AsAdmin().Run("extract").Args("secret/pull-secret", "-n", "openshift-config", "--confirm", "--to="+tempDataDir).Execute()
+	if err != nil {
+		e2e.Logf("Fail to extract dockerconfig: %v", err)
+		return tempDataDir, err
+	}
+	err = oc.AsAdmin().Run("adm").Args("release", "extract", "--to", manifestDir, "-a", tempDataDir+"/.dockerconfigjson").Execute()
+	if err != nil {
+		e2e.Logf("Fail to extract manifests: %v", err)
+		return tempDataDir, err
+	}
+	return tempDataDir, nil
+}
+
+func getRandomString() string {
+	chars := "abcdefghijklmnopqrstuvwxyz0123456789"
+	seed := rand.New(rand.NewSource(time.Now().UnixNano()))
+	buffer := make([]byte, 8)
+	for index := range buffer {
+		buffer[index] = chars[seed.Intn(len(chars))]
+	}
+	return string(buffer)
 }
