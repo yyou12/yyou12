@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+	"errors"
+	"regexp"
 
 	o "github.com/onsi/gomega"
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
@@ -347,7 +349,6 @@ func getPodName(oc *exutil.CLI, namespace string, label string) []string {
 	return podName
 }
 
-// get one of the DNS pods name
 func getDNSPodName(oc *exutil.CLI) string {
 	ns := "openshift-dns"
 	podName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", ns, "pods", "-l", "dns.operator.openshift.io/daemonset-dns=default", "-o=jsonpath={.items[0].metadata.name}").Output()
@@ -425,7 +426,6 @@ func ensureDNSRollingUpdateDone(oc *exutil.CLI) {
 func restoreDNSOperatorDefault(oc *exutil.CLI) {
 	// the json value might be different in different version
 	jsonPatch := "[{\"op\":\"replace\", \"path\":\"/spec\", \"value\":{\"logLevel\":\"Normal\",\"nodePlacement\":{},\"operatorLogLevel\":\"Normal\",\"upstreamResolvers\":{\"policy\":\"Sequential\",\"upstreams\":[{\"port\":53,\"type\":\"SystemResolvConf\"}]}}}]"
-
 	e2e.Logf("restore(patch) dns.operator/default with original settings.")
 	output, err := oc.AsAdmin().WithoutNamespace().Run("patch").Args("dns.operator/default", "-p", jsonPatch, "--type=json").Output()
 	o.Expect(err).NotTo(o.HaveOccurred())
@@ -437,4 +437,75 @@ func restoreDNSOperatorDefault(oc *exutil.CLI) {
 		ensureClusterOperatorProgress(oc, "dns")
 	}
 	ensureClusterOperatorNormal(oc, "dns")
+}
+
+//this function is to get all dns pods' names, the return is the string slice of all dns pods' names, together with an error
+func getAllDNSPodsNames(oc *exutil.CLI) ([]string) {
+	podList := []string{}
+	output_pods,err := oc.AsAdmin().Run("get").Args("pods", "-n", "openshift-dns").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	podsRe := regexp.MustCompile("dns-default-[a-z0-9]+")
+	pods   := podsRe.FindAllStringSubmatch(output_pods, -1)
+	if len(pods) > 0 {
+		for i:= 0; i < len(pods); i++ {
+			podList = append(podList, pods[i][0])
+		}
+	} else {
+		o.Expect(errors.New("Can't find a dns pod")).NotTo(o.HaveOccurred())
+	}
+	return podList
+}
+
+//this function is to select a dns pod randomly
+func getRandomDNSPodName(podList []string) (string) {
+	seed  := rand.New(rand.NewSource(time.Now().UnixNano()))
+	index := seed.Intn(len(podList))
+	return podList[index]
+}
+
+//this function to get one dns pod's Corefile info related to the modified time, it looks like {{"dns-default-0001", "2021-12-30 18.011111 Modified"}}
+func getOneCorefileStat(oc *exutil.CLI, dnspodname string) ([][]string) {
+	attrList := [][]string{}
+	cmd := "stat /etc/coredns/..data/Corefile | grep Modify"
+	output, err := oc.AsAdmin().Run("exec").Args("-n", "openshift-dns", dnspodname,"-c", "dns",  "--", "bash", "-c", cmd).Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	return append(attrList, []string{dnspodname, output})
+}
+
+//this function is to make sure all Corefiles(or one Corefile) of the dns pods are updated
+//the value of parameter attrList should be from the getOneCorefileStat or getAllCorefilesStat function, it is related to the time before patching something to the dns operator
+func waitAllCorefilesUpdated(oc *exutil.CLI, attrList [][]string) ([][]string) {
+	cmd := "stat /etc/coredns/..data/Corefile | grep Modify"
+	updated_attrList := [][]string{}
+	for _, dnspod := range attrList {
+		dnspodname := dnspod[0]
+		dnspodattr := dnspod[1]
+		count      := 0
+		waitErr := wait.Poll(3*time.Second, 120*time.Second, func() (bool, error) {
+			output, _ := oc.AsAdmin().Run("exec").Args("-n", "openshift-dns", dnspodname,"-c", "dns",  "--", "bash", "-c", cmd).Output()
+			count++
+			if dnspodattr != output {
+				e2e.Logf(dnspodname+" Corefile is updated")
+				updated_attrList = append(updated_attrList, []string{dnspodname, output})
+				return true, nil
+			} else {
+				//reduce the logs
+				if count % 10 == 1 {
+					e2e.Logf(dnspodname+" Corefile isn't updated , wait and try again...")
+				}
+				return false, nil
+			}
+		})
+		if waitErr != nil {
+			updated_attrList = append(updated_attrList, []string{dnspodname, dnspodattr}) 
+		}
+		exutil.AssertWaitPollNoErr(waitErr, dnspodname+" Corefile isn't updated")
+	}
+	return updated_attrList
+}
+
+//this function is to wait for Corefile(s) is updated
+func waitCorefileUpdated(oc *exutil.CLI, attrList [][]string) ([][]string) {
+	updated_attrList := waitAllCorefilesUpdated(oc, attrList)
+	return updated_attrList
 }
