@@ -1013,8 +1013,9 @@ nulla pariatur.`
 		o.Expect(rf.GetNpermissions()).To(o.Equal(defaultMode))
 
 		g.By("Verfiy drift config behavior")
-		defer rf.PushNewPermissions(defaultMode)
-		defer rf.PushNewTextContent(fileContent)
+		defer o.Expect(rf.PushNewPermissions(defaultMode)).NotTo(o.HaveOccurred())
+		defer o.Expect(rf.PushNewTextContent(fileContent)).NotTo(o.HaveOccurred())
+
 		newMode := "0400"
 		verifyDriftConfig(mcp, rf, newMode)
 	})
@@ -1181,7 +1182,7 @@ func verifyDriftConfig(mcp *MachineConfigPool, rf *RemoteFile, newMode string) {
 
 	g.By("Modify file content and check degraded status")
 	newContent := origContent + "Extra Info"
-	rf.PushNewTextContent(newContent)
+	o.Expect(rf.PushNewTextContent(newContent)).NotTo(o.HaveOccurred())
 	rferr := rf.Fetch()
 	o.Expect(rferr).NotTo(o.HaveOccurred())
 
@@ -1195,7 +1196,7 @@ func verifyDriftConfig(mcp *MachineConfigPool, rf *RemoteFile, newMode string) {
 	o.Expect(reason).To(o.Equal(fmt.Sprintf(`content mismatch for file "%s"`, rf.fullPath)))
 
 	g.By("Restore original content and wait until pool is ready again")
-	rf.PushNewTextContent(origContent)
+	o.Expect(rf.PushNewTextContent(origContent)).NotTo(o.HaveOccurred())
 	rferr = rf.Fetch()
 	o.Expect(rferr).NotTo(o.HaveOccurred())
 
@@ -1209,7 +1210,7 @@ func verifyDriftConfig(mcp *MachineConfigPool, rf *RemoteFile, newMode string) {
 	o.Expect(reason).To(o.Equal(``))
 
 	g.By(fmt.Sprintf("Manually modify the file permissions to %s", newMode))
-	rf.PushNewPermissions(newMode)
+	o.Expect(rf.PushNewPermissions(newMode)).NotTo(o.HaveOccurred())
 	rferr = rf.Fetch()
 	o.Expect(rferr).NotTo(o.HaveOccurred())
 
@@ -1223,7 +1224,7 @@ func verifyDriftConfig(mcp *MachineConfigPool, rf *RemoteFile, newMode string) {
 	o.Expect(reason).To(o.MatchRegexp(fmt.Sprintf(`mode mismatch for file: "%s"; expected: .+/%s; received: .+/%s`, rf.fullPath, origMode, newMode)))
 
 	g.By("Restore the original file permissions")
-	rf.PushNewPermissions(origMode)
+	o.Expect(rf.PushNewPermissions(origMode)).NotTo(o.HaveOccurred())
 	rferr = rf.Fetch()
 	o.Expect(rferr).NotTo(o.HaveOccurred())
 

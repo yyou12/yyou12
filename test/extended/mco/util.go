@@ -465,7 +465,9 @@ func getPrometheusQueryResults(oc *exutil.CLI, query string) string {
 func gZipData(data []byte) (compressedData []byte, err error) {
 	var b bytes.Buffer
 	gz := gzip.NewWriter(&b)
-	defer gz.Close()
+	defer func() {
+		_ = gz.Close()
+	}()
 
 	_, err = gz.Write(data)
 	if err != nil {
