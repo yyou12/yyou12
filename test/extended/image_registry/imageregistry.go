@@ -917,4 +917,32 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(output).To(o.ContainSubstring("The specified parameter KMS keyId is not valid"))
 	})
+
+	// author: xiuwang@redhat.com
+	g.It("Author:xiuwang-Critical-45345-Image registry works with ibmcos storage on IBM cloud", func() {
+		output, err := oc.WithoutNamespace().AsAdmin().Run("get").Args("infrastructure", "cluster", "-o=jsonpath={.status.platformStatus.type}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		if !strings.Contains(output, "IBMCloud") {
+			g.Skip("Skip for non-supported platform")
+		}
+
+		g.By("Check ibmcos storage")
+		output, err = oc.WithoutNamespace().AsAdmin().Run("get").Args("config.image/cluster", "-o=jsonpath={.status.storage.ibmcos}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring("bucket"))
+		o.Expect(output).To(o.ContainSubstring("location"))
+		o.Expect(output).To(o.ContainSubstring("resourceGroupName"))
+		o.Expect(output).To(o.ContainSubstring("resourceKeyCRN"))
+		o.Expect(output).To(o.ContainSubstring("serviceInstanceCRN"))
+
+		g.By("Check if registry operator degraded")
+		registryDegrade := checkRegistryDegraded(oc)
+		if registryDegrade {
+			e2e.Failf("Image registry is degraded")
+		}
+
+		g.By("Check if registry works well")
+		oc.SetupProject()
+		checkRegistryFunctionFine(oc, "test-45345", oc.Namespace())
+	})
 })
