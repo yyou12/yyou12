@@ -10,7 +10,7 @@ objects:
     spec:
       instance: "" # instance is empty by default
       operand:
-        namespace: openshift-nfd
+        namespace: "${NAMESPACE}"
         image: "${IMAGE}"
         imagePullPolicy: Always
       workerConfig:
@@ -131,3 +131,4 @@ objects:
           #      - nodename: ["special-.*-node-.*"]
 parameters:
   - name: IMAGE
+  - name: NAMESPACE

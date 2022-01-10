@@ -32,8 +32,7 @@ func (og *ogResource) createIfNotExist(oc *exutil.CLI) {
 	output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("og", og.name, "-n", og.namespace).Output()
 	if strings.Contains(output, "NotFound") || strings.Contains(output, "No resources") || err != nil {
 		e2e.Logf(fmt.Sprintf("No operatorgroup in project: %s, create one: %s", og.namespace, og.name))
-		err = applyResource(oc, "--ignore-unknown-parameters=true", "-f", og.template, "-p", "NAME="+og.name, "NAMESPACE="+og.namespace)
-		o.Expect(err).NotTo(o.HaveOccurred())
+		applyResource(oc, "--ignore-unknown-parameters=true", "-f", og.template, "-p", "NAME="+og.name, "NAMESPACE="+og.namespace)
 	} else {
 		e2e.Logf(fmt.Sprintf("Already exist operatorgroup in project: %s", og.namespace))
 	}
@@ -55,12 +54,11 @@ type subResource struct {
 func (sub *subResource) createIfNotExist(oc *exutil.CLI) {
 	output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("sub", sub.name, "-n", sub.namespace).Output()
 	if strings.Contains(output, "NotFound") || strings.Contains(output, "No resources") || err != nil {
-		err = applyResource(oc, "--ignore-unknown-parameters=true", "-f", sub.template, "-p", "SUBNAME="+sub.name, "SUBNAMESPACE="+sub.namespace, "CHANNEL="+sub.channel, "SOURCE="+sub.source)
-		o.Expect(err).NotTo(o.HaveOccurred())
+		applyResource(oc, "--ignore-unknown-parameters=true", "-f", sub.template, "-p", "SUBNAME="+sub.name, "SUBNAMESPACE="+sub.namespace, "CHANNEL="+sub.channel, "SOURCE="+sub.source)
 		err = wait.Poll(5*time.Second, 240*time.Second, func() (bool, error) {
-			state, getErr := oc.AsAdmin().WithoutNamespace().Run("get").Args("sub", sub.name, "-n", sub.namespace, "-o=jsonpath={.status.state}").Output()
+			state, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("sub", sub.name, "-n", sub.namespace, "-o=jsonpath={.status.state}").Output()
 			if err != nil {
-				e2e.Logf("output is %v, error is %v, and try next", state, getErr)
+				e2e.Logf("output is %v, error is %v, and try next", state, err)
 				return false, nil
 			}
 			if strings.Compare(state, "AtLatestKnown") == 0 || strings.Compare(state, "UpgradeAvailable") == 0 {
@@ -96,8 +94,7 @@ func (ns *nsResource) createIfNotExist(oc *exutil.CLI) {
 		e2e.Logf(fmt.Sprintf("create one: %s", ns.name))
 		configFile, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", ns.template, "-p", "NAME="+ns.name).OutputToFile("sro-ns.json")
 		o.Expect(err).NotTo(o.HaveOccurred())
-		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", configFile).Execute()
-		o.Expect(err).NotTo(o.HaveOccurred())
+		oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", configFile).Execute()
 	} else {
 		e2e.Logf(fmt.Sprintf("Already exist ns: %s", ns.name))
 	}
@@ -122,31 +119,6 @@ func applyResource(oc *exutil.CLI, parameters ...string) error {
 
 	e2e.Logf("the file of resource is %s", configFile)
 	return oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", configFile).Execute()
-}
-
-type pkgmanifestinfo struct {
-	pkgmanifestname string
-	namespace       string
-}
-
-func (pkginfo pkgmanifestinfo) getDefaultChannelVersion(oc *exutil.CLI) (string, error) {
-	output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("packagemanifest", pkginfo.pkgmanifestname, "-n", pkginfo.namespace, "-o=jsonpath={.status.defaultChannel}").Output()
-	if strings.Contains(output, "NotFound") || strings.Contains(output, "No resources") || err != nil {
-		e2e.Logf(fmt.Sprintf("The package manifest default channel not found in %s", pkginfo.namespace))
-		return "stable", nil
-	} else {
-		return output, nil
-	}
-}
-
-func (pkginfo pkgmanifestinfo) getPKGManifestSource(oc *exutil.CLI) (string, error) {
-	output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("packagemanifest", pkginfo.pkgmanifestname, "-n", pkginfo.namespace, "-o=jsonpath={.status.catalogSource}").Output()
-	if strings.Contains(output, "NotFound") || strings.Contains(output, "No resources") || err != nil {
-		e2e.Logf(fmt.Sprintf("The package manifest source not found in %s", pkginfo.namespace))
-		return "qe-app-registry", nil
-	} else {
-		return output, nil
-	}
 }
 
 type oprResource struct {
@@ -204,20 +176,9 @@ func (opr *oprResource) CleanupResource(oc *exutil.CLI) {
 	}
 }
 
-//Check if NFD Installed base on the cluster labels
-func checkIfNFDInstalled(oc *exutil.CLI) bool {
-	workNode, _ := exutil.GetFirstWorkerNode(oc)
-	Output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("node", workNode, "-o", "jsonpath='{.metadata.annotations}'").Output()
-	o.Expect(err).NotTo(o.HaveOccurred())
-	if strings.Contains(Output, "nfd.node.kubernetes.io/feature-labels") {
-		e2e.Logf("NFD installed on openshift container platform")
-		return true
-	}
-	return false
-}
+func (opr *oprResource) waitLongDurationDaemonsetReady(oc *exutil.CLI, timeDurationSec int) {
 
-func (opr *oprResource) waitOprResourceReady(oc *exutil.CLI) {
-	waitErr := wait.Poll(20*time.Second, 720*time.Second, func() (bool, error) {
+	waitErr := wait.Poll(20*time.Second, time.Duration(timeDurationSec)*time.Second, func() (bool, error) {
 		var (
 			kindnames  string
 			err        error
@@ -227,31 +188,17 @@ func (opr *oprResource) waitOprResourceReady(oc *exutil.CLI) {
 		)
 
 		//Check if deployment/daemonset/statefulset is created.
-		switch opr.kind {
-		case "deployment", "statefulset":
-			kindnames, err = oc.AsAdmin().WithoutNamespace().Run("get").Args(opr.kind, opr.name, "-n", opr.namespace, "-oname").Output()
-			if strings.Contains(kindnames, "NotFound") || strings.Contains(kindnames, "No resources") || len(kindnames) == 0 || err != nil {
-				isCreated = false
-			} else {
-				//deployment/statefulset has been created, but not running, need to compare .status.readyReplicas and  in .status.replicas
-				isCreated = true
-				desirednum, _ = oc.AsAdmin().WithoutNamespace().Run("get").Args(kindnames, "-n", opr.namespace, "-o=jsonpath={.status.readyReplicas}").Output()
-				readynum, _ = oc.AsAdmin().WithoutNamespace().Run("get").Args(kindnames, "-n", opr.namespace, "-o=jsonpath={.status.replicas}").Output()
-			}
-		case "daemonset":
-			kindnames, err = oc.AsAdmin().WithoutNamespace().Run("get").Args(opr.kind, "-n", opr.namespace, "-oname").Output()
-			e2e.Logf("daemonset name is:" + kindnames)
-			if len(kindnames) == 0 || err != nil {
-				isCreated = false
-			} else {
-				//daemonset/statefulset has been created, but not running, need to compare .status.desiredNumberScheduled and .status.numberReady}
-				//if the two value is equal, set output="has successfully progressed"
-				isCreated = true
-				desirednum, _ = oc.AsAdmin().WithoutNamespace().Run("get").Args(kindnames, "-n", opr.namespace, "-o=jsonpath={.status.desiredNumberScheduled}").Output()
-				readynum, _ = oc.AsAdmin().WithoutNamespace().Run("get").Args(kindnames, "-n", opr.namespace, "-o=jsonpath={.status.numberReady}").Output()
-			}
-		default:
-			e2e.Logf("Invalid Resource Type")
+
+		kindnames, err = oc.AsAdmin().WithoutNamespace().Run("get").Args(opr.kind, "-n", opr.namespace, "-oname").Output()
+		e2e.Logf("daemonset name is:" + kindnames)
+		if len(kindnames) == 0 || err != nil {
+			isCreated = false
+		} else {
+			//daemonset/statefulset has been created, but not running, need to compare .status.desiredNumberScheduled and .status.numberReady}
+			//if the two value is equal, set output="has successfully progressed"
+			isCreated = true
+			desirednum, _ = oc.AsAdmin().WithoutNamespace().Run("get").Args(kindnames, "-n", opr.namespace, "-o=jsonpath={.status.desiredNumberScheduled}").Output()
+			readynum, _ = oc.AsAdmin().WithoutNamespace().Run("get").Args(kindnames, "-n", opr.namespace, "-o=jsonpath={.status.numberReady}").Output()
 		}
 
 		e2e.Logf("desirednum is: " + desirednum + " readynum is: " + readynum)

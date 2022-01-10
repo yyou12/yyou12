@@ -28,7 +28,7 @@ func WaitOprResourceReady(oc *CLI, kind, name, namespace string, islongduration 
 	if islongduration {
 		timeDurationSec = 720
 	} else {
-		timeDurationSec = 300
+		timeDurationSec = 360
 	}
 
 	waitErr := wait.Poll(20*time.Second, time.Duration(timeDurationSec)*time.Second, func() (bool, error) {
@@ -130,4 +130,97 @@ func GetFirstLinuxMachineSets(oc *CLI) string {
 		}
 	}
 	return machinesets_array[0]
+}
+
+// installNFD attempts to install the Node Feature Discovery operator and verify that it is running
+func InstallNFD(oc *CLI, nfdNamespace string) {
+	var (
+		nfd_namespace_file     = FixturePath("testdata", "psap", "nfd", "nfd-namespace.yaml")
+		nfd_operatorgroup_file = FixturePath("testdata", "psap", "nfd", "nfd-operatorgroup.yaml")
+		nfd_sub_file           = FixturePath("testdata", "psap", "nfd", "nfd-sub.yaml")
+	)
+	// check if NFD namespace already exists
+	nsName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("namespace", nfdNamespace).Output()
+	// if namespace exists, check if NFD is installed - exit if it is, continue with installation otherwise
+	// if an error is thrown, namespace does not exist, create and continue with installation
+	if strings.Contains(nsName, "NotFound") || strings.Contains(nsName, "No resources") || err != nil {
+		e2e.Logf("NFD namespace not found - creating namespace and installing NFD ...")
+		CreateClusterResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", nfd_namespace_file)
+	} else {
+		e2e.Logf("NFD namespace found - checking if NFD is installed ...")
+	}
+
+	ogName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("OperatorGroup", "openshift-nfd", "-n", nfdNamespace).Output()
+	if strings.Contains(ogName, "NotFound") || strings.Contains(ogName, "No resources") || err != nil {
+		// create NFD operator group from template
+		ApplyNsResourceFromTemplate(oc, nfdNamespace, "--ignore-unknown-parameters=true", "-f", nfd_operatorgroup_file)
+	} else {
+		e2e.Logf("NFD operatorgroup found - continue to check subscription ...")
+	}
+
+	// get default channel and create subscription from template
+	channel, err := GetOperatorPKGManifestDefaultChannel(oc, "nfd", "openshift-marketplace")
+	o.Expect(err).NotTo(o.HaveOccurred())
+	e2e.Logf("Channel: %v", channel)
+	// get default channel and create subscription from template
+	source, err := GetOperatorPKGManifestSource(oc, "nfd", "openshift-marketplace")
+	o.Expect(err).NotTo(o.HaveOccurred())
+	e2e.Logf("Source: %v", source)
+
+	subName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("Subscription", "-n", nfdNamespace).Output()
+	if strings.Contains(subName, "NotFound") || strings.Contains(subName, "No resources") || !strings.Contains(subName, "nfd") || err != nil {
+		// create NFD operator group from template
+		ApplyNsResourceFromTemplate(oc, nfdNamespace, "--ignore-unknown-parameters=true", "-f", nfd_sub_file, "-p", "CHANNEL="+channel, "SOURCE="+source)
+	} else {
+		e2e.Logf("NFD subscription found - continue to check pod status ...")
+	}
+
+	//Wait for NFD controller manager is ready
+	WaitOprResourceReady(oc, "deployment", "nfd-controller-manager", nfdNamespace, false, false)
+
+}
+
+//Create NFD Instance in different namespace
+func CreateNFDInstance(oc *CLI, namespace string) {
+
+	var (
+		nfd_instance_file = FixturePath("testdata", "psap", "nfd", "nfd-instance.yaml")
+	)
+	// get cluster version and create NFD instance from template
+	clusterVersion, _, err := GetClusterVersion(oc)
+	o.Expect(err).NotTo(o.HaveOccurred())
+	e2e.Logf("Cluster Version: %v", clusterVersion)
+
+	nfdinstanceName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("NodeFeatureDiscovery", "nfd-instance", "-n", namespace).Output()
+	e2e.Logf("NFD Instance is: %v", nfdinstanceName)
+	if strings.Contains(nfdinstanceName, "NotFound") || strings.Contains(nfdinstanceName, "No resources") || err != nil {
+		// create NFD operator group from template
+		ApplyNsResourceFromTemplate(oc, namespace, "--ignore-unknown-parameters=true", "-f", nfd_instance_file, "-p", "IMAGE=quay.io/openshift/origin-node-feature-discovery:"+clusterVersion, "NAMESPACE="+namespace)
+	} else {
+		e2e.Logf("NFD instance found - continue to check pod status ...")
+	}
+
+	//wait for NFD master and worker is ready
+	WaitOprResourceReady(oc, "daemonset", "nfd-master", namespace, false, false)
+	WaitOprResourceReady(oc, "daemonset", "nfd-worker", namespace, false, true)
+}
+
+//Get operator Packagemanifest source name
+func GetOperatorPKGManifestSource(oc *CLI, pkgManifestName, namespace string) (string, error) {
+	catalogSourceNames, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("catalogsource", "-n", namespace, "-o=jsonpath={.items[*].metadata.name}").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	if strings.Contains(catalogSourceNames, "qe-app-registry") || err != nil {
+		//If the catalogsource qe-app-registry exist, prefer to use qe-app-registry, not use redhat-operators or certificate-operator ...
+		return "qe-app-registry", nil
+	} else {
+		soureName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("packagemanifest", pkgManifestName, "-n", namespace, "-o=jsonpath={.status.catalogSource}").Output()
+		return soureName, err
+	}
+}
+
+//Get operator Packagemanifest default channel
+func GetOperatorPKGManifestDefaultChannel(oc *CLI, pkgManifestName, namespace string) (string, error) {
+	channel, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("packagemanifest", pkgManifestName, "-n", namespace, "-o", "jsonpath={.status.defaultChannel}").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	return channel, err
 }

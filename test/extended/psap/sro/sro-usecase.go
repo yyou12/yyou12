@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	g "github.com/onsi/ginkgo"
+	o "github.com/onsi/gomega"
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 )
@@ -14,19 +15,11 @@ var _ = g.Describe("[sig-node] PSAP SRO should", func() {
 
 	var (
 		oc     = exutil.NewCLI("sro-cli-test", exutil.KubeConfigPath())
-		isNFD  bool
 		sroDir = exutil.FixturePath("testdata", "psap", "sro")
 	)
 
 	g.BeforeEach(func() {
-		// ensure NFD operator is installed
-		isNFD = checkIfNFDInstalled(oc)
-		if !isNFD {
-			g.Skip("NFD is not installed - skipping test ...")
-		}
 
-		//g.By("SRO - Get Current Clusterversion")
-		//exutil.GetClusterVersion(oc)
 		//Create Special Resource if Not Exist
 		g.By("SRO - Create Namespace for SRO")
 		nsTemplate := filepath.Join(sroDir, "sro-ns.yaml")
@@ -47,13 +40,11 @@ var _ = g.Describe("[sig-node] PSAP SRO should", func() {
 
 		g.By("SRO - Create Subscription for SRO")
 		//Get default channnel version of packagemanifest
-		pkgminfo := pkgmanifestinfo{
-			pkgmanifestname: "openshift-special-resource-operator",
-			namespace:       "openshift-special-resource-operator",
-		}
-		channelv, _ := pkgminfo.getDefaultChannelVersion(oc)
+		channelv, err := exutil.GetOperatorPKGManifestDefaultChannel(oc, "openshift-special-resource-operator", "openshift-marketplace")
+		o.Expect(err).NotTo(o.HaveOccurred())
 		e2e.Logf("The default channel version of packagemanifest is %v\n", channelv)
-		sroSource, _ := pkgminfo.getPKGManifestSource(oc)
+		sroSource, err := exutil.GetOperatorPKGManifestSource(oc, "openshift-special-resource-operator", "openshift-marketplace")
+		o.Expect(err).NotTo(o.HaveOccurred())
 		e2e.Logf("The catalog source of packagemanifest is %v\n", sroSource)
 
 		subTemplate := filepath.Join(sroDir, "sro-sub.yaml")
@@ -67,17 +58,26 @@ var _ = g.Describe("[sig-node] PSAP SRO should", func() {
 		sub.createIfNotExist(oc)
 
 		g.By("SRO - Verfiy the result for SRO test case")
-		sroRes := oprResource{
-			kind:      "deployment",
-			name:      "special-resource-controller-manager",
-			namespace: "openshift-special-resource-operator",
+		exutil.WaitOprResourceReady(oc, "deployment", "special-resource-controller-manager", "openshift-special-resource-operator", true, false)
+
+		// Ensure NFD operator is installed
+		// Test requires NFD to be installed and an instance to be runnning
+		g.By("Deploy NFD Operator and create instance on Openshift Container Platform")
+		isNodeLabeled := exutil.IsNodeLabeledByNFD(oc)
+		//If the node has been labeled, the NFD operator and instnace
+		if isNodeLabeled {
+			e2e.Logf("NFD installation and node label found! Continuing with test ...")
+		} else {
+			exutil.InstallNFD(oc, "openshift-nfd")
+			//Check if the NFD Operator installed in namespace openshift-nfd
+			exutil.WaitOprResourceReady(oc, "deployment", "nfd-controller-manager", "openshift-nfd", true, false)
+			//create NFD instance in openshift-nfd
+			exutil.CreateNFDInstance(oc, "openshift-nfd")
 		}
-		g.By("SRO - Check if SRO Operator is Ready")
-		sroRes.waitOprResourceReady(oc)
 
 	})
 	// author: liqcui@redhat.com
-	g.It("Longduration-Author:liqcui-Medium-43058-SRO Build and run the simple-kmod SpecialResource using the SRO image's local manifests [Slow]", func() {
+	g.It("NonPreRelease-Longduration-Author:liqcui-Medium-43058-SRO Build and run the simple-kmod SpecialResource using the SRO image's local manifests [Slow]", func() {
 
 		simpleKmodPodRes := oprResource{
 			kind:      "pod",
@@ -111,13 +111,13 @@ var _ = g.Describe("[sig-node] PSAP SRO should", func() {
 			name:      "simple-kmod",
 			namespace: "simple-kmod",
 		}
-		simpleKmodDaemonset.waitOprResourceReady(oc)
+		simpleKmodDaemonset.waitLongDurationDaemonsetReady(oc, 900)
 
 		//Check is the simple-kmod kernel installed on worker node
 		assertSimpleKmodeOnNode(oc)
 	})
 
-	g.It("Longduration-Author:liqcui-Medium-43365-SRO Build and run SpecialResource ping-pong resource with SRO from CLI [Slow]", func() {
+	g.It("NonPreRelease-Longduration-Author:liqcui-Medium-43365-SRO Build and run SpecialResource ping-pong resource with SRO from CLI [Slow]", func() {
 
 		g.By("Cleanup special resource ping-pong application default objects")
 		//ping-pong example application contains ping-pong and cert-manager
@@ -149,47 +149,30 @@ var _ = g.Describe("[sig-node] PSAP SRO should", func() {
 		//Check ping-pong server and client pods status
 		g.By("SRO - Verfiy the result for SRO test case 43365")
 		g.By("SRO - Check ping-pong application pod status")
+		exutil.WaitOprResourceReady(oc, "deployment", "ping-pong-server", "ping-pong", true, false)
+		exutil.WaitOprResourceReady(oc, "deployment", "ping-pong-client", "ping-pong", true, false)
+
+		g.By("SRO - Check cert-manager application pod status")
+		//Check cert-manager pods status
+		exutil.WaitOprResourceReady(oc, "deployment", "cert-manager", "cert-manager", true, false)
+		exutil.WaitOprResourceReady(oc, "deployment", "cert-manager-cainjector", "cert-manager", true, false)
+		exutil.WaitOprResourceReady(oc, "deployment", "cert-manager-webhook", "cert-manager", true, false)
+
+		g.By("SRO - Check ping-pong application logs")
+		//Check if ping-pong application logs normally
 		pingPongServerPod := oprResource{
 			kind:      "deployment",
 			name:      "ping-pong-server",
 			namespace: "ping-pong",
 		}
-		pingPongServerPod.waitOprResourceReady(oc)
+		pingPongServerPod.assertOprPodLogs(oc, "Ping")
+		pingPongServerPod.assertOprPodLogs(oc, "Pong")
 
 		pingPongClientPod := oprResource{
 			kind:      "deployment",
 			name:      "ping-pong-client",
 			namespace: "ping-pong",
 		}
-		pingPongClientPod.waitOprResourceReady(oc)
-
-		g.By("SRO - Check cert-manager application pod status")
-		//Check cert-manager pods status
-		certManagerPod := oprResource{
-			kind:      "deployment",
-			name:      "cert-manager",
-			namespace: "cert-manager",
-		}
-		certManagerPod.waitOprResourceReady(oc)
-
-		certManagerCainjectorPod := oprResource{
-			kind:      "deployment",
-			name:      "cert-manager-cainjector",
-			namespace: "cert-manager",
-		}
-		certManagerCainjectorPod.waitOprResourceReady(oc)
-
-		certManagerWebhookPOD := oprResource{
-			kind:      "deployment",
-			name:      "cert-manager-webhook",
-			namespace: "cert-manager",
-		}
-		certManagerWebhookPOD.waitOprResourceReady(oc)
-
-		g.By("SRO - Check ping-pong application logs")
-		//Check if ping-pong application logs normally
-		pingPongServerPod.assertOprPodLogs(oc, "Ping")
-		pingPongServerPod.assertOprPodLogs(oc, "Pong")
 		pingPongClientPod.assertOprPodLogs(oc, "Ping")
 		pingPongClientPod.assertOprPodLogs(oc, "Pong")
 	})
@@ -258,12 +241,7 @@ var _ = g.Describe("[sig-node] PSAP SRO should", func() {
 		multibuild.applyResourceByYaml(oc, multibuildYaml)
 
 		g.By("SRO - Check if multi-build application is running")
-		multibuildstatefulset := oprResource{
-			kind:      "statefulset",
-			name:      "multi-build",
-			namespace: "multi-build",
-		}
-		multibuildstatefulset.waitOprResourceReady(oc)
+		exutil.WaitOprResourceReady(oc, "statefulset", "multi-build", "multi-build", true, false)
 
 		g.By("SRO - Assets the multi-build application logs")
 		multibuildpod := oprResource{

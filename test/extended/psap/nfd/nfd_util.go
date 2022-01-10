@@ -28,45 +28,6 @@ func isPodInstalled(oc *exutil.CLI, namespace string) bool {
 	return true
 }
 
-// installNFD attempts to install the Node Feature Discovery operator and verify that it is running
-func installNFD(oc *exutil.CLI) {
-
-	// check if NFD namespace already exists
-	err := oc.AsAdmin().WithoutNamespace().Run("get").Args("namespace", nfdNamespace).Execute()
-
-	// if namespace exists, check if NFD is installed - exit if it is, continue with installation otherwise
-	// if an error is thrown, namespace does not exist, create and continue with installation
-	if err == nil {
-		e2e.Logf("NFD namespace found - checking if NFD is installed ...")
-	} else {
-		e2e.Logf("NFD namespace not found - creating namespace and installing NFD ...")
-		exutil.CreateClusterResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", nfd_namespace_file)
-	}
-
-	// create NFD operator group from template
-	exutil.ApplyNsResourceFromTemplate(oc, nfdNamespace, "--ignore-unknown-parameters=true", "-f", nfd_operatorgroup_file)
-
-	// get default channel and create subscription from template
-	channel, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("packagemanifest", "nfd", "-n", "openshift-marketplace", "-o", "jsonpath={.status.defaultChannel}").Output()
-	o.Expect(err).NotTo(o.HaveOccurred())
-	e2e.Logf("Channel: %v", channel)
-	exutil.ApplyNsResourceFromTemplate(oc, nfdNamespace, "--ignore-unknown-parameters=true", "-f", nfd_sub_file, "-p", "CHANNEL="+channel)
-	//Wait for NFD controller manager is ready
-	exutil.WaitOprResourceReady(oc, "deployment", "nfd-controller-manager", nfdNamespace, false, false)
-
-}
-
-func createNFDInstance(oc *exutil.CLI) {
-	// get cluster version and create NFD instance from template
-	clusterVersion, _, err := exutil.GetClusterVersion(oc)
-	o.Expect(err).NotTo(o.HaveOccurred())
-	e2e.Logf("Cluster Version: %v", clusterVersion)
-	exutil.ApplyNsResourceFromTemplate(oc, nfdNamespace, "--ignore-unknown-parameters=true", "-f", nfd_instance_file, "-p", "IMAGE=quay.io/openshift/origin-node-feature-discovery:"+clusterVersion)
-	//wait for NFD master and worker is ready
-	exutil.WaitOprResourceReady(oc, "daemonset", "nfd-master", nfdNamespace, false, false)
-	exutil.WaitOprResourceReady(oc, "daemonset", "nfd-worker", nfdNamespace, false, true)
-}
-
 // createYAMLFromMachineSet creates a YAML file with a given filename from a given machineset name in a given namespace, throws an error if creation fails
 func createYAMLFromMachineSet(oc *exutil.CLI, namespace string, machineSetName string, filename string) (string, error) {
 	return oc.AsAdmin().WithoutNamespace().Run("get").Args("machineset", "-n", namespace, machineSetName, "-o", "yaml").OutputToFile(filename)

@@ -11,7 +11,8 @@ objects:
       channel: "${CHANNEL}"
       installPlanApproval: Automatic
       name: nfd
-      source: qe-app-registry
+      source: "${SOURCE}"
       sourceNamespace: openshift-marketplace
 parameters:
   - name: CHANNEL
+  - name: SOURCE
