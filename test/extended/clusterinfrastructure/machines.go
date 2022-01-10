@@ -48,4 +48,27 @@ var _ = g.Describe("[sig-cluster-lifecycle] Cluster_Infrastructure", func() {
 		}
 		e2e.Logf("Only azure platform supported for the test")
 	})
+
+	// author: huliu@redhat.com
+	g.It("Longduration-NonPreRelease-Author:huliu-Medium-46967-Implement Ephemeral OS Disks - OS cache placement on Azure [Disruptive]", func() {
+		g.By("Create a new machineset with Ephemeral OS Disks - OS cache placement")
+		if ci.CheckPlatform(oc) == "azure" {
+			machinesetName := "machineset-46967"
+			ms := ci.MachineSetDescription{machinesetName, 0}
+			defer ms.DeleteMachineSet(oc)
+			ms.CreateMachineSet(oc)
+			g.By("Update machineset with Ephemeral OS Disks - OS cache placement")
+			err := oc.AsAdmin().WithoutNamespace().Run("patch").Args("machineset/"+machinesetName, "-n", "openshift-machine-api", "-p", `{"spec":{"replicas":1,"template":{"spec":{"providerSpec":{"value":{"vmSize":"Standard_D4s_v3","osDisk":{"diskSizeGB":30,"cachingType":"ReadOnly","diskSettings":{"ephemeralStorageLocation":"Local"},"managedDisk":{"storageAccountType":""}}}}}}}}`, "--type=merge").Execute()
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			ci.WaitForMachinesRunning(oc, 1, machinesetName)
+
+			g.By("Check machine with Ephemeral OS Disks - OS cache placement")
+			out, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("machine", "-n", "openshift-machine-api", "-l", "machine.openshift.io/cluster-api-machineset="+machinesetName, "-o=jsonpath={.items[0].spec.providerSpec.value.osDisk.diskSettings.ephemeralStorageLocation}").Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			e2e.Logf("out:%s", out)
+			o.Expect(out).To(o.ContainSubstring("Local"))
+		}
+		e2e.Logf("Only azure platform supported for the test")
+	})
 })
