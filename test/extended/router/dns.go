@@ -35,7 +35,7 @@ var _ = g.Describe("[sig-network-edge] Network_Edge should", func() {
 		dnspodname  =  getRandomDNSPodName(podList)
 		attrList   :=  getOneCorefileStat(oc, dnspodname)
 		patchGlobalResourceAsAdmin(oc, resourceName, cfg_mul_ipv4_upstreams)
-		attrList    =  waitCorefileUpdated(oc, attrList)
+		waitCorefileUpdated(oc, attrList)
 		g.By("Check multiple ipv4 forward upstreams in CoreDNS")
 		upstreams  :=  readDNSCorefile(oc, dnspodname, "forward", "-A2")
 		o.Expect(upstreams).To(o.ContainSubstring("forward . 10.100.1.11:53 10.100.1.12:53 10.100.1.13:5353"))
@@ -51,7 +51,7 @@ var _ = g.Describe("[sig-network-edge] Network_Edge should", func() {
 		dnspodname = getRandomDNSPodName(podList)
 		attrList   = getOneCorefileStat(oc, dnspodname)
 		patchGlobalResourceAsAdmin(oc, resourceName, cfg_policy_random)
-		attrList   = waitCorefileUpdated(oc, attrList)
+		waitCorefileUpdated(oc, attrList)
 		g.By("Check forward policy random in Corefile of coredns")
 		policy_output = readDNSCorefile(oc, dnspodname, "forward", "-A2")
 		o.Expect(policy_output).To(o.ContainSubstring("policy random"))
@@ -60,7 +60,7 @@ var _ = g.Describe("[sig-network-edge] Network_Edge should", func() {
 		dnspodname = getRandomDNSPodName(podList)
 		attrList   = getOneCorefileStat(oc, dnspodname)
 		patchGlobalResourceAsAdmin(oc, resourceName, cfg_policy_rr)
-		attrList   = waitCorefileUpdated(oc, attrList)
+		waitCorefileUpdated(oc, attrList)
 		g.By("Check forward policy roundrobin in Corefile of coredns")
 		policy_output = readDNSCorefile(oc, dnspodname, "forward", "-A2")
 		o.Expect(policy_output).To(o.ContainSubstring("policy round_robin"))
@@ -69,7 +69,7 @@ var _ = g.Describe("[sig-network-edge] Network_Edge should", func() {
 		dnspodname = getRandomDNSPodName(podList)
 		attrList   = getOneCorefileStat(oc, dnspodname)
 		patchGlobalResourceAsAdmin(oc, resourceName, cfg_policy_seq)
-		attrList   = waitCorefileUpdated(oc, attrList)
+		waitCorefileUpdated(oc, attrList)
 		g.By("Check forward policy sequential in Corefile of coredns")
 		policy_output = readDNSCorefile(oc, dnspodname, "forward", "-A2")
 		o.Expect(policy_output).To(o.ContainSubstring("policy sequential"))
@@ -78,7 +78,7 @@ var _ = g.Describe("[sig-network-edge] Network_Edge should", func() {
 		dnspodname = getRandomDNSPodName(podList)
 		attrList   = getOneCorefileStat(oc, dnspodname)
 		patchGlobalResourceAsAdmin(oc, resourceName, cfg_default_upstreams)
-		attrList   = waitCorefileUpdated(oc, attrList)
+		waitCorefileUpdated(oc, attrList)
 		g.By("Check upstreams is restored to default in CoreDNS")
 		upstreams  =  readDNSCorefile(oc, dnspodname, "forward", "-A2")
 		o.Expect(upstreams).To(o.ContainSubstring("forward . /etc/resolv.conf"))
@@ -107,7 +107,7 @@ var _ = g.Describe("[sig-network-edge] Network_Edge should", func() {
 		dnspodname =  getRandomDNSPodName(podList)
 		attrList  :=  getOneCorefileStat(oc, dnspodname)
 		patchGlobalResourceAsAdmin(oc, resourceName, cfg_loglevel_debug)
-		attrList   =  waitCorefileUpdated(oc, attrList)
+		waitCorefileUpdated(oc, attrList)
 		output_lcfg,err_lcfg := oc.AsAdmin().Run("get").Args("cm/dns-default", "-n", "openshift-dns", "-o=jsonpath={.data.Corefile}").Output()
 		o.Expect(err_lcfg).NotTo(o.HaveOccurred())
 		o.Expect(output_lcfg).To(o.ContainSubstring("class denial error"))
@@ -119,7 +119,7 @@ var _ = g.Describe("[sig-network-edge] Network_Edge should", func() {
 		dnspodname = getRandomDNSPodName(podList)
 		attrList   = getOneCorefileStat(oc, dnspodname)
 		patchGlobalResourceAsAdmin(oc, resourceName, cfg_loglevel_trace)
-		attrList   = waitCorefileUpdated(oc, attrList)
+		waitCorefileUpdated(oc, attrList)
 		g.By("Check log class for logLevel Trace in Corefile of coredns")
 		log_output = readDNSCorefile(oc, dnspodname, "log", "-A2")
 		o.Expect(log_output).To(o.ContainSubstring("class all"))
@@ -128,9 +128,105 @@ var _ = g.Describe("[sig-network-edge] Network_Edge should", func() {
 		dnspodname = getRandomDNSPodName(podList)
 		attrList   = getOneCorefileStat(oc, dnspodname)
 		patchGlobalResourceAsAdmin(oc, resourceName, cfg_loglevel_normal)
-		attrList   = waitCorefileUpdated(oc, attrList)
+		waitCorefileUpdated(oc, attrList)
 		g.By("Check log class for logLevel Trace in Corefile of coredns")
 		log_output = readDNSCorefile(oc, dnspodname, "log", "-A2")
 		o.Expect(log_output).To(o.ContainSubstring("class error"))
+	})
+
+	g.It("Author:shudili-NonPreRelease-Critical-46867-Configure upstream resolvers for CoreDNS flag [Disruptive]", func() {
+		var (
+			resourceName           = "dns.operator.openshift.io/default"
+			cfg_default_upstreams  = "[{\"op\":\"replace\", \"path\":\"/spec/upstreamResolvers/upstreams\", \"value\":[" +
+			                         "{\"port\":53,\"type\":\"SystemResolvConf\"}]}]"
+			cfg_mul_ipv4_upstreams = "[{\"op\":\"replace\", \"path\":\"/spec/upstreamResolvers/upstreams\", \"value\":[" +
+			                         "{\"address\":\"10.100.1.11\",\"port\":53,\"type\":\"Network\"}, " +
+			                         "{\"address\":\"10.100.1.12\",\"port\":53,\"type\":\"Network\"}, " +
+			                         "{\"address\":\"10.100.1.13\",\"port\":5353,\"type\":\"Network\"}]}]"
+			exp_mul_ipv4_upstreams = "forward . 10.100.1.11:53 10.100.1.12:53 10.100.1.13:5353"
+			cfg_one_ipv4_upstreams = "[{\"op\":\"replace\", \"path\":\"/spec/upstreamResolvers/upstreams\", \"value\":[" +
+			                         "{\"address\":\"20.100.1.11\",\"port\":53,\"type\":\"Network\"}]}]"
+			exp_one_ipv4_upstreams = "forward . 20.100.1.11:53"
+			cfg_max_15_upstreams   =  "[{\"op\":\"replace\", \"path\":\"/spec/upstreamResolvers/upstreams\", \"value\":[" +
+			                         "{\"address\":\"30.100.1.11\",\"port\":53,\"type\":\"Network\"}, " +
+			                         "{\"address\":\"30.100.1.12\",\"port\":53,\"type\":\"Network\"}, " + 
+			                         "{\"address\":\"30.100.1.13\",\"port\":53,\"type\":\"Network\"}, " +
+			                         "{\"address\":\"30.100.1.14\",\"port\":53,\"type\":\"Network\"}, " +
+			                         "{\"address\":\"30.100.1.15\",\"port\":53,\"type\":\"Network\"}, " +
+			                         "{\"address\":\"30.100.1.16\",\"port\":53,\"type\":\"Network\"}, " +
+			                         "{\"address\":\"30.100.1.17\",\"port\":53,\"type\":\"Network\"}, " +
+			                         "{\"address\":\"30.100.1.18\",\"port\":53,\"type\":\"Network\"}, " +
+			                         "{\"address\":\"30.100.1.19\",\"port\":53,\"type\":\"Network\"}, " +
+			                         "{\"address\":\"30.100.1.20\",\"port\":53,\"type\":\"Network\"}, " +
+			                         "{\"address\":\"30.100.1.21\",\"port\":53,\"type\":\"Network\"}, " +
+			                         "{\"address\":\"30.100.1.22\",\"port\":53,\"type\":\"Network\"}, " +
+			                         "{\"address\":\"30.100.1.23\",\"port\":53,\"type\":\"Network\"}, " +
+			                         "{\"address\":\"30.100.1.24\",\"port\":53,\"type\":\"Network\"}, " +
+			                         "{\"address\":\"30.100.1.25\",\"port\":53,\"type\":\"Network\"}]}]"
+			exp_max_15_upstreams   = "forward . 30.100.1.11:53 30.100.1.12:53 30.100.1.13:53 30.100.1.14:53 30.100.1.15:53 " +
+			                         "30.100.1.16:53 30.100.1.17:53 30.100.1.18:53 30.100.1.19:53 30.100.1.20:53 " +
+			                         "30.100.1.21:53 30.100.1.22:53 30.100.1.23:53 30.100.1.24:53 30.100.1.25:53"
+			cfg_mul_ipv6_upstreams = "[{\"op\":\"replace\", \"path\":\"/spec/upstreamResolvers/upstreams\", \"value\":[" +
+			                         "{\"address\":\"1001::aaaa\",\"port\":5353,\"type\":\"Network\"}, " +
+			                         "{\"address\":\"1001::BBBB\",\"port\":53,\"type\":\"Network\"}, " +
+			                         "{\"address\":\"1001::cccc\",\"port\":53,\"type\":\"Network\"}]}]"
+			exp_mul_ipv6_upstreams = "forward . [1001::AAAA]:5353 [1001::BBBB]:53 [1001::CCCC]:53"
+		)
+		defer restoreDNSOperatorDefault(oc)
+
+		g.By("Check default values of forward upstream resolvers for CoreDNS")
+		podList       := getAllDNSPodsNames(oc)
+		dnspodname    := getRandomDNSPodName(podList)
+		upstreams     := readDNSCorefile(oc, dnspodname, "forward", "-A2")
+		o.Expect(upstreams).To(o.ContainSubstring("forward . /etc/resolv.conf"))
+
+		g.By("Patch dns operator with multiple ipv4 upstreams")
+		dnspodname = getRandomDNSPodName(podList)
+		attrList  := getOneCorefileStat(oc, dnspodname)
+		patchGlobalResourceAsAdmin(oc, resourceName, cfg_mul_ipv4_upstreams)
+		waitCorefileUpdated(oc, attrList)
+		g.By("Check multiple ipv4 forward upstream resolvers in config map")
+		output_cfg,err_cfg := oc.AsAdmin().Run("get").Args("cm/dns-default", "-n", "openshift-dns", "-o=jsonpath={.data.Corefile}").Output()
+		o.Expect(err_cfg).NotTo(o.HaveOccurred())
+		o.Expect(output_cfg).To(o.ContainSubstring(exp_mul_ipv4_upstreams))
+		g.By("Check multiple ipv4 forward upstream resolvers in CoreDNS")
+		upstreams = readDNSCorefile(oc, dnspodname, "forward", "-A2")
+		o.Expect(upstreams).To(o.ContainSubstring(exp_mul_ipv4_upstreams))
+
+		g.By("Patch dns operator with a single ipv4 upstream")
+		dnspodname = getRandomDNSPodName(podList)
+		attrList   = getOneCorefileStat(oc, dnspodname)
+		patchGlobalResourceAsAdmin(oc, resourceName, cfg_one_ipv4_upstreams)
+		waitCorefileUpdated(oc, attrList)
+		g.By("Check a single ipv4 forward upstream resolver for CoreDNS")
+		upstreams =  readDNSCorefile(oc, dnspodname, "forward", "-A2")
+		o.Expect(upstreams).To(o.ContainSubstring(exp_one_ipv4_upstreams))
+
+		g.By("Patch dns operator with max 15 ipv4 upstreams")
+		dnspodname = getRandomDNSPodName(podList)
+		attrList   = getOneCorefileStat(oc, dnspodname)
+		patchGlobalResourceAsAdmin(oc, resourceName, cfg_max_15_upstreams)
+		waitCorefileUpdated(oc, attrList)
+		g.By("Check max 15 ipv4 forward upstream resolvers for CoreDNS")
+		upstreams =  readDNSCorefile(oc, dnspodname, "forward", "-A2")
+		o.Expect(upstreams).To(o.ContainSubstring(exp_max_15_upstreams))
+
+		g.By("Patch dns operator with multiple ipv6 upstreams")
+		dnspodname = getRandomDNSPodName(podList)
+		attrList   = getOneCorefileStat(oc, dnspodname)
+		patchGlobalResourceAsAdmin(oc, resourceName, cfg_mul_ipv6_upstreams)
+		waitCorefileUpdated(oc, attrList)
+		g.By("Check multiple ipv6 forward upstream resolvers for CoreDNS")
+		upstreams =  readDNSCorefile(oc, dnspodname, "forward", "-A2")
+		o.Expect(upstreams).To(o.ContainSubstring(exp_mul_ipv6_upstreams))
+
+		g.By("Patch dns operator with default upstream resolvers")
+		dnspodname = getRandomDNSPodName(podList)
+		attrList   = getOneCorefileStat(oc, dnspodname)
+		patchGlobalResourceAsAdmin(oc, resourceName, cfg_default_upstreams)
+		waitCorefileUpdated(oc, attrList)
+		g.By("Check upstreams is restored to default in CoreDNS")
+		upstreams  =  readDNSCorefile(oc, dnspodname, "forward", "-A2")
+		o.Expect(upstreams).To(o.ContainSubstring("forward . /etc/resolv.conf"))
 	})
 })
