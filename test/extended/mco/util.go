@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
@@ -490,11 +491,25 @@ func gZipData(data []byte) (compressedData []byte, err error) {
 func getUrlEncodedFileConfig(destinationPath string, content string, mode string) string {
 	encodedContent := url.PathEscape(content)
 
+	decimalMode := mode
+	// if octal number we convert it to decimal. Json templates do not accept numbers with a leading zero (octal).
+	// if we don't do this conversion the 'oc process' command will not be able to render the template because {"mode": 0666}
+	//   is not a valid json. Numbers in json cannot start with a leading 0
+	if mode != "" && mode[0] == '0' {
+		// parse the octal string and conver to integer
+		iMode, err := strconv.ParseInt(mode, 8, 64)
+		// get a string with the decimal numeric representation of the mode
+		decimalMode = fmt.Sprintf("%d", os.FileMode(iMode))
+		if err != nil {
+			e2e.Failf("Filer permissions %s cannot be converted to integer", mode)
+		}
+	}
+
 	var fileConfig string
 	if mode == "" {
 		fileConfig = fmt.Sprintf(`{"contents": {"source": "data:,%s"}, "path": "%s"}`, encodedContent, destinationPath)
 	} else {
-		fileConfig = fmt.Sprintf(`{"contents": {"source": "data:,%s"}, "path": "%s", mode: %s}`, encodedContent, destinationPath, mode)
+		fileConfig = fmt.Sprintf(`{"contents": {"source": "data:,%s"}, "path": "%s", "mode": %s}`, encodedContent, destinationPath, decimalMode)
 	}
 
 	return fileConfig

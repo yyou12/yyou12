@@ -1017,7 +1017,8 @@ nulla pariatur.`
 		defer o.Expect(rf.PushNewTextContent(fileContent)).NotTo(o.HaveOccurred())
 
 		newMode := "0400"
-		verifyDriftConfig(mcp, rf, newMode)
+		useForceFile := false
+		verifyDriftConfig(mcp, rf, newMode, useForceFile)
 	})
 
 	g.It("Author:rioliu-NonPreRelease-High-46965-Avoid workload disruption for GPG Public Key Rotation [Serial]", func() {
@@ -1075,6 +1076,44 @@ nulla pariatur.`
 		o.Expect(cmdErr).NotTo(o.HaveOccurred())
 		o.Expect(cmdOut).Should(o.ContainSubstring("active"))
 
+	})
+
+	g.It("Author:sregidor-Longduration-NonPreRelease-High-46999-Config Drift. Config file permissions. [Serial]", func() {
+		g.By("Create a MC to deploy a config file")
+		filePath := "/etc/mco-test-file"
+		fileContent := "MCO test file\n"
+		fileMode := "0400" // decimal 256
+		fileConfig := getUrlEncodedFileConfig(filePath, fileContent, fileMode)
+
+		mcName := "mco-drift-test-file-permissions"
+		mc := MachineConfig{name: mcName, pool: "worker"}
+		defer mc.delete(oc)
+
+		template := NewMCOTemplate(oc, "generic-machine-config-template.yml")
+		err := template.Create("-p", "NAME="+mcName, "-p", "POOL=worker", "-p", fmt.Sprintf("FILES=[%s]", fileConfig))
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Wait until worker MCP has finished the configuration. No machine should be degraded.")
+		mcp := NewMachineConfigPool(oc.AsAdmin(), "worker")
+		mcp.waitForComplete()
+
+		g.By("Verfiy file content and permissions")
+		workerNode := NewNodeList(oc).GetAllWorkerNodesOrFail()[0]
+
+		rf := NewRemoteFile(workerNode, filePath)
+		rferr := rf.Fetch()
+		o.Expect(rferr).NotTo(o.HaveOccurred())
+
+		o.Expect(rf.GetTextContent()).To(o.Equal(fileContent))
+		o.Expect(rf.GetNpermissions()).To(o.Equal(fileMode))
+
+		g.By("Verfiy drift config behavior")
+		defer o.Expect(rf.PushNewPermissions(fileMode)).NotTo(o.HaveOccurred())
+		defer o.Expect(rf.PushNewTextContent(fileContent)).NotTo(o.HaveOccurred())
+
+		newMode := "0644"
+		useForceFile := true
+		verifyDriftConfig(mcp, rf, newMode, useForceFile)
 	})
 })
 
@@ -1175,7 +1214,7 @@ func verifyKcRenderedMcs(oc *exutil.CLI, allKcs []KubeletConfig) []string {
 	return slices
 }
 
-func verifyDriftConfig(mcp *MachineConfigPool, rf *RemoteFile, newMode string) {
+func verifyDriftConfig(mcp *MachineConfigPool, rf *RemoteFile, newMode string, forceFile bool) {
 	workerNode := rf.node
 	origContent := rf.content
 	origMode := rf.GetNpermissions()
@@ -1195,15 +1234,20 @@ func verifyDriftConfig(mcp *MachineConfigPool, rf *RemoteFile, newMode string) {
 	reason := workerNode.GetAnnotationOrFail("machineconfiguration.openshift.io/reason")
 	o.Expect(reason).To(o.Equal(fmt.Sprintf(`content mismatch for file "%s"`, rf.fullPath)))
 
-	g.By("Restore original content and wait until pool is ready again")
-	o.Expect(rf.PushNewTextContent(origContent)).NotTo(o.HaveOccurred())
+	if forceFile {
+		g.By("Restore original content using the ForceFile and wait until pool is ready again")
+		workerNode.ForceReapplyConfiguration()
+	} else {
+		g.By("Restore original content manually and wait until pool is ready again")
+		o.Expect(rf.PushNewTextContent(origContent)).NotTo(o.HaveOccurred())
+	}
+
+	o.Eventually(mcp.pollDegradedMachineCount(), "5m", "10s").Should(o.Equal("0"), "There should be no degraded machines")
+	o.Eventually(mcp.pollDegradedStatus(), "5m", "10s").Should(o.Equal("False"), "The worker MCP should report a False Degraded status")
+	o.Eventually(mcp.pollUpdatedStatus(), "5m", "10s").Should(o.Equal("True"), "The worker MCP should report a True Updated status")
 	rferr = rf.Fetch()
 	o.Expect(rferr).NotTo(o.HaveOccurred())
-
 	o.Expect(rf.GetTextContent()).To(o.Equal(origContent), "Original file content should be restored")
-	o.Eventually(mcp.pollDegradedMachineCount(), "1m", "5s").Should(o.Equal("0"), "There should be no degraded machines")
-	o.Eventually(mcp.pollDegradedStatus(), "1m", "5s").Should(o.Equal("False"), "The worker MCP should report a False Degraded status")
-	o.Eventually(mcp.pollUpdatedStatus(), "1m", "5s").Should(o.Equal("True"), "The worker MCP should report a True Updated status")
 
 	g.By("Verify that node annotations have been cleaned")
 	reason = workerNode.GetAnnotationOrFail("machineconfiguration.openshift.io/reason")
