@@ -253,7 +253,7 @@ func nowStamp() string {
 // Log output the storage debug info
 func debugLogf(format string, args ...interface{}) {
 	if logLevel := os.Getenv("STORAGE_LOG_LEVEL"); logLevel == "DEBUG" {
-		e2e.Logf(fmt.Sprintf(nowStamp()+": *STORAGE_DEBUG*: "+format+"\n", args...))
+		e2e.Logf(fmt.Sprintf(nowStamp()+": *STORAGE_DEBUG*:\n"+format, args...))
 	}
 }
 

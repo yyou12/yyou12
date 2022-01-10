@@ -2,10 +2,13 @@ package storage
 
 import (
 	"fmt"
+	"io/ioutil"
+	"strings"
 	"time"
 
 	o "github.com/onsi/gomega"
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
+	"github.com/tidwall/sjson"
 	"k8s.io/apimachinery/pkg/util/wait"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 )
@@ -19,11 +22,10 @@ func getPersistentVolumeNameByPersistentVolumeClaim(oc *exutil.CLI, namespace st
 }
 
 // Get the persistent volume status
-func getPersistentVolumeStatus(oc *exutil.CLI, namespace string, pvName string) string {
-	pvStatus, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pv", "-n", namespace, pvName, "-o=jsonpath={.status.phase}").Output()
-	o.Expect(err).NotTo(o.HaveOccurred())
-	e2e.Logf("The PV  %s status in namespace %s is %q", pvName, namespace, pvStatus)
-	return pvStatus
+func getPersistentVolumeStatus(oc *exutil.CLI, pvName string) (string, error) {
+	pvStatus, err := oc.AsAdmin().Run("get").Args("pv", pvName, "-o=jsonpath={.status.phase}").Output()
+	e2e.Logf("The PV  %s status is %q", pvName, pvStatus)
+	return pvStatus, err
 }
 
 // Use persistent volume name get the volumeid
@@ -66,4 +68,73 @@ func waitPVVolSizeToGetResized(oc *exutil.CLI, namespace string, pvcName string,
 		}
 	})
 	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("The volume:%v, did not get Resized.", pvcName))
+}
+
+// Wait specified Persist Volume status becomes to expected status
+func waitForPersistentVolumeStatusAsExpected(oc *exutil.CLI, pvName string, expectedStatus string) {
+	var (
+		status string
+		err    error
+	)
+	if expectedStatus == "deleted" {
+		err = wait.Poll(5*time.Second, 120*time.Second, func() (bool, error) {
+			status, err = getPersistentVolumeStatus(oc, pvName)
+			if err != nil && strings.Contains(interfaceToString(err), "not found") {
+				e2e.Logf("The persist volume '%s' becomes to expected status: '%s' ", pvName, expectedStatus)
+				return true, nil
+			} else {
+				e2e.Logf("The persist volume '%s' is not deleted yet", pvName)
+				return false, nil
+			}
+		})
+	} else {
+		err = wait.Poll(5*time.Second, 120*time.Second, func() (bool, error) {
+			status, err = getPersistentVolumeStatus(oc, pvName)
+			if err != nil {
+				e2e.Logf("Get persist volume '%v' status failed of: %v.", pvName, err)
+				return false, err
+			} else {
+				if status == expectedStatus {
+					e2e.Logf("The persist volume '%s' becomes to expected status: '%s' ", pvName, expectedStatus)
+					return true, nil
+				} else {
+					return false, nil
+				}
+			}
+		})
+	}
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("The persist volume '%s' didn't become to expected status'%s' ", pvName, expectedStatus))
+}
+
+// Use the retain persist volume create a new persist volume object
+func createNewPersistVolumeWithRetainVolume(oc *exutil.CLI, originPvExportJson string, storageClassName string, newPvName string) {
+	var (
+		err            error
+		outputJsonFile string
+	)
+	for _, jsonPath := range []string{`spec.claimRef`, `spec.nodeAffinity`, `spec.storageClassName`, `status`, `metadata`} {
+		originPvExportJson, err = sjson.Delete(originPvExportJson, jsonPath)
+		o.Expect(err).NotTo(o.HaveOccurred())
+	}
+	pvNameParameter := map[string]interface{}{
+		"jsonPath": `metadata.`,
+		"name":     newPvName,
+	}
+	retainPolicyParameter := map[string]interface{}{
+		"jsonPath":                      `spec.`,
+		"storageClassName":              storageClassName,
+		"persistentVolumeReclaimPolicy": "Delete", // Seems not invalid when the volumeID ever maked retain
+	}
+	for _, extraParameter := range []map[string]interface{}{pvNameParameter, retainPolicyParameter} {
+		outputJsonFile, err = jsonAddExtraParametersToFile(originPvExportJson, extraParameter)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		tempJsonByte, _ := ioutil.ReadFile(outputJsonFile)
+		originPvExportJson = string(tempJsonByte)
+	}
+	e2e.Logf("The new PV jsonfile of resource is %s", outputJsonFile)
+	jsonOutput, _ := ioutil.ReadFile(outputJsonFile)
+	debugLogf("The file content is: \n%s", jsonOutput)
+	_, err = oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", outputJsonFile).Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	e2e.Logf("The new persist volume:\"%s\" created", newPvName)
 }

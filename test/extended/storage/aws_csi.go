@@ -24,7 +24,7 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 
 	// author: pewang@redhat.com
 	// [AWS-EBS-CSI] [Dynamic PV] io1 type ebs volumes should store data and allow exec of files
-	g.It("Author:pewang-High-24484-[CSI] Pod is running with dynamic create io1 ebs volume [Flaky]", func() {
+	g.It("Author:pewang-High-24484-[CSI] Pod is running with dynamic create io1 ebs volume", func() {
 		// Set the resource definition for the scenario
 		var (
 			storageTeamBaseDir   = exutil.FixturePath("testdata", "storage")
@@ -66,7 +66,7 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 		o.Expect(getPersistentVolumeClaimStatus(oc, pvc.namespace, pvc.name)).To(o.Equal("Bound"))
 
 		g.By("5. Check the pvc bound pv's info on the aws backend，iops = iopsPerGB * volumeCapacity")
-		getCreditFromCluster(oc)
+		getCredentialFromCluster(oc)
 		volumeId := pvc.getVolumeId(oc)
 		o.Expect(getAwsVolumeTypeByVolumeId(volumeId)).To(o.Equal("io1"))
 		o.Expect(getAwsVolumeIopsByVolumeId(volumeId)).To(o.Equal(int64(200)))

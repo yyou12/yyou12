@@ -147,6 +147,20 @@ func (pvc *persistentVolumeClaim) createWithSnapshotDataSource(oc *exutil.CLI) {
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
+//  Create a new PersistentVolumeClaim with specified persist volume
+func (pvc *persistentVolumeClaim) createWithSpecifiedPV(oc *exutil.CLI, pvName string) {
+	if pvc.namespace == "" {
+		pvc.namespace = oc.Namespace()
+	}
+	extraParameters := map[string]interface{}{
+		"jsonPath":   `items.0.spec.`,
+		"volumeName": pvName,
+	}
+	err := applyResourceFromTemplateWithExtraParametersAsAdmin(oc, extraParameters, "--ignore-unknown-parameters=true", "-f", pvc.template, "-p", "PVCNAME="+pvc.name, "PVCNAMESPACE="+pvc.namespace, "SCNAME="+pvc.scname,
+		"ACCESSMODE="+pvc.accessmode, "VOLUMEMODE="+pvc.volumemode, "PVCCAPACITY="+pvc.capacity)
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
 //  Delete the PersistentVolumeClaim
 func (pvc *persistentVolumeClaim) delete(oc *exutil.CLI) {
 	err := oc.WithoutNamespace().Run("delete").Args("pvc", pvc.name, "-n", pvc.namespace).Execute()
