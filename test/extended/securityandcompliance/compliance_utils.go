@@ -2,7 +2,9 @@ package securityandcompliance
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -401,19 +403,17 @@ func (subD *subscriptionDescription) getRuleStatus(oc *exutil.CLI, expected stri
 	}
 }
 
-func (subD *subscriptionDescription) getProfileBundleNameandStatus(oc *exutil.CLI, expected string, status string) {
-	pbName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", subD.namespace, "profilebundles", "-o=jsonpath={.items[*].metadata.name}").Output()
-	lines := strings.Fields(pbName)
-	for _, line := range lines {
-		if strings.Compare(line, expected) == 0 {
-			e2e.Logf("\n%v\n\n", line)
-			// verify profilebundle status
-			pbStatus, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", subD.namespace, "profilebundles", line, "-o=jsonpath={.status.dataStreamStatus}").Output()
-			o.Expect(pbStatus).To(o.ContainSubstring(status))
-			o.Expect(err).NotTo(o.HaveOccurred())
+func (subD *subscriptionDescription) getProfileBundleNameandStatus(oc *exutil.CLI, pbName string, status string) {
+	err := wait.Poll(5*time.Second, 30*time.Second, func() (bool, error) {
+		pbStatus, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", subD.namespace, "profilebundles", pbName, "-o=jsonpath={.status.dataStreamStatus}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		if strings.Compare(pbStatus, status) == 0 {
+			e2e.Logf("\n%v\n\n", pbStatus)
+			return true, nil
 		}
-	}
-	o.Expect(err).NotTo(o.HaveOccurred())
+		return false, nil
+	})
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("the status of %s profilebundle is not VALID", pbName))
 }
 
 func (subD *subscriptionDescription) getTailoredProfileNameandStatus(oc *exutil.CLI, expected string) {
@@ -438,14 +438,19 @@ func (subD *subscriptionDescription) getTailoredProfileNameandStatus(oc *exutil.
 }
 
 func (subD *subscriptionDescription) getProfileName(oc *exutil.CLI, expected string) {
-	pName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", subD.namespace, "profile.compliance", "-o=jsonpath={.items[*].metadata.name}").Output()
-	lines := strings.Fields(pName)
-	for _, line := range lines {
-		if strings.Compare(line, expected) == 0 {
-			e2e.Logf("\n%v\n\n", line)
+	err := wait.Poll(2*time.Second, 10*time.Second, func() (bool, error) {
+		pName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", subD.namespace, "profile.compliance", "-o=jsonpath={.items[*].metadata.name}").Output()
+		lines := strings.Fields(pName)
+		for _, line := range lines {
+			if strings.Compare(line, expected) == 0 {
+				e2e.Logf("\n%v\n\n", line)
+				return true, nil
+			}
 		}
-	}
-	o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(err).NotTo(o.HaveOccurred())
+		return false, nil
+	})
+	exutil.AssertWaitPollNoErr(err, "The profile name does not match")
 }
 
 func (subD *subscriptionDescription) getARFreportFromPVC(oc *exutil.CLI, expected string) {
@@ -696,7 +701,7 @@ func checkOperatorPodStatus(oc *exutil.CLI, namespace string) string {
 func assertCheckAuditLogsForword(oc *exutil.CLI, namespace string, csvname string) {
 	var auditlogs string
 	podnames, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-l logging-infra=fluentdserver", "-n", namespace, "-o=jsonpath={.items[0].metadata.name}").Output()
-	auditlog, err := oc.AsAdmin().WithoutNamespace().Run("rsh").Args("-n", namespace, podnames, "cat", "/fluentd/log/audit.log").OutputToFile(getRandomString() + "isc-audit.json")
+	auditlog, err := oc.AsAdmin().WithoutNamespace().Run("rsh").Args("-n", namespace, podnames, "cat", "/fluentd/log/audit.log").OutputToFile(getRandomString() + "isc-audit.log")
 	o.Expect(err).NotTo(o.HaveOccurred())
 	result, err1 := exec.Command("bash", "-c", "cat "+auditlog+" | grep "+csvname+" |tail -n5; rm -rf "+auditlog).Output()
 	o.Expect(err1).NotTo(o.HaveOccurred())
@@ -806,4 +811,23 @@ func extractResultFromConfigMap(oc *exutil.CLI, label string, namespace string) 
 		return false, nil
 	})
 	exutil.AssertWaitPollNoErr(err, "Node name does not matches with the ComplianceScan XCCDF result output")
+}
+
+func genFluentdSecret(oc *exutil.CLI, namespace string, serverName string) {
+	baseDir := exutil.FixturePath("testdata", "securityandcompliance")
+	keysPath := filepath.Join(baseDir, "temp"+getRandomString())
+	defer exec.Command("rm", "-r", keysPath).Output()
+	err := os.MkdirAll(keysPath, 0755)
+	o.Expect(err).NotTo(o.HaveOccurred())
+	//generate certs
+	generateCertsSH := exutil.FixturePath("testdata", "securityandcompliance", "cert_generation.sh")
+	cmd := []string{generateCertsSH, keysPath, namespace, serverName}
+	e2e.Logf("%s", cmd)
+	_, err1 := exec.Command("sh", cmd...).Output()
+	o.Expect(err1).NotTo(o.HaveOccurred())
+	e2e.Logf("The certificates and keys are generated for %s \n", serverName)
+	//create secret for fluentd server
+	_, err2 := oc.AsAdmin().WithoutNamespace().Run("create").Args("secret", "generic", serverName, "-n", namespace, "--from-file=ca-bundle.crt="+keysPath+"/ca.crt", "--from-file=tls.key="+keysPath+"/logging-es.key", "--from-file=tls.crt="+keysPath+"/logging-es.crt", "--from-file=ca.key="+keysPath+"/ca.key").Output()
+	o.Expect(err2).NotTo(o.HaveOccurred())
+	e2e.Logf("The secrete is generated for %s in %s namespace \n", serverName, namespace)
 }
