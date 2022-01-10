@@ -1686,12 +1686,12 @@ var _ = g.Describe("[sig-operators] OLM opm with podman", func() {
 
 		g.By("step: create include files")
 		includeFilePath1 := filepath.Join(tmpPath, "include-1.yaml")
-		includeContent1 := `packages: 
+		includeContent1 := `packages:
   - name: ditto-operator
     channels:
     - name: alpha-3
   - name: etcd
-    channels: 
+    channels:
     - name: single-1
     - name: single-2`
 		if err = ioutil.WriteFile(includeFilePath1, []byte(includeContent1), 0644); err != nil {
@@ -1699,24 +1699,24 @@ var _ = g.Describe("[sig-operators] OLM opm with podman", func() {
 		}
 
 		includeFilePath2 := filepath.Join(tmpPath, "include-2.yaml")
-		includeContent2 := `packages: 
+		includeContent2 := `packages:
   - name: ditto-operator
     channels:
     - name: alpha-2
   - name: etcd
-    channels: 
+    channels:
     - name: clusterwide`
 		if err = ioutil.WriteFile(includeFilePath2, []byte(includeContent2), 0644); err != nil {
 			e2e.Failf(fmt.Sprintf("Writefile %s Error: %v", includeFilePath2, err))
 		}
 
 		includeFilePath3 := filepath.Join(tmpPath, "include-3.yaml")
-		includeContent3 := `packages: 
+		includeContent3 := `packages:
   - name: ditto-operator
     channels:
     - name: alpha-4
   - name: etcd
-    channels: 
+    channels:
     - name: single-1
     - name: single-3`
 		if err = ioutil.WriteFile(includeFilePath3, []byte(includeContent3), 0644); err != nil {
@@ -1843,4 +1843,44 @@ var _ = g.Describe("[sig-operators] OLM opm with podman", func() {
 
 	})
 
+	// author: tbuskey@redhat.com OLM-2195
+	g.It("Author:tbuskey-Low-45409-opm filter by operator version", func() {
+		var (
+			opmBaseDir     = exutil.FixturePath("testdata", "opm")
+			includeFile    = filepath.Join(opmBaseDir, "45409_include.yaml")
+			tmpPath        = filepath.Join(opmBaseDir, "temp")
+			sourceIndex    = "quay.io/olmqe/amq-datagrid-index"
+			sourceIndexTag = sourceIndex + ":v4.9"
+			err            error
+			output         string
+		)
+
+		g.By("mkdir tmpPath")
+		defer DeleteDir(tmpPath, "fixture-testdata")
+		err = os.MkdirAll(tmpPath, 0777)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		opmCLI.ExecCommandPath = tmpPath
+
+		g.By("opm version")
+		output, err = opmCLI.Run("version").Args("").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf("version: %v", output)
+
+		g.By("Index diff")
+		output, err = opmCLI.Run("alpha").Args("diff", sourceIndexTag, "-i", includeFile).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf("Check output:")
+		o.Expect(string(output)).To(o.ContainSubstring("amq-streams"))
+		e2e.Logf("         has  amq-streams")
+		o.Expect(string(output)).NotTo(o.ContainSubstring("datagrid"))
+		e2e.Logf("does not have datagrid")
+		o.Expect(string(output)).To(o.ContainSubstring("1.8.2"))
+		e2e.Logf("         has  1.8.2")
+		o.Expect(string(output)).NotTo(o.ContainSubstring("1.8.0"))
+		e2e.Logf("does not have 1.8.0")
+		o.Expect(string(output)).NotTo(o.ContainSubstring("1.7.3"))
+		e2e.Logf("does not have 1.7.3")
+
+		g.By("Success")
+	})
 })
