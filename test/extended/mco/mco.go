@@ -497,16 +497,26 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		podLogs, err := exutil.GetSpecificPodLogs(oc, "openshift-machine-config-operator", "machine-config-daemon", workerNode.GetMachineConfigDaemon(), "\"evicted\\|drain\\|crio\"")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		e2e.Logf("Pod logs for node drain, pods evicted and crio service reload :\n %v", podLogs)
-		o.Expect(podLogs).Should(
-			o.And(
-				o.ContainSubstring("Update prepared; beginning drain"),
-				o.ContainSubstring("Evicted pod openshift-image-registry/image-registry"),
-				o.ContainSubstring("drain complete")))
-		// check whether crio.service is reloaded in 4.10+ env
+		// get clusterversion
 		cv, _, cvErr := exutil.GetClusterVersion(oc)
 		o.Expect(cvErr).NotTo(o.HaveOccurred())
-		if CompareVersions(cv, ">=", "4.10") {
-			e2e.Logf("cluster version is >= 4.10, need to check crio service is reloaded or not")
+		// check node drain is skipped for cluster 4.7+
+		if CompareVersions(cv, ">", "4.7") {
+			o.Expect(podLogs).Should(
+				o.And(
+					o.ContainSubstring("/etc/containers/registries.conf: changes made are safe to skip drain"),
+					o.ContainSubstring("Changes do not require drain, skipping")))
+		} else {
+			// check node drain can be triggered for 4.6 & 4.7
+			o.Expect(podLogs).Should(
+				o.And(
+					o.ContainSubstring("Update prepared; beginning drain"),
+					o.ContainSubstring("Evicted pod openshift-image-registry/image-registry"),
+					o.ContainSubstring("drain complete")))
+		}
+		// check whether crio.service is reloaded in 4.6+ env
+		if CompareVersions(cv, ">", "4.6") {
+			e2e.Logf("cluster version is > 4.6, need to check crio service is reloaded or not")
 			o.Expect(podLogs).Should(o.ContainSubstring("crio config reloaded successfully"))
 		}
 
@@ -1236,7 +1246,7 @@ func verifyDriftConfig(mcp *MachineConfigPool, rf *RemoteFile, newMode string, f
 
 	if forceFile {
 		g.By("Restore original content using the ForceFile and wait until pool is ready again")
-		workerNode.ForceReapplyConfiguration()
+		o.Expect(workerNode.ForceReapplyConfiguration()).NotTo(o.HaveOccurred())
 	} else {
 		g.By("Restore original content manually and wait until pool is ready again")
 		o.Expect(rf.PushNewTextContent(origContent)).NotTo(o.HaveOccurred())
