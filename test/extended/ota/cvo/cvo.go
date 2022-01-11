@@ -130,9 +130,9 @@ var _ = g.Describe("[sig-updates] OTA cvo should", func() {
 		defer client.Close()
 
 		graphURL, bucket, object, _, _, err := buildGraph(client, oc, projectID)
-		o.Expect(err).NotTo(o.HaveOccurred())
 		defer DeleteBucket(client, bucket)
 		defer DeleteObject(client, bucket, object)
+		o.Expect(err).NotTo(o.HaveOccurred())
 
 		orgUpstream, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("clusterversion", "-o=jsonpath={.items[].spec.upstream}").Output()
 		orgChannel, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("clusterversion", "-o=jsonpath={.items[].spec.channel}").Output()
@@ -314,9 +314,9 @@ var _ = g.Describe("[sig-updates] OTA cvo should", func() {
 		defer client.Close()
 
 		graphURL, bucket, object, targetVersion, targetPayload, err := buildGraph(client, oc, projectID)
-		o.Expect(err).NotTo(o.HaveOccurred())
 		defer DeleteBucket(client, bucket)
 		defer DeleteObject(client, bucket, object)
+		o.Expect(err).NotTo(o.HaveOccurred())
 
 		err = oc.AsAdmin().WithoutNamespace().Run("patch").Args("clusterversion/version", "--type=merge", "--patch", fmt.Sprintf("{\"spec\":{\"upstream\":\"%s\", \"channel\":\"channel-a\"}}", graphURL)).Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -351,7 +351,7 @@ var _ = g.Describe("[sig-updates] OTA cvo should", func() {
 
 		g.By("Get goodOauthFile from the initial oauth yaml file to oauth-41728.yaml")
 		goodOauthFile, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("oauth", "cluster", "-o", "yaml").OutputToFile("oauth-41728.yaml")
-		defer exec.Command("bash", "-c", fmt.Sprintf("rm -rf %s", goodOauthFile))
+		defer os.RemoveAll(goodOauthFile)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		g.By("Prune goodOauthFile")
@@ -530,16 +530,10 @@ var _ = g.Describe("[sig-updates] OTA cvo should", func() {
 	//author: yanyang@redhat.com
 	g.It("Author:yanyang-Medium-46724-cvo defaults deployment replicas to one if it's unset in manifest [Flaky]", func() {
 		g.By("Check the replicas for openshift-insights/insights-operator is unset in manifest")
-		manifestDir := fmt.Sprintf("manifest-%d", time.Now().Unix())
-		dockerconfigDir := fmt.Sprintf("dockerconfig-%d", time.Now().Unix())
-		defer exec.Command("rm", "-rf", manifestDir, dockerconfigDir).Output()
-		_, err := exec.Command("mkdir", "-p", dockerconfigDir).Output()
+		tempDataDir, err := extractManifest(oc)
+		defer os.RemoveAll(tempDataDir)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		_, err = oc.AsAdmin().Run("extract").Args("secret/pull-secret", "-n", "openshift-config", "--confirm", "--to="+dockerconfigDir).Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		err = oc.AsAdmin().WithoutNamespace().Run("adm").Args("release", "extract", "--to", manifestDir, "-a", dockerconfigDir+"/.dockerconfigjson").Execute()
-		o.Expect(err).NotTo(o.HaveOccurred())
+		manifestDir := filepath.Join(tempDataDir, "manifest")
 		namespace, name := "openshift-insights", "insights-operator"
 		cmd := fmt.Sprintf("grep -rlZ 'kind: Deployment' %s | xargs -0 grep -l 'name: %s\\|namespace: %s' | xargs grep replicas", manifestDir, name, namespace)
 		e2e.Logf(cmd)
