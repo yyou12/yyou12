@@ -1125,6 +1125,44 @@ nulla pariatur.`
 		useForceFile := true
 		verifyDriftConfig(mcp, rf, newMode, useForceFile)
 	})
+
+	g.It("Author:sregidor-Longduration-NonPreRelease-High-47045-Config Drift. Compressed files. [Serial]", func() {
+		g.By("Create a MC to deploy a config file using compression")
+		filePath := "/etc/mco-compressed-test-file"
+		fileContent := "MCO test file\nusing compression"
+		fileConfig := getGzipFileJSONConfig(filePath, fileContent)
+
+		mcName := "mco-drift-test-compressed-file"
+		mc := MachineConfig{name: mcName, pool: "worker"}
+		defer mc.delete(oc)
+
+		template := NewMCOTemplate(oc, "generic-machine-config-template.yml")
+		err := template.Create("-p", "NAME="+mcName, "-p", "POOL=worker", "-p", fmt.Sprintf("FILES=[%s]", fileConfig))
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Wait until worker MCP has finished the configuration. No machine should be degraded.")
+		mcp := NewMachineConfigPool(oc.AsAdmin(), "worker")
+		mcp.waitForComplete()
+
+		g.By("Verfiy file content and permissions")
+		workerNode := NewNodeList(oc).GetAllWorkerNodesOrFail()[0]
+
+		rf := NewRemoteFile(workerNode, filePath)
+		rferr := rf.Fetch()
+		o.Expect(rferr).NotTo(o.HaveOccurred())
+
+		defaultMode := "0644"
+		o.Expect(rf.GetTextContent()).To(o.Equal(fileContent))
+		o.Expect(rf.GetNpermissions()).To(o.Equal(defaultMode))
+
+		g.By("Verfiy drift config behavior")
+		defer o.Expect(rf.PushNewPermissions(defaultMode)).NotTo(o.HaveOccurred())
+		defer o.Expect(rf.PushNewTextContent(fileContent)).NotTo(o.HaveOccurred())
+
+		newMode := "0400"
+		useForceFile := true
+		verifyDriftConfig(mcp, rf, newMode, useForceFile)
+	})
 })
 
 func createMcAndVerifyMCValue(oc *exutil.CLI, stepText string, mcName string, workerNode node, textToVerify TextToVerify, cmd ...string) {
