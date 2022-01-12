@@ -971,7 +971,7 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 	// [CSI Driver] [Dynamic PV] [Filesystem] volumes resize on-line
 	g.It("Author:ropatil-Critical-45984-[CSI Driver] [Dynamic PV] [Filesystem default] volumes resize on-line", func() {
 		// Define the test scenario support provisioners
-		scenarioSupportProvisioners := []string{"ebs.csi.aws.com", "cinder.csi.openstack.org", "pd.csi.storage.gke.io"}
+		scenarioSupportProvisioners := []string{"ebs.csi.aws.com", "cinder.csi.openstack.org", "pd.csi.storage.gke.io", "csi.vsphere.vmware.com"}
 		// Set the resource template for the scenario
 		var (
 			storageTeamBaseDir  = exutil.FixturePath("testdata", "storage")
@@ -1004,7 +1004,7 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 	// [CSI Driver] [Dynamic PV] [Raw Block] volumes resize on-line
 	g.It("Author:ropatil-Critical-45985-[CSI Driver] [Dynamic PV] [Raw block] volumes resize on-line", func() {
 		// Define the test scenario support provisioners
-		scenarioSupportProvisioners := []string{"ebs.csi.aws.com", "cinder.csi.openstack.org", "pd.csi.storage.gke.io"}
+		scenarioSupportProvisioners := []string{"ebs.csi.aws.com", "cinder.csi.openstack.org", "pd.csi.storage.gke.io", "csi.vsphere.vmware.com"}
 		// Set the resource template for the scenario
 		var (
 			storageTeamBaseDir  = exutil.FixturePath("testdata", "storage")
@@ -1037,7 +1037,7 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 	// [CSI Driver] [Dynamic PV] [Filesystem] volumes resize off-line
 	g.It("Author:ropatil-Critical-41452-[CSI Driver] [Dynamic PV] [Filesystem default] volumes resize off-line", func() {
 		// Define the test scenario support provisioners
-		scenarioSupportProvisioners := []string{"disk.csi.azure.com"}
+		scenarioSupportProvisioners := []string{"disk.csi.azure.com", "csi.vsphere.vmware.com"}
 		// Set the resource template for the scenario
 		var (
 			storageTeamBaseDir  = exutil.FixturePath("testdata", "storage")
@@ -1070,7 +1070,7 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 	// [CSI Driver] [Dynamic PV] [Raw block] volumes resize off-line
 	g.It("Author:ropatil-Critical-44902-[CSI Driver] [Dynamic PV] [Raw block] volumes resize off-line", func() {
 		// Define the test scenario support provisioners
-		scenarioSupportProvisioners := []string{"disk.csi.azure.com"}
+		scenarioSupportProvisioners := []string{"disk.csi.azure.com", "csi.vsphere.vmware.com"}
 		// Set the resource template for the scenario
 		var (
 			storageTeamBaseDir  = exutil.FixturePath("testdata", "storage")
@@ -1265,7 +1265,11 @@ func ResizeOfflineCommonTestSteps(oc *exutil.CLI, pvc persistentVolumeClaim, dep
 	checkVolumeNotMountOnNode(oc, volName, nodeName)
 
 	g.By("9. Get the pvc status type")
-	getPersistentVolumeClaimStatusMatch(oc, dep.namespace, pvc.name, "FileSystemResizePending")
+	if dep.typepath == "mountPath" {
+		getPersistentVolumeClaimStatusMatch(oc, dep.namespace, pvc.name, "FileSystemResizePending")
+	} else {
+		getPersistentVolumeClaimStatusType(oc, dep.namespace, dep.pvcname)
+	}
 
 	g.By("10. Scale up the replicas number to 1")
 	dep.scaleReplicas(oc, "1")
