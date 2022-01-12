@@ -32,7 +32,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	var oc = exutil.NewCLI("default-"+getRandomString(), exutil.KubeConfigPath())
 
 	// author: jiazha@redhat.com
-	g.It("Author:jiazha-High-46964-Disable Copied CSVs Toggle [Serial]", func() {
+	g.It("ConnectedOnly-Author:jiazha-High-46964-Disable Copied CSVs Toggle [Serial]", func() {
 		g.By("1) Subscribe to etcdoperator v0.9.4 with AllNamespaces mode")
 		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
 		dr := make(describerResrouce)
@@ -90,7 +90,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		subAMQ := subscriptionDescription{
 			subName:                "sub-amq-46964",
 			namespace:              oc.Namespace(),
-			catalogSourceName:      "qe-app-registry",
+			catalogSourceName:      "redhat-operators",
 			catalogSourceNamespace: "openshift-marketplace",
 			channel:                "stable",
 			ipApproval:             "Automatic",
