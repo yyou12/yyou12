@@ -74,18 +74,22 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
 	g.It("VMonly-ConnectedOnly-Author:jfan-High-37627-SDK run bundle upgrade test", func() {
 		operatorsdkCLI.showInfo = true
 		oc.SetupProject()
-		output, err := operatorsdkCLI.Run("run").Args("bundle", "quay.io/olmqe/rhoas-operator-bundle:0.6.8", "-n", oc.Namespace(), "--timeout", "5m").Output()
+		output, err := operatorsdkCLI.Run("run").Args("bundle", "quay.io/olmqe/upgradeoperator-bundle:v0.1", "-n", oc.Namespace(), "--timeout", "5m").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(output).To(o.ContainSubstring("OLM has successfully installed"))
-		output, err = operatorsdkCLI.Run("run").Args("bundle-upgrade", "quay.io/olmqe/rhoas-operator-bundle:0.7.1", "-n", oc.Namespace(), "--timeout", "5m").Output()
+		output, err = operatorsdkCLI.Run("run").Args("bundle-upgrade", "quay.io/olmqe/upgradeoperator-bundle:v0.2", "-n", oc.Namespace(), "--timeout", "5m").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(output).To(o.ContainSubstring("Successfully upgraded to"))
-		output, _ = oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-n", oc.Namespace()).Output()
-		o.Expect(output).To(o.ContainSubstring("quay-io-olmqe-rhoas-operator-bundle-0-7-1"))
-		output, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", "rhoas-operator.0.7.1", "-n", oc.Namespace()).Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(output).To(o.ContainSubstring("Succeeded"))
-		output, err = operatorsdkCLI.Run("cleanup").Args("rhoas-operator", "-n", oc.Namespace()).Output()
+		waitErr := wait.Poll(15*time.Second, 360*time.Second, func() (bool, error) {
+			msg, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", "upgradeoperator.v0.0.2", "-n", oc.Namespace()).Output()
+			if strings.Contains(msg, "Succeeded") {
+				e2e.Logf("upgrade to 0.2 success")
+				return true, nil
+			}
+			return false, nil
+		})
+		exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("upgradeoperator upgrade failed in %s ", oc.Namespace()))
+		output, err = operatorsdkCLI.Run("cleanup").Args("upgradeoperator", "-n", oc.Namespace()).Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(output).To(o.ContainSubstring("uninstalled"))
 	})
