@@ -177,7 +177,7 @@ var _ = g.Describe("[sig-node] PSAP SRO should", func() {
 		pingPongClientPod.assertOprPodLogs(oc, "Pong")
 	})
 
-	g.It("Longduration-NonPreRelease-Author:liqcui-Medium-43364-SRO Build and run SpecialResource multi-build resource from configmap [Slow]", func() {
+	g.It("NonPreRelease-Longduration-Author:liqcui-Medium-43364-SRO Build and run SpecialResource multi-build resource from configmap [Slow]", func() {
 
 		g.By("SRO - Create Namespace for multi-build")
 

@@ -19,6 +19,7 @@ var _ = g.Describe("[sig-node] PSAP should", func() {
 		hp_performanceprofile_file       = exutil.FixturePath("testdata", "psap", "nto", "hp-performanceprofile.yaml")
 		hp_performanceprofile_patch_file = exutil.FixturePath("testdata", "psap", "nto", "hp-performanceprofile-patch.yaml")
 		podlabel_tuned_file              = exutil.FixturePath("testdata", "psap", "nto", "tuned-podlabel-profiles.yaml")
+		affine_default_cpuset_file       = exutil.FixturePath("testdata", "psap", "nto", "affine-default-cpuset.yaml")
 		isNTO                            bool
 		isAllInOne                       bool
 	)
@@ -443,6 +444,46 @@ var _ = g.Describe("[sig-node] PSAP should", func() {
 
 		g.By("Check all nodes for user.max_ipc_namespaces value, all node should different from 121112")
 		compareSysctlDifferentFromSpecifiedValueByName(oc, "user.max_ipc_namespaces", "121112")
+
+	})
+
+	g.It("NonPreRelease-Author:liqcui-Medium-43173-POD should be affined to the default cpuset [Disruptive]", func() {
+		// test requires NTO to be installed
+		if !isNTO {
+			g.Skip("NTO is not installed - skipping test ...")
+		}
+
+		//Get the tuned pod name that run on first worker node
+		tunedNodeName, err := exutil.GetFirstLinuxWorkerNode(oc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		tunedPodName := getTunedPodNamebyNodeName(oc, tunedNodeName, ntoNamespace)
+
+		g.By("Remove custom profile (if not already removed) and remove node label")
+		defer exutil.CleanupOperatorResourceByYaml(oc, ntoNamespace, affine_default_cpuset_file)
+		
+		defer func() {
+			err = oc.AsAdmin().WithoutNamespace().Run("label").Args("node", tunedNodeName, "affine-default-cpuset-").Execute()
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}()
+
+		g.By("Label the node with affine-default-cpuset ")
+		err = oc.AsAdmin().WithoutNamespace().Run("label").Args("node", tunedNodeName, "affine-default-cpuset=", "--overwrite").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Create new NTO profile")
+		exutil.ApplyOperatorResourceByYaml(oc, ntoNamespace, affine_default_cpuset_file)
+
+		g.By("Check if new NTO profile was applied")
+		assertIfTunedProfileApplied(oc, ntoNamespace, tunedPodName, "affine-default-cpuset-profile")
+
+		g.By("Check current profile for each node")
+		output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", ntoNamespace, "profile").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf("Current profile for each node: \n%v", output)
+
+		g.By("Verified test case results ...")
+		finalResult := assertAffineDefaultCPUSets(oc, tunedPodName, ntoNamespace)
+		o.Expect(finalResult).To(o.Equal(true))
 
 	})
 })

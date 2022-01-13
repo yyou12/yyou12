@@ -224,3 +224,29 @@ func GetOperatorPKGManifestDefaultChannel(oc *CLI, pkgManifestName, namespace st
 	o.Expect(err).NotTo(o.HaveOccurred())
 	return channel, err
 }
+
+//It's not a template yaml file, the yaml shouldn't include namespace, we specify namespace by parameter.
+func ApplyOperatorResourceByYaml(oc *CLI, namespace string, yamlfile string) {
+	if len(namespace) == 0 {
+		//Create cluster-wide resource
+		err := oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", yamlfile).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+	} else {
+		//Create namespace-wide resource
+		err := oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", yamlfile, "-n", namespace).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+	}
+}
+
+//It's not a template yaml file, the yaml shouldn't include namespace, we specify namespace by parameter.
+func CleanupOperatorResourceByYaml(oc *CLI, namespace string, yamlfile string) {
+	if len(namespace) == 0 {
+		//Delete cluster-wide resource
+		err := oc.AsAdmin().WithoutNamespace().Run("delete").Args("-f", yamlfile).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+	} else {
+		//Delete namespace-wide resource
+		err := oc.AsAdmin().WithoutNamespace().Run("delete").Args("-f", yamlfile, "-n", namespace).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+	}
+}

@@ -310,3 +310,35 @@ func isAllInOneCluster(oc *exutil.CLI) bool {
 		return false
 	}
 }
+
+func assertAffineDefaultCPUSets(oc *exutil.CLI, tunedPodName, namespace string) bool {
+
+	tunedCpusAllowedList, err := exutil.RemoteShPodWithBash(oc, namespace, tunedPodName, "grep ^Cpus_allowed_list /proc/`pgrep openshift-tuned`/status")
+	o.Expect(err).NotTo(o.HaveOccurred())
+	e2e.Logf("Tuned's Cpus_allowed_list is: \n%v", tunedCpusAllowedList)
+
+	chronyCpusAllowedList, err := exutil.RemoteShPodWithBash(oc, namespace, tunedPodName, "grep Cpus_allowed_list /proc/`pidof chronyd`/status")
+	o.Expect(err).NotTo(o.HaveOccurred())
+	e2e.Logf("Chrony's Cpus_allowed_list is: \n%v", chronyCpusAllowedList)
+
+	regTunedCpusAllowedList0, err := regexp.Compile(`.*0-.*`)
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	regChronyCpusAllowedList1, err := regexp.Compile(`.*0$`)
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	regChronyCpusAllowedList2, err := regexp.Compile(`.*0,2-.*`)
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	isMatch0 := regTunedCpusAllowedList0.MatchString(tunedCpusAllowedList)
+	isMatch1 := regChronyCpusAllowedList1.MatchString(chronyCpusAllowedList)
+	isMatch2 := regChronyCpusAllowedList2.MatchString(chronyCpusAllowedList)
+
+	if isMatch0 && (isMatch1 || isMatch2) {
+		e2e.Logf("assert affine default cpusets result: %v", true)
+		return true
+	} else {
+		e2e.Logf("assert affine default cpusets result: %v", false)
+		return false
+	}
+}
