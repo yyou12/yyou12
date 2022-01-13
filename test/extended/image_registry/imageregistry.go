@@ -3,6 +3,7 @@ package image_registry
 import (
 	"encoding/base64"
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -965,8 +966,8 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 		bucket, _ := oc.AsAdmin().Run("get").Args("config.image", "-o=jsonpath={..spec.storage.s3.bucket}").Output()
 
 		g.By("Set AWS credentials")
-		defer exec.Command("bash", "-c", "unset -v AWS_ACCESS_KEY_ID").Output()
-		defer exec.Command("bash", "-c", "unset -v AWS_SECRET_ACCESS_KEY").Output()
+		defer os.Unsetenv("AWS_ACCESS_KEY_ID")
+		defer os.Unsetenv("AWS_SECRET_ACCESS_KEY")
 		getCreditFromCluster(oc)
 
 		g.By("Check the tags")
