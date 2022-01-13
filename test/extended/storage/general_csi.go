@@ -860,6 +860,70 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 	})
 
 	// author: pewang@redhat.com
+	// https://kubernetes.io/docs/concepts/storage/persistent-volumes/#delete
+	g.It("Author:pewang-High-44906-[CSI Driver] [Dynamic PV] [Delete reclaimPolicy] volumes should be deleted after the pvc deletion", func() {
+		// Define the test scenario support provisioners
+		scenarioSupportProvisioners := []string{"ebs.csi.aws.com", "disk.csi.azure.com", "cinder.csi.openstack.org", "pd.csi.storage.gke.io", "csi.vsphere.vmware.com"}
+		// Set the resource template for the scenario
+		var (
+			storageTeamBaseDir   = exutil.FixturePath("testdata", "storage")
+			pvcTemplate          = filepath.Join(storageTeamBaseDir, "pvc-template.yaml")
+			storageClassTemplate = filepath.Join(storageTeamBaseDir, "storageclass-template.yaml")
+			supportProvisioners  = sliceIntersect(scenarioSupportProvisioners, getSupportProvisionersByCloudProvider(cloudProvider))
+		)
+		if len(supportProvisioners) == 0 {
+			g.Skip("Skip for scenario non-supported provisioner!!!")
+		}
+		// Use the framework created project as default, if use your own, exec the follow code setupProject
+		g.By("# Create new project for the scenario")
+		oc.SetupProject() //create new project
+		for _, provisioner := range supportProvisioners {
+			g.By("******" + cloudProvider + " csi driver: \"" + provisioner + "\" test phase start" + "******")
+			// Set the resource definition for the scenario
+			rand.Seed(time.Now().UnixNano())
+			randomNum := rand.Intn(10) + 2
+			randomCapacity := interfaceToString(randomNum) + "Gi"
+			storageClass := newStorageClass(setStorageClassTemplate(storageClassTemplate), setStorageClassProvisioner(provisioner), setStorageClassReclaimPolicy("Delete"), setStorageClassVolumeBindingMode("Immediate"))
+			pvc := newPersistentVolumeClaim(setPersistentVolumeClaimTemplate(pvcTemplate), setPersistentVolumeClaimCapacity(randomCapacity))
+
+			g.By("# Make sure we have a csi storageclass with 'reclaimPolicy: Delete' and 'volumeBindingMode: Immediate'")
+			presetStorageClassName := getPresetStorageClassNameByProvisioner(cloudProvider, provisioner)
+			e2e.Logf("The preset storage class name is: %s", pvc.scname)
+			if getReclaimPolicyByStorageClassName(oc, presetStorageClassName) != "delete" || getVolumeBindingModeByStorageClassName(oc, presetStorageClassName) != "immediate" {
+				storageClass.create(oc)
+				defer storageClass.deleteAsAdmin(oc) // ensure the storageclass is deleted whether the case exist normally or not.
+				pvc.scname = storageClass.name
+			} else {
+				e2e.Logf("Using the preset storageclass: %s", presetStorageClassName)
+				pvc.scname = presetStorageClassName
+			}
+
+			g.By("# Create a pvc with the csi storageclass")
+			pvc.create(oc)
+			defer pvc.deleteAsAdmin(oc)
+
+			g.By("# Wait for the pvc become to bound")
+			pvc.waitStatusAsExpected(oc, "Bound")
+
+			g.By("# Get the volumename, volumeId")
+			volumeName := pvc.getVolumeName(oc)
+			defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("pv", volumeName).Execute()
+			volumeId := pvc.getVolumeId(oc)
+			defer deleteBackendVolumeByVolumeId(oc, volumeId)
+
+			g.By("# Delete the pvc and check the pv is deleted accordingly")
+			pvc.delete(oc)
+			waitForPersistentVolumeStatusAsExpected(oc, volumeName, "deleted")
+
+			g.By("# Check the volume on backend is deleted")
+			getCredentialFromCluster(oc)
+			waitVolumeDeletedOnBackend(oc, volumeId)
+
+			g.By("******" + cloudProvider + " csi driver: \"" + provisioner + "\" test phase finished" + "******")
+		}
+	})
+
+	// author: pewang@redhat.com
 	// https://kubernetes.io/docs/concepts/storage/persistent-volumes/#retain
 	g.It("Author:pewang-High-44907-[CSI Driver] [Dynamic PV] [Retain reclaimPolicy] [Static PV] volumes could be re-used after the pvc/pv deletion", func() {
 		// Define the test scenario support provisioners

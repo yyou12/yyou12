@@ -165,3 +165,17 @@ func checkDefaultStorageclass(oc *exutil.CLI, sc string) bool {
 	debugLogf("oc get sc:\n%s", output)
 	return strings.EqualFold(stat, "true")
 }
+
+//  Get reclaimPolicy by storageclass name
+func getReclaimPolicyByStorageClassName(oc *exutil.CLI, storageClassName string) string {
+	reclaimPolicy, err := oc.WithoutNamespace().Run("get").Args("sc", storageClassName, "-o", "jsonpath={.reclaimPolicy}").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	return strings.ToLower(reclaimPolicy)
+}
+
+//  Get volumeBindingMode by storageclass name
+func getVolumeBindingModeByStorageClassName(oc *exutil.CLI, storageClassName string) string {
+	volumeBindingMode, err := oc.WithoutNamespace().Run("get").Args("sc", storageClassName, "-o", "jsonpath={.volumeBindingMode}").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	return strings.ToLower(volumeBindingMode)
+}

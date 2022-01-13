@@ -2,6 +2,7 @@ package storage
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	o "github.com/onsi/gomega"
@@ -281,4 +282,40 @@ func getPersistentVolumeClaimStatusMatch(oc *exutil.CLI, namespace string, pvcNa
 		}
 	})
 	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("The volume:%v, did not reached expected status.", err))
+}
+
+// Wait persistentVolumeClaim status becomes to expected status
+func (pvc *persistentVolumeClaim) waitStatusAsExpected(oc *exutil.CLI, expectedStatus string) {
+	var (
+		status string
+		err    error
+	)
+	if expectedStatus == "deleted" {
+		err = wait.Poll(5*time.Second, 120*time.Second, func() (bool, error) {
+			status, err = pvc.getStatus(oc)
+			if err != nil && strings.Contains(interfaceToString(err), "not found") {
+				e2e.Logf("The persist volume claim '%s' becomes to expected status: '%s' ", pvc.name, expectedStatus)
+				return true, nil
+			} else {
+				e2e.Logf("The persist volume claim '%s' is not deleted yet", pvc.name)
+				return false, nil
+			}
+		})
+	} else {
+		err = wait.Poll(5*time.Second, 120*time.Second, func() (bool, error) {
+			status, err = pvc.getStatus(oc)
+			if err != nil {
+				e2e.Logf("Get persist volume claim '%s' status failed of: %v.", pvc.name, err)
+				return false, err
+			} else {
+				if status == expectedStatus {
+					e2e.Logf("The persist volume claim '%s' becomes to expected status: '%s' ", pvc.name, expectedStatus)
+					return true, nil
+				} else {
+					return false, nil
+				}
+			}
+		})
+	}
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("The persist volume claim '%s' didn't become to expected status'%s' ", pvc.name, expectedStatus))
 }

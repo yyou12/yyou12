@@ -123,7 +123,7 @@ func createNewPersistVolumeWithRetainVolume(oc *exutil.CLI, originPvExportJson s
 	retainPolicyParameter := map[string]interface{}{
 		"jsonPath":                      `spec.`,
 		"storageClassName":              storageClassName,
-		"persistentVolumeReclaimPolicy": "Delete", // Seems not invalid when the volumeID ever maked retain
+		"persistentVolumeReclaimPolicy": "Delete", // Seems invalid when the volumeID ever maked retain
 	}
 	for _, extraParameter := range []map[string]interface{}{pvNameParameter, retainPolicyParameter} {
 		outputJsonFile, err = jsonAddExtraParametersToFile(originPvExportJson, extraParameter)
