@@ -335,4 +335,94 @@ var _ = g.Describe("[sig-network-edge] Network_Edge should", func() {
 		o.Expect(msg2).To(o.ContainSubstring("HSTS max-age is less than minimum age 100s"))
 
 	})
+
+	// author: aiyengar@redhat.com
+	g.It("Author:aiyengar-High-43480-The HSTS domain policy can be configure with multiple domainPatterns options [Disruptive]", func() {
+		buildPruningBaseDir := exutil.FixturePath("testdata", "router")
+		customTemp := filepath.Join(buildPruningBaseDir, "ingresscontroller-np.yaml")
+		testPodSvc := filepath.Join(buildPruningBaseDir, "web-server-rc.yaml")
+		var (
+			ingctrl1 = ingctrlNodePortDescription{
+				name:      "ocp43480-1",
+				namespace: "openshift-ingress-operator",
+				domain:    "",
+				template:  customTemp,
+			}
+			ingctrl2 = ingctrlNodePortDescription{
+				name:      "ocp43480-2",
+				namespace: "openshift-ingress-operator",
+				domain:    "",
+				template:  customTemp,
+			}
+		)
+		g.By("Create first custom ingresscontroller")
+		baseDomain := getBaseDomain(oc)
+		ingctrl1.domain = ingctrl1.name + "." + baseDomain
+		defer ingctrl1.delete(oc)
+		ingctrl1.create(oc)
+		err1 := waitForCustomIngressControllerAvailable(oc, ingctrl1.name)
+		exutil.AssertWaitPollNoErr(err1, fmt.Sprintf("ingresscontroller %s conditions not available", ingctrl1.name))
+
+		g.By("Create second custom ingresscontroller")
+		baseDomain = getBaseDomain(oc)
+		ingctrl2.domain = ingctrl2.name + "." + baseDomain
+		defer ingctrl2.delete(oc)
+		ingctrl2.create(oc)
+		err2 := waitForCustomIngressControllerAvailable(oc, ingctrl2.name)
+		exutil.AssertWaitPollNoErr(err2, fmt.Sprintf("ingresscontroller %s conditions not available", ingctrl2.name))
+
+		g.By("Deploy project with pods and service resources")
+		oc.SetupProject()
+		createResourceFromFile(oc, oc.Namespace(), testPodSvc)
+		err := waitForPodWithLabelReady(oc, oc.Namespace(), "name=web-server-rc")
+		exutil.AssertWaitPollNoErr(err, "pod failed to be ready state within allowed time!")
+
+		g.By("Expose an edge route via the unsecure service through ingresscontroller 1 inside project")
+		var output1 string
+		ingctldomain1 := getIngressctlDomain(oc, ingctrl1.name)
+		routehost1 := "route-edge1" + "-" + oc.Namespace() + "." + ingctrl1.domain
+		exposeRouteEdge(oc, oc.Namespace(), "route-edge1", "service-unsecure", routehost1)
+		output1, err = oc.Run("get").Args("route").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output1).To(o.ContainSubstring("route-edge1"))
+
+		g.By("Expose an edge route via the unsecure service through ingresscontroller 2 inside project")
+		var output2 string
+		ingctldomain2 := getIngressctlDomain(oc, ingctrl2.name)
+		routehost2 := "route-edge2" + "-" + oc.Namespace() + "." + ingctrl2.domain
+		exposeRouteEdge(oc, oc.Namespace(), "route-edge2", "service-unsecure", routehost2)
+		output2, err = oc.Run("get").Args("route").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output2).To(o.ContainSubstring("route-edge2"))
+
+		g.By("Annotate the edge route 1 to enable HSTS header option")
+		setAnnotation(oc, oc.Namespace(), "route/route-edge1", "haproxy.router.openshift.io/hsts_header=max-age=4000")
+		output, err := oc.Run("get").Args("route", "route-edge1", "-o=jsonpath={.metadata.annotations}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring("haproxy.router.openshift.io/hsts_header"))
+
+		g.By("Annotate the edge route 2 to enable HSTS header option")
+		setAnnotation(oc, oc.Namespace(), "route/route-edge2", "haproxy.router.openshift.io/hsts_header=max-age=2000")
+		output, err = oc.Run("get").Args("route", "route-edge2", "-o=jsonpath={.metadata.annotations}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring("haproxy.router.openshift.io/hsts_header"))
+
+		g.By("Set a different HSTS maxage policy for each domain in the global ingresses configuration")
+		defer patchGlobalResourceAsAdmin(oc, "ingresses.config.openshift.io/cluster", "[{\"op\":\"remove\" , \"path\" : \"/spec/requiredHSTSPolicies\"}]")
+		patchGlobalResourceAsAdmin(oc, "ingresses.config.openshift.io/cluster", "[{\"op\":\"add\" , \"path\" : \"/spec/requiredHSTSPolicies\" , \"value\" : [{\"domainPatterns\" :"+"['*"+"."+ingctldomain1+"'"+"] , \"includeSubDomainsPolicy\":\"NoOpinion\",\"maxAge\":{\"largestMaxAge\":5000,\"smallestMaxAge\":1},\"preloadPolicy\":\"NoOpinion\"},{\"domainPatterns\":"+" ['*"+"."+ingctldomain2+"'"+"],\"includeSubDomainsPolicy\":\"NoOpinion\",\"maxAge\":{\"largestMaxAge\":3000,\"smallestMaxAge\":1},\"preloadPolicy\":\"NoOpinion\"}]}]")
+		output, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("ingresses.config.openshift.io/cluster", "-o=jsonpath={.spec.requiredHSTSPolicies[0]}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring("largestMaxAge"))
+
+		g.By("verify the enforced policy by overwriting the annotation for route 1  with max-age set  higher than the largestMaxAge defined for the domain")
+		msg1, err := oc.Run("annotate").WithoutNamespace().Args("route/route-edge1", "haproxy.router.openshift.io/hsts_header='max-age=6000'", "--overwrite").Output()
+		o.Expect(err).To(o.HaveOccurred())
+		o.Expect(msg1).To(o.ContainSubstring("HSTS max-age is greater than maximum age 5000s"))
+
+		g.By("verify the enforced policy by overwriting the annotation for route 2  with max-age set  higher than the largestMaxAge defined for the domain")
+		msg2, err := oc.Run("annotate").WithoutNamespace().Args("route/route-edge2", "haproxy.router.openshift.io/hsts_header='max-age=4000'", "--overwrite").Output()
+		o.Expect(err).To(o.HaveOccurred())
+		o.Expect(msg2).To(o.ContainSubstring("HSTS max-age is greater than maximum age 3000s"))
+
+	})
 })
