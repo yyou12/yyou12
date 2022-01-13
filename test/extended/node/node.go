@@ -17,6 +17,7 @@ var _ = g.Describe("[sig-node] NODE initContainer policy,volume,readines,quota",
 		buildPruningBaseDir = exutil.FixturePath("testdata", "node")
 		customTemp          = filepath.Join(buildPruningBaseDir, "pod-modify.yaml")
 		podTerminationTemp  = filepath.Join(buildPruningBaseDir, "pod-termination.yaml")
+		podOOMTemp          = filepath.Join(buildPruningBaseDir, "pod-oom.yaml")
 
 		podModify = podModifyDescription{
 			name:          "",
@@ -32,9 +33,15 @@ var _ = g.Describe("[sig-node] NODE initContainer policy,volume,readines,quota",
 		}
 
 		podTermination = podTerminationDescription{
-			name:      "",
-			namespace: "",
-			template:  podTerminationTemp,
+			name:              "",
+			namespace:         "",
+			template:          podTerminationTemp,
+		}
+
+		podOOM = podOOMDescription{
+			name:              "",
+			namespace:         "",
+			template:          podOOMTemp,
 		}
 	)
 
@@ -217,5 +224,21 @@ var _ = g.Describe("[sig-node] NODE initContainer policy,volume,readines,quota",
 		exutil.AssertWaitPollNoErr(err, "terminationGracePeriodSeconds is not valid")
 		g.By("Delete Pod\n")
 		podTermination.delete(oc)
+	})
+
+		// author: pmali@redhat.com
+		g.It("Author:pmali-Medium-40558-oom kills must be monitored and logged", func() {
+
+		oc.SetupProject()
+		podOOM.name = "pod-oom"
+		podOOM.namespace = oc.Namespace()
+
+		g.By("Create a pod which will be killed with OOM\n")
+		podOOM.create(oc)
+		g.By("Check pod status\n")
+		err := podOOM.podOOMStatus(oc)
+		exutil.AssertWaitPollNoErr(err, "pod is running")
+		g.By("Delete Pod\n")
+		podOOM.delete(oc)
 	})
 })
