@@ -63,18 +63,6 @@ var _ = g.Describe("[sig-operators] OLM opm should", func() {
 
 	})
 
-	// author: scolange@redhat.com
-	g.It("Author:scolange-VMonly-Medium-47222-can't remove package from index: database is locked", func() {
-
-		g.By("remove package from index")
-
-		output1, err := opmCLI.Run("index").Args("rm", "--generate", "--binary-image", "registry.redhat.io/openshift4/ose-operator-registry:v4.7", "--from-index", "registry.redhat.io/redhat/certified-operator-index:v4.7", "--operators", "cert-manager-operator", "--pull-tool=podman").Output()
-		e2e.Logf(output1)
-		o.Expect(err).NotTo(o.HaveOccurred())
-		g.By("test case 47222 SUCCESS")
-
-	})
-
 	// author: kuiwang@redhat.com
 	g.It("Author:kuiwang-Medium-43185-DC based opm subcommands out of alpha", func() {
 		g.By("check init, serve, render and validate under opm")
@@ -1841,6 +1829,30 @@ var _ = g.Describe("[sig-operators] OLM opm with podman", func() {
 		cmd.Process.Kill()
 		g.By("step: SUCCESS 25934")
 
+	})
+
+	// author: scolange@redhat.com
+	g.It("ConnectedOnly-Author:scolange-VMonly-Medium-47222-can't remove package from index: database is locked", func() {
+		baseDir := exutil.FixturePath("testdata", "olm")
+		TestDataPath := filepath.Join(baseDir, "temp")
+		indexTmpPath := filepath.Join(TestDataPath, getRandomString())
+		defer DeleteDir(TestDataPath, indexTmpPath)
+		err := os.MkdirAll(indexTmpPath, 0755)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		indexImage := "registry.redhat.io/redhat/certified-operator-index:v4.7"
+
+		g.By("remove package from index")
+		dockerconfigjsonpath := filepath.Join(indexTmpPath, ".dockerconfigjson")
+		defer exec.Command("rm", "-f", dockerconfigjsonpath).Output()
+		_, err = oc.AsAdmin().Run("extract").Args("secret/pull-secret", "-n", "openshift-config", "--confirm", "--to="+indexTmpPath).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		opmCLI.SetAuthFile(dockerconfigjsonpath)
+		defer podmanCLI.RemoveImage(indexImage)
+		output, err := opmCLI.Run("index").Args("rm", "--generate", "--binary-image", "registry.redhat.io/openshift4/ose-operator-registry:v4.7", "--from-index", indexImage, "--operators", "cert-manager-operator", "--pull-tool=podman").Output()
+		e2e.Logf(output)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		g.By("test case 47222 SUCCESS")
 	})
 
 	// author: tbuskey@redhat.com OLM-2195

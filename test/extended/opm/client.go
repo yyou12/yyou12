@@ -31,6 +31,7 @@ type CLI struct {
 	verbose         bool
 	showInfo        bool
 	skipTLS         bool
+	podmanAuthfile  string
 }
 
 // NewOpmCLI initialize the OPM framework
@@ -58,6 +59,7 @@ func (c *CLI) Run(commands ...string) *CLI {
 		verb:            commands[0],
 		username:        c.username,
 		ExecCommandPath: c.ExecCommandPath,
+		podmanAuthfile:  c.podmanAuthfile,
 	}
 	if c.skipTLS {
 		client.globalArgs = append([]string{"--skip-tls=true"}, commands...)
@@ -99,12 +101,20 @@ func FatalErr(msg interface{}) {
 	e2e.Failf("%v", msg)
 }
 
+func (c *CLI) SetAuthFile(authfile string) *CLI {
+	c.podmanAuthfile = authfile
+	return c
+}
+
 // Output executes the command and returns stdout/stderr combined into one string
 func (c *CLI) Output() (string, error) {
 	if c.verbose {
 		e2e.Logf("DEBUG: %s %s\n", c.execPath, c.printCmd())
 	}
 	cmd := exec.Command(c.execPath, c.finalArgs...)
+	if c.podmanAuthfile != "" {
+		cmd.Env = append(os.Environ(), "REGISTRY_AUTH_FILE="+c.podmanAuthfile)
+	}
 	if c.ExecCommandPath != "" {
 		e2e.Logf("set exec command path is %s\n", c.ExecCommandPath)
 		cmd.Dir = c.ExecCommandPath
