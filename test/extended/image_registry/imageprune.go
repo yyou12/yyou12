@@ -273,7 +273,7 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 		podsrc.namespace = oc.Namespace()
 		podsrc.create(oc)
 		foundPruneLog := false
-		err = wait.PollImmediate(5*time.Second, 2*time.Minute, func() (bool, error) {
+		err = wait.PollImmediate(10*time.Second, 2*time.Minute, func() (bool, error) {
 			foundPruneLog = imagePruneLog(oc, `"quay.io/openshifttest/hello-pod@": invalid reference format - skipping`)
 			if foundPruneLog != true {
 				e2e.Logf("wait for next round")
