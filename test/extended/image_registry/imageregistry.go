@@ -945,4 +945,65 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 		oc.SetupProject()
 		checkRegistryFunctionFine(oc, "test-45345", oc.Namespace())
 	})
+
+	// author: jitli@redhat.com
+	g.It("Author:jitli-ConnectedOnly-VMonly-Medium-41398-Users providing custom AWS tags are set with bucket creation [Disruptive]", func() {
+
+		g.By("Check platforms")
+		output, err := oc.WithoutNamespace().AsAdmin().Run("get").Args("infrastructure.config.openshift.io", "-o=jsonpath={..status.platformStatus.type}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		if !strings.Contains(output, "AWS") {
+			g.Skip("Skip for non-supported platform")
+		}
+		g.By("Check the cluster is with resourceTags")
+		output, err = oc.WithoutNamespace().AsAdmin().Run("get").Args("infrastructure.config.openshift.io", "-o=jsonpath={..status.platformStatus.aws}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		if !strings.Contains(output, "resourceTags") {
+			g.Skip("Skip for no resourceTags")
+		}
+		g.By("Get bucket name")
+		bucket, _ := oc.AsAdmin().Run("get").Args("config.image", "-o=jsonpath={..spec.storage.s3.bucket}").Output()
+
+		g.By("Set AWS credentials")
+		defer exec.Command("bash", "-c", "unset -v AWS_ACCESS_KEY_ID").Output()
+		defer exec.Command("bash", "-c", "unset -v AWS_SECRET_ACCESS_KEY").Output()
+		getCreditFromCluster(oc)
+
+		g.By("Check the tags")
+		awscmd := "aws s3api get-bucket-tagging --bucket "
+		tag, _ := exec.Command("bash", "-c", awscmd+bucket).Output()
+		o.Expect(string(tag)).To(o.ContainSubstring("customTag"))
+		o.Expect(string(tag)).To(o.ContainSubstring("installer-qe"))
+
+		g.By("Removed managementState")
+		defer oc.AsAdmin().Run("patch").Args("config.image/cluster", "-p", `{"spec":{"managementState": "Managed"}}`, "--type=merge").Execute()
+		output, err = oc.AsAdmin().Run("patch").Args("config.image/cluster", "-p", `{"spec":{"managementState": "Removed"}}`, "--type=merge").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring("patched"))
+
+		g.By("Check AWS ls")
+		awscmdls := "aws s3 ls s3://" + bucket
+		awsls, _ := exec.Command("bash", "-c", awscmdls).CombinedOutput()
+		o.Expect(string(awsls)).To(o.ContainSubstring("The specified bucket does not exist"))
+
+		g.By("Managed managementState")
+		output, err = oc.AsAdmin().Run("patch").Args("config.image/cluster", "-p", `{"spec":{"managementState": "Managed"}}`, "--type=merge").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring("patched"))
+
+		g.By("Get new bucket name and check")
+		err = wait.Poll(10*time.Second, 2*time.Minute, func() (bool, error) {
+			bucket, _ = oc.AsAdmin().Run("get").Args("config.image", "-o=jsonpath={..spec.storage.s3.bucket}").Output()
+			if strings.Compare(bucket, "") != 0 {
+				return true, nil
+			} else {
+				e2e.Logf("not update")
+				return false, nil
+			}
+		})
+		exutil.AssertWaitPollNoErr(err, "Can't get bucket")
+		tag, _ = exec.Command("bash", "-c", awscmd+bucket).Output()
+		o.Expect(string(tag)).To(o.ContainSubstring("customTag"))
+		o.Expect(string(tag)).To(o.ContainSubstring("installer-qe"))
+	})
 })

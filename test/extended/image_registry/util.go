@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/tidwall/gjson"
+
 	g "github.com/onsi/ginkgo"
 	o "github.com/onsi/gomega"
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
@@ -582,4 +584,15 @@ func checkRegistryDegraded(oc *exutil.CLI) bool {
 		return false
 	}
 	return true
+}
+
+func getCreditFromCluster(oc *exutil.CLI) (error, error) {
+	credential, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("secret/aws-creds", "-n", "kube-system", "-o", "json").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	accessKeyIdBase64, secureKeyBase64 := gjson.Get(credential, `data.aws_access_key_id`).Str, gjson.Get(credential, `data.aws_secret_access_key`).Str
+	accessKeyId, err1 := base64.StdEncoding.DecodeString(accessKeyIdBase64)
+	o.Expect(err1).NotTo(o.HaveOccurred())
+	secureKey, err2 := base64.StdEncoding.DecodeString(secureKeyBase64)
+	o.Expect(err2).NotTo(o.HaveOccurred())
+	return os.Setenv("AWS_ACCESS_KEY_ID", string(accessKeyId)), os.Setenv("AWS_SECRET_ACCESS_KEY", string(secureKey))
 }
