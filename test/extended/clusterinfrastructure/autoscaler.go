@@ -2,11 +2,15 @@ package clusterinfrastructure
 
 import (
 	"path/filepath"
+	"strings"
+	"time"
 
 	g "github.com/onsi/ginkgo"
 	o "github.com/onsi/gomega"
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
 	clusterinfra "github.com/openshift/openshift-tests-private/test/extended/util/clusterinfrastructure"
+	"k8s.io/apimachinery/pkg/util/wait"
+	e2e "k8s.io/kubernetes/test/e2e/framework"
 )
 
 var _ = g.Describe("[sig-cluster-lifecycle] Cluster_Infrastructure", func() {
@@ -92,5 +96,30 @@ var _ = g.Describe("[sig-cluster-lifecycle] Cluster_Infrastructure", func() {
 			// Creat a new machine taking roughly 5 minutes , set timeout as 7 minutes
 			clusterinfra.WaitForMachinesRunning(oc, 1, "machineset-45430")
 		}
+	})
+
+	//author: zhsun@redhat.com
+	g.It("Author:zhsun-Medium-44816-Cluster version operator could remove unrecognized volume mounts [Disruptive]", func() {
+		//As cluster-autoscaler-operator deployment will be synced by cvo, so we don't need defer to resotre autoscaler deployment
+		g.By("Update cluster-autoscaler-operator deployment's volumeMounts")
+		err := oc.AsAdmin().WithoutNamespace().Run("patch").Args("deploy/cluster-autoscaler-operator", "-n", machineAPINamespace, "-p", `[{"op": "add", "path": "/spec/template/spec/containers/0/volumeMounts/0","value":{"mountPath":"/etc/cluster-autoscaler-operator-invalid/service-ca","name":"cert","readOnly":true}}]`, "--type=json").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Check cluster-autoscaler-operator deployment was synced by cvo soon")
+		err = wait.Poll(15*time.Second, 3*time.Minute, func() (bool, error) {
+			caoDeploy, _ := oc.AsAdmin().WithoutNamespace().Run("describe").Args("deploy/cluster-autoscaler-operator", "-n", machineAPINamespace).Output()
+			if strings.Contains(caoDeploy, "service-ca") {
+				e2e.Logf("cluster-autoscaler-operator deployment was not synced by cvo")
+				return false, nil
+			}
+			e2e.Logf("cluster-autoscaler-operator deployment was synced by cvo")
+			return true, nil
+		})
+		exutil.AssertWaitPollNoErr(err, "cluster-autoscaler-operator deployment was not synced by cvo in 3m")
+
+		g.By("Check cluster-autoscaler-operator pod is running")
+		podsStatus, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-n", machineAPINamespace, "-l", "k8s-app=cluster-autoscaler-operator", "-o=jsonpath={.items[0].status.phase}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(podsStatus).To(o.ContainSubstring("Running"))
 	})
 })
