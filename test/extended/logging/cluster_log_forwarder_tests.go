@@ -577,6 +577,68 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			e2e.Logf("Application Logs Query using namespace as tenantKey is a success")
 
 		})
+		g.It("CPaasrunOnly-Author:kbharti-Low-43770-Forward to Loki using loki.labelKeys which does not exist[Serial]", func() {
+
+			//This case covers OCP-45697 and OCP-43770
+			var (
+				loglabeltemplate = exutil.FixturePath("testdata", "logging", "generatelog", "container_non_json_log_template.json")
+			)
+			//create a project and app to generate some logs
+			g.By("create project for app logs")
+			app_proj := oc.Namespace()
+			err := oc.WithoutNamespace().Run("new-app").Args("-n", app_proj, "-f", loglabeltemplate, "-p", "LABELS=centos-logtest").Execute()
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			// Create Loki project and deploy Loki Server
+			lokiNS := deployExternalLokiServer(oc, "loki-config", "loki-server")
+			labelKeys := "kubernetes_labels_test"
+			podLabel := "centos-logtest"
+
+			//Create ClusterLogForwarder
+			g.By("create clusterlogforwarder/instance")
+			clfTemplate := exutil.FixturePath("testdata", "logging", "clusterlogforwarder", "43770.yaml")
+			clf := resource{"clusterlogforwarder", "instance", cloNS}
+			defer clf.clear(oc)
+			err = clf.applyFromTemplate(oc, "-n", clf.namespace, "-f", clfTemplate, "-p", "LOKINAMESPACE="+lokiNS, "-p", "LABELKEY=kubernetes.labels.test")
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			//Create ClusterLogging instance
+			g.By("deploy EFK pods")
+			instance := exutil.FixturePath("testdata", "logging", "clusterlogging", "cl-template.yaml")
+			cl := resource{"clusterlogging", "instance", cloNS}
+			defer cl.deleteClusterLogging(oc)
+			cl.createClusterLogging(oc, "-n", cl.namespace, "-f", instance, "-p", "NAMESPACE="+cl.namespace)
+			g.By("waiting for the EFK pods to be ready...")
+			WaitForEFKPodsToBeReady(oc, cloNS)
+
+			//Positive Scenario - Matching labelKeys
+			g.By("Searching for Application Logs in Loki using LabelKey")
+			podList, err := oc.AdminKubeClient().CoreV1().Pods(cloNS).List(metav1.ListOptions{LabelSelector: "component=collector"})
+			o.Expect(err).NotTo(o.HaveOccurred())
+			appLogs := searchAppLogsInLokiByLabelKeys(oc, cloNS, lokiNS, podList.Items[0].Name, labelKeys, podLabel)
+			o.Expect(appLogs.Lokistatus).Should(o.Equal("success"))
+			o.Expect(appLogs.Data.Result).ShouldNot(o.BeEmpty())
+			o.Expect(appLogs.Data.Stats.Summary.BytesProcessedPerSecond).ShouldNot(o.BeZero())
+			o.Expect(appLogs.Data.Stats.Ingester.TotalLinesSent).ShouldNot((o.BeZero()))
+			e2e.Logf("App logs found with matching LabelKey: " + labelKeys + " and pod Label: " + podLabel)
+
+			err = clf.applyFromTemplate(oc, "-n", clf.namespace, "-f", clfTemplate, "-p", "LOKINAMESPACE="+lokiNS, "-p", "LABELKEY=kubernetes.labels.app")
+			o.Expect(err).NotTo(o.HaveOccurred())
+			WaitForDaemonsetPodsToBeReady(oc, cloNS, "collector")
+
+			// Negative Scenario - No labelKeys are matching
+			labelKeys = "kubernetes_labels_app"
+			appLogs = searchAppLogsInLokiByLabelKeys(oc, cloNS, lokiNS, podList.Items[0].Name, labelKeys, podLabel)
+			g.By("Searching for Application Logs in Loki using LabelKey")
+			o.Expect(err).NotTo(o.HaveOccurred())
+			o.Expect(appLogs.Lokistatus).Should(o.Equal("success"))
+			o.Expect(appLogs.Data.Result).Should(o.BeEmpty())
+			o.Expect(appLogs.Data.Stats.Summary.BytesProcessedPerSecond).Should(o.BeZero())
+			o.Expect(appLogs.Data.Stats.Store.TotalChunksDownloaded).Should((o.BeZero()))
+			e2e.Logf("No App logs found with matching LabelKey: " + labelKeys + " and pod Label: " + podLabel)
+
+		})
+
 	})
 	g.Context("Log Forward to Cloudwatch", func() {
 		var (
