@@ -95,13 +95,14 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 			channel:                "stable",
 			ipApproval:             "Automatic",
 			operatorPackage:        "amq-streams",
-			startingCSV:            "amqstreams.v1.8.4",
-			template:               subTemplate,
+			// startingCSV:            "amqstreams.v1.8.4",
+			template: subTemplate,
 		}
 		defer subAMQ.delete(itName, dr)
 		subAMQ.create(oc, itName, dr)
 		defer subAMQ.deleteCSV(itName, dr)
-		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", "amqstreams.v1.8.4", "-n", oc.Namespace(), "-o=jsonpath={.status.phase}"}).check(oc)
+		subAMQ.findInstalledCSV(oc, itName, dr)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", subAMQ.installedCSV, "-n", oc.Namespace(), "-o=jsonpath={.status.phase}"}).check(oc)
 
 		g.By("4) Enable this `disableCopiedCSVs` feature")
 		patchResource(oc, asAdmin, withoutNamespace, "olmconfig", "cluster", "-p", "{\"spec\":{\"features\":{\"disableCopiedCSVs\": true}}}", "--type=merge")
@@ -113,7 +114,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 			if err != nil {
 				e2e.Failf("Error: %v, fail to get CSVs in project: %s", err, oc.Namespace())
 			}
-			if strings.Contains(copiedCSV, "etcdoperator.v0.9.4-clusterwide") || !strings.Contains(copiedCSV, "amqstreams.v1.8.4 ") {
+			if strings.Contains(copiedCSV, "etcdoperator.v0.9.4-clusterwide") || !strings.Contains(copiedCSV, subAMQ.installedCSV) {
 				return false, nil
 			}
 			return true, nil
@@ -129,7 +130,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 			if err != nil {
 				e2e.Failf("Error: %v, fail to get CSVs in project: %s", err, oc.Namespace())
 			}
-			if !strings.Contains(copiedCSV, "etcdoperator.v0.9.4-clusterwide") || !strings.Contains(copiedCSV, "amqstreams.v1.8.4 ") {
+			if !strings.Contains(copiedCSV, "etcdoperator.v0.9.4-clusterwide") || !strings.Contains(copiedCSV, subAMQ.installedCSV) {
 				return false, nil
 			}
 			return true, nil
