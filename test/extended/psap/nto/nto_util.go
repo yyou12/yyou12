@@ -270,7 +270,7 @@ type ntoResource struct {
 	sysctlvalue string
 }
 
-func (ntoRes *ntoResource) createPodLabelTunedIfNotExist(oc *exutil.CLI) {
+func (ntoRes *ntoResource) createTunedProfileIfNotExist(oc *exutil.CLI) {
 	output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("tuned", ntoRes.name, "-n", ntoRes.namespace).Output()
 	if strings.Contains(output, "NotFound") || strings.Contains(output, "No resources") || err != nil {
 		e2e.Logf(fmt.Sprintf("No tuned in project: %s, create one: %s", ntoRes.namespace, ntoRes.name))
@@ -301,10 +301,28 @@ func (ntoRes ntoResource) assertTunedProfileApplied(oc *exutil.CLI) {
 	exutil.AssertWaitPollNoErr(err, "New tuned profile isn't applied correctly, please check")
 }
 
+func assertNTOOperatorLogs(oc *exutil.CLI, namespace string, ntoOperatorPod string, profileName string) {
+	ntoOperatorLogs, err := oc.AsAdmin().WithoutNamespace().Run("logs").Args("-n", namespace, ntoOperatorPod, "--tail=1").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	o.Expect(ntoOperatorLogs).To(o.ContainSubstring(profileName))
+}
+
 func isAllInOneCluster(oc *exutil.CLI) bool {
 	masterNodes, _ := exutil.GetClusterNodesBy(oc, "master")
 	workerNodes, _ := exutil.GetClusterNodesBy(oc, "worker")
 	if len(masterNodes) == 3 && len(workerNodes) == 0 {
+		return true
+	} else {
+		return false
+	}
+}
+
+func isSNOCluster(oc *exutil.CLI) bool {
+
+	//Only 1 master, 1 worker node and with the same hostname.
+	masterNodes, _ := exutil.GetClusterNodesBy(oc, "master")
+	workerNodes, _ := exutil.GetClusterNodesBy(oc, "worker")
+	if len(masterNodes) == 1 && len(workerNodes) == 1 && masterNodes[0] == workerNodes[0] {
 		return true
 	} else {
 		return false

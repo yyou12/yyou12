@@ -15,10 +15,11 @@ var _ = g.Describe("[sig-node] PSAP should", func() {
 		ntoNamespace                     = "openshift-cluster-node-tuning-operator"
 		override_file                    = exutil.FixturePath("testdata", "psap", "nto", "override.yaml")
 		pod_test_file                    = exutil.FixturePath("testdata", "psap", "nto", "pod_test.yaml")
+		pod_nginx_file                   = exutil.FixturePath("testdata", "psap", "nto", "pod-nginx.yaml")
 		tuned_nf_conntrack_max_file      = exutil.FixturePath("testdata", "psap", "nto", "tuned-nf-conntrack-max.yaml")
 		hp_performanceprofile_file       = exutil.FixturePath("testdata", "psap", "nto", "hp-performanceprofile.yaml")
 		hp_performanceprofile_patch_file = exutil.FixturePath("testdata", "psap", "nto", "hp-performanceprofile-patch.yaml")
-		podlabel_tuned_file              = exutil.FixturePath("testdata", "psap", "nto", "tuned-podlabel-profiles.yaml")
+		custom_tuned_profile_file        = exutil.FixturePath("testdata", "psap", "nto", "custom-tuned-profiles.yaml")
 		affine_default_cpuset_file       = exutil.FixturePath("testdata", "psap", "nto", "affine-default-cpuset.yaml")
 		isNTO                            bool
 		isAllInOne                       bool
@@ -341,7 +342,7 @@ var _ = g.Describe("[sig-node] PSAP should", func() {
 		ntoRes := ntoResource{
 			name:        "user-max-cgroup-namespaces",
 			namespace:   ntoNamespace,
-			template:    podlabel_tuned_file,
+			template:    custom_tuned_profile_file,
 			sysctlparm:  "user.max_cgroup_namespaces",
 			sysctlvalue: "128888",
 		}
@@ -361,7 +362,7 @@ var _ = g.Describe("[sig-node] PSAP should", func() {
 		}()
 
 		g.By("Apply new profile from CR")
-		ntoRes.createPodLabelTunedIfNotExist(oc)
+		ntoRes.createTunedProfileIfNotExist(oc)
 
 		g.By("Check current profile for each node")
 		output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", ntoNamespace, "profile").Output()
@@ -399,7 +400,7 @@ var _ = g.Describe("[sig-node] PSAP should", func() {
 		ntoRes := ntoResource{
 			name:        "user-max-ipc-namespaces",
 			namespace:   ntoNamespace,
-			template:    podlabel_tuned_file,
+			template:    custom_tuned_profile_file,
 			sysctlparm:  "user.max_ipc_namespaces",
 			sysctlvalue: "121112",
 		}
@@ -418,7 +419,7 @@ var _ = g.Describe("[sig-node] PSAP should", func() {
 		}()
 
 		g.By("Apply new profile from CR")
-		ntoRes.createPodLabelTunedIfNotExist(oc)
+		ntoRes.createTunedProfileIfNotExist(oc)
 
 		g.By("Check current profile for each node")
 		output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", ntoNamespace, "profile").Output()
@@ -460,7 +461,7 @@ var _ = g.Describe("[sig-node] PSAP should", func() {
 
 		g.By("Remove custom profile (if not already removed) and remove node label")
 		defer exutil.CleanupOperatorResourceByYaml(oc, ntoNamespace, affine_default_cpuset_file)
-		
+
 		defer func() {
 			err = oc.AsAdmin().WithoutNamespace().Run("label").Args("node", tunedNodeName, "affine-default-cpuset-").Execute()
 			o.Expect(err).NotTo(o.HaveOccurred())
@@ -485,5 +486,96 @@ var _ = g.Describe("[sig-node] PSAP should", func() {
 		finalResult := assertAffineDefaultCPUSets(oc, tunedPodName, ntoNamespace)
 		o.Expect(finalResult).To(o.Equal(true))
 
+	})
+
+	g.It("NonPreRelease-Author:liqcui-Medium-27491-Add own custom profile to tuned operator [Disruptive]", func() {
+		// test requires NTO to be installed
+		if !isNTO {
+			g.Skip("NTO is not installed - skipping test ...")
+		}
+
+		ntoRes := ntoResource{
+			name:        "user-max-mnt-namespaces",
+			namespace:   ntoNamespace,
+			template:    custom_tuned_profile_file,
+			sysctlparm:  "user.max_mnt_namespaces",
+			sysctlvalue: "142214",
+		}
+
+		oc.SetupProject()
+		ntoTestNS := oc.Namespace()
+		//Clean up the custom profile user-max-mnt-namespaces and unlabel the nginx pod
+		defer ntoRes.delete(oc)
+
+		//Create a nginx web application pod
+		g.By("Create a nginx web pod in nto temp namespace")
+		exutil.ApplyOperatorResourceByYaml(oc, ntoTestNS, pod_nginx_file)
+
+		//Check if nginx pod is ready
+		exutil.AssertPodToBeReady(oc, "nginx", ntoTestNS)
+
+		//Get the node name in the same node as nginx app
+		tunedNodeName, err := exutil.GetPodNodeName(oc, ntoTestNS, "nginx")
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		//Get the tuned pod name in the same node as nginx app
+		tunedPodName := getTunedPodNamebyNodeName(oc, tunedNodeName, ntoNamespace)
+
+		//Get NTO operator pod name
+		ntoOperatorPod, err := getNTOPodName(oc, ntoNamespace)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		//Label pod nginx with tuned.openshift.io/elasticsearch=
+		g.By("Label nginx pod as tuned.openshift.io/elasticsearch=")
+		err = exutil.LabelPod(oc, ntoTestNS, "nginx", "tuned.openshift.io/elasticsearch=")
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		//Apply new profile that match label tuned.openshift.io/elasticsearch=
+		g.By("Apply new profile from CR")
+		ntoRes.createTunedProfileIfNotExist(oc)
+
+		g.By("Check if new profile in in rendered tuned")
+		renderCheck, err := getTunedRender(oc, ntoNamespace)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(renderCheck).To(o.ContainSubstring("user-max-mnt-namespaces"))
+
+		//Verify if the new profile is applied
+		assertIfTunedProfileApplied(oc, ntoNamespace, tunedPodName, "user-max-mnt-namespaces")
+		profileCheck, err := getTunedProfile(oc, ntoNamespace, tunedNodeName)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(profileCheck).To(o.Equal("user-max-mnt-namespaces"))
+
+		//Verify nto operator logs
+		assertNTOOperatorLogs(oc, ntoNamespace, ntoOperatorPod, "user-max-mnt-namespaces")
+
+		g.By("Check current profile for each node")
+		output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", ntoNamespace, "profile").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf("Current profile for each node: \n%v", output)
+
+		g.By("Compare if the value user.max_mnt_namespaces in on node with labeled pod, should be 142214")
+		compareSysctlValueOnSepcifiedNodeByName(oc, tunedNodeName, "user.max_mnt_namespaces", "", "142214")
+
+		g.By("Delete custom profile")
+		ntoRes.delete(oc)
+
+		//Check if restore to default profile.
+		isSNO := isSNOCluster(oc)
+		if isSNO {
+			assertIfTunedProfileApplied(oc, ntoNamespace, tunedPodName, "openshift-control-plane")
+			assertNTOOperatorLogs(oc, ntoNamespace, ntoOperatorPod, "openshift-control-plane")
+			profileCheck, err := getTunedProfile(oc, ntoNamespace, tunedNodeName)
+			o.Expect(err).NotTo(o.HaveOccurred())
+			o.Expect(profileCheck).To(o.Equal("openshift-control-plane"))
+		} else {
+			assertIfTunedProfileApplied(oc, ntoNamespace, tunedPodName, "openshift-node")
+			assertNTOOperatorLogs(oc, ntoNamespace, ntoOperatorPod, "openshift-node")
+			profileCheck, err := getTunedProfile(oc, ntoNamespace, tunedNodeName)
+			o.Expect(err).NotTo(o.HaveOccurred())
+			o.Expect(profileCheck).To(o.Equal("openshift-node"))
+		}
+
+		g.By("Check all nodes for user.max_mnt_namespaces value, all node should different from 142214")
+		compareSysctlDifferentFromSpecifiedValueByName(oc, "user.max_mnt_namespaces", "142214")
 	})
 })
