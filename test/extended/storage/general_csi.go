@@ -3,6 +3,7 @@ package storage
 import (
 	"math/rand"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -23,6 +24,18 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 	g.BeforeEach(func() {
 		cloudProvider = getCloudProvider(oc)
 		generalCsiSupportCheck(cloudProvider)
+		rand.Seed(time.Now().UnixNano())
+		switch cloudProvider {
+		// AlibabaCloud minimum volume size is 20Gi
+		case "alibabacloud":
+			globalDefaultVolSize = strconv.Itoa(rand.Intn(10)+20) + "Gi"
+		// IBMCloud minimum volume size is 10Gi
+		case "ibmcloud":
+			globalDefaultVolSize = strconv.Itoa(rand.Intn(10)+10) + "Gi"
+		// Other Clouds(AWS GCE Azure OSP vSphere) minimum volume size is 1Gi
+		default:
+			globalDefaultVolSize = strconv.Itoa(rand.Intn(10)+1) + "Gi"
+		}
 	})
 
 	// author: pewang@redhat.com
@@ -115,7 +128,7 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 	// [CSI Driver] [Dynamic PV] [Filesystem default] volumes should store data and allow exec of files
 	g.It("Author:pewang-Critical-24485-[CSI Driver] [Dynamic PV] [Filesystem default] volumes should store data and allow exec of files", func() {
 		// Define the test scenario support provisioners
-		scenarioSupportProvisioners := []string{"ebs.csi.aws.com", "disk.csi.azure.com", "cinder.csi.openstack.org", "pd.csi.storage.gke.io", "csi.vsphere.vmware.com"}
+		scenarioSupportProvisioners := []string{"ebs.csi.aws.com", "disk.csi.azure.com", "cinder.csi.openstack.org", "pd.csi.storage.gke.io", "csi.vsphere.vmware.com", "vpc.block.csi.ibm.io"}
 		// Set the resource template for the scenario
 		var (
 			storageTeamBaseDir  = exutil.FixturePath("testdata", "storage")
@@ -468,7 +481,7 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 	// OCP-44905 - [CSI-Driver] [Dynamic PV] [block volume] volumes should store data
 	g.It("Author:wduan-Critical-44905-[CSI-Driver] [Dynamic PV] [block volume] volumes should store data", func() {
 		// Define the test scenario support provisioners
-		scenarioSupportProvisioners := []string{"ebs.csi.aws.com", "disk.csi.azure.com", "cinder.csi.openstack.org", "pd.csi.storage.gke.io", "csi.vsphere.vmware.com"}
+		scenarioSupportProvisioners := []string{"ebs.csi.aws.com", "disk.csi.azure.com", "cinder.csi.openstack.org", "pd.csi.storage.gke.io", "csi.vsphere.vmware.com", "vpc.block.csi.ibm.io"}
 		// Set the resource template for the scenario
 		var (
 			storageTeamBaseDir  = exutil.FixturePath("testdata", "storage")
@@ -945,13 +958,10 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 		for _, provisioner := range supportProvisioners {
 			g.By("******" + cloudProvider + " csi driver: \"" + provisioner + "\" test phase start" + "******")
 			// Set the resource definition for the scenario
-			rand.Seed(time.Now().UnixNano())
-			randomNum := rand.Intn(10) + 2
-			randomCapacity := interfaceToString(randomNum) + "Gi"
 			storageClass := newStorageClass(setStorageClassTemplate(storageClassTemplate), setStorageClassProvisioner(provisioner), setStorageClassReclaimPolicy("Retain"))
-			pvc := newPersistentVolumeClaim(setPersistentVolumeClaimStorageClassName(storageClass.name), setPersistentVolumeClaimTemplate(pvcTemplate), setPersistentVolumeClaimCapacity(randomCapacity))
+			pvc := newPersistentVolumeClaim(setPersistentVolumeClaimStorageClassName(storageClass.name), setPersistentVolumeClaimTemplate(pvcTemplate))
 			pod := newPod(setPodTemplate(podTemplate), setPodPersistentVolumeClaim(pvc.name))
-			newpvc := newPersistentVolumeClaim(setPersistentVolumeClaimStorageClassName(storageClass.name), setPersistentVolumeClaimTemplate(pvcTemplate), setPersistentVolumeClaimCapacity(randomCapacity))
+			newpvc := newPersistentVolumeClaim(setPersistentVolumeClaimStorageClassName(storageClass.name), setPersistentVolumeClaimTemplate(pvcTemplate))
 			newpod := newPod(setPodTemplate(podTemplate), setPodPersistentVolumeClaim(newpvc.name))
 
 			g.By("# Create csi storageclass with 'reclaimPolicy: retain'")
@@ -1004,6 +1014,7 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 			newPvName := "newpv-" + getRandomString()
 			defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("pv", newPvName).Execute()
 			createNewPersistVolumeWithRetainVolume(oc, originpv, storageClass.name, newPvName)
+			newpvc.capacity = pvc.capacity
 			newpvc.createWithSpecifiedPV(oc, newPvName)
 			defer newpvc.deleteAsAdmin(oc)
 			newpod.create(oc)

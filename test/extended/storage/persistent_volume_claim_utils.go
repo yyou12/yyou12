@@ -12,6 +12,9 @@ import (
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 )
 
+// Define the persistentVolumeClaim global default capicity
+var globalDefaultVolSize = "1Gi"
+
 type persistentVolumeClaim struct {
 	name           string
 	namespace      string
@@ -88,7 +91,7 @@ func newPersistentVolumeClaim(opts ...persistentVolumeClaimOption) persistentVol
 		name:       "my-pvc-" + getRandomString(),
 		template:   "pvc-template.yaml",
 		namespace:  "",
-		capacity:   "1Gi",
+		capacity:   globalDefaultVolSize,
 		volumemode: "Filesystem",
 		scname:     "gp2-csi",
 		accessmode: "ReadWriteOnce",

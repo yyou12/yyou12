@@ -61,6 +61,24 @@
             "preset_scname": "csi-manila-ceph"
           }
         ]
+      },
+      {
+        "name": "alibabacloud",
+        "provisioners": [
+          {
+            "name": "diskplugin.csi.alibabacloud.com",
+            "preset_scname": "alicloud-disk"
+          }
+        ]
+      },
+      {
+        "name": "ibmcloud",
+        "provisioners": [
+          {
+            "name": "vpc.block.csi.ibm.io",
+            "preset_scname": "ibmc-vpc-block-custom"
+          }
+        ]
       }
     ]
   }

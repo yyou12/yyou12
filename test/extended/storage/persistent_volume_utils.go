@@ -112,7 +112,7 @@ func createNewPersistVolumeWithRetainVolume(oc *exutil.CLI, originPvExportJson s
 		err            error
 		outputJsonFile string
 	)
-	for _, jsonPath := range []string{`spec.claimRef`, `spec.nodeAffinity`, `spec.storageClassName`, `status`, `metadata`} {
+	for _, jsonPath := range []string{`spec.claimRef`, `spec.storageClassName`, `status`, `metadata`} {
 		originPvExportJson, err = sjson.Delete(originPvExportJson, jsonPath)
 		o.Expect(err).NotTo(o.HaveOccurred())
 	}
