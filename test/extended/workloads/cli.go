@@ -294,6 +294,41 @@ var _ = g.Describe("[sig-cli] Workloads", func() {
 		err := oc.AsAdmin().WithoutNamespace().Run("get").Args("events", "-n", "openshift-operator-lifecycle-manager", "--sort-by="+".lastTimestamp").Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
 	})
+
+	// author: yinzhou@redhat.com
+	g.It("Author:yinzhou-Medium-47555-Should not update data when use oc set data with dry-run as server", func() {
+		g.By("create new namespace")
+		oc.SetupProject()
+		g.By("Create new configmap")
+		err := oc.Run("create").Args("configmap", "cm-47555", "--from-literal=name=abc").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		g.By("Save the data for configmap")
+		beforeSetcm, err := oc.Run("get").Args("cm", "cm-47555", "-o=jsonpath={.data.name}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		g.By("Run the set with server dry-run")
+		err = oc.Run("set").Args("data", "cm", "cm-47555", "--from-literal=name=def", "--dry-run=server").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		afterSetcm, err := oc.Run("get").Args("cm", "cm-47555", "-o=jsonpath={.data.name}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		if match, _ := regexp.MatchString(beforeSetcm, afterSetcm); !match {
+                        e2e.Failf("Should not persistent update configmap with server dry-run")
+                }
+		g.By("Create new secret")
+		err = oc.Run("create").Args("secret", "generic", "secret-47555", "--from-literal=name=abc").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		g.By("Save the data for secret")
+		beforeSetse, err := oc.Run("get").Args("secret", "secret-47555", "-o=jsonpath={.data.name}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		g.By("Run the set with server dry-run")
+		err = oc.Run("set").Args("data", "secret", "secret-47555", "--from-literal=name=def", "--dry-run=server").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		afterSetse, err := oc.Run("get").Args("secret", "secret-47555", "-o=jsonpath={.data.name}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		if match, _ := regexp.MatchString(beforeSetse, afterSetse); !match {
+                        e2e.Failf("Should not persistent update secret with server dry-run")
+                }
+
+	})
 })
 
 type ClientVersion struct {
