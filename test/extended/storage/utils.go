@@ -238,11 +238,18 @@ func getSupportProvisionersByCloudProvider(cloudProvider string) []string {
 	return supportProvisioners
 }
 
-// Get common csi provisioners by cloudplatform
+// Get pre-defined storageclass by cloudplatform and provisioner
 func getPresetStorageClassNameByProvisioner(cloudProvider string, provisioner string) string {
 	csiCommonSupportMatrix, err := ioutil.ReadFile(filepath.Join(exutil.FixturePath("testdata", "storage"), "general-csi-support-provisioners.json"))
 	o.Expect(err).NotTo(o.HaveOccurred())
 	return gjson.GetBytes(csiCommonSupportMatrix, "support_Matrix.platforms.#(name="+cloudProvider+").provisioners.#(name="+provisioner+").preset_scname").String()
+}
+
+// Get pre-defined volumesnapshotclass by cloudplatform and provisioner
+func getPresetVolumesnapshotClassNameByProvisioner(cloudProvider string, provisioner string) string {
+	csiCommonSupportMatrix, err := ioutil.ReadFile(filepath.Join(exutil.FixturePath("testdata", "storage"), "general-csi-support-provisioners.json"))
+	o.Expect(err).NotTo(o.HaveOccurred())
+	return gjson.GetBytes(csiCommonSupportMatrix, "support_Matrix.platforms.#(name="+cloudProvider+").provisioners.#(name="+provisioner+").preset_vscname").String()
 }
 
 // Get the now timestamp mil second
@@ -270,4 +277,18 @@ func getZonesFromWorker(oc *exutil.CLI) []string {
 	}
 
 	return workerZones
+}
+
+// Common oc CLI
+//  Get the oc describe info, set namespace as "" for cluster-wide resource
+func getOcDescribeInfo(oc *exutil.CLI, namespace string, resourceKind string, resourceName string) string {
+	var ocDescribeInfo string
+	var err error
+	if namespace != "" {
+		ocDescribeInfo, err = oc.WithoutNamespace().Run("describe").Args("-n", namespace, resourceKind, resourceName).Output()
+	} else {
+		ocDescribeInfo, err = oc.WithoutNamespace().Run("describe").Args(resourceKind, resourceName).Output()
+	}
+	o.Expect(err).NotTo(o.HaveOccurred())
+	return ocDescribeInfo
 }
