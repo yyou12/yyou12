@@ -59,6 +59,12 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance Pre-check and post-check f
 				ns1, "-o=jsonpath={.items[0].status.phase}"}).check(oc)
 			newCheck("expect", asAdmin, withoutNamespace, compare, "Running", ok, []string{"pod", "--selector=profile-bundle=rhcos4", "-n",
 				ns1, "-o=jsonpath={.items[0].status.phase}"}).check(oc)
+			g.By("Check profilebundle status and metrics service !!!")
+			newCheck("expect", asAdmin, withoutNamespace, compare, "VALID", ok, []string{"profilebundle", "ocp4", "-n", ns1,
+				"-ojsonpath={.status.dataStreamStatus}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, compare, "VALID", ok, []string{"profilebundle", "rhcos4", "-n", ns1,
+				"-ojsonpath={.status.dataStreamStatus}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "metrics", ok, []string{"service", "-n", ns1, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
 
 			g.By("Check csv and pods for ns2 !!!")
 			rsCsvName2 := getResourceNameWithKeywordForNamespace(oc, "csv", "compliance-operator", ns2)
@@ -75,10 +81,22 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance Pre-check and post-check f
 				ns2, "-o=jsonpath={.items[0].status.phase}"}).check(oc)
 			newCheck("expect", asAdmin, withoutNamespace, compare, "Running", ok, []string{"pod", "--selector=profile-bundle=rhcos4", "-n",
 				ns2, "-o=jsonpath={.items[0].status.phase}"}).check(oc)
+			g.By("Check profilebundle status !!!")
+			newCheck("expect", asAdmin, withoutNamespace, compare, "VALID", ok, []string{"profilebundle", "ocp4", "-n", ns1,
+				"-ojsonpath={.status.dataStreamStatus}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, compare, "VALID", ok, []string{"profilebundle", "rhcos4", "-n", ns1,
+				"-ojsonpath={.status.dataStreamStatus}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "metrics", ok, []string{"service", "-n", ns1, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
 		})
 
 		// author: xiyuan@redhat.com
-		g.It("Author:xiyuan-CPaasrunOnly-NonPreRelease-High-37721-High-37824-precheck for compliance operator", func() {
+		g.It("Author:xiyuan-CPaasrunOnly-NonPreRelease-High-37721-High-37824-High-45014-precheck for compliance operator", func() {
+
+			g.By("Get the compliance operator resources..!!!\n")
+			getOperatorResources(oc, "rules", ns1)
+			getOperatorResources(oc, "variables", ns1)
+			getOperatorResources(oc, "profiles.compliance", ns1)
+
 			g.By("Create scansettingbinding !!!\n")
 			ssb.namespace = ns1
 			ssb2.namespace = ns2
@@ -109,7 +127,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance Pre-check and post-check f
 		})
 
 		// author: xiyuan@redhat.com
-		g.It("Author:xiyuan-CPaasrunOnly-NonPreRelease-High-37721-High-37824-postcheck for compliance operator", func() {
+		g.It("Author:xiyuan-CPaasrunOnly-NonPreRelease-High-37721-High-37824-High-45014-postcheck for compliance operator", func() {
 			defer cleanupObjects(oc,
 				objectTableRef{"scansettingbinding", ns1, ssb.name},
 				objectTableRef{"scansettingbinding", ns2, ssb2.name},
@@ -119,6 +137,11 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance Pre-check and post-check f
 				objectTableRef{"profilebundle.compliance", ns2, "rhcos4"},
 				objectTableRef{"project", ns1, ns1},
 				objectTableRef{"project", ns2, ns2})
+
+			g.By("Compare the compliance operator resource count after upgrade.. !!\n")
+			readFileLinesToCompare(oc, "rules", "rules.json", ns1)
+			readFileLinesToCompare(oc, "variables", "variables.json", ns1)
+			readFileLinesToCompare(oc, "profiles.compliance", "profiles.compliance.json", ns1)
 
 			g.By("Trigger rescan using oc-compliance plugin.. !!")
 			_, err := OcComplianceCLI().Run("rerun-now").Args("scansettingbinding", ssb.name, "-n", ns1).Output()

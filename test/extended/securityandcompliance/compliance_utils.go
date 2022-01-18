@@ -848,3 +848,28 @@ func genFluentdSecret(oc *exutil.CLI, namespace string, serverName string) {
 	o.Expect(err2).NotTo(o.HaveOccurred())
 	e2e.Logf("The secrete is generated for %s in %s namespace \n", serverName, namespace)
 }
+
+func getOperatorResources(oc *exutil.CLI, resourcename string, namespace string) {
+	rPath, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args(resourcename, "--no-headers", "-n", namespace).OutputToFile(resourcename + ".json")
+	_, err := exec.Command("bash", "-c", "mv "+rPath+" /tmp/"+resourcename+".json").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	e2e.Logf("%s", rPath)
+}
+
+func readFileLinesToCompare(oc *exutil.CLI, resourcename string, fileName string, namespace string) {
+	err := wait.Poll(5*time.Second, 30*time.Second, func() (bool, error) {
+		orgCnts, err := exec.Command("bash", "-c", "cat /tmp/"+fileName+" | wc -l ; rm -rf /tmp/"+fileName).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		orgCnt := string(orgCnts)
+		rsPath, err := oc.AsAdmin().WithoutNamespace().Run("get").Args(resourcename, "--no-headers", "-n", namespace).OutputToFile(getRandomString() + ".json")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		result, _ := exec.Command("bash", "-c", "cat "+rsPath+" | wc -l; rm -rf "+rsPath).Output()
+		actCnt := string(result)
+		if strings.Compare(orgCnt, actCnt) == 0 {
+			e2e.Logf("The original %s count before upgrade was %s and that matches with the actual %s count %s after upgrade \n", resourcename, orgCnt, resourcename, actCnt)
+			return true, nil
+		}
+		return false, nil
+	})
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("The orignal %s count before upgrade does not match with the actual %s count after upgrade \n", resourcename, resourcename))
+}
