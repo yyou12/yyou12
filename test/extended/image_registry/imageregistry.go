@@ -2,10 +2,12 @@ package image_registry
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -1007,4 +1009,80 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 		o.Expect(string(tag)).To(o.ContainSubstring("customTag"))
 		o.Expect(string(tag)).To(o.ContainSubstring("installer-qe"))
 	})
+
+	// author: tbuskey@redhat.com
+	g.It("Author:tbuskey-High-22056-Registry operator configure prometheus metric gathering", func() {
+		var (
+			authHeader         string
+			after              = make(map[string]int)
+			before             = make(map[string]int)
+			data               PrometheusImageregistryQueryHttp
+			err                error
+			fails              = 0
+			failItems          = ""
+			l                  int
+			msg                string
+			prometheusUrl      = "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1"
+			prometheusUrlQuery string
+			query              string
+			token              string
+			metrics            = []string{"imageregistry_http_request_duration_seconds_count",
+				"imageregistry_http_request_size_bytes_count",
+				"imageregistry_http_request_size_bytes_sum",
+				"imageregistry_http_response_size_bytes_count",
+				"imageregistry_http_response_size_bytes_sum",
+				"imageregistry_http_request_size_bytes_count",
+				"imageregistry_http_request_size_bytes_sum",
+				"imageregistry_http_requests_total",
+				"imageregistry_http_response_size_bytes_count",
+				"imageregistry_http_response_size_bytes_sum"}
+		)
+
+		g.By("Get Prometheus token")
+		token, err = oc.AsAdmin().WithoutNamespace().Run("sa").Args("-n", "openshift-monitoring", "get-token", "prometheus-k8s").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(token).NotTo(o.BeEmpty())
+		authHeader = fmt.Sprintf("Authorization: Bearer %v", token)
+
+		g.By("Collect metrics at start")
+		for _, query = range metrics {
+			prometheusUrlQuery = fmt.Sprintf("%v/query?query=%v", prometheusUrl, query)
+			msg, _, err = oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-monitoring", "-c", "prometheus", "prometheus-k8s-0", "-i", "--", "curl", "-k", "-H", authHeader, prometheusUrlQuery).Outputs()
+			o.Expect(msg).NotTo(o.BeEmpty())
+			json.Unmarshal([]byte(msg), &data)
+			l = len(data.Data.Result) - 1
+			before[query], err = strconv.Atoi(data.Data.Result[l].Value[1].(string))
+			// e2e.Logf("query %v ==  %v", query, before[query])
+		}
+		g.By("pause to get next metrics")
+		time.Sleep(60 * time.Second)
+
+		g.By("Collect metrics again")
+		for _, query = range metrics {
+			prometheusUrlQuery = fmt.Sprintf("%v/query?query=%v", prometheusUrl, query)
+			msg, _, err = oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-monitoring", "-c", "prometheus", "prometheus-k8s-0", "-i", "--", "curl", "-k", "-H", authHeader, prometheusUrlQuery).Outputs()
+			o.Expect(msg).NotTo(o.BeEmpty())
+			json.Unmarshal([]byte(msg), &data)
+			l = len(data.Data.Result) - 1
+			after[query], err = strconv.Atoi(data.Data.Result[l].Value[1].(string))
+			// e2e.Logf("query %v ==  %v", query, before[query])
+		}
+
+		g.By("results")
+		for _, query = range metrics {
+			msg = "."
+			if before[query] >= after[query] {
+				fails++
+				failItems = fmt.Sprintf("%v%v ", failItems, query)
+			}
+			e2e.Logf("%v -> %v %v", before[query], after[query], query)
+			// need to test & compare
+		}
+		if fails != 0 {
+			e2e.Failf("\nFAIL: %v metrics decreasesd: %v\n\n", fails, failItems)
+		}
+
+		g.By("Success")
+	})
+
 })

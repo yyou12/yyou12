@@ -39,6 +39,27 @@ type prometheusResponseData struct {
 	Result     model.Vector `json:"result"`
 }
 
+// tbuskey@redhat.com for OCP-22056
+type PrometheusImageregistryQueryHttp struct {
+	Data struct {
+		Result []struct {
+			Metric struct {
+				Name      string `json:"__name__"`
+				Container string `json:"container"`
+				Endpoint  string `json:"endpoint"`
+				Instance  string `json:"instance"`
+				Job       string `json:"job"`
+				Namespace string `json:"namespace"`
+				Pod       string `json:"pod"`
+				Service   string `json:"service"`
+			} `json:"metric"`
+			Value []interface{} `json:"value"`
+		} `json:"result"`
+		ResultType string `json:"resultType"`
+	} `json:"data"`
+	Status string `json:"status"`
+}
+
 func ListPodStartingWith(prefix string, oc *exutil.CLI, namespace string) (pod []corev1.Pod) {
 	podsToAll := []corev1.Pod{}
 	podList, err := oc.AdminKubeClient().CoreV1().Pods(namespace).List(metav1.ListOptions{})
