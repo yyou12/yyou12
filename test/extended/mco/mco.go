@@ -1163,6 +1163,46 @@ nulla pariatur.`
 		useForceFile := true
 		verifyDriftConfig(mcp, rf, newMode, useForceFile)
 	})
+	g.It("Author:sregidor-Longduration-NonPreRelease-High-47008-Config Drift. Dropin file. [Serial]", func() {
+		g.By("Create a MC to deploy a unit with a dropin file")
+		dropinFileName := "10-chrony-drop-test.conf"
+		filePath := "/etc/systemd/system/chronyd.service.d/" + dropinFileName
+		fileContent := "[Service]\nEnvironment=\"FAKE_OPTS=fake-value\""
+		unitEnabled := true
+		unitName := "chronyd.service"
+		unitConfig := getDropinFileConfig(unitName, unitEnabled, dropinFileName, fileContent)
+
+		mcName := "drifted-dropins-test"
+		mc := MachineConfig{name: mcName, pool: "worker"}
+		defer mc.delete(oc)
+
+		template := NewMCOTemplate(oc, "generic-machine-config-template.yml")
+		err := template.Create("-p", "NAME="+mcName, "-p", "POOL=worker", "-p", fmt.Sprintf("UNITS=[%s]", unitConfig))
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Wait until worker MCP has finished the configuration. No machine should be degraded.")
+		mcp := NewMachineConfigPool(oc.AsAdmin(), "worker")
+		mcp.waitForComplete()
+
+		g.By("Verfiy file content and permissions")
+		workerNode := NewNodeList(oc).GetAllWorkerNodesOrFail()[0]
+
+		rf := NewRemoteFile(workerNode, filePath)
+		rferr := rf.Fetch()
+		o.Expect(rferr).NotTo(o.HaveOccurred())
+
+		defaultMode := "0644"
+		o.Expect(rf.GetTextContent()).To(o.Equal(fileContent))
+		o.Expect(rf.GetNpermissions()).To(o.Equal(defaultMode))
+
+		g.By("Verfiy drift config behavior")
+		defer o.Expect(rf.PushNewPermissions(defaultMode)).NotTo(o.HaveOccurred())
+		defer o.Expect(rf.PushNewTextContent(fileContent)).NotTo(o.HaveOccurred())
+
+		newMode := "0400"
+		useForceFile := true
+		verifyDriftConfig(mcp, rf, newMode, useForceFile)
+	})
 })
 
 func createMcAndVerifyMCValue(oc *exutil.CLI, stepText string, mcName string, workerNode node, textToVerify TextToVerify, cmd ...string) {

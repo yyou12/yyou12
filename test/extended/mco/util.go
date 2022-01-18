@@ -526,3 +526,11 @@ func getGzipFileJSONConfig(destinationPath string, fileContent string) string {
 func getMaskServiceConfig(name string, mask bool) string {
 	return fmt.Sprintf(`{"name": "%s", "mask": %t}`, name, mask)
 }
+
+func getDropinFileConfig(unitName string, enabled bool, fileName string, fileContent string) string {
+	// Escape not valid characters in json from the file content
+	scapedContent := strings.ReplaceAll(fileContent, "\n", `\n`)
+	scapedContent = strings.ReplaceAll(scapedContent, "\"", `\"`)
+
+	return fmt.Sprintf(`{"name": "%s", "enabled": %t, "dropins": [{"name": "%s", "contents": "%s"}]}`, unitName, enabled, fileName, scapedContent)
+}
