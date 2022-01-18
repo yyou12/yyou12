@@ -229,4 +229,59 @@ var _ = g.Describe("[sig-network-edge] Network_Edge should", func() {
 		upstreams  =  readDNSCorefile(oc, dnspodname, "forward", "-A2")
 		o.Expect(upstreams).To(o.ContainSubstring("forward . /etc/resolv.conf"))
 	})
+
+	g.It("Author:shudili-Medium-46869-Negative test of configuring upstream resolvers and policy flag [Disruptive]", func() {
+		var (
+			resourceName           = "dns.operator.openshift.io/default"
+			cfg_addone_upstreams   = "[{\"op\":\"add\", \"path\":\"/spec/upstreamResolvers/upstreams\", \"value\":[" +
+			                         "{\"address\":\"30.100.1.11\",\"port\":53,\"type\":\"Network\"}, " +
+			                         "{\"address\":\"30.100.1.12\",\"port\":53,\"type\":\"Network\"}, " +
+			                         "{\"address\":\"30.100.1.13\",\"port\":53,\"type\":\"Network\"}, " +
+			                         "{\"address\":\"30.100.1.14\",\"port\":53,\"type\":\"Network\"}, " +
+			                         "{\"address\":\"30.100.1.15\",\"port\":53,\"type\":\"Network\"}, " +
+			                         "{\"address\":\"30.100.1.16\",\"port\":53,\"type\":\"Network\"}, " +
+			                         "{\"address\":\"30.100.1.17\",\"port\":53,\"type\":\"Network\"}, " +
+			                         "{\"address\":\"30.100.1.18\",\"port\":53,\"type\":\"Network\"}, " +
+			                         "{\"address\":\"30.100.1.19\",\"port\":53,\"type\":\"Network\"}, " +
+			                         "{\"address\":\"30.100.1.20\",\"port\":53,\"type\":\"Network\"}, " +
+			                         "{\"address\":\"30.100.1.21\",\"port\":53,\"type\":\"Network\"}, " +
+			                         "{\"address\":\"30.100.1.22\",\"port\":53,\"type\":\"Network\"}, " +
+			                         "{\"address\":\"30.100.1.23\",\"port\":53,\"type\":\"Network\"}, " +
+			                         "{\"address\":\"30.100.1.24\",\"port\":53,\"type\":\"Network\"}, " +
+			                         "{\"address\":\"30.100.1.25\",\"port\":53,\"type\":\"Network\"}, " +
+			                         "{\"address\":\"30.100.1.26\",\"port\":53,\"type\":\"Network\"}]}]"
+			invalidCfg_string_upstreams = "[{\"op\":\"replace\", \"path\":\"/spec/upstreamResolvers/upstreams\", \"value\":[" +
+			                              "{\"address\":\"str_test\",\"port\":53,\"type\":\"Network\"}]}]"
+			invalidCfg_number_upstreams = "[{\"op\":\"replace\", \"path\":\"/spec/upstreamResolvers/upstreams\", \"value\":[" +
+			                              "{\"address\":\"100\",\"port\":53,\"type\":\"Network\"}]}]"
+			invalidCfg_sring_policy     = "[{\"op\":\"replace\", \"path\":\"/spec/upstreamResolvers/policy\", \"value\":\"string_test\"}]"
+			invalidCfg_number_policy    = "[{\"op\":\"replace\", \"path\":\"/spec/upstreamResolvers/policy\", \"value\":\"2\"}]"
+			invalidCfg_random_policy    = "[{\"op\":\"replace\", \"path\":\"/spec/upstreamResolvers/policy\", \"value\":\"random\"}]"
+		)
+		defer restoreDNSOperatorDefault(oc)
+
+		g.By("Try to add one more upstream resolver, totally 16 upstream resolvers by patching dns operator")
+		output, _ := oc.AsAdmin().WithoutNamespace().Run("patch").Args(resourceName, "--patch="+cfg_addone_upstreams, "--type=json").Output()
+		o.Expect(output).To(o.ContainSubstring("spec.upstreamResolvers.upstreams in body should have at most 15 items"))
+
+		g.By("Try to add a upstream resolver with a string as an address")
+		output, _ = oc.AsAdmin().WithoutNamespace().Run("patch").Args(resourceName, "--patch="+invalidCfg_string_upstreams, "--type=json").Output()
+		o.Expect(output).To(o.ContainSubstring("Invalid value: \"str_test\""))
+
+		g.By("Try to add a upstream resolver with a number as an address")
+		output, _ = oc.AsAdmin().WithoutNamespace().Run("patch").Args(resourceName, "--patch="+invalidCfg_number_upstreams, "--type=json").Output()
+		o.Expect(output).To(o.ContainSubstring("Invalid value: \"100\""))
+
+		g.By("Try to configure the polciy with a string")
+		output, _ = oc.AsAdmin().WithoutNamespace().Run("patch").Args(resourceName, "--patch="+invalidCfg_sring_policy, "--type=json").Output()
+		o.Expect(output).To(o.ContainSubstring("Unsupported value: \"string_test\""))
+
+		g.By("Try to configure the polciy with a number")
+		output, _ = oc.AsAdmin().WithoutNamespace().Run("patch").Args(resourceName, "--patch="+invalidCfg_number_policy, "--type=json").Output()
+		o.Expect(output).To(o.ContainSubstring("Unsupported value: \"2\""))
+
+		g.By("Try to configure the polciy with a similar string like random")
+		output, _ = oc.AsAdmin().WithoutNamespace().Run("patch").Args(resourceName, "--patch="+invalidCfg_random_policy, "--type=json").Output()
+		o.Expect(output).To(o.ContainSubstring("Unsupported value: \"random\""))
+	})
 })
