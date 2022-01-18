@@ -1855,6 +1855,26 @@ var _ = g.Describe("[sig-operators] OLM opm with podman", func() {
 		g.By("test case 47222 SUCCESS")
 	})
 
+	// author: scolange@redhat.com
+	g.It("ConnectedOnly-Author:scolange-Medium-45679-Configurable dependency inclusion in catalog diffs", func() {
+	
+		indexImage := "quay.io/olmqe/etcd-index:test-skip-deps"
+	
+		output1, err1 := opmCLI.Run("alpha").Args("list","bundles",indexImage).Output()
+		o.Expect(err1).NotTo(o.HaveOccurred())
+		o.Expect(output1).To(o.ContainSubstring("planetscale-operator.v0.1.7"))
+
+		output2, err2 := opmCLI.Run("alpha").Args("diff",indexImage).Output()
+		o.Expect(err2).NotTo(o.HaveOccurred())
+		o.Expect(output2).To(o.ContainSubstring("name: planetscale-operator.v0.1.7" ))
+
+		output3, err3 := opmCLI.Run("alpha").Args("diff",indexImage,"--skip-deps").Output()
+		o.Expect(err3).NotTo(o.HaveOccurred())
+		o.Expect(output3).NotTo(o.ContainSubstring("name: planetscale-operator.v0.1.7" ))
+		g.By("test case 45679 SUCCESS")
+
+	})
+
 	// author: tbuskey@redhat.com OLM-2195
 	g.It("Author:tbuskey-Low-45409-opm filter by operator version", func() {
 		var (
