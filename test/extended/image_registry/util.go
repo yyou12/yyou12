@@ -607,7 +607,7 @@ func checkRegistryDegraded(oc *exutil.CLI) bool {
 	return true
 }
 
-func getCreditFromCluster(oc *exutil.CLI) (error, error) {
+func getCreditFromCluster(oc *exutil.CLI) (string, string) {
 	credential, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("secret/aws-creds", "-n", "kube-system", "-o", "json").Output()
 	o.Expect(err).NotTo(o.HaveOccurred())
 	accessKeyIdBase64, secureKeyBase64 := gjson.Get(credential, `data.aws_access_key_id`).Str, gjson.Get(credential, `data.aws_secret_access_key`).Str
@@ -615,5 +615,5 @@ func getCreditFromCluster(oc *exutil.CLI) (error, error) {
 	o.Expect(err1).NotTo(o.HaveOccurred())
 	secureKey, err2 := base64.StdEncoding.DecodeString(secureKeyBase64)
 	o.Expect(err2).NotTo(o.HaveOccurred())
-	return os.Setenv("AWS_ACCESS_KEY_ID", string(accessKeyId)), os.Setenv("AWS_SECRET_ACCESS_KEY", string(secureKey))
+	return "AWS_ACCESS_KEY_ID=" + string(accessKeyId), "AWS_SECRET_ACCESS_KEY=" + string(secureKey)
 }

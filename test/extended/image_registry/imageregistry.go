@@ -950,7 +950,7 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 	})
 
 	// author: jitli@redhat.com
-	g.It("Author:jitli-ConnectedOnly-VMonly-Medium-41398-Users providing custom AWS tags are set with bucket creation [Disruptive]", func() {
+	g.It("Author:jitli-ConnectedOnly-Medium-41398-Users providing custom AWS tags are set with bucket creation [Disruptive]", func() {
 
 		g.By("Check platforms")
 		output, err := oc.WithoutNamespace().AsAdmin().Run("get").Args("infrastructure.config.openshift.io", "-o=jsonpath={..status.platformStatus.type}").Output()
@@ -968,13 +968,14 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 		bucket, _ := oc.AsAdmin().Run("get").Args("config.image", "-o=jsonpath={..spec.storage.s3.bucket}").Output()
 
 		g.By("Set AWS credentials")
-		defer os.Unsetenv("AWS_ACCESS_KEY_ID")
-		defer os.Unsetenv("AWS_SECRET_ACCESS_KEY")
-		getCreditFromCluster(oc)
+		accessKeyId, secureKey := getCreditFromCluster(oc)
 
 		g.By("Check the tags")
 		awscmd := "aws s3api get-bucket-tagging --bucket "
-		tag, _ := exec.Command("bash", "-c", awscmd+bucket).Output()
+		cmd := exec.Command("bash", "-c", awscmd+bucket)
+		cmd.Env = append(os.Environ(), accessKeyId, secureKey)
+		tag, err := cmd.Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(string(tag)).To(o.ContainSubstring("customTag"))
 		o.Expect(string(tag)).To(o.ContainSubstring("installer-qe"))
 
@@ -986,7 +987,9 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 
 		g.By("Check AWS ls")
 		awscmdls := "aws s3 ls s3://" + bucket
-		awsls, _ := exec.Command("bash", "-c", awscmdls).CombinedOutput()
+		cmdls := exec.Command("bash", "-c", awscmdls)
+		cmdls.Env = append(os.Environ(), accessKeyId, secureKey)
+		awsls, _ := cmdls.CombinedOutput()
 		o.Expect(string(awsls)).To(o.ContainSubstring("The specified bucket does not exist"))
 
 		g.By("Managed managementState")
@@ -1005,7 +1008,10 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 			}
 		})
 		exutil.AssertWaitPollNoErr(err, "Can't get bucket")
-		tag, _ = exec.Command("bash", "-c", awscmd+bucket).Output()
+		cmd = exec.Command("bash", "-c", awscmd+bucket)
+		cmd.Env = append(os.Environ(), accessKeyId, secureKey)
+		tag, err = cmd.Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(string(tag)).To(o.ContainSubstring("customTag"))
 		o.Expect(string(tag)).To(o.ContainSubstring("installer-qe"))
 	})

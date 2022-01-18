@@ -1,6 +1,8 @@
 package image_registry
 
 import (
+	"os"
+	"os/exec"
 	"strings"
 	"time"
 
@@ -49,5 +51,65 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 		} else {
 			e2e.Failf("registries.conf not update")
 		}
+	})
+
+	// author: wewang@redhat.com
+	g.It("NonPreRelease-PreChkUpgrade-Author:wewang-High-41400-Users providing custom AWS tags are set with bucket creation prepare", func() {
+		g.By("Check platforms")
+		output, err := oc.WithoutNamespace().AsAdmin().Run("get").Args("infrastructure.config.openshift.io", "-o=jsonpath={..status.platformStatus.type}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		if !strings.Contains(output, "AWS") {
+			g.Skip("Skip for non-supported platform")
+		}
+		g.By("Check the cluster is with resourceTags")
+		output, err = oc.WithoutNamespace().AsAdmin().Run("get").Args("infrastructure.config.openshift.io", "-o=jsonpath={..status.platformStatus.aws}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		if !strings.Contains(output, "resourceTags") {
+			g.Skip("Skip for no resourceTags")
+		}
+		g.By("Get bucket name")
+		bucket, _ := oc.AsAdmin().Run("get").Args("config.image", "-o=jsonpath={..spec.storage.s3.bucket}").Output()
+
+		g.By("Set AWS credentials")
+		accessKeyId, secureKey := getCreditFromCluster(oc)
+
+		g.By("Check the tags")
+		awscmd := "aws s3api get-bucket-tagging --bucket "
+		cmd := exec.Command("bash", "-c", awscmd+bucket)
+		cmd.Env = append(os.Environ(), accessKeyId, secureKey)
+		tag, err := cmd.Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(string(tag)).To(o.ContainSubstring("customTag"))
+		o.Expect(string(tag)).To(o.ContainSubstring("installer-qe"))
+	})
+
+	// author: wewang@redhat.com
+	g.It("NonPreRelease-PstChkUpgrade-Author:wewang-High-41400- Users providing custom AWS tags are set with bucket creation after upgrade", func() {
+		g.By("Check platforms")
+		output, err := oc.WithoutNamespace().AsAdmin().Run("get").Args("infrastructure.config.openshift.io", "-o=jsonpath={..status.platformStatus.type}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		if !strings.Contains(output, "AWS") {
+			g.Skip("Skip for non-supported platform")
+		}
+		g.By("Check the cluster is with resourceTags")
+		output, err = oc.WithoutNamespace().AsAdmin().Run("get").Args("infrastructure.config.openshift.io", "-o=jsonpath={..status.platformStatus.aws}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		if !strings.Contains(output, "resourceTags") {
+			g.Skip("Skip for no resourceTags")
+		}
+		g.By("Get bucket name")
+		bucket, _ := oc.AsAdmin().Run("get").Args("config.image", "-o=jsonpath={..spec.storage.s3.bucket}").Output()
+
+		g.By("Set AWS credentials")
+		accessKeyId, secureKey := getCreditFromCluster(oc)
+
+		g.By("Check the tags")
+		awscmd := "aws s3api get-bucket-tagging --bucket "
+		cmd := exec.Command("bash", "-c", awscmd+bucket)
+		cmd.Env = append(os.Environ(), accessKeyId, secureKey)
+		tag, err := cmd.Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(string(tag)).To(o.ContainSubstring("customTag"))
+		o.Expect(string(tag)).To(o.ContainSubstring("installer-qe"))
 	})
 })
