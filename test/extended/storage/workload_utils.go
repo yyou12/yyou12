@@ -245,6 +245,7 @@ func (pod *pod) waitReady(oc *exutil.CLI) {
 		if !status {
 			return status, nil
 		}
+		e2e.Logf("Pod: \"%s\" is running on the node: \"%s\"", pod.name, getNodeNameByPod(oc, pod.namespace, pod.name))
 		return status, nil
 	})
 
