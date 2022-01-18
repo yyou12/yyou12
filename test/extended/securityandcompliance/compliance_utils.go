@@ -772,6 +772,23 @@ func checkMachineConfigPoolStatus(oc *exutil.CLI, nodeSelector string) {
 	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("Fails to update %v machineconfigpool", nodeSelector))
 }
 
+func checkNodeContents(oc *exutil.CLI, nodeName string, contentList []string, filePath string) {
+	err := wait.Poll(5*time.Second, 30*time.Second, func() (bool, error) {
+		nContent, err := oc.AsAdmin().WithoutNamespace().Run("debug").Args("nodes/"+nodeName, "--", "chroot", "/host", "cat", filePath).OutputToFile(getRandomString() + "content.json")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		results, _ := exec.Command("bash", "-c", "cat "+nContent+"; rm -rf "+nContent).Output()
+		result := string(results)
+		for _, line := range contentList {
+			if !strings.Contains(result, line) {
+				return false, nil
+			}
+			e2e.Logf("The string '%s' contains in '%s' file on node \n", line, filePath)
+		}
+		return true, nil
+	})
+	exutil.AssertWaitPollNoErr(err, "The string does not contain in '/etc/chrony.d/ntp-server.conf' file on node")
+}
+
 func checkNodeStatus(oc *exutil.CLI) {
 	err := wait.Poll(10*time.Second, 1*time.Minute, func() (bool, error) {
 		nodeName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("nodes", "--selector=node-role.kubernetes.io/worker=", "-o=jsonpath={.items[*].metadata.name}").Output()

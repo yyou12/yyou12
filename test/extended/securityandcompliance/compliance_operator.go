@@ -3334,7 +3334,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		})
 
 		// author: pdhamdhe@redhat.com
-		g.It("Author:pdhamdhe-Longduration-CPaasrunOnly-NonPreRelease-High-27967-High-33782-Medium-33711-The ComplianceSuite performs scan on a subset of nodes with autoApplyRemediations enable and ComplianceCheckResult shows remediation rule result in details [Disruptive][Slow]", func() {
+		g.It("Author:pdhamdhe-Longduration-CPaasrunOnly-NonPreRelease-High-27967-High-33782-Medium-33711-Medium-47346-The ComplianceSuite performs scan on a subset of nodes with autoApplyRemediations enable and ComplianceCheckResult shows remediation rule result in details and also supports array of values for remediation [Disruptive][Slow]", func() {
 			var (
 				csuiteD = complianceSuiteDescription{
 					name:         "worker-compliancesuite",
@@ -3358,6 +3358,17 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 					nodeSelector: "wrscan",
 					template:     csuiteRemTemplate,
 				}
+				csuiteCD = complianceSuiteDescription{
+					name:         "chronyd-compliancesuite",
+					namespace:    "",
+					scanname:     "rhcos4-scan",
+					profile:      "xccdf_org.ssgproject.content_profile_moderate",
+					content:      "ssg-rhcos4-ds.xml",
+					contentImage: "quay.io/complianceascode/ocp4:latest",
+					rule:         "xccdf_org.ssgproject.content_rule_chronyd_or_ntpd_specify_multiple_servers",
+					nodeSelector: "wrscan",
+					template:     csuiteRemTemplate,
+				}
 				itName = g.CurrentGinkgoTestDescription().TestText
 			)
 			// checking all nodes are in Ready state before the test case starts
@@ -3373,8 +3384,10 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 				checkMachineConfigPoolStatus(oc, "worker")
 				cleanupObjects(oc, objectTableRef{"mc", subD.namespace, "75-worker-scan-audit-rules-dac-modification-chmod"})
 				cleanupObjects(oc, objectTableRef{"mc", subD.namespace, "75-example-scan-no-empty-passwords"})
+				cleanupObjects(oc, objectTableRef{"mc", subD.namespace, "75-rhcos4-scan-chronyd-or-ntpd-specify-multiple-servers"})
 				cleanupObjects(oc, objectTableRef{"compliancesuite", subD.namespace, csuiteD.name})
 				cleanupObjects(oc, objectTableRef{"compliancesuite", subD.namespace, csuite.name})
+				cleanupObjects(oc, objectTableRef{"compliancesuite", subD.namespace, csuiteCD.name})
 				checkMachineConfigPoolStatus(oc, "worker")
 				cleanupObjects(oc, objectTableRef{"mcp", subD.namespace, csuiteD.nodeSelector})
 				checkNodeStatus(oc)
@@ -3388,8 +3401,10 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			g.By("Create compliancesuite objects !!!\n")
 			csuiteD.namespace = subD.namespace
 			csuite.namespace = subD.namespace
+			csuiteCD.namespace = subD.namespace
 			csuiteD.create(oc, itName, dr)
 			csuite.create(oc, itName, dr)
+			csuiteCD.create(oc, itName, dr)
 			g.By("Check ComplianceSuite status !!!\n")
 			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", csuiteD.name, "-n", csuiteD.namespace,
 				"-o=jsonpath={.status.phase}"}).check(oc)
@@ -3397,20 +3412,25 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", csuite.name, "-n", csuite.namespace,
 				"-o=jsonpath={.status.phase}"}).check(oc)
 			subD.complianceSuiteResult(oc, csuite.name, "NON-COMPLIANT")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", csuiteCD.name, "-n", csuiteCD.namespace,
+				"-o=jsonpath={.status.phase}"}).check(oc)
+			subD.complianceSuiteResult(oc, csuiteCD.name, "NON-COMPLIANT")
 
 			g.By("Verify worker-scan-audit-rules-dac-modification-chmod rule status through compliancecheckresult & complianceremediations.. !!!\n")
 			newCheck("expect", asAdmin, withoutNamespace, contain, "FAIL", ok, []string{"compliancecheckresult",
-				"worker-scan-audit-rules-dac-modification-chmod", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
+				"worker-scan-audit-rules-dac-modification-chmod", "-n", csuiteD.namespace, "-o=jsonpath={.status}"}).check(oc)
 			newCheck("expect", asAdmin, withoutNamespace, contain, "NotApplied", ok, []string{"complianceremediations",
-				"worker-scan-audit-rules-dac-modification-chmod", "-n", subD.namespace, "-o=jsonpath={.status.applicationState}"}).check(oc)
+				"worker-scan-audit-rules-dac-modification-chmod", "-n", csuiteD.namespace, "-o=jsonpath={.status.applicationState}"}).check(oc)
 
 			g.By("Apply remediation by patching rule.. !!!\n")
 			patch := fmt.Sprintf("{\"spec\":{\"apply\":true}}")
 			patchResource(oc, asAdmin, withoutNamespace, "complianceremediations", "worker-scan-audit-rules-dac-modification-chmod", "-n", csuiteD.namespace, "--type", "merge", "-p", patch)
 
-			g.By("Verify example-scan-no-empty-passwords rule status through compliancecheckresult & complianceremediations.. !!!\n")
+			g.By("Verify rules status through compliancecheckresult !!!\n")
 			newCheck("expect", asAdmin, withoutNamespace, contain, "FAIL", ok, []string{"compliancecheckresult",
-				"example-scan-no-empty-passwords", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
+				"example-scan-no-empty-passwords", "-n", csuite.namespace, "-o=jsonpath={.status}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "FAIL", ok, []string{"compliancecheckresult",
+				"rhcos4-scan-chronyd-or-ntpd-specify-multiple-servers", "-n", csuiteCD.namespace, "-o=jsonpath={.status}"}).check(oc)
 
 			g.By("Verified autoremediation applied for those rules and machineConfig gets created.. !!!\n")
 			newCheck("expect", asAdmin, withoutNamespace, contain, "Applied", ok, []string{"complianceremediations", "worker-scan-audit-rules-dac-modification-chmod", "-n", csuiteD.namespace,
@@ -3422,27 +3442,42 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			newCheck("expect", asAdmin, withoutNamespace, contain, "75-example-scan-no-empty-passwords", ok, []string{"mc", "-n", csuiteD.namespace,
 				"--selector=compliance.openshift.io/scan-name=example-scan", "-o=jsonpath={.items[0].metadata.name}"}).check(oc)
 
+			newCheck("expect", asAdmin, withoutNamespace, contain, "Applied", ok, []string{"complianceremediations", "rhcos4-scan-chronyd-or-ntpd-specify-multiple-servers", "-n", csuiteCD.namespace,
+				"-o=jsonpath={.status.applicationState}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "75-rhcos4-scan-chronyd-or-ntpd-specify-multiple-servers", ok, []string{"mc", "-n", csuiteD.namespace,
+				"--selector=compliance.openshift.io/scan-name=rhcos4-scan", "-o=jsonpath={.items[0].metadata.name}"}).check(oc)
+
 			g.By("Check worker machineconfigpool status.. !!!\n")
 			checkMachineConfigPoolStatus(oc, csuiteD.nodeSelector)
 
 			g.By("Rerun scan using oc-compliance plugin.. !!!\n")
-			_, err1 := OcComplianceCLI().Run("rerun-now").Args("compliancesuite", csuiteD.name, "-n", subD.namespace).Output()
+			_, err1 := OcComplianceCLI().Run("rerun-now").Args("compliancesuite", csuiteD.name, "-n", csuiteD.namespace).Output()
 			o.Expect(err1).NotTo(o.HaveOccurred())
-			_, err2 := OcComplianceCLI().Run("rerun-now").Args("compliancesuite", csuite.name, "-n", subD.namespace).Output()
+			_, err2 := OcComplianceCLI().Run("rerun-now").Args("compliancesuite", csuite.name, "-n", csuite.namespace).Output()
 			o.Expect(err2).NotTo(o.HaveOccurred())
+			_, err3 := OcComplianceCLI().Run("rerun-now").Args("compliancesuite", csuiteCD.name, "-n", csuiteCD.namespace).Output()
+			o.Expect(err3).NotTo(o.HaveOccurred())
 			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", csuiteD.name, "-n", csuiteD.namespace,
 				"-o=jsonpath={.status.phase}"}).check(oc)
 			subD.complianceSuiteResult(oc, csuiteD.name, "COMPLIANT")
-			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", csuiteD.name, "-n", csuiteD.namespace,
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", csuite.name, "-n", csuite.namespace,
 				"-o=jsonpath={.status.phase}"}).check(oc)
-			subD.complianceSuiteResult(oc, csuiteD.name, "COMPLIANT")
+			subD.complianceSuiteResult(oc, csuite.name, "COMPLIANT")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", csuiteCD.name, "-n", csuiteCD.namespace,
+				"-o=jsonpath={.status.phase}"}).check(oc)
+			subD.complianceSuiteResult(oc, csuiteCD.name, "COMPLIANT")
 
-			g.By("Verify worker-scan-audit-rules-dac-modification-chmod rule status through compliancecheck result again.. !!!\n")
+			g.By("Verify rules status through compliancecheck result again.. !!!\n")
 			newCheck("expect", asAdmin, withoutNamespace, contain, "PASS", ok, []string{"compliancecheckresult",
-				"worker-scan-audit-rules-dac-modification-chmod", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
-			g.By("Verify example-scan-no-empty-passwords rule status through compliancecheck result again.. !!!\n")
+				"worker-scan-audit-rules-dac-modification-chmod", "-n", csuiteD.namespace, "-o=jsonpath={.status}"}).check(oc)
 			newCheck("expect", asAdmin, withoutNamespace, contain, "PASS", ok, []string{"compliancecheckresult",
-				"example-scan-no-empty-passwords", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
+				"example-scan-no-empty-passwords", "-n", csuite.namespace, "-o=jsonpath={.status}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "PASS", ok, []string{"compliancecheckresult",
+				"rhcos4-scan-chronyd-or-ntpd-specify-multiple-servers", "-n", csuiteCD.namespace, "-o=jsonpath={.status}"}).check(oc)
+
+			g.By("Verify the ntp settings from node contents.. !!!\n")
+			contList := []string{"server 0.pool.ntp.org minpoll 4 maxpoll 10", "server 1.pool.ntp.org minpoll 4 maxpoll 10", "server 2.pool.ntp.org minpoll 4 maxpoll 10", "server 3.pool.ntp.org minpoll 4 maxpoll 10"}
+			checkNodeContents(oc, workerNodeName, contList, "/etc/chrony.d/ntp-server.conf")
 		})
 
 		// author: pdhamdhe@redhat.com
