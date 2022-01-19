@@ -32,6 +32,7 @@ export BRIDGE_BASE_ADDRESS=https://<console_route_spec_host>
 export LOGIN_IDP=kube:admin
 export LOGIN_USERNAME=testuser
 export LOGIN_PASSWORD=testpassword
+export KUBECONFIG_PATH=/path/to/kubeconfig
 ```
 ### Start Cypress and add/run/debug your tests
 ```bash

@@ -6,4 +6,5 @@ kubeadmin-password
 /frontend/gui_test_screenshots/
 /frontend/cypress-a11y-report.json
 /frontend/upstream
+/frontend/yarn.lock
 /.vscode
