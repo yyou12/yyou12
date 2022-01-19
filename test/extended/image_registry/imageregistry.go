@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
@@ -965,32 +964,45 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 			g.Skip("Skip for no resourceTags")
 		}
 		g.By("Get bucket name")
-		bucket, _ := oc.AsAdmin().Run("get").Args("config.image", "-o=jsonpath={..spec.storage.s3.bucket}").Output()
-
-		g.By("Set AWS credentials")
-		accessKeyId, secureKey := getCreditFromCluster(oc)
+		bucket, err := oc.AsAdmin().Run("get").Args("config.image", "-o=jsonpath={..spec.storage.s3.bucket}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(bucket).NotTo(o.BeEmpty())
 
 		g.By("Check the tags")
-		awscmd := "aws s3api get-bucket-tagging --bucket "
-		cmd := exec.Command("bash", "-c", awscmd+bucket)
-		cmd.Env = append(os.Environ(), accessKeyId, secureKey)
-		tag, err := cmd.Output()
+		aws := getAWSClient(oc)
+		tag, err := awsGetBucketTagging(aws, bucket)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(string(tag)).To(o.ContainSubstring("customTag"))
 		o.Expect(string(tag)).To(o.ContainSubstring("installer-qe"))
 
 		g.By("Removed managementState")
-		defer oc.AsAdmin().Run("patch").Args("config.image/cluster", "-p", `{"spec":{"managementState": "Managed"}}`, "--type=merge").Execute()
+		defer func() {
+			status, err := oc.AsAdmin().Run("get").Args("config.image/cluster", "-o=jsonpath={.spec.managementState}").Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			if status != "Managed" {
+				e2e.Logf("recover config.image cluster is Managed")
+				output, err = oc.AsAdmin().Run("patch").Args("config.image/cluster", "-p", `{"spec":{"managementState": "Managed"}}`, "--type=merge").Output()
+				o.Expect(err).NotTo(o.HaveOccurred())
+				o.Expect(string(output)).To(o.ContainSubstring("patched"))
+			} else {
+				e2e.Logf("config.image cluster is Managed")
+			}
+		}()
 		output, err = oc.AsAdmin().Run("patch").Args("config.image/cluster", "-p", `{"spec":{"managementState": "Removed"}}`, "--type=merge").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(output).To(o.ContainSubstring("patched"))
 
-		g.By("Check AWS ls")
-		awscmdls := "aws s3 ls s3://" + bucket
-		cmdls := exec.Command("bash", "-c", awscmdls)
-		cmdls.Env = append(os.Environ(), accessKeyId, secureKey)
-		awsls, _ := cmdls.CombinedOutput()
-		o.Expect(string(awsls)).To(o.ContainSubstring("The specified bucket does not exist"))
+		g.By("Check bucket has been deleted")
+		err = wait.Poll(2*time.Second, 10*time.Second, func() (bool, error) {
+			tag, err = awsGetBucketTagging(aws, bucket)
+			if err != nil && strings.Contains(tag, "The specified bucket does not exist") {
+				return true, nil
+			} else {
+				e2e.Logf("bucket still exist, go next round")
+				return false, nil
+			}
+		})
+		exutil.AssertWaitPollNoErr(err, "the bucket isn't been deleted")
 
 		g.By("Managed managementState")
 		output, err = oc.AsAdmin().Run("patch").Args("config.image/cluster", "-p", `{"spec":{"managementState": "Managed"}}`, "--type=merge").Output()
@@ -1008,9 +1020,8 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 			}
 		})
 		exutil.AssertWaitPollNoErr(err, "Can't get bucket")
-		cmd = exec.Command("bash", "-c", awscmd+bucket)
-		cmd.Env = append(os.Environ(), accessKeyId, secureKey)
-		tag, err = cmd.Output()
+
+		tag, err = awsGetBucketTagging(aws, bucket)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(string(tag)).To(o.ContainSubstring("customTag"))
 		o.Expect(string(tag)).To(o.ContainSubstring("installer-qe"))

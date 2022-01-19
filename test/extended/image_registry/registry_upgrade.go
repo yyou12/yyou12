@@ -1,8 +1,6 @@
 package image_registry
 
 import (
-	"os"
-	"os/exec"
 	"strings"
 	"time"
 
@@ -69,15 +67,11 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 		}
 		g.By("Get bucket name")
 		bucket, _ := oc.AsAdmin().Run("get").Args("config.image", "-o=jsonpath={..spec.storage.s3.bucket}").Output()
-
-		g.By("Set AWS credentials")
-		accessKeyId, secureKey := getCreditFromCluster(oc)
+		o.Expect(bucket).NotTo(o.BeEmpty())
 
 		g.By("Check the tags")
-		awscmd := "aws s3api get-bucket-tagging --bucket "
-		cmd := exec.Command("bash", "-c", awscmd+bucket)
-		cmd.Env = append(os.Environ(), accessKeyId, secureKey)
-		tag, err := cmd.Output()
+		aws := getAWSClient(oc)
+		tag, err := awsGetBucketTagging(aws, bucket)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(string(tag)).To(o.ContainSubstring("customTag"))
 		o.Expect(string(tag)).To(o.ContainSubstring("installer-qe"))
@@ -99,15 +93,11 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 		}
 		g.By("Get bucket name")
 		bucket, _ := oc.AsAdmin().Run("get").Args("config.image", "-o=jsonpath={..spec.storage.s3.bucket}").Output()
-
-		g.By("Set AWS credentials")
-		accessKeyId, secureKey := getCreditFromCluster(oc)
+		o.Expect(bucket).NotTo(o.BeEmpty())
 
 		g.By("Check the tags")
-		awscmd := "aws s3api get-bucket-tagging --bucket "
-		cmd := exec.Command("bash", "-c", awscmd+bucket)
-		cmd.Env = append(os.Environ(), accessKeyId, secureKey)
-		tag, err := cmd.Output()
+		aws := getAWSClient(oc)
+		tag, err := awsGetBucketTagging(aws, bucket)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(string(tag)).To(o.ContainSubstring("customTag"))
 		o.Expect(string(tag)).To(o.ContainSubstring("installer-qe"))

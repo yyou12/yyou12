@@ -1,6 +1,7 @@
 package image_registry
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -12,6 +13,9 @@ import (
 
 	"github.com/tidwall/gjson"
 
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	g "github.com/onsi/ginkgo"
 	o "github.com/onsi/gomega"
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
@@ -607,7 +611,7 @@ func checkRegistryDegraded(oc *exutil.CLI) bool {
 	return true
 }
 
-func getCreditFromCluster(oc *exutil.CLI) (string, string) {
+func getCreditFromCluster(oc *exutil.CLI) (string, string, string) {
 	credential, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("secret/aws-creds", "-n", "kube-system", "-o", "json").Output()
 	o.Expect(err).NotTo(o.HaveOccurred())
 	accessKeyIdBase64, secureKeyBase64 := gjson.Get(credential, `data.aws_access_key_id`).Str, gjson.Get(credential, `data.aws_secret_access_key`).Str
@@ -615,5 +619,30 @@ func getCreditFromCluster(oc *exutil.CLI) (string, string) {
 	o.Expect(err1).NotTo(o.HaveOccurred())
 	secureKey, err2 := base64.StdEncoding.DecodeString(secureKeyBase64)
 	o.Expect(err2).NotTo(o.HaveOccurred())
-	return "AWS_ACCESS_KEY_ID=" + string(accessKeyId), "AWS_SECRET_ACCESS_KEY=" + string(secureKey)
+	clusterRegion, err3 := oc.AsAdmin().WithoutNamespace().Run("get").Args("infrastructure", "cluster", "-o=jsonpath={.status.platformStatus.aws.region}").Output()
+	o.Expect(err3).NotTo(o.HaveOccurred())
+	return string(accessKeyId), string(secureKey), string(clusterRegion)
+}
+
+func getAWSClient(oc *exutil.CLI) *s3.Client {
+	accessKeyId, secureKey, clusterRegion := getCreditFromCluster(oc)
+	cfg, err := config.LoadDefaultConfig(context.TODO(),
+		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(accessKeyId, secureKey, "")),
+		config.WithRegion(clusterRegion))
+
+	o.Expect(err).NotTo(o.HaveOccurred())
+	return s3.NewFromConfig(cfg)
+}
+
+func awsGetBucketTagging(client *s3.Client, bucket string) (string, error) {
+	tagOutput, err := client.GetBucketTagging(context.TODO(), &s3.GetBucketTaggingInput{Bucket: &bucket})
+	if err != nil {
+		outputGetTag := fmt.Sprintf("Got an error GetBucketTagging for %s: %v", bucket, err)
+		return outputGetTag, err
+	}
+	outputGetTag := ""
+	for _, t := range tagOutput.TagSet {
+		outputGetTag += *t.Key + " " + *t.Value + "\n"
+	}
+	return outputGetTag, nil
 }
