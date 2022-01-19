@@ -1102,4 +1102,40 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 		g.By("Success")
 	})
 
+	// author: xiuwang@redhat.com
+	g.It("Author:xiuwang-Medium-47933-DeploymentConfigs template should respect resolve-names annotation", func() {
+		var (
+			imageRegistryBaseDir = exutil.FixturePath("testdata", "image_registry")
+			podFile              = filepath.Join(imageRegistryBaseDir, "dc-template.yaml")
+			podsrc               = podSource{
+				name:      "mydc",
+				namespace: "",
+				image:     "myis",
+				template:  podFile,
+			}
+		)
+
+		g.By("Use source imagestream to create dc")
+		oc.SetupProject()
+		err := oc.AsAdmin().WithoutNamespace().Run("tag").Args("quay.io/openshifttest/busybox@sha256:c5439d7db88ab5423999530349d327b04279ad3161d7596d2126dfb5b02bfd1f", "myis:latest", "-n", oc.Namespace()).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = exutil.WaitForAnImageStreamTag(oc, oc.Namespace(), podsrc.image, "latest")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		podsrc.namespace = oc.Namespace()
+		podsrc.create(oc)
+		output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("deploymentconfig/mydc", "-o=jsonpath={..spec.containers[*].image}", "-n", oc.Namespace()).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring("quay.io/openshifttest/busybox"))
+
+		g.By("Use pullthrough imagestream to create dc")
+		err = oc.AsAdmin().WithoutNamespace().Run("tag").Args("quay.io/openshifttest/busybox@sha256:c5439d7db88ab5423999530349d327b04279ad3161d7596d2126dfb5b02bfd1f", "myis:latest", "--reference-policy=local", "-n", oc.Namespace()).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = exutil.WaitForAnImageStreamTag(oc, oc.Namespace(), podsrc.image, "latest")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		podsrc.create(oc)
+		output, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("deploymentconfig/mydc", "-o=jsonpath={..spec.template.spec.containers[*].image}", "-n", oc.Namespace()).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring("image-registry.openshift-image-registry.svc:5000/" + oc.Namespace() + "/" + podsrc.image))
+	})
+
 })
