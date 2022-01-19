@@ -77,19 +77,19 @@ var _ = g.Describe("[sig-cluster-lifecycle] Cluster_Infrastructure", func() {
 	})
 
 	// author: huliu@redhat.com
-	g.It("Longduration-NonPreRelease-Author:huliu-Medium-47177-[MDH] PreDrain hooks prevent the machine from being drained at the draining phases [Disruptive]", func() {
-		g.By("Create a new machineset with preDrain lifecycle hook")
-		machinesetName := "machineset-47177"
+	g.It("Longduration-NonPreRelease-Author:huliu-Medium-47177-Medium-47201-[MDH] Machine Deletion Hooks appropriately block lifecycle phases [Disruptive]", func() {
+		g.By("Create a new machineset with lifecycle hook")
+		machinesetName := "machineset-47177-47201"
 		ms := clusterinfra.MachineSetDescription{machinesetName, 0}
 		defer ms.DeleteMachineSet(oc)
 		ms.CreateMachineSet(oc)
-		g.By("Update machineset with preDrain lifecycle hook")
-		err := oc.AsAdmin().WithoutNamespace().Run("patch").Args("machineset/"+machinesetName, "-n", "openshift-machine-api", "-p", `{"spec":{"replicas":1,"template":{"spec":{"lifecycleHooks":{"preDrain":[{"name":"MigrateImportantApp","owner":"etcd"}]}}}}}`, "--type=merge").Execute()
+		g.By("Update machineset with lifecycle hook")
+		err := oc.AsAdmin().WithoutNamespace().Run("patch").Args("machineset/"+machinesetName, "-n", "openshift-machine-api", "-p", `{"spec":{"replicas":1,"template":{"spec":{"lifecycleHooks":{"preDrain":[{"name":"drain1","owner":"drain-controller1"}],"preTerminate":[{"name":"terminate2","owner":"terminate-controller2"}]}}}}}`, "--type=merge").Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		clusterinfra.WaitForMachinesRunning(oc, 1, machinesetName)
 
-		g.By("Delete newly created machine by scaling machineset-47177 to 0")
+		g.By("Delete newly created machine by scaling " + machinesetName + " to 0")
 		err = oc.AsAdmin().WithoutNamespace().Run("scale").Args("--replicas=0", "-n", "openshift-machine-api", "machineset", machinesetName).Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
 
@@ -105,15 +105,19 @@ var _ = g.Describe("[sig-cluster-lifecycle] Cluster_Infrastructure", func() {
 		})
 		exutil.AssertWaitPollNoErr(err, "Check machine phase failed")
 
-		g.By("Check machine stuck in Deleting phase because of preDrain lifecycle hook")
-		out, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("machine", "-n", "openshift-machine-api", "-l", "machine.openshift.io/cluster-api-machineset="+machinesetName, "-o=jsonpath={.items[0].status.conditions[0]}").Output()
-		e2e.Logf("out:%s", out)
-		o.Expect(strings.Contains(out, "\"message\":\"Drain operation currently blocked by: [{Name:MigrateImportantApp Owner:etcd}]\"") && strings.Contains(out, "\"reason\":\"HookPresent\"") && strings.Contains(out, "\"status\":\"False\"") && strings.Contains(out, "\"type\":\"Drainable\"")).To(o.BeTrue())
+		g.By("Check machine stuck in Deleting phase because of lifecycle hook")
+		outDrain, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("machine", "-n", "openshift-machine-api", "-l", "machine.openshift.io/cluster-api-machineset="+machinesetName, "-o=jsonpath={.items[0].status.conditions[0]}").Output()
+		e2e.Logf("outDrain:%s", outDrain)
+		o.Expect(strings.Contains(outDrain, "\"message\":\"Drain operation currently blocked by: [{Name:drain1 Owner:drain-controller1}]\"") && strings.Contains(outDrain, "\"reason\":\"HookPresent\"") && strings.Contains(outDrain, "\"status\":\"False\"") && strings.Contains(outDrain, "\"type\":\"Drainable\"")).To(o.BeTrue())
 
-		g.By("Update machine without preDrain lifecycle hook")
+		outTerminate, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("machine", "-n", "openshift-machine-api", "-l", "machine.openshift.io/cluster-api-machineset="+machinesetName, "-o=jsonpath={.items[0].status.conditions[2]}").Output()
+		e2e.Logf("outTerminate:%s", outTerminate)
+		o.Expect(strings.Contains(outTerminate, "\"message\":\"Terminate operation currently blocked by: [{Name:terminate2 Owner:terminate-controller2}]\"") && strings.Contains(outTerminate, "\"reason\":\"HookPresent\"") && strings.Contains(outTerminate, "\"status\":\"False\"") && strings.Contains(outTerminate, "\"type\":\"Terminable\"")).To(o.BeTrue())
+
+		g.By("Update machine without lifecycle hook")
 		machineName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("machine", "-n", "openshift-machine-api", "-l", "machine.openshift.io/cluster-api-machineset="+machinesetName, "-o=jsonpath={.items[0].metadata.name}").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
-		err = oc.AsAdmin().WithoutNamespace().Run("patch").Args("machine/"+machineName, "-n", "openshift-machine-api", "-p", `[{"op": "remove", "path": "/spec/lifecycleHooks/preDrain","value":[{"name":"MigrateImportantApp","owner":"etcd"}]}]`, "--type=json").Execute()
+		err = oc.AsAdmin().WithoutNamespace().Run("patch").Args("machine/"+machineName, "-n", "openshift-machine-api", "-p", `[{"op": "remove", "path": "/spec/lifecycleHooks/preDrain"},{"op": "remove", "path": "/spec/lifecycleHooks/preTerminate"}]`, "--type=json").Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
 	})
 })
