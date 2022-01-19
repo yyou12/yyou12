@@ -284,4 +284,41 @@ var _ = g.Describe("[sig-network-edge] Network_Edge should", func() {
 		output, _ = oc.AsAdmin().WithoutNamespace().Run("patch").Args(resourceName, "--patch="+invalidCfg_random_policy, "--type=json").Output()
 		o.Expect(output).To(o.ContainSubstring("Unsupported value: \"random\""))
 	})
+
+	g.It("Author:shudili-Medium-46874-negative test for configuring logLevel and operatorLogLevel flag [Disruptive]", func() {
+		var (
+			resourceName = "dns.operator.openshift.io/default"
+			invalidCfg_string_loglevel = "[{\"op\":\"replace\", \"path\":\"/spec/logLevel\", \"value\":\"string_test\"}]"
+			invalidCfg_number_loglevel = "[{\"op\":\"replace\", \"path\":\"/spec/logLevel\", \"value\":\"2\"}]"
+			invalidCfg_trace_loglevel  = "[{\"op\":\"replace\", \"path\":\"/spec/logLevel\", \"value\":\"trace\"}]"
+			invalidCfg_string_OPloglevel = "[{\"op\":\"replace\", \"path\":\"/spec/operatorLogLevel\", \"value\":\"string_test\"}]"
+			invalidCfg_number_OPloglevel = "[{\"op\":\"replace\", \"path\":\"/spec/operatorLogLevel\", \"value\":\"2\"}]"
+			invalidCfg_trace_OPloglevel  = "[{\"op\":\"replace\", \"path\":\"/spec/operatorLogLevel\", \"value\":\"trace\"}]"
+		)
+		defer restoreDNSOperatorDefault(oc)
+
+		g.By("Try to configure log level with a string")
+		output, _ := oc.AsAdmin().WithoutNamespace().Run("patch").Args(resourceName, "--patch="+invalidCfg_string_loglevel, "--type=json").Output()
+		o.Expect(output).To(o.ContainSubstring("Unsupported value: \"string_test\""))
+
+		g.By("Try to configure log level with a number")
+		output, _ = oc.AsAdmin().WithoutNamespace().Run("patch").Args(resourceName, "--patch="+invalidCfg_number_loglevel, "--type=json").Output()
+		o.Expect(output).To(o.ContainSubstring("Unsupported value: \"2\""))
+
+		g.By("Try to configure log level with a similar string like trace")
+		output, _ = oc.AsAdmin().WithoutNamespace().Run("patch").Args(resourceName, "--patch="+invalidCfg_trace_loglevel, "--type=json").Output()
+		o.Expect(output).To(o.ContainSubstring("Unsupported value: \"trace\""))
+
+		g.By("Try to configure dns operator log level with a string")
+		output, _ = oc.AsAdmin().WithoutNamespace().Run("patch").Args(resourceName, "--patch="+invalidCfg_string_OPloglevel, "--type=json").Output()
+		o.Expect(output).To(o.ContainSubstring("Unsupported value: \"string_test\""))
+
+		g.By("Try to configure dns operator log level with a number")
+		output, _ = oc.AsAdmin().WithoutNamespace().Run("patch").Args(resourceName, "--patch="+invalidCfg_number_OPloglevel, "--type=json").Output()
+		o.Expect(output).To(o.ContainSubstring("Unsupported value: \"2\""))
+
+		g.By("Try to configure dns operator log level with a similar string like trace")
+		output, _ = oc.AsAdmin().WithoutNamespace().Run("patch").Args(resourceName, "--patch="+invalidCfg_trace_OPloglevel, "--type=json").Output()
+		o.Expect(output).To(o.ContainSubstring("Unsupported value: \"trace\""))
+	})
 })
