@@ -67,7 +67,8 @@
         "provisioners": [
           {
             "name": "diskplugin.csi.alibabacloud.com",
-            "preset_scname": "alicloud-disk"
+            "preset_scname": "alicloud-disk",
+            "preset_vscname": "alicloud-disk"
           }
         ]
       },
