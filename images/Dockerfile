@@ -9,18 +9,25 @@ RUN make build; \
 
 FROM registry.ci.openshift.org/ocp/4.10:tools
 COPY --from=builder /tmp/build/extended-platform-tests /usr/bin/
-RUN PACKAGES="git gzip zip util-linux openssh-clients make" && \
+RUN sh -c 'echo -e "[google-cloud-sdk]\nname=Google Cloud SDK\nbaseurl=https://packages.cloud.google.com/yum/repos/cloud-sdk-el7-x86_64\nenabled=1\ngpgcheck=1\nrepo_gpgcheck=1\ngpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg\n       https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg" > /etc/yum.repos.d/google-cloud-sdk.repo' && \
+    PACKAGES="google-cloud-sdk git gzip zip util-linux openssh-clients make" && \
+    yum update -y && \
     yum install --setopt=tsflags=nodocs -y $PACKAGES && yum clean all && rm -rf /var/cache/yum/* && \
     git config --system user.name test-private && \
     git config --system user.email test-private@test.com && \
-    chmod g+w /etc/passwd
+    chmod g+w /etc/passwd && \
+    rm -rf /root/.config/gcloud
 RUN pip3 install dotmap minio pyyaml requests
 RUN curl -s -k https://dl.google.com/go/go1.16.6.linux-amd64.tar.gz -o go1.16.6.linux-amd64.tar.gz && \
     tar -C /usr/local -xzf go1.16.6.linux-amd64.tar.gz && rm -fr go1.16.6.linux-amd64.tar.gz && \
     mkdir -p /tmp/goproject && mkdir -p /tmp/gocache && chmod -R g=u /tmp/goproject && \
     chmod -R g+rw /tmp/goproject && chmod -R g=u /tmp/gocache && chmod -R g+rw /tmp/gocache && \
     curl -s -k https://mirror2.openshift.com/pub/openshift-v4/clients/ocp-dev-preview/latest-4.10/opm-linux.tar.gz -o opm-linux.tar.gz && \
-    tar -C /usr/bin -xzvf opm-linux.tar.gz && rm -fr opm-linux.tar.gz && \
+    tar -C /usr/bin -xzvf opm-linux.tar.gz && rm -fr opm-linux.tar.gz /usr/bin/oc && \
     curl -s -k https://mirror2.openshift.com/pub/openshift-v4/x86_64/clients/operator-sdk/ -o sdk.html && \
     curl -s -k https://mirror2.openshift.com/pub/openshift-v4/x86_64/clients/operator-sdk/pre-release/operator-sdk-linux-x86_64.tar.gz -o opt-sdk.tar.gz && \
-    tar -C /usr/bin -xzvf opt-sdk.tar.gz && rm -fr opt-sdk.tar.gz /usr/bin/oc
+    tar -C /usr/bin -xzvf opt-sdk.tar.gz && rm -fr opt-sdk.tar.gz
+RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && \
+    unzip awscliv2.zip && \
+    ./aws/install -b /bin && \
+    rm -rf ./aws awscliv2.zip
