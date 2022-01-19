@@ -488,6 +488,14 @@ func gZipData(data []byte) (compressedData []byte, err error) {
 	return compressedData, nil
 }
 
+func jsonEncode(s string) string {
+	e, err := json.Marshal(s)
+	if err != nil {
+		e2e.Failf("Error json encoding the string: %s", s)
+	}
+	return string(e)
+}
+
 func getUrlEncodedFileConfig(destinationPath string, content string, mode string) string {
 	encodedContent := url.PathEscape(content)
 
@@ -529,8 +537,12 @@ func getMaskServiceConfig(name string, mask bool) string {
 
 func getDropinFileConfig(unitName string, enabled bool, fileName string, fileContent string) string {
 	// Escape not valid characters in json from the file content
-	scapedContent := strings.ReplaceAll(fileContent, "\n", `\n`)
-	scapedContent = strings.ReplaceAll(scapedContent, "\"", `\"`)
+	escapedContent := jsonEncode(fileContent)
+	return fmt.Sprintf(`{"name": "%s", "enabled": %t, "dropins": [{"name": "%s", "contents": %s}]}`, unitName, enabled, fileName, escapedContent)
+}
 
-	return fmt.Sprintf(`{"name": "%s", "enabled": %t, "dropins": [{"name": "%s", "contents": "%s"}]}`, unitName, enabled, fileName, scapedContent)
+func getSingleUnitConfig(unitName string, unitEnabled bool, unitContents string) string {
+	// Escape not valid characters in json from the file content
+	escapedContent := jsonEncode(unitContents)
+	return fmt.Sprintf(`{"name": "%s", "enabled": %t, "contents": %s}`, unitName, unitEnabled, escapedContent)
 }

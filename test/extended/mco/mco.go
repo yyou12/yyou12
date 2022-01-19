@@ -1203,6 +1203,57 @@ nulla pariatur.`
 		useForceFile := true
 		verifyDriftConfig(mcp, rf, newMode, useForceFile)
 	})
+
+	g.It("Author:sregidor-Longduration-NonPreRelease-High-47009-Config Drift. New Service Unit. [Serial]", func() {
+		g.By("Create a MC to deploy a unit.")
+		unitEnabled := true
+		unitName := "example.service"
+		filePath := "/etc/systemd/system/" + unitName
+		fileContent := "[Service]\nType=oneshot\nExecStart=/usr/bin/echo Hello from MCO test service\n\n[Install]\nWantedBy=multi-user.target"
+		unitConfig := getSingleUnitConfig(unitName, unitEnabled, fileContent)
+
+		mcName := "drifted-new-service-test"
+		mc := MachineConfig{name: mcName, pool: "worker"}
+		defer mc.delete(oc)
+
+		template := NewMCOTemplate(oc, "generic-machine-config-template.yml")
+		err := template.Create("-p", "NAME="+mcName, "-p", "POOL=worker", "-p", fmt.Sprintf("UNITS=[%s]", unitConfig))
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Wait until worker MCP has finished the configuration. No machine should be degraded.")
+		mcp := NewMachineConfigPool(oc.AsAdmin(), "worker")
+		mcp.waitForComplete()
+
+		g.By("Verfiy file content and permissions")
+		workerNode := NewNodeList(oc).GetAllWorkerNodesOrFail()[0]
+
+		rf := NewRemoteFile(workerNode, filePath)
+		rferr := rf.Fetch()
+		o.Expect(rferr).NotTo(o.HaveOccurred())
+
+		defaultMode := "0644"
+		o.Expect(rf.GetTextContent()).To(o.Equal(fileContent))
+		o.Expect(rf.GetNpermissions()).To(o.Equal(defaultMode))
+
+		g.By("Verfiy deployed unit")
+		unitStatus, _ := workerNode.GetUnitStatus(unitName)
+		// since it is a one-shot "hello world" service the execution will end
+		// after the hello message and the unit will become inactive. So we dont check the error code.
+		o.Expect(unitStatus).Should(
+			o.And(
+				o.ContainSubstring(unitName),
+				o.ContainSubstring("Active: inactive (dead)"),
+				o.ContainSubstring("Hello from MCO test service"),
+				o.ContainSubstring("example.service: Succeeded.")))
+
+		g.By("Verfiy drift config behavior")
+		defer o.Expect(rf.PushNewPermissions(defaultMode)).NotTo(o.HaveOccurred())
+		defer o.Expect(rf.PushNewTextContent(fileContent)).NotTo(o.HaveOccurred())
+
+		newMode := "0400"
+		useForceFile := true
+		verifyDriftConfig(mcp, rf, newMode, useForceFile)
+	})
 })
 
 func createMcAndVerifyMCValue(oc *exutil.CLI, stepText string, mcName string, workerNode node, textToVerify TextToVerify, cmd ...string) {

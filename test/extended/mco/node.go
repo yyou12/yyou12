@@ -63,10 +63,17 @@ func (n *node) GetNodeHostname() (string, error) {
 	return exutil.GetNodeHostname(n.oc, n.name)
 }
 
+// ForceReapplyConfiguration create the file `/run/machine-config-daemon-force` in the node
+//  in order to force MCO to reapply the current configuration
 func (n *node) ForceReapplyConfiguration() error {
 	_, err := n.DebugNodeWithChroot("touch", "/run/machine-config-daemon-force")
 
 	return err
+}
+
+// GetUnitStatus executes `systemctl status` command on the node and returns the output
+func (n *node) GetUnitStatus(unitName string) (string, error) {
+	return n.DebugNodeWithChroot("systemctl", "status", unitName)
 }
 
 //GetAll returns a []node list with all existing nodes
