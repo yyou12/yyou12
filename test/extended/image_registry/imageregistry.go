@@ -1077,7 +1077,7 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 		g.By("results")
 		for _, query = range metrics {
 			msg = "."
-			if before[query] >= after[query] {
+			if before[query] > after[query] {
 				fails++
 				failItems = fmt.Sprintf("%v%v ", failItems, query)
 			}
