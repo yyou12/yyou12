@@ -3585,6 +3585,64 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 
 	})
 
+	// author: scolange@redhat.com
+	g.It("ConnectedOnly-Author:scolange-Medium-43723-Allow missing replaces in channel tail in DC validation", func() {
+
+		var (
+			itName              = g.CurrentGinkgoTestDescription().TestText
+			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
+			ogSingleTemplate    = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+			catsrcImageTemplate = filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
+			subTemplate         = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+			og                  = operatorGroupDescription{
+				name:      "og-singlenamespace",
+				namespace: "",
+				template:  ogSingleTemplate,
+			}
+			catsrc = catalogSourceDescription{
+				name:        "catsrc-43723-operator",
+				namespace:   "",
+				displayName: "Test Catsrc 43723 Operators",
+				publisher:   "Red Hat",
+				sourceType:  "grpc",
+				address:     "quay.io/olmqe/index-test:4.0",
+				template:    catsrcImageTemplate,
+			}
+			sub1 = subscriptionDescription{
+				subName:                "sub1",
+				namespace:              "",
+				channel:                "singlenamespace-alpha",
+				ipApproval:             "Automatic",
+				operatorPackage:        "etcd",
+				catalogSourceName:      catsrc.name,
+				catalogSourceNamespace: "",
+				startingCSV:            "etcdoperator.v0.9.4",
+				currentCSV:             "",
+				installedCSV:           "etcdoperator.v0.9.4",
+				template:               subTemplate,
+				singleNamespace:        true,
+			}
+		)
+		dr := make(describerResrouce)
+		dr.addIr(itName)
+		oc.SetupProject() //project and its resource are deleted automatically when out of It, so no need derfer or AfterEach
+		og.namespace = oc.Namespace()
+		catsrc.namespace = oc.Namespace()
+		sub1.namespace = oc.Namespace()
+		sub1.catalogSourceNamespace = catsrc.namespace
+
+		g.By("Create og")
+		og.create(oc, itName, dr)
+
+		g.By("Create catsrc")
+		catsrc.createWithCheck(oc, itName, dr)
+
+		g.By("Create operator1")
+		sub1.create(oc, itName, dr)
+		newCheck("expect", asUser, withNamespace, compare, "Succeeded", ok, []string{"csv", sub1.installedCSV, "-o=jsonpath={.status.phase}"}).check(oc)
+
+	})
+
 	// author: jiazha@redhat.c
 	g.It("Author:jiazha-Medium-21126-OLM Subscription status says CSV is installed when it is not", func() {
 		g.By("1) Install the OperatorGroup in a random project")
