@@ -59,7 +59,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance Pre-check and post-check f
 		})
 
 		// author: pdhamdhe@redhat.com
-		g.It("Author:pdhamdhe-NonPreRelease-CPaasrunOnly-High-39254-Critical-42663-precheck for file integrity operator", func() {
+		g.It("Author:pdhamdhe-NonPreRelease-CPaasrunOnly-High-39254-Critical-42663-Critical-45366-precheck for file integrity operator", func() {
 			g.By("Create file integrity object  !!!\n")
 			fi1.namespace = ns1
 			err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", fi1.template, "-p", "NAME="+fi1.name, "NAMESPACE="+fi1.namespace, "GRACEPERIOD="+strconv.Itoa(fi1.graceperiod),
@@ -86,10 +86,9 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance Pre-check and post-check f
 		})
 
 		// author: pdhamdhe@redhat.com
-		g.It("Author:pdhamdhe-NonPreRelease-CPaasrunOnly-High-39254-Critical-42663-postcheck for file integrity operator", func() {
+		g.It("Author:pdhamdhe-NonPreRelease-CPaasrunOnly-High-39254-Critical-42663-Critical-45366-postcheck for file integrity operator", func() {
 			fi1.namespace = ns1
 			defer cleanupObjects(oc,
-				objectTableRef{"fileintegrity", ns1, fi1.name},
 				objectTableRef{"fileintegrity", ns2, fi1.name},
 				objectTableRef{"project", ns1, ns1},
 				objectTableRef{"project", ns2, ns2})
@@ -109,6 +108,9 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance Pre-check and post-check f
 			for _, v := range fionodeName {
 				fi1.checkFileintegritynodestatus(oc, v, "Succeeded")
 			}
+
+			g.By("Delete file integrity object ns1 !!!\n")
+			cleanupObjects(oc, objectTableRef{"fileintegrity", ns1, fi1.name})
 
 			g.By("Create file integrity object ns2 !!!\n")
 			fi1.namespace = ns2
