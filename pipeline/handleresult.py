@@ -39,6 +39,16 @@ class TestResult:
         if toBeRemove is not None:
             noderoot.firstChild.removeChild(toBeRemove)
 
+        # Before this change, tests is the executed case number, skipped is  the skipped case number, so the total should be
+        # tests+skipped. failures is the failures case and skipped cases number.
+        # for example, tests=23, skipped=2, failures=5, it means total case is 25, and the real failure case is 3
+        # Per https://help.catchsoftware.com/display/ET/JUnit+Format, I try it change to the following:
+        # tests is the total case, skipped is skipped case, and failures is only failure case.
+        # For the above example, tests=25, skipped=2, failures=3
+        totalnum = int(testsuites[0].getAttribute("tests")) + int(testsuites[0].getAttribute("skipped"))
+        failnum = int(testsuites[0].getAttribute("failures")) - int(testsuites[0].getAttribute("skipped"))
+        testsuites[0].setAttribute("tests", str(int(totalnum)))
+        testsuites[0].setAttribute("failures", str(int(failnum)))
         with open(output, 'wb+') as f:
             writer = codecs.lookup('utf-8')[3](f)
             noderoot.writexml(writer, encoding='utf-8')
