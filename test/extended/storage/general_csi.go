@@ -1532,7 +1532,7 @@ func ResizeOnlineCommonTestSteps(oc *exutil.CLI, pvc persistentVolumeClaim, dep 
 	if dep.typepath == "mountPath" {
 		dep.checkPodMountedVolumeCouldRW(oc)
 	} else {
-		writeDataBlockType(oc, dep)
+		dep.writeDataBlockType(oc)
 	}
 
 	g.By("6. Apply the patch to Resize the pvc volume size to 2Gi")
@@ -1550,7 +1550,7 @@ func ResizeOnlineCommonTestSteps(oc *exutil.CLI, pvc persistentVolumeClaim, dep 
 		outputfile = dep.mpath + "/1"
 
 	} else {
-		checkDataBlockType(oc, dep)
+		dep.checkDataBlockType(oc)
 		inputfile = dep.mpath
 		outputfile = "/tmp/testfile"
 	}
@@ -1581,7 +1581,7 @@ func ResizeOfflineCommonTestSteps(oc *exutil.CLI, pvc persistentVolumeClaim, dep
 	if dep.typepath == "mountPath" {
 		dep.checkPodMountedVolumeCouldRW(oc)
 	} else {
-		writeDataBlockType(oc, dep)
+		dep.writeDataBlockType(oc)
 	}
 
 	g.By("6. Apply the patch to Resize the pvc volume size to 2Gi")
@@ -1621,7 +1621,7 @@ func ResizeOfflineCommonTestSteps(oc *exutil.CLI, pvc persistentVolumeClaim, dep
 		outputfile = dep.mpath + "/1"
 
 	} else {
-		checkDataBlockType(oc, dep)
+		dep.checkDataBlockType(oc)
 		inputfile = dep.mpath
 		outputfile = "/tmp/testfile"
 	}

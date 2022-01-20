@@ -51,6 +51,14 @@ func getVolSizeFromPv(oc *exutil.CLI, pvcName string, namespace string) (string,
 	return volumeSize, err
 }
 
+// Check persistent volume has the Attributes
+func checkVolumeCsiContainAttributes(oc *exutil.CLI, pvName string, content string) bool {
+	volumeAttributes, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pv", pvName, "-o=jsonpath={.spec.csi.volumeAttributes}").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	e2e.Logf("Volume Attributes are %s", volumeAttributes)
+	return strings.Contains(volumeAttributes, content)
+}
+
 // Wait for PVC Volume Size to get Resized
 func waitPVVolSizeToGetResized(oc *exutil.CLI, namespace string, pvcName string, volResized string) {
 	err := wait.Poll(15*time.Second, 120*time.Second, func() (bool, error) {

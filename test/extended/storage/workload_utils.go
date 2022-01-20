@@ -640,7 +640,7 @@ func (dep *deployment) checkPodMountedVolumeContain(oc *exutil.CLI, content stri
 }
 
 // Write data in block level
-func writeDataBlockType(oc *exutil.CLI, dep deployment) {
+func (dep *deployment) writeDataBlockType(oc *exutil.CLI) {
 	e2e.Logf("Writing the data as Block level")
 	_, err := execCommandInSpecificPod(oc, dep.namespace, dep.getPodList(oc)[0], "/bin/dd  if=/dev/null of="+dep.mpath+" bs=512 count=1")
 	o.Expect(err).NotTo(o.HaveOccurred())
@@ -649,7 +649,7 @@ func writeDataBlockType(oc *exutil.CLI, dep deployment) {
 }
 
 // Check data written
-func checkDataBlockType(oc *exutil.CLI, dep deployment) {
+func (dep *deployment) checkDataBlockType(oc *exutil.CLI) {
 	_, err := execCommandInSpecificPod(oc, dep.namespace, dep.getPodList(oc)[0], "/bin/dd if="+dep.mpath+" of=/tmp/testfile bs=512 count=1")
 	o.Expect(err).NotTo(o.HaveOccurred())
 	o.Expect(execCommandInSpecificPod(oc, dep.namespace, dep.getPodList(oc)[0], "cat /tmp/testfile | grep 'test data' ")).To(o.ContainSubstring("matches"))
