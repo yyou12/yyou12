@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 	"time"
@@ -114,7 +115,7 @@ const (
 	AWS_CREDS                 = "aws-creds"
 	PULL_SECRET               = "pull-secret"
 	CLUSTER_INSTALL_TIMEOUT   = 3600
-	DEFAULT_TIMEOUT           = 180
+	DEFAULT_TIMEOUT           = 120
 	CLUSTER_RESUME_TIMEOUT    = 600
 	CLUSTER_UNINSTALL_TIMEOUT = 1800
 	CLUSTER_POOL              = "ClusterPool"
@@ -169,7 +170,7 @@ func (sub *subscription) create(oc *exutil.CLI) {
 	if strings.Compare(sub.approval, "Automatic") == 0 {
 		sub.findInstalledCSV(oc)
 	} else {
-		newCheck("expect", asAdmin, withoutNamespace, compare, "UpgradePending", ok, DEFAULT_TIMEOUT, []string{"sub", sub.name, "-n", sub.namespace, "-o=jsonpath={.status.state}"}).check(oc)
+		newCheck("expect", "get", asAdmin, withoutNamespace, compare, "UpgradePending", ok, DEFAULT_TIMEOUT, []string{"sub", sub.name, "-n", sub.namespace, "-o=jsonpath={.status.state}"}).check(oc)
 	}
 }
 
@@ -185,10 +186,10 @@ func (sub *subscription) createIfNotExist(oc *exutil.CLI) {
 		if strings.Compare(sub.approval, "Automatic") == 0 {
 			sub.findInstalledCSV(oc)
 		} else {
-			newCheck("expect", asAdmin, withoutNamespace, compare, "UpgradePending", ok, DEFAULT_TIMEOUT, []string{"sub", sub.name, "-n", sub.namespace, "-o=jsonpath={.status.state}"}).check(oc)
+			newCheck("expect", "get", asAdmin, withoutNamespace, compare, "UpgradePending", ok, DEFAULT_TIMEOUT, []string{"sub", sub.name, "-n", sub.namespace, "-o=jsonpath={.status.state}"}).check(oc)
 		}
 		//wait for pod running
-		newCheck("expect", asAdmin, withoutNamespace, compare, "Running", ok, DEFAULT_TIMEOUT, []string{"pod", "--selector=control-plane=hive-operator", "-n",
+		newCheck("expect", "get", asAdmin, withoutNamespace, compare, "Running", ok, DEFAULT_TIMEOUT, []string{"pod", "--selector=control-plane=hive-operator", "-n",
 			sub.namespace, "-o=jsonpath={.items[0].status.phase}"}).check(oc)
 	} else {
 		e2e.Logf("hive subscription already exists.")
@@ -197,7 +198,7 @@ func (sub *subscription) createIfNotExist(oc *exutil.CLI) {
 }
 
 func (sub *subscription) findInstalledCSV(oc *exutil.CLI) {
-	newCheck("expect", asAdmin, withoutNamespace, compare, "AtLatestKnown", ok, DEFAULT_TIMEOUT, []string{"sub", sub.name, "-n", sub.namespace, "-o=jsonpath={.status.state}"}).check(oc)
+	newCheck("expect", "get", asAdmin, withoutNamespace, compare, "AtLatestKnown", ok, DEFAULT_TIMEOUT, []string{"sub", sub.name, "-n", sub.namespace, "-o=jsonpath={.status.state}"}).check(oc)
 	installedCSV := getResource(oc, asAdmin, withoutNamespace, "sub", sub.name, "-n", sub.namespace, "-o=jsonpath={.status.installedCSV}")
 	o.Expect(installedCSV).NotTo(o.BeEmpty())
 	if strings.Compare(sub.installedCSV, installedCSV) != 0 {
@@ -219,17 +220,17 @@ func (hc *hiveconfig) createIfNotExist(oc *exutil.CLI) {
 		err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", hc.template, "-p", "LOGLEVEL="+hc.logLevel, "TARGETNAMESPACE="+hc.targetNamespace)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		//wait for pods running
-		newCheck("expect", asAdmin, withoutNamespace, contain, "hive-clustersync", ok, DEFAULT_TIMEOUT, []string{"pod", "--selector=control-plane=clustersync",
+		newCheck("expect", "get", asAdmin, withoutNamespace, contain, "hive-clustersync", ok, DEFAULT_TIMEOUT, []string{"pod", "--selector=control-plane=clustersync",
 			"-n", HIVE_NAMESPACE, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
-		newCheck("expect", asAdmin, withoutNamespace, compare, "Running", ok, DEFAULT_TIMEOUT, []string{"pod", "--selector=control-plane=clustersync", "-n",
+		newCheck("expect", "get", asAdmin, withoutNamespace, compare, "Running", ok, DEFAULT_TIMEOUT, []string{"pod", "--selector=control-plane=clustersync", "-n",
 			HIVE_NAMESPACE, "-o=jsonpath={.items[0].status.phase}"}).check(oc)
-		newCheck("expect", asAdmin, withoutNamespace, contain, "hive-controllers", ok, DEFAULT_TIMEOUT, []string{"pod", "--selector=control-plane=controller-manager",
+		newCheck("expect", "get", asAdmin, withoutNamespace, contain, "hive-controllers", ok, DEFAULT_TIMEOUT, []string{"pod", "--selector=control-plane=controller-manager",
 			"-n", HIVE_NAMESPACE, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
-		newCheck("expect", asAdmin, withoutNamespace, compare, "Running", ok, DEFAULT_TIMEOUT, []string{"pod", "--selector=control-plane=controller-manager", "-n",
+		newCheck("expect", "get", asAdmin, withoutNamespace, compare, "Running", ok, DEFAULT_TIMEOUT, []string{"pod", "--selector=control-plane=controller-manager", "-n",
 			HIVE_NAMESPACE, "-o=jsonpath={.items[0].status.phase}"}).check(oc)
-		newCheck("expect", asAdmin, withoutNamespace, contain, "hiveadmission", ok, DEFAULT_TIMEOUT, []string{"pod", "--selector=app=hiveadmission",
+		newCheck("expect", "get", asAdmin, withoutNamespace, contain, "hiveadmission", ok, DEFAULT_TIMEOUT, []string{"pod", "--selector=app=hiveadmission",
 			"-n", HIVE_NAMESPACE, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
-		newCheck("expect", asAdmin, withoutNamespace, compare, "Running Running", ok, DEFAULT_TIMEOUT, []string{"pod", "--selector=app=hiveadmission", "-n",
+		newCheck("expect", "get", asAdmin, withoutNamespace, compare, "Running Running", ok, DEFAULT_TIMEOUT, []string{"pod", "--selector=app=hiveadmission", "-n",
 			HIVE_NAMESPACE, "-o=jsonpath={.items[*].status.phase}"}).check(oc)
 	} else {
 		e2e.Logf("hivconfig already exists.")
@@ -294,10 +295,11 @@ func doAction(oc *exutil.CLI, action string, asAdmin bool, withoutNamespace bool
 	return "", nil
 }
 
-func newCheck(method string, executor bool, inlineNamespace bool, expectAction bool,
+func newCheck(method string, action string, executor bool, inlineNamespace bool, expectAction bool,
 	expectContent string, expect bool, timeout int, resource []string) checkDescription {
 	return checkDescription{
 		method:          method,
+		action:          action,
 		executor:        executor,
 		inlineNamespace: inlineNamespace,
 		expectAction:    expectAction,
@@ -310,6 +312,7 @@ func newCheck(method string, executor bool, inlineNamespace bool, expectAction b
 
 type checkDescription struct {
 	method          string
+	action          string
 	executor        bool
 	inlineNamespace bool
 	expectAction    bool
@@ -334,10 +337,10 @@ const (
 func (ck checkDescription) check(oc *exutil.CLI) {
 	switch ck.method {
 	case "present":
-		ok := isPresentResource(oc, ck.executor, ck.inlineNamespace, ck.expectAction, ck.resource...)
+		ok := isPresentResource(oc, ck.action, ck.executor, ck.inlineNamespace, ck.expectAction, ck.resource...)
 		o.Expect(ok).To(o.BeTrue())
 	case "expect":
-		err := expectedResource(oc, ck.executor, ck.inlineNamespace, ck.expectAction, ck.expectContent, ck.expect, ck.timeout, ck.resource...)
+		err := expectedResource(oc, ck.action, ck.executor, ck.inlineNamespace, ck.expectAction, ck.expectContent, ck.expect, ck.timeout, ck.resource...)
 		exutil.AssertWaitPollNoErr(err, "can not get expected result")
 	default:
 		err := fmt.Errorf("unknown method")
@@ -345,10 +348,10 @@ func (ck checkDescription) check(oc *exutil.CLI) {
 	}
 }
 
-func isPresentResource(oc *exutil.CLI, asAdmin bool, withoutNamespace bool, present bool, parameters ...string) bool {
+func isPresentResource(oc *exutil.CLI, action string, asAdmin bool, withoutNamespace bool, present bool, parameters ...string) bool {
 	parameters = append(parameters, "--ignore-not-found")
 	err := wait.Poll(3*time.Second, 60*time.Second, func() (bool, error) {
-		output, err := doAction(oc, "get", asAdmin, withoutNamespace, parameters...)
+		output, err := doAction(oc, action, asAdmin, withoutNamespace, parameters...)
 		if err != nil {
 			e2e.Logf("the get error is %v, and try next", err)
 			return false, nil
@@ -364,7 +367,7 @@ func isPresentResource(oc *exutil.CLI, asAdmin bool, withoutNamespace bool, pres
 	return err == nil
 }
 
-func expectedResource(oc *exutil.CLI, asAdmin bool, withoutNamespace bool, isCompare bool, content string, expect bool, timeout int, parameters ...string) error {
+func expectedResource(oc *exutil.CLI, action string, asAdmin bool, withoutNamespace bool, isCompare bool, content string, expect bool, timeout int, parameters ...string) error {
 	cc := func(a, b string, ic bool) bool {
 		bs := strings.Split(b, "+2+")
 		ret := false
@@ -384,7 +387,7 @@ func expectedResource(oc *exutil.CLI, asAdmin bool, withoutNamespace bool, isCom
 		interval = time.Duration(timeout/60) * time.Second
 	}
 	return wait.Poll(interval, time_out, func() (bool, error) {
-		output, err := doAction(oc, "get", asAdmin, withoutNamespace, parameters...)
+		output, err := doAction(oc, action, asAdmin, withoutNamespace, parameters...)
 		if err != nil {
 			e2e.Logf("the get error is %v, and try next", err)
 			return false, nil
@@ -424,7 +427,7 @@ func cleanupObjects(oc *exutil.CLI, objs ...objectTableRef) {
 		//For ClusterPool or ClusterDeployment, need to wait ClusterDeployment delete done
 		if v.kind == CLUSTER_POOL || v.kind == CLUSTER_DEPLOYMENT {
 			e2e.Logf("Wait ClusterDeployment delete done for %s", v.name)
-			newCheck("expect", asAdmin, withoutNamespace, contain, v.name, nok, CLUSTER_UNINSTALL_TIMEOUT, []string{CLUSTER_DEPLOYMENT, "-A"}).check(oc)
+			newCheck("expect", "get", asAdmin, withoutNamespace, contain, v.name, nok, CLUSTER_UNINSTALL_TIMEOUT, []string{CLUSTER_DEPLOYMENT, "-A"}).check(oc)
 		}
 	}
 }
@@ -482,4 +485,17 @@ func extractRelfromImg(image string) string {
 	}
 	e2e.Logf("Failed to extract OCP release from Image.")
 	return ""
+}
+
+//Get CD list from Pool
+//Return string CD list such as "pool-44945-2bbln5m47s\n pool-44945-f8xlv6m6s"
+func getCDlistfromPool(oc *exutil.CLI, pool string) string {
+	fileName := "cd_output_" + getRandomString() + ".txt"
+	cd_output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("cd", "-A").OutputToFile(fileName)
+	o.Expect(err).NotTo(o.HaveOccurred())
+	defer os.Remove(cd_output)
+	pool_cd_list, err := exec.Command("bash", "-c", "cat "+cd_output+" | grep "+pool+" | awk '{print $1}'").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	e2e.Logf("CD list is %s for pool %s", pool_cd_list, pool)
+	return string(pool_cd_list)
 }
