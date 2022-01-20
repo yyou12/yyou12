@@ -30,6 +30,8 @@ import (
 const (
 	asAdmin          = true
 	withoutNamespace = true
+	contain          = false
+	ok               = true
 )
 
 type PrometheusResponse struct {
@@ -645,4 +647,134 @@ func awsGetBucketTagging(client *s3.Client, bucket string) (string, error) {
 		outputGetTag += *t.Key + " " + *t.Value + "\n"
 	}
 	return outputGetTag, nil
+}
+
+//the method is to make newCheck object.
+//the method paramter is expect, it will check something is expceted or not
+//the method paramter is present, it will check something exists or not
+//the executor is asAdmin, it will exectue oc with Admin
+//the executor is asUser, it will exectue oc with User
+//the inlineNamespace is withoutNamespace, it will execute oc with WithoutNamespace()
+//the inlineNamespace is withNamespace, it will execute oc with WithNamespace()
+//the expectAction take effective when method is expect, if it is contain, it will check if the strings contain substring with expectContent parameter
+//                                                       if it is compare, it will check the strings is samme with expectContent parameter
+//the expectContent is the content we expected
+//the expect is ok, contain or compare result is OK for method == expect, no error raise. if not OK, error raise
+//the expect is nok, contain or compare result is NOK for method == expect, no error raise. if OK, error raise
+//the expect is ok, resource existing is OK for method == present, no error raise. if resource not existing, error raise
+//the expect is nok, resource not existing is OK for method == present, no error raise. if resource existing, error raise
+func newCheck(method string, executor bool, inlineNamespace bool, expectAction bool,
+	expectContent string, expect bool, resource []string) checkDescription {
+	return checkDescription{
+		method:          method,
+		executor:        executor,
+		inlineNamespace: inlineNamespace,
+		expectAction:    expectAction,
+		expectContent:   expectContent,
+		expect:          expect,
+		resource:        resource,
+	}
+}
+
+type checkDescription struct {
+	method          string
+	executor        bool
+	inlineNamespace bool
+	expectAction    bool
+	expectContent   string
+	expect          bool
+	resource        []string
+}
+
+//the method is to check the resource per definition of the above described newCheck.
+func (ck checkDescription) check(oc *exutil.CLI) {
+	switch ck.method {
+	case "present":
+		ok := isPresentResource(oc, ck.executor, ck.inlineNamespace, ck.expectAction, ck.resource...)
+		o.Expect(ok).To(o.BeTrue())
+	case "expect":
+		err := expectedResource(oc, ck.executor, ck.inlineNamespace, ck.expectAction, ck.expectContent, ck.expect, ck.resource...)
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("expected content %s not found by %v", ck.expectContent, ck.resource))
+	default:
+		err := fmt.Errorf("unknown method")
+		o.Expect(err).NotTo(o.HaveOccurred())
+	}
+}
+
+//the method is to check the presence of the resource
+//asAdmin means if taking admin to check it
+//withoutNamespace means if take WithoutNamespace() to check it.
+//present means if you expect the resource presence or not. if it is ok, expect presence. if it is nok, expect not present.
+func isPresentResource(oc *exutil.CLI, asAdmin bool, withoutNamespace bool, present bool, parameters ...string) bool {
+	parameters = append(parameters, "--ignore-not-found")
+	err := wait.Poll(3*time.Second, 70*time.Second, func() (bool, error) {
+		output, err := doAction(oc, "get", asAdmin, withoutNamespace, parameters...)
+		if err != nil {
+			e2e.Logf("the get error is %v, and try next", err)
+			return false, nil
+		}
+		if !present && strings.Compare(output, "") == 0 {
+			return true, nil
+		}
+		if present && strings.Compare(output, "") != 0 {
+			return true, nil
+		}
+		return false, nil
+	})
+	if err != nil {
+		return false
+	}
+	return true
+}
+
+//the method is to check one resource's attribution is expected or not.
+//asAdmin means if taking admin to check it
+//withoutNamespace means if take WithoutNamespace() to check it.
+//isCompare means if containing or exactly comparing. if it is contain, it check result contain content. if it is compare, it compare the result with content exactly.
+//content is the substing to be expected
+//the expect is ok, contain or compare result is OK for method == expect, no error raise. if not OK, error raise
+//the expect is nok, contain or compare result is NOK for method == expect, no error raise. if OK, error raise
+func expectedResource(oc *exutil.CLI, asAdmin bool, withoutNamespace bool, isCompare bool, content string, expect bool, parameters ...string) error {
+	expectMap := map[bool]string{
+		true:  "do",
+		false: "do not",
+	}
+
+	cc := func(a, b string, ic bool) bool {
+		bs := strings.Split(b, "+2+")
+		ret := false
+		for _, s := range bs {
+			if (ic && strings.Compare(a, s) == 0) || (!ic && strings.Contains(a, s)) {
+				ret = true
+			}
+		}
+		return ret
+	}
+	e2e.Logf("Running: oc get asAdmin(%t) withoutNamespace(%t) %s", asAdmin, withoutNamespace, strings.Join(parameters, " "))
+	return wait.Poll(3*time.Second, 150*time.Second, func() (bool, error) {
+		output, err := doAction(oc, "get", asAdmin, withoutNamespace, parameters...)
+		if err != nil {
+			e2e.Logf("the get error is %v, and try next", err)
+			return false, nil
+		}
+		e2e.Logf("---> we %v expect value: %s, in returned value: %s", expectMap[expect], content, output)
+		if isCompare && expect && cc(output, content, isCompare) {
+			e2e.Logf("the output %s matches one of the content %s, expected", output, content)
+			return true, nil
+		}
+		if isCompare && !expect && !cc(output, content, isCompare) {
+			e2e.Logf("the output %s does not matche the content %s, expected", output, content)
+			return true, nil
+		}
+		if !isCompare && expect && cc(output, content, isCompare) {
+			e2e.Logf("the output %s contains one of the content %s, expected", output, content)
+			return true, nil
+		}
+		if !isCompare && !expect && !cc(output, content, isCompare) {
+			e2e.Logf("the output %s does not contain the content %s, expected", output, content)
+			return true, nil
+		}
+		e2e.Logf("---> Not as expected! Return false")
+		return false, nil
+	})
 }

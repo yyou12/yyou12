@@ -13,6 +13,7 @@ import (
 	g "github.com/onsi/ginkgo"
 	o "github.com/onsi/gomega"
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
+	clusterinfra "github.com/openshift/openshift-tests-private/test/extended/util/clusterinfrastructure"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -1137,5 +1138,61 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(output).To(o.ContainSubstring("image-registry.openshift-image-registry.svc:5000/" + oc.Namespace() + "/" + podsrc.image))
 	})
+	g.It("NonPreRelease-Author:xiuwang-VMonly-Critical-43260-Image registry pod could report to processing after openshift-apiserver reports unconnect quickly[Disruptive][Slow]", func() {
+		firstMaster, err := exutil.GetFirstMasterNode(oc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		clusterID, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("infrastructure", "cluster", "-o=jsonpath={.status.infrastructureName}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
 
+		if clusterinfra.CheckPlatform(oc) == "none" && strings.HasPrefix(firstMaster, "master") && !strings.HasPrefix(firstMaster, clusterID) && !strings.HasPrefix(firstMaster, "internal") {
+			defer oc.AsAdmin().Run("patch").Args("config.image/cluster", "-p", `{"spec":{"tolerations":[]}}`, "--type=merge").Output()
+			output, err := oc.AsAdmin().Run("patch").Args("config.image/cluster", "-p", `{"spec":{"tolerations":[{"effect":"NoSchedule","key":"node-role.kubernetes.io/master","operator":"Exists"}]}}`, "--type=merge").Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			e2e.Logf(output)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "Running", ok, []string{"pods", "-n", "openshift-image-registry", "-l", "docker-registry=default"}).check(oc)
+			names, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-n", "openshift-image-registry", "-l", "docker-registry=default", "-o", "name").Output()
+			if err != nil {
+				e2e.Failf("Fail to get the image-registry pods' name")
+			}
+			podNames := strings.Split(names, "\n")
+			privateKeyPath := "/root/openshift-qe.pem"
+			var nodeNames []string
+
+			for _, podName := range podNames {
+				e2e.Logf("get the node name of pod name: %s", podName)
+				nodeName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", "openshift-image-registry", podName, "-o=jsonpath={.spec.nodeName}").Output()
+				e2e.Logf("node name: %s", nodeName)
+				if err != nil {
+					e2e.Failf("Fail to get the node name")
+				}
+				nodeNames = append(nodeNames, nodeName)
+			}
+
+			for _, nodeName := range nodeNames {
+
+				e2e.Logf("stop crio service of node: %s", nodeName)
+				defer exec.Command("bash", "-c", "ssh -o StrictHostKeyChecking=no -i "+privateKeyPath+" core@"+nodeName+" sudo systemctl start crio").CombinedOutput()
+				defer exec.Command("bash", "-c", "ssh -o StrictHostKeyChecking=no -i "+privateKeyPath+" core@"+nodeName+" sudo systemctl start kubelet").CombinedOutput()
+				output, _ := exec.Command("bash", "-c", "ssh -o StrictHostKeyChecking=no -i "+privateKeyPath+" core@"+nodeName+" sudo systemctl stop crio").CombinedOutput()
+				e2e.Logf("stop crio command result : %s", output)
+				o.Expect(err).NotTo(o.HaveOccurred())
+				e2e.Logf("stop service of node: %s", nodeName)
+				output, _ = exec.Command("bash", "-c", "ssh -o StrictHostKeyChecking=no -i "+privateKeyPath+" core@"+nodeName+" sudo systemctl stop kubelet").CombinedOutput()
+				e2e.Logf("stop kubelet command result : %s", output)
+				o.Expect(err).NotTo(o.HaveOccurred())
+				newCheck("expect", asAdmin, withoutNamespace, contain, "NodeStatusUnknown", ok, []string{"node", nodeName, "-o=jsonpath={.status.conditions..reason}"}).check(oc)
+			}
+			newCheck("expect", asAdmin, withoutNamespace, contain, "True", ok, []string{"co", "image-registry", "-o=jsonpath={.status.conditions[?(@.type==\"Progressing\")].status}"}).check(oc)
+			err = wait.Poll(10*time.Second, 330*time.Second, func() (bool, error) {
+				res, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("co", "image-registry", "-o=jsonpath={.status.conditions[?(@.type==\"Available\")].status}").Output()
+				if strings.Contains(res, "True") {
+					return true, nil
+				}
+				e2e.Logf(" Available command result : %s", res)
+				return false, nil
+			})
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}
+		e2e.Logf("Only baremetal platform supported for the test")
+	})
 })
