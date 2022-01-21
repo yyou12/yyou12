@@ -303,12 +303,6 @@ func getIngressctlDomain(oc *exutil.CLI, icname string) string {
 	return ingressctldomain
 }
 
-// Function to deploy Edge termniated route
-func exposeEdgeRoute(oc *exutil.CLI, ns, route, service, edgecert, edgekey, hostname string) {
-	_, err := oc.WithoutNamespace().Run("create").Args("-n", ns, "route", "edge", route, "--service="+service, "--cert="+edgecert, "--key="+edgekey, "--hostname="+hostname).Output()
-	o.Expect(err).NotTo(o.HaveOccurred())
-}
-
 // Function to deploy Edge route with default ceritifcates
 func exposeRouteEdge(oc *exutil.CLI, ns, route, service, hostname string) {
 	_, err := oc.WithoutNamespace().Run("create").Args("-n", ns, "route", "edge", route, "--service="+service, "--hostname="+hostname).Output()

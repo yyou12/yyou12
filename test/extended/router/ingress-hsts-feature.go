@@ -21,8 +21,6 @@ var _ = g.Describe("[sig-network-edge] Network_Edge should", func() {
 	g.It("Author:aiyengar-Critical-43476-The PreloadPolicy option can be set to be enforced strictly to be present or absent in HSTS preload header checks [Serial]", func() {
 		buildPruningBaseDir := exutil.FixturePath("testdata", "router")
 		customTemp := filepath.Join(buildPruningBaseDir, "ingresscontroller-np.yaml")
-		edgecert := filepath.Join(buildPruningBaseDir, "edge-route.pem")
-		edgekey := filepath.Join(buildPruningBaseDir, "edge-route.key")
 		testPodSvc := filepath.Join(buildPruningBaseDir, "web-server-rc.yaml")
 		var (
 			ingctrl = ingctrlNodePortDescription{
@@ -50,7 +48,7 @@ var _ = g.Describe("[sig-network-edge] Network_Edge should", func() {
 		var output string
 		ingctldomain := getIngressctlDomain(oc, ingctrl.name)
 		routehost := "route-edge" + "-" + oc.Namespace() + "." + ingctrl.domain
-		exposeEdgeRoute(oc, oc.Namespace(), "route-edge", "service-unsecure", edgecert, edgekey, routehost)
+		exposeRouteEdge(oc, oc.Namespace(), "route-edge", "service-unsecure", routehost)
 		output, err = oc.Run("get").Args("route").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(output).To(o.ContainSubstring("route-edge"))
@@ -88,8 +86,6 @@ var _ = g.Describe("[sig-network-edge] Network_Edge should", func() {
 	// author: aiyengar@redhat.com
 	g.It("Author:aiyengar-High-43478-The PreloadPolicy option can be configured to be permissive with NoOpinion flag [Serial]", func() {
 		buildPruningBaseDir := exutil.FixturePath("testdata", "router")
-		edgecert := filepath.Join(buildPruningBaseDir, "edge-route.pem")
-		edgekey := filepath.Join(buildPruningBaseDir, "edge-route.key")
 		customTemp := filepath.Join(buildPruningBaseDir, "ingresscontroller-np.yaml")
 		testPodSvc := filepath.Join(buildPruningBaseDir, "web-server-rc.yaml")
 		var (
@@ -118,7 +114,7 @@ var _ = g.Describe("[sig-network-edge] Network_Edge should", func() {
 		var output string
 		ingctldomain := getIngressctlDomain(oc, ingctrl.name)
 		routedomain := "route-edge" + "-" + oc.Namespace() + "." + ingctrl.domain
-		exposeEdgeRoute(oc, oc.Namespace(), "route-edge", "service-unsecure", edgecert, edgekey, routedomain)
+		exposeRouteEdge(oc, oc.Namespace(), "route-edge", "service-unsecure", routedomain)
 		output, err = oc.Run("get").Args("route").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(output).To(o.ContainSubstring("route-edge"))
@@ -149,8 +145,6 @@ var _ = g.Describe("[sig-network-edge] Network_Edge should", func() {
 	g.It("Author:aiyengar-Critical-43474-The includeSubDomainsPolicy parameter can configure subdomain policy to inherit the HSTS policy of parent domain [Serial]", func() {
 		buildPruningBaseDir := exutil.FixturePath("testdata", "router")
 		customTemp := filepath.Join(buildPruningBaseDir, "ingresscontroller-np.yaml")
-		edgecert := filepath.Join(buildPruningBaseDir, "edge-route.pem")
-		edgekey := filepath.Join(buildPruningBaseDir, "edge-route.key")
 		testPodSvc := filepath.Join(buildPruningBaseDir, "web-server-rc.yaml")
 		var (
 			ingctrl = ingctrlNodePortDescription{
@@ -178,7 +172,7 @@ var _ = g.Describe("[sig-network-edge] Network_Edge should", func() {
 		var output string
 		ingctldomain := getIngressctlDomain(oc, ingctrl.name)
 		routehost := "route-edge" + "-" + oc.Namespace() + "." + ingctrl.domain
-		exposeEdgeRoute(oc, oc.Namespace(), "route-edge", "service-unsecure", edgecert, edgekey, routehost)
+		exposeRouteEdge(oc, oc.Namespace(), "route-edge", "service-unsecure", routehost)
 		output, err = oc.Run("get").Args("route").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(output).To(o.ContainSubstring("route-edge"))
@@ -217,8 +211,6 @@ var _ = g.Describe("[sig-network-edge] Network_Edge should", func() {
 	g.It("Author:aiyengar-High-43475-The includeSubDomainsPolicy option can be configured to be permissive with NoOpinion flag [Serial]", func() {
 		buildPruningBaseDir := exutil.FixturePath("testdata", "router")
 		customTemp := filepath.Join(buildPruningBaseDir, "ingresscontroller-np.yaml")
-		edgecert := filepath.Join(buildPruningBaseDir, "edge-route.pem")
-		edgekey := filepath.Join(buildPruningBaseDir, "edge-route.key")
 		testPodSvc := filepath.Join(buildPruningBaseDir, "web-server-rc.yaml")
 		var (
 			ingctrl = ingctrlNodePortDescription{
@@ -246,7 +238,7 @@ var _ = g.Describe("[sig-network-edge] Network_Edge should", func() {
 		var output string
 		ingctldomain := getIngressctlDomain(oc, ingctrl.name)
 		routehost := "route-edge" + "-" + oc.Namespace() + "." + ingctrl.domain
-		exposeEdgeRoute(oc, oc.Namespace(), "route-edge", "service-unsecure", edgecert, edgekey, routehost)
+		exposeRouteEdge(oc, oc.Namespace(), "route-edge", "service-unsecure", routehost)
 		output, err = oc.Run("get").Args("route").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(output).To(o.ContainSubstring("route-edge"))
@@ -277,8 +269,6 @@ var _ = g.Describe("[sig-network-edge] Network_Edge should", func() {
 	g.It("Author:aiyengar-High-43479-The Maxage HSTS policy strictly adheres to validation of route based based on largestMaxAge and smallestMaxAge parameter [Serial]", func() {
 		buildPruningBaseDir := exutil.FixturePath("testdata", "router")
 		customTemp := filepath.Join(buildPruningBaseDir, "ingresscontroller-np.yaml")
-		edgecert := filepath.Join(buildPruningBaseDir, "edge-route.pem")
-		edgekey := filepath.Join(buildPruningBaseDir, "edge-route.key")
 		testPodSvc := filepath.Join(buildPruningBaseDir, "web-server-rc.yaml")
 		var (
 			ingctrl = ingctrlNodePortDescription{
@@ -306,7 +296,7 @@ var _ = g.Describe("[sig-network-edge] Network_Edge should", func() {
 		var output string
 		ingctldomain := getIngressctlDomain(oc, ingctrl.name)
 		routehost := "route-edge" + "-" + oc.Namespace() + "." + ingctrl.domain
-		exposeEdgeRoute(oc, oc.Namespace(), "route-edge", "service-unsecure", edgecert, edgekey, routehost)
+		exposeRouteEdge(oc, oc.Namespace(), "route-edge", "service-unsecure", routehost)
 		output, err = oc.Run("get").Args("route").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(output).To(o.ContainSubstring("route-edge"))
