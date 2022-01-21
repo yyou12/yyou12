@@ -21,6 +21,7 @@ var _ = g.Describe("[sig-node] PSAP should", func() {
 		hp_performanceprofile_patch_file = exutil.FixturePath("testdata", "psap", "nto", "hp-performanceprofile-patch.yaml")
 		custom_tuned_profile_file        = exutil.FixturePath("testdata", "psap", "nto", "custom-tuned-profiles.yaml")
 		affine_default_cpuset_file       = exutil.FixturePath("testdata", "psap", "nto", "affine-default-cpuset.yaml")
+		nto_tuned_debug_file             = exutil.FixturePath("testdata", "psap", "nto", "nto-tuned-debug.yaml")
 		isNTO                            bool
 		isAllInOne                       bool
 	)
@@ -577,5 +578,120 @@ var _ = g.Describe("[sig-node] PSAP should", func() {
 
 		g.By("Check all nodes for user.max_mnt_namespaces value, all node should different from 142214")
 		compareSysctlDifferentFromSpecifiedValueByName(oc, "user.max_mnt_namespaces", "142214")
+	})
+
+	g.It("NonPreRelease-Author:liqcui-Medium-37125-Turning on debugging for tuned containers.[Disruptive]", func() {
+		// test requires NTO to be installed
+		if !isNTO {
+			g.Skip("NTO is not installed - skipping test ...")
+		}
+
+		ntoRes := ntoResource{
+			name:        "user-max-net-namespaces",
+			namespace:   ntoNamespace,
+			template:    nto_tuned_debug_file,
+			sysctlparm:  "user.max_net_namespaces",
+			sysctlvalue: "101010",
+		}
+
+		var (
+			isEnableDebug bool
+			isDebugInLog  bool
+		)
+
+		//Clean up the custom profile user-max-mnt-namespaces
+		defer ntoRes.delete(oc)
+
+		//Create a temp namespace to deploy nginx pod
+		oc.SetupProject()
+		ntoTestNS := oc.Namespace()
+
+		//Create a nginx web application pod
+		g.By("Create a nginx web pod in nto temp namespace")
+		exutil.ApplyOperatorResourceByYaml(oc, ntoTestNS, pod_nginx_file)
+
+		//Check if nginx pod is ready
+		exutil.AssertPodToBeReady(oc, "nginx", ntoTestNS)
+
+		//Get the node name in the same node as nginx app
+		tunedNodeName, err := exutil.GetPodNodeName(oc, ntoTestNS, "nginx")
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		//Get the tuned pod name in the same node as nginx app
+		tunedPodName := getTunedPodNamebyNodeName(oc, tunedNodeName, ntoNamespace)
+
+		//To reset tuned pod log, forcily to delete tuned pod
+		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("pod", tunedPodName, "-n", ntoNamespace, "--ignore-not-found=true").Execute()
+
+		//Get NTO operator pod name
+		ntoOperatorPod, err := getNTOPodName(oc, ntoNamespace)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		//Label pod nginx with tuned.openshift.io/elasticsearch=
+		g.By("Label nginx pod as tuned.openshift.io/elasticsearch=")
+		err = exutil.LabelPod(oc, ntoTestNS, "nginx", "tuned.openshift.io/elasticsearch=")
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		//Verify if debug was disabled by default
+		g.By("Check node profile debug settings, it should be debug: false")
+		isEnableDebug = assertDebugSettings(oc, tunedNodeName, ntoNamespace, "false")
+		o.Expect(isEnableDebug).To(o.Equal(true))
+
+		//Apply new profile that match label tuned.openshift.io/elasticsearch=
+		g.By("Apply new profile from CR with debug setting is false")
+		ntoRes.createDebugTunedProfileIfNotExist(oc, false)
+
+		//Verify if the new profile is applied
+		ntoRes.assertTunedProfileApplied(oc)
+		profileCheck, err := getTunedProfile(oc, ntoNamespace, tunedNodeName)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(profileCheck).To(o.Equal("user-max-net-namespaces"))
+
+		g.By("Check if new profile in rendered tuned")
+		renderCheck, err := getTunedRender(oc, ntoNamespace)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(renderCheck).To(o.ContainSubstring("user-max-net-namespaces"))
+
+		//Verify nto operator logs
+		assertNTOOperatorLogs(oc, ntoNamespace, ntoOperatorPod, "user-max-net-namespaces")
+
+		//Verify if debug is false by CR setting
+		g.By("Check node profile debug settings, it should be debug: false")
+		isEnableDebug = assertDebugSettings(oc, tunedNodeName, ntoNamespace, "false")
+		o.Expect(isEnableDebug).To(o.Equal(true))
+
+		//Check if the log contain debug, the expected result should be none
+		g.By("Check if tuned pod log contains debug key word, the expected result should be no DEBUG")
+		isDebugInLog = exutil.AssertOprPodLogsbyFilter(oc, tunedPodName, ntoNamespace, "DEBUG", 2)
+		o.Expect(isDebugInLog).To(o.Equal(false))
+
+		g.By("Delete custom profile and will apply a new one ...")
+		ntoRes.delete(oc)
+
+		g.By("Apply new profile from CR with debug setting is true")
+		ntoRes.createDebugTunedProfileIfNotExist(oc, true)
+
+		//Verify if the new profile is applied
+		ntoRes.assertTunedProfileApplied(oc)
+		profileCheck, err = getTunedProfile(oc, ntoNamespace, tunedNodeName)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(profileCheck).To(o.Equal("user-max-net-namespaces"))
+
+		g.By("Check if new profile in rendered tuned")
+		renderCheck, err = getTunedRender(oc, ntoNamespace)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(renderCheck).To(o.ContainSubstring("user-max-net-namespaces"))
+
+		//Verify nto operator logs
+		assertNTOOperatorLogs(oc, ntoNamespace, ntoOperatorPod, "user-max-net-namespaces")
+
+		//Verify if debug was enabled by CR setting
+		g.By("Check if the debug is true in node profile, the expected result should be true")
+		isEnableDebug = assertDebugSettings(oc, tunedNodeName, ntoNamespace, "true")
+		o.Expect(isEnableDebug).To(o.Equal(true))
+
+		//The log shouldn't contain debug in log
+		g.By("Check if tuned pod log contains debug key word, the log should contain DEBUG")
+		exutil.AssertOprPodLogsbyFilterWithDuration(oc, tunedPodName, ntoNamespace, "DEBUG", 60, 2)
 	})
 })

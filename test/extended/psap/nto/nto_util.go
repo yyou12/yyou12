@@ -280,6 +280,16 @@ func (ntoRes *ntoResource) createTunedProfileIfNotExist(oc *exutil.CLI) {
 	}
 }
 
+func (ntoRes *ntoResource) createDebugTunedProfileIfNotExist(oc *exutil.CLI, isDebug bool) {
+	output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("tuned", ntoRes.name, "-n", ntoRes.namespace).Output()
+	if strings.Contains(output, "NotFound") || strings.Contains(output, "No resources") || err != nil {
+		e2e.Logf(fmt.Sprintf("No tuned in project: %s, create one: %s", ntoRes.namespace, ntoRes.name))
+		exutil.CreateNsResourceFromTemplate(oc, ntoRes.namespace, "--ignore-unknown-parameters=true", "-f", ntoRes.template, "-p", "TUNED_NAME="+ntoRes.name, "SYSCTLPARM="+ntoRes.sysctlparm, "SYSCTLVALUE="+ntoRes.sysctlvalue, "ISDEBUG="+strconv.FormatBool(isDebug))
+	} else {
+		e2e.Logf(fmt.Sprintf("Already exist %v in project: %s", ntoRes.name, ntoRes.namespace))
+	}
+}
+
 func (ntoRes *ntoResource) delete(oc *exutil.CLI) {
 	_ = oc.AsAdmin().WithoutNamespace().Run("delete").Args("-n", ntoRes.namespace, "tuned", ntoRes.name, "--ignore-not-found").Execute()
 }
@@ -357,6 +367,23 @@ func assertAffineDefaultCPUSets(oc *exutil.CLI, tunedPodName, namespace string) 
 		return true
 	} else {
 		e2e.Logf("assert affine default cpusets result: %v", false)
+		return false
+	}
+}
+
+func assertDebugSettings(oc *exutil.CLI, tunedNodeName string, ntoNamespace string, isDebug string) bool {
+	nodeProfile, err := oc.AsAdmin().WithoutNamespace().Run("describe").Args("profile", tunedNodeName, "-n", ntoNamespace).Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	regDebugCheck, err := regexp.Compile(".*Debug:.*" + isDebug)
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	isMatch := regDebugCheck.MatchString(nodeProfile)
+	loglines := regDebugCheck.FindAllString(nodeProfile, -1)
+	e2e.Logf("The result is: %v", loglines[0])
+	if isMatch {
+		return true
+	} else {
 		return false
 	}
 }

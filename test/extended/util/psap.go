@@ -2,11 +2,13 @@ package util
 
 import (
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
 	o "github.com/onsi/gomega"
+	exutil "github.com/openshift/openshift-tests/test/extended/util"
 	"k8s.io/apimachinery/pkg/util/wait"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 )
@@ -249,4 +251,70 @@ func CleanupOperatorResourceByYaml(oc *CLI, namespace string, yamlfile string) {
 		err := oc.AsAdmin().WithoutNamespace().Run("delete").Args("-f", yamlfile, "-n", namespace).Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
 	}
+}
+
+//trunct pods logs by filter
+func AssertOprPodLogsbyFilterWithDuration(oc *CLI, podName string, namespace string, filter string, timeDurationSec int, minimalMatch int) {
+	podList, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-n", namespace, "-oname").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	o.Expect(podList).To(o.ContainSubstring(podName))
+
+	e2e.Logf("Got pods list as below: \n" + podList)
+	//Filter pod name base on deployment name
+	regexpoprname, _ := regexp.Compile(".*" + podName + ".*")
+	podListArry := regexpoprname.FindAllString(podList, -1)
+
+	podListSize := len(podListArry)
+	for i := 0; i < podListSize; i++ {
+		//Check the log files until finding the keywords by filter
+		waitErr := wait.Poll(15*time.Second, time.Duration(timeDurationSec)*time.Second, func() (bool, error) {
+			e2e.Logf("Verify the logs on %v", podListArry[i])
+			output, _ := oc.AsAdmin().WithoutNamespace().Run("logs").Args(podListArry[i], "-n", namespace).Output()
+			regexpstr, _ := regexp.Compile(".*" + filter + ".*")
+			loglines := regexpstr.FindAllString(output, -1)
+			matchNumber := len(loglines)
+			if strings.Contains(output, filter) && matchNumber >= minimalMatch {
+				//Print the last entry log
+				matchNumber = matchNumber - 1
+				e2e.Logf("The result is: %v", loglines[matchNumber])
+				return true, nil
+			} else {
+				e2e.Logf("Can not find the key words in pod logs by: %v", filter)
+				return false, nil
+			}
+		})
+		exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("the pod of %v is not running", podName))
+	}
+}
+
+//trunct pods logs by filter
+func AssertOprPodLogsbyFilter(oc *CLI, podName string, namespace string, filter string, minimalMatch int) bool {
+	podList, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-n", namespace, "-oname").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	o.Expect(podList).To(o.ContainSubstring(podName))
+
+	e2e.Logf("Got pods list as below: \n" + podList)
+	//Filter pod name base on deployment name
+	regexpoprname, _ := regexp.Compile(".*" + podName + ".*")
+	podListArry := regexpoprname.FindAllString(podList, -1)
+
+	podListSize := len(podListArry)
+	var isMatch bool
+	for i := 0; i < podListSize; i++ {
+		e2e.Logf("Verify the logs on %v", podListArry[i])
+		output, _ := oc.AsAdmin().WithoutNamespace().Run("logs").Args(podListArry[i], "-n", namespace).Output()
+		regexpstr, _ := regexp.Compile(".*" + filter + ".*")
+		loglines := regexpstr.FindAllString(output, -1)
+		matchNumber := len(loglines)
+		if strings.Contains(output, filter) && matchNumber >= minimalMatch {
+			//Print the last entry log
+			matchNumber = matchNumber - 1
+			e2e.Logf("The result is: %v", loglines[matchNumber])
+			isMatch = true
+		} else {
+			e2e.Logf("Can not find the key words in pod logs by: %v", filter)
+			isMatch = false
+		}
+	}
+	return isMatch
 }
