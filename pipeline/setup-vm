@@ -63,7 +63,7 @@ if echo $INSTALL_TOOLS | grep -i 'operatorSDK' > /dev/null; then
     echo "------------------get operatorSDK------------------------"
     mkdir ${WORKSPACE}/osdk
     BUILD_CMD="sudo make build"
-    if [ "${JENKINS_AGENT}" == 'goc410' ]; then
+    if [ "${JENKINS_AGENT}" == 'goc411' ]; then
         sudo git clone --depth=1 git@github.com:operator-framework/operator-sdk.git ${WORKSPACE}/osdk --branch master
     else
         BRANCH="release-${NIGHTLYFLAG:0:1}.${NIGHTLYFLAG:1}"
