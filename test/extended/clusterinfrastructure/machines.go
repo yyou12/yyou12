@@ -1,6 +1,7 @@
 package clusterinfrastructure
 
 import (
+	"strconv"
 	"strings"
 	"time"
 
@@ -119,5 +120,42 @@ var _ = g.Describe("[sig-cluster-lifecycle] Cluster_Infrastructure", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 		err = oc.AsAdmin().WithoutNamespace().Run("patch").Args("machine/"+machineName, "-n", "openshift-machine-api", "-p", `[{"op": "remove", "path": "/spec/lifecycleHooks/preDrain"},{"op": "remove", "path": "/spec/lifecycleHooks/preTerminate"}]`, "--type=json").Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
+	})
+
+	// author: huliu@redhat.com
+	g.It("Longduration-NonPreRelease-Author:huliu-Medium-47230-[MDH] Negative lifecycle hook validation [Disruptive]", func() {
+		g.By("Create a new machineset")
+		machinesetName := "machineset-47230"
+		ms := clusterinfra.MachineSetDescription{machinesetName, 1}
+		defer ms.DeleteMachineSet(oc)
+		ms.CreateMachineSet(oc)
+
+		machineName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("machine", "-n", "openshift-machine-api", "-l", "machine.openshift.io/cluster-api-machineset="+machinesetName, "-o=jsonpath={.items[0].metadata.name}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		checkItems := []struct {
+			patchstr string
+			errormsg string
+		}{
+			{
+				patchstr: `{"spec":{"lifecycleHooks":{"preTerminate":[{"name":"","owner":"drain-controller1"}]}}}`,
+				errormsg: "spec.lifecycleHooks.preTerminate.name: Invalid value: \"\": spec.lifecycleHooks.preTerminate.name in body should be at least 3 chars long",
+			},
+			{
+				patchstr: `{"spec":{"lifecycleHooks":{"preDrain":[{"name":"drain1","owner":""}]}}}`,
+				errormsg: "spec.lifecycleHooks.preDrain.owner: Invalid value: \"\": spec.lifecycleHooks.preDrain.owner in body should be at least 3 chars long",
+			},
+			{
+				patchstr: `{"spec":{"lifecycleHooks":{"preDrain":[{"name":"drain1","owner":"drain-controller1"},{"name":"drain1","owner":"drain-controller2"}]}}}`,
+				errormsg: "spec.lifecycleHooks.preDrain[1].name: Forbidden: hook names must be unique within a lifecycle stage, the following hook name is already set: drain1",
+			},
+		}
+
+		for i, checkItem := range checkItems {
+			g.By("Update machine with invalid lifecycle hook")
+			out, _ := oc.AsAdmin().WithoutNamespace().Run("patch").Args("machine/"+machineName, "-n", "openshift-machine-api", "-p", checkItem.patchstr, "--type=merge").Output()
+			e2e.Logf("out"+strconv.Itoa(i)+":%s", out)
+			o.Expect(strings.Contains(out, checkItem.errormsg)).To(o.BeTrue())
+		}
 	})
 })
