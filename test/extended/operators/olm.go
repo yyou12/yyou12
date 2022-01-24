@@ -2145,7 +2145,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		sub.create(oc, itName, dr)
 
 		g.By("3) Checking the state of CSV")
-		newCheck("expect", asUser, withoutNamespace, compare, "Succeeded", ok, []string{"csv", "red-hat-camel-k-operator.v1.6.2", "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+		newCheck("expect", asUser, withoutNamespace, contain, "red-hat-camel-k-operator", ok, []string{"csv", "-n", sub.namespace}).check(oc)
 	})
 
 	// author: jiazha@redhat.com
