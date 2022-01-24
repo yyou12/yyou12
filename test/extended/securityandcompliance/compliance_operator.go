@@ -220,6 +220,8 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			subD.namespace = oc.Namespace()
 			subD.catalogSourceName = catSrc.name
 			subD.catalogSourceNamespace = catSrc.namespace
+			g.By("Label the namespace  !!!\n")
+			labelNameSpace(oc, subD.namespace, "openshift.io/cluster-monitoring=true")
 			itName = g.CurrentGinkgoTestDescription().TestText
 			g.By("Create catalogSource !!!")
 			e2e.Logf("Here catsrc namespace : %v\n", catSrc.namespace)
@@ -3687,6 +3689,97 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			subD.getScanExitCodeFromConfigmap(oc, "2")
 
 			g.By("ocp-46991 The PCI DSS compliance profiles perform scan as expected with default scanSettings... !!!\n")
+		})
+
+		// author: pdhamdhe@redhat.com
+		g.It("Author:pdhamdhe-High-43066-check the metrics and alerts are available for Compliance Operator [Slow]", func() {
+			var (
+				ssb = scanSettingBindingDescription{
+					name:            "cis-test",
+					namespace:       "",
+					profilekind1:    "Profile",
+					profilename1:    "ocp4-cis",
+					profilename2:    "ocp4-cis-node",
+					scansettingname: "default",
+					template:        scansettingbindingTemplate,
+				}
+				itName = g.CurrentGinkgoTestDescription().TestText
+			)
+
+			defer cleanupObjects(oc, objectTableRef{"scansettingbinding", subD.namespace, ssb.name})
+
+			metricSsbStr := []string{"compliance_operator_compliance_scan_status_total{name=\"ocp4-cis-node-master\",phase=\"DONE\",result=\"NON-COMPLIANT\"} 1",
+				"compliance_operator_compliance_scan_status_total{name=\"ocp4-cis-node-worker\",phase=\"DONE\",result=\"NON-COMPLIANT\"} 1",
+				"compliance_operator_compliance_state{name=\"cis-test\"} 1"}
+
+			newCheck("expect", asAdmin, withoutNamespace, contain, "openshift.io/cluster-monitoring", ok, []string{"namespace", subD.namespace, "-o=jsonpath={.metadata.labels}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "metrics", ok, []string{"service", "-n", subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
+
+			g.By("Check default profiles name ocp4-cis .. !!!\n")
+			subD.getProfileName(oc, "ocp4-cis")
+			g.By("Check default profiles name ocp4-cis-node .. !!!\n")
+			subD.getProfileName(oc, "ocp4-cis-node")
+
+			g.By("Create scansettingbinding !!!\n")
+			ssb.namespace = subD.namespace
+			ssb.create(oc, itName, dr)
+			newCheck("expect", asAdmin, withoutNamespace, contain, ssb.name, ok, []string{"scansettingbinding", "-n", ssb.namespace,
+				"-o=jsonpath={.items[0].metadata.name}"}).check(oc)
+			g.By("Check ComplianceSuite status !!!\n")
+			checkComplianceSuiteStatus(oc, ssb.name, subD.namespace, "DONE")
+			g.By("Check complianceSuite name and result.. !!!\n")
+			subD.complianceSuiteName(oc, ssb.name)
+			subD.complianceSuiteResult(oc, ssb.name, "NON-COMPLIANT INCONSISTENT")
+
+			checkMetric(oc, metricSsbStr, subD.namespace, "co")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "compliance", ok, []string{"PrometheusRule", "-n", subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "NonCompliant", ok, []string{"PrometheusRule", "compliance", "-n", subD.namespace, "-ojsonpath={.spec.groups[0].rules[0].alert}"}).check(oc)
+
+			g.By("ocp-43066 The metrics and alerts are getting reported for Compliance Operator ... !!!\n")
+		})
+
+		// author: pdhamdhe@redhat.com
+		g.It("Author:pdhamdhe-Low-43072-check the metrics and alerts are available for compliance_operator_compliance_scan_error_total [Slow]", func() {
+			var (
+				csuiteD = complianceSuiteDescription{
+					name:         "worker-compliancesuite",
+					namespace:    "",
+					scanname:     "worker-scan",
+					profile:      "xccdf_org.ssgproject.content_profile_coreos-ncp",
+					content:      "ssg-rhcos4-ds.xml",
+					contentImage: "quay.io/complianceascode/ocp4:latest",
+					nodeSelector: "wscan",
+					template:     csuiteTemplate,
+				}
+				itName = g.CurrentGinkgoTestDescription().TestText
+			)
+
+			defer cleanupObjects(oc, objectTableRef{"compliancesuite", subD.namespace, csuiteD.name})
+
+			g.By("Label all rhcos worker nodes as wscan !!!\n")
+			setLabelToNode(oc)
+
+			metricsErr := []string{"compliance_operator_compliance_scan_error_total{error=\"I: oscap:", "compliance_operator_compliance_scan_status_total{name=\"worker-scan\",phase=\"DONE\",result=\"ERROR\"} 1",
+				"compliance_operator_compliance_state{name=\"worker-compliancesuite\"} 3"}
+
+			newCheck("expect", asAdmin, withoutNamespace, contain, "openshift.io/cluster-monitoring", ok, []string{"namespace", subD.namespace, "-o=jsonpath={.metadata.labels}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "metrics", ok, []string{"service", "-n", subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
+
+			g.By("Create compliancesuite !!!\n")
+			csuiteD.namespace = subD.namespace
+			csuiteD.create(oc, itName, dr)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", csuiteD.name, "-n",
+				subD.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+
+			g.By("Check complianceSuite name and result..!!!\n")
+			subD.complianceSuiteName(oc, "worker-compliancesuite")
+			subD.complianceSuiteResult(oc, csuiteD.name, "ERROR")
+
+			checkMetric(oc, metricsErr, subD.namespace, "co")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "compliance", ok, []string{"PrometheusRule", "-n", subD.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "NonCompliant", ok, []string{"PrometheusRule", "compliance", "-n", subD.namespace, "-ojsonpath={.spec.groups[0].rules[0].alert}"}).check(oc)
+
+			g.By("ocp-43072 The metrics and alerts are getting reported for Compliance Operator error ... !!!\n")
 		})
 	})
 })

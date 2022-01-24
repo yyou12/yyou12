@@ -795,4 +795,62 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance an end user handle FIO wit
 			fi1.getDataFromConfigmap(oc, cmName, "/hostroot/etc/kubernetes/cloud.conf")
 		}
 	})
+
+	//author: pdhamdhe@redhat.com
+	g.It("Author:pdhamdhe-NonPreRelease-CPaasrunOnly-High-43136-Check FIO metrics and alerting [Serial][Slow]", func() {
+		var itName = g.CurrentGinkgoTestDescription().TestText
+		oc.SetupProject()
+		catsrc.namespace = oc.Namespace()
+		og.namespace = oc.Namespace()
+		sub.namespace = oc.Namespace()
+		sub.catalogSourceName = catsrc.name
+		sub.catalogSourceNamespace = catsrc.namespace
+		g.By("Label the namespace  !!!\n")
+		labelNameSpace(oc, sub.namespace, "openshift.io/cluster-monitoring=true")
+		fi1.namespace = oc.Namespace()
+		fi1.debug = false
+
+		g.By("Create catsrc")
+		catsrc.create(oc, itName, dr)
+		newCheck("expect", asAdmin, withoutNamespace, contain, catsrc.displayName, ok, []string{"packagemanifest", catsrc.displayName, "-n", catsrc.namespace}).check(oc)
+		g.By("Create og")
+		og.create(oc, itName, dr)
+		og.checkOperatorgroup(oc, og.name)
+		g.By("Create subscription")
+		sub.create(oc, itName, dr)
+		g.By("check csv")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+		sub.checkPodFioStatus(oc, "running")
+		newCheck("expect", asAdmin, withoutNamespace, contain, "openshift.io/cluster-monitoring", ok, []string{"namespace", sub.namespace, "-o=jsonpath={.metadata.labels}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, contain, "metrics", ok, []string{"service", "-n", sub.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
+
+		g.By("Create fileintegrity object with default aide config..\n")
+		fi1.createFIOWithoutConfig(oc, itName, dr)
+		fi1.checkFileintegrityStatus(oc, "running")
+		nodeName := getOneRhcosWorkerNodeName(oc)
+		fi1.checkFileintegritynodestatus(oc, nodeName, "Succeeded")
+
+		g.By("Create file on one worker node...\n")
+		fi1.checkFileintegrityStatus(oc, "running")
+		var pod = podModifyD
+		pod.namespace = oc.Namespace()
+		pod.name = "pod-modify"
+		pod.nodeName = nodeName
+		pod.args = "mkdir -p /hostroot/root/test42026"
+		defer func() {
+			pod.name = "pod-recover"
+			pod.nodeName = nodeName
+			pod.args = "rm -rf /hostroot/root/test42026"
+			pod.doActionsOnNode(oc, "Succeeded", dr)
+		}()
+		pod.doActionsOnNode(oc, "Succeeded", dr)
+		fi1.checkFileintegritynodestatus(oc, nodeName, "Failed")
+
+		metricsErr := []string{"file_integrity_operator_daemonset_update_total{operation=\"update\"} 1", "file_integrity_operator_node_failed{node=\"" + nodeName + "\"} 1",
+			"file_integrity_operator_node_status_total{condition=\"Failed\",node=\"" + nodeName + "\"} 1"}
+
+		checkMetric(oc, metricsErr, sub.namespace, "fio")
+		newCheck("expect", asAdmin, withoutNamespace, contain, "file-integrity", ok, []string{"PrometheusRule", "-n", sub.namespace, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, contain, "NodeHasIntegrityFailure", ok, []string{"PrometheusRule", "file-integrity", "-n", sub.namespace, "-ojsonpath={.spec.groups[0].rules[0].alert}"}).check(oc)
+	})
 })

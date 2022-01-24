@@ -873,3 +873,33 @@ func readFileLinesToCompare(oc *exutil.CLI, resourcename string, fileName string
 	})
 	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("The orignal %s count before upgrade does not match with the actual %s count after upgrade \n", resourcename, resourcename))
 }
+
+func labelNameSpace(oc *exutil.CLI, namespace string, label string) {
+	err := oc.AsAdmin().WithoutNamespace().Run("label").Args("namespace", namespace, label, "--overwrite").Execute()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	e2e.Logf("The namespace %s is labeled by %q", namespace, label)
+
+}
+
+func getSAToken(oc *exutil.CLI, account string, namespace string) string {
+	token, err := oc.AsAdmin().WithoutNamespace().Run("sa").Args("get-token", account, "-n", namespace).Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	o.Expect(token).NotTo(o.BeEmpty())
+	return token
+}
+
+func checkMetric(oc *exutil.CLI, metricString []string, namespace string, operator string) {
+	token := getSAToken(oc, "prometheus-k8s", "openshift-monitoring")
+	err := wait.Poll(3*time.Second, 45*time.Second, func() (bool, error) {
+		metrics, err := oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-monitoring", "-c", "prometheus", "prometheus-k8s-0", "--", "curl", "-ks", "-H", fmt.Sprintf("Authorization: Bearer %v", token), "https://metrics."+namespace+".svc:8585/metrics-"+operator).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		for _, metricStr := range metricString {
+			if err != nil || !strings.Contains(metrics, metricStr) {
+				return false, nil
+			}
+			e2e.Logf("The string '%s' contains in compliance operator matrics \n", metricStr)
+		}
+		return true, nil
+	})
+	exutil.AssertWaitPollNoErr(err, "The string does not contain in compliance operator matrics")
+}
