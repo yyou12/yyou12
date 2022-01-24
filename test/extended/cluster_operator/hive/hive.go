@@ -1,10 +1,12 @@
 package hive
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 
 	g "github.com/onsi/ginkgo"
+	o "github.com/onsi/gomega"
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
 	ci "github.com/openshift/openshift-tests-private/test/extended/util/clusterinfrastructure"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
@@ -257,10 +259,33 @@ var _ = g.Describe("[sig-hive] Cluster_Operator hive should", func() {
 		}
 		defer cleanupObjects(oc, objectTableRef{CLUSTER_DEPLOYMENT, oc.Namespace(), cdName})
 		cluster.create(oc)
+
+		g.By("Create worker and infra MachinePool ...")
+		workermachinepoolAWSTemp := filepath.Join(testDataDir, "machinepool-worker-aws.yaml")
+		inframachinepoolAWSTemp := filepath.Join(testDataDir, "machinepool-infra-aws.yaml")
+		workermp := machinepool{
+			namespace:   oc.Namespace(),
+			clusterName: cdName,
+			template:    workermachinepoolAWSTemp,
+		}
+		inframp := machinepool{
+			namespace:   oc.Namespace(),
+			clusterName: cdName,
+			template:    inframachinepoolAWSTemp,
+		}
+
+		defer cleanupObjects(oc,
+			objectTableRef{MACHINE_POOL, oc.Namespace(), cdName + "-worker"},
+			objectTableRef{MACHINE_POOL, oc.Namespace(), cdName + "-infra"},
+		)
+		workermp.create(oc)
+		inframp.create(oc)
+
 		g.By("Check if ClusterDeployment created successfully and become Provisioned")
-		//OCP-25310
+		e2e.Logf("test OCP-25310")
+		//newCheck("expect", "get", asAdmin, withoutNamespace, contain, "true", ok, DEFAULT_TIMEOUT, []string{CLUSTER_DEPLOYMENT, cdName, "-n", oc.Namespace(), "-o=jsonpath={.spec.installed}"}).check(oc)
 		newCheck("expect", "get", asAdmin, withoutNamespace, contain, "true", ok, CLUSTER_INSTALL_TIMEOUT, []string{CLUSTER_DEPLOYMENT, cdName, "-n", oc.Namespace(), "-o=jsonpath={.spec.installed}"}).check(oc)
-		//OCP-33374
+		e2e.Logf("test OCP-33374")
 		ocp_version := extractRelfromImg(OCP49_RELEASE_IMAGE)
 		if ocp_version == "" {
 			g.Fail("Case failed because no OCP version extracted from Image")
@@ -269,10 +294,53 @@ var _ = g.Describe("[sig-hive] Cluster_Operator hive should", func() {
 		if ocp_version != "" {
 			newCheck("expect", "get", asAdmin, withoutNamespace, contain, ocp_version, ok, DEFAULT_TIMEOUT, []string{CLUSTER_DEPLOYMENT, cdName, "-n", oc.Namespace(), "-o=jsonpath={.metadata.labels}"}).check(oc)
 		}
-		//OCP-39747
+		e2e.Logf("test OCP-39747")
 		if ocp_version != "" {
 			newCheck("expect", "get", asAdmin, withoutNamespace, contain, ocp_version, ok, DEFAULT_TIMEOUT, []string{CLUSTER_DEPLOYMENT, cdName, "-n", oc.Namespace(), "-o=jsonpath={.status.installVersion}"}).check(oc)
 		}
+
+		g.By("OCP-23165:Hive supports remote Machine Set Management for AWS")
+		tmpDir := "/tmp/" + cdName + "-" + getRandomString()
+		err := os.MkdirAll(tmpDir, 0777)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		defer os.RemoveAll(tmpDir)
+		getClusterKubeconfig(oc, cdName, oc.Namespace(), tmpDir)
+		kubeconfig := tmpDir + "/kubeconfig"
+		e2e.Logf("Check worker machinepool .status.replicas = 3")
+		newCheck("expect", "get", asAdmin, withoutNamespace, contain, "3", ok, DEFAULT_TIMEOUT, []string{MACHINE_POOL, cdName + "-worker", "-n", oc.Namespace(), "-o=jsonpath={.status.replicas}"}).check(oc)
+		e2e.Logf("Check infra machinepool .status.replicas = 1 ")
+		newCheck("expect", "get", asAdmin, withoutNamespace, contain, "1", ok, DEFAULT_TIMEOUT, []string{MACHINE_POOL, cdName + "-infra", "-n", oc.Namespace(), "-o=jsonpath={.status.replicas}"}).check(oc)
+		machinesetsname := getResource(oc, asAdmin, withoutNamespace, MACHINE_POOL, cdName+"-infra", "-n", oc.Namespace(), "-o=jsonpath={.status.machineSets[?(@.replicas==1)].name}")
+		o.Expect(machinesetsname).NotTo(o.BeEmpty())
+		e2e.Logf("Remote cluster machineset list: %s", machinesetsname)
+		e2e.Logf("Check machineset %s created on remote cluster", machinesetsname)
+		newCheck("expect", "get", asAdmin, withoutNamespace, compare, machinesetsname, ok, DEFAULT_TIMEOUT, []string{"--kubeconfig=" + kubeconfig, MACHINE_SET, "-n", "openshift-machine-api", "-l", "hive.openshift.io/machine-pool=infra", "-o=jsonpath={.items[?(@.spec.replicas==1)].metadata.name}"}).check(oc)
+		e2e.Logf("Check only 1 machineset up")
+		newCheck("expect", "get", asAdmin, withoutNamespace, compare, "1", ok, 5*DEFAULT_TIMEOUT, []string{"--kubeconfig=" + kubeconfig, MACHINE_SET, "-n", "openshift-machine-api", "-l", "hive.openshift.io/machine-pool=infra", "-o=jsonpath={.items[?(@.spec.replicas==1)].status.availableReplicas}"}).check(oc)
+		e2e.Logf("Check only one machines in Running status")
+		newCheck("expect", "get", asAdmin, withoutNamespace, compare, "Running", ok, DEFAULT_TIMEOUT, []string{"--kubeconfig=" + kubeconfig, MACHINE, "-n", "openshift-machine-api", "-l", "machine.openshift.io/cluster-api-machine-role=infra", "-o=jsonpath={.items[*].status.phase}"}).check(oc)
+		e2e.Logf("Patch infra machinepool .spec.replicas to 3")
+		newCheck("expect", "patch", asAdmin, withoutNamespace, contain, "patched", ok, DEFAULT_TIMEOUT, []string{MACHINE_POOL, cdName + "-infra", "-n", oc.Namespace(), "--type", "merge", "-p", `{"spec":{"replicas": 3}}`}).check(oc)
+		machinesetsname = getResource(oc, asAdmin, withoutNamespace, MACHINE_POOL, cdName+"-infra", "-n", oc.Namespace(), "-o=jsonpath={.status.machineSets[?(@.replicas==1)].name}")
+		o.Expect(machinesetsname).NotTo(o.BeEmpty())
+		e2e.Logf("Remote cluster machineset list: %s", machinesetsname)
+		e2e.Logf("Check machineset %s created on remote cluster", machinesetsname)
+		newCheck("expect", "get", asAdmin, withoutNamespace, compare, machinesetsname, ok, 5*DEFAULT_TIMEOUT, []string{"--kubeconfig=" + kubeconfig, MACHINE_SET, "-n", "openshift-machine-api", "-l", "hive.openshift.io/machine-pool=infra", "-o=jsonpath={.items[?(@.spec.replicas==1)].metadata.name}"}).check(oc)
+		e2e.Logf("Check machinesets scale up to 3")
+		newCheck("expect", "get", asAdmin, withoutNamespace, compare, "1 1 1", ok, 5*DEFAULT_TIMEOUT, []string{"--kubeconfig=" + kubeconfig, MACHINE_SET, "-n", "openshift-machine-api", "-l", "hive.openshift.io/machine-pool=infra", "-o=jsonpath={.items[?(@.spec.replicas==1)].status.availableReplicas}"}).check(oc)
+		e2e.Logf("Check 3 machines in Running status")
+		newCheck("expect", "get", asAdmin, withoutNamespace, compare, "Running Running Running", ok, DEFAULT_TIMEOUT, []string{"--kubeconfig=" + kubeconfig, MACHINE, "-n", "openshift-machine-api", "-l", "machine.openshift.io/cluster-api-machine-role=infra", "-o=jsonpath={.items[*].status.phase}"}).check(oc)
+		e2e.Logf("Patch infra machinepool .spec.replicas to 2")
+		newCheck("expect", "patch", asAdmin, withoutNamespace, contain, "patched", ok, DEFAULT_TIMEOUT, []string{MACHINE_POOL, cdName + "-infra", "-n", oc.Namespace(), "--type", "merge", "-p", `{"spec":{"replicas": 2}}`}).check(oc)
+		machinesetsname = getResource(oc, asAdmin, withoutNamespace, MACHINE_POOL, cdName+"-infra", "-n", oc.Namespace(), "-o=jsonpath={.status.machineSets[?(@.replicas==1)].name}")
+		o.Expect(machinesetsname).NotTo(o.BeEmpty())
+		e2e.Logf("Remote cluster machineset list: %s", machinesetsname)
+		e2e.Logf("Check machineset %s created on remote cluster", machinesetsname)
+		newCheck("expect", "get", asAdmin, withoutNamespace, compare, machinesetsname, ok, 5*DEFAULT_TIMEOUT, []string{"--kubeconfig=" + kubeconfig, MACHINE_SET, "-n", "openshift-machine-api", "-l", "hive.openshift.io/machine-pool=infra", "-o=jsonpath={.items[?(@.spec.replicas==1)].metadata.name}"}).check(oc)
+		e2e.Logf("Check machinesets scale down to 2")
+		newCheck("expect", "get", asAdmin, withoutNamespace, compare, "1 1", ok, 5*DEFAULT_TIMEOUT, []string{"--kubeconfig=" + kubeconfig, MACHINE_SET, "-n", "openshift-machine-api", "-l", "hive.openshift.io/machine-pool=infra", "-o=jsonpath={.items[?(@.spec.replicas==1)].status.availableReplicas}"}).check(oc)
+		e2e.Logf("Check 2 machines in Running status")
+		newCheck("expect", "get", asAdmin, withoutNamespace, compare, "Running Running", ok, DEFAULT_TIMEOUT, []string{"--kubeconfig=" + kubeconfig, MACHINE, "-n", "openshift-machine-api", "-l", "machine.openshift.io/cluster-api-machine-role=infra", "-o=jsonpath={.items[*].status.phase}"}).check(oc)
 	})
 
 	//author: jshu@redhat.com

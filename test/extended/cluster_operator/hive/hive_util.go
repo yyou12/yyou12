@@ -101,6 +101,12 @@ type clusterDeployment struct {
 	template            string
 }
 
+type machinepool struct {
+	clusterName string
+	namespace   string
+	template    string
+}
+
 type objectTableRef struct {
 	kind      string
 	namespace string
@@ -122,6 +128,9 @@ const (
 	CLUSTER_DEPLOYMENT        = "ClusterDeployment"
 	CLUSTER_IMAGE_SET         = "ClusterImageSet"
 	CLUSTER_CLAIM             = "ClusterClaim"
+	MACHINE_POOL              = "MachinePool"
+	MACHINE_SET               = "MachineSet"
+	MACHINE                   = "Machine"
 )
 
 func applyResourceFromTemplate(oc *exutil.CLI, parameters ...string) error {
@@ -260,6 +269,11 @@ func (config *installConfig) create(oc *exutil.CLI) {
 
 func (cluster *clusterDeployment) create(oc *exutil.CLI) {
 	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", cluster.template, "-p", "FAKE="+cluster.fake, "NAME="+cluster.name, "NAMESPACE="+cluster.namespace, "BASEDOMAIN="+cluster.baseDomain, "CLUSTERNAME="+cluster.clusterName, "PLATFORMTYPE="+cluster.platformType, "CREDREF="+cluster.credRef, "REGION="+cluster.region, "IMAGESETREF="+cluster.imageSetRef, "INSTALLCONFIGSECRET="+cluster.installConfigSecret, "PULLSECRETREF="+cluster.pullSecretRef)
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+func (machine *machinepool) create(oc *exutil.CLI) {
+	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", machine.template, "-p", "CLUSTERNAME="+machine.clusterName, "NAMESPACE="+machine.namespace)
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
@@ -498,4 +512,13 @@ func getCDlistfromPool(oc *exutil.CLI, pool string) string {
 	o.Expect(err).NotTo(o.HaveOccurred())
 	e2e.Logf("CD list is %s for pool %s", pool_cd_list, pool)
 	return string(pool_cd_list)
+}
+
+//Get cluster kubeconfig file
+func getClusterKubeconfig(oc *exutil.CLI, clustername, namespace, dir string) {
+	kubeconfigsecretname, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("cd", clustername, "-n", namespace, "-o=jsonpath={.spec.clusterMetadata.adminKubeconfigSecretRef.name}").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	e2e.Logf("Extract cluster %s kubeconfig to %s", clustername, dir)
+	err = oc.AsAdmin().WithoutNamespace().Run("extract").Args("secret/"+kubeconfigsecretname, "-n", namespace, "--to="+dir, "--confirm").Execute()
+	o.Expect(err).NotTo(o.HaveOccurred())
 }
