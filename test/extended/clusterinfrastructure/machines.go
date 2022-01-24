@@ -158,4 +158,32 @@ var _ = g.Describe("[sig-cluster-lifecycle] Cluster_Infrastructure", func() {
 			o.Expect(strings.Contains(out, checkItem.errormsg)).To(o.BeTrue())
 		}
 	})
+
+	// author: huliu@redhat.com
+	g.It("Longduration-NonPreRelease-Author:huliu-Medium-44977-Machine with GPU is supported on gcp [Disruptive]", func() {
+		if clusterinfra.CheckPlatform(oc) == "gcp" {
+			g.By("Create a new machineset")
+			machinesetName := "machineset-44977"
+			ms := clusterinfra.MachineSetDescription{machinesetName, 0}
+			defer ms.DeleteMachineSet(oc)
+			ms.CreateMachineSet(oc)
+			g.By("Update machineset with GPU")
+			err := oc.AsAdmin().WithoutNamespace().Run("patch").Args("machineset/"+machinesetName, "-n", "openshift-machine-api", "-p", `{"spec":{"replicas":1,"template":{"spec":{"providerSpec":{"value":{"machineType":"a2-highgpu-1g","onHostMaintenance":"Terminate","restartPolicy":"Always"}}}}}}`, "--type=merge").Execute()
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			clusterinfra.WaitForMachinesRunning(oc, 1, machinesetName)
+
+			g.By("Check machine with GPU")
+			machineType, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("machine", "-n", "openshift-machine-api", "-l", "machine.openshift.io/cluster-api-machineset="+machinesetName, "-o=jsonpath={.items[0].spec.providerSpec.value.machineType}").Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			onHostMaintenance, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("machine", "-n", "openshift-machine-api", "-l", "machine.openshift.io/cluster-api-machineset="+machinesetName, "-o=jsonpath={.items[0].spec.providerSpec.value.onHostMaintenance}").Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			restartPolicy, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("machine", "-n", "openshift-machine-api", "-l", "machine.openshift.io/cluster-api-machineset="+machinesetName, "-o=jsonpath={.items[0].spec.providerSpec.value.restartPolicy}").Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			e2e.Logf("machineType:%s, onHostMaintenance:%s, restartPolicy:%s", machineType, onHostMaintenance, restartPolicy)
+			o.Expect(strings.Contains(machineType, "a2-highgpu-1g") && strings.Contains(onHostMaintenance, "Terminate") && strings.Contains(restartPolicy, "Always")).To(o.BeTrue())
+		}
+		e2e.Logf("Only gcp platform supported for the test")
+	})
 })
