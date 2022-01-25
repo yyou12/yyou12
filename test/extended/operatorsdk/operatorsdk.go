@@ -951,8 +951,8 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
 		g.By("scorecard basic test migration")
 		output, err := operatorsdkCLI.Run("scorecard").Args("/tmp/ocp-43973/memcached-operator/bundle", "-c", "/tmp/ocp-43973/memcached-operator/bundle/tests/scorecard/config.yaml", "-w", "60s", "--selector=test=basic-check-spec-test", "-n", oc.Namespace()).Output()
 		e2e.Logf(" scorecard bundle %v", err)
-		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(output).To(o.ContainSubstring("State: pass"))
+        	o.Expect(output).To(o.ContainSubstring("State: fail"))
+        	o.Expect(output).To(o.ContainSubstring("spec missing from [memcached-sample]"))
 
 		//ocp-43976
 		g.By("migrate OLM tests-bundle validation")
@@ -962,9 +962,8 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
 
 		g.By("migrate OLM tests-crds have validation test")
 		output, err = operatorsdkCLI.Run("scorecard").Args("/tmp/ocp-43973/memcached-operator/bundle", "-c", "/tmp/ocp-43973/memcached-operator/bundle/tests/scorecard/config.yaml", "-w", "60s", "--selector=test=olm-crds-have-validation-test", "-n", oc.Namespace()).Output()
-		o.Expect(output).To(o.ContainSubstring("State: fail"))
-		o.Expect(output).To(o.ContainSubstring("Suggestions:"))
-		o.Expect(output).To(o.ContainSubstring("Add CRD validation for spec field `foo` in Memcached/v1alpha1"))
+        	o.Expect(err).NotTo(o.HaveOccurred())
+        	o.Expect(output).To(o.ContainSubstring("State: pass"))
 
 		g.By("migrate OLM tests-crds have resources test")
 		output, err = operatorsdkCLI.Run("scorecard").Args("/tmp/ocp-43973/memcached-operator/bundle", "-c", "/tmp/ocp-43973/memcached-operator/bundle/tests/scorecard/config.yaml", "-w", "60s", "--selector=test=olm-crds-have-resources-test", "-n", oc.Namespace()).Output()
@@ -974,10 +973,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
 		g.By("migrate OLM tests- spec descriptors test")
 		output, err = operatorsdkCLI.Run("scorecard").Args("/tmp/ocp-43973/memcached-operator/bundle", "-c", "/tmp/ocp-43973/memcached-operator/bundle/tests/scorecard/config.yaml", "-w", "60s", "--selector=test=olm-spec-descriptors-test", "-n", oc.Namespace()).Output()
 		o.Expect(output).To(o.ContainSubstring("State: fail"))
-		o.Expect(output).To(o.ContainSubstring("Suggestions:"))
-		o.Expect(output).To(o.ContainSubstring("Add a spec descriptor for foo"))
-		o.Expect(output).To(o.ContainSubstring("foo does not have a spec descriptor"))
-
+		
 		g.By("migrate OLM tests- status descriptors test")
 		output, err = operatorsdkCLI.Run("scorecard").Args("/tmp/ocp-43973/memcached-operator/bundle", "-c", "/tmp/ocp-43973/memcached-operator/bundle/tests/scorecard/config.yaml", "-w", "60s", "--selector=test=olm-status-descriptors-test", "-n", oc.Namespace()).Output()
 		o.Expect(output).To(o.ContainSubstring("State: fail"))
