@@ -32,6 +32,7 @@ fi
 if [ "${KUBECONFIG_FILE}" != "" ]; then
   echo "the kubeconfig is set directly with CONFIG"
   ck "${KUBECONFIG_FILE}"
+  cz "${WORKDIRBASE}"
   if [ "${proxyValue}" != "" ]; then
     echo "set http_proxy https_proxy"
     eval "export ${proxyValue}"
