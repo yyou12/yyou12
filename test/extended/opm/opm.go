@@ -1326,7 +1326,7 @@ var _ = g.Describe("[sig-operators] OLM opm with podman", func() {
 	})
 
 	// author: tbuskey@redhat.com
-	g.It("Author:tbuskey-VMonly-High-30786-Bundle addition commutativity", func() {
+	g.It("Author:xzha-VMonly-High-30786-Bundle addition commutativity", func() {
 		opmBaseDir := exutil.FixturePath("testdata", "opm")
 		defer DeleteDir(opmBaseDir, "fixture-testdata")
 		TestDataPath := filepath.Join(opmBaseDir, "temp")
@@ -1857,26 +1857,26 @@ var _ = g.Describe("[sig-operators] OLM opm with podman", func() {
 
 	// author: scolange@redhat.com
 	g.It("ConnectedOnly-Author:scolange-Medium-45679-Configurable dependency inclusion in catalog diffs", func() {
-	
+
 		indexImage := "quay.io/olmqe/etcd-index:test-skip-deps"
-	
-		output1, err1 := opmCLI.Run("alpha").Args("list","bundles",indexImage).Output()
+
+		output1, err1 := opmCLI.Run("alpha").Args("list", "bundles", indexImage).Output()
 		o.Expect(err1).NotTo(o.HaveOccurred())
 		o.Expect(output1).To(o.ContainSubstring("planetscale-operator.v0.1.7"))
 
-		output2, err2 := opmCLI.Run("alpha").Args("diff",indexImage).Output()
+		output2, err2 := opmCLI.Run("alpha").Args("diff", indexImage).Output()
 		o.Expect(err2).NotTo(o.HaveOccurred())
-		o.Expect(output2).To(o.ContainSubstring("name: planetscale-operator.v0.1.7" ))
+		o.Expect(output2).To(o.ContainSubstring("name: planetscale-operator.v0.1.7"))
 
-		output3, err3 := opmCLI.Run("alpha").Args("diff",indexImage,"--skip-deps").Output()
+		output3, err3 := opmCLI.Run("alpha").Args("diff", indexImage, "--skip-deps").Output()
 		o.Expect(err3).NotTo(o.HaveOccurred())
-		o.Expect(output3).NotTo(o.ContainSubstring("name: planetscale-operator.v0.1.7" ))
+		o.Expect(output3).NotTo(o.ContainSubstring("name: planetscale-operator.v0.1.7"))
 		g.By("test case 45679 SUCCESS")
 
 	})
 
 	// author: tbuskey@redhat.com OLM-2195
-	g.It("Author:tbuskey-Low-45409-opm filter by operator version", func() {
+	g.It("Author:xzha-Low-45409-opm filter by operator version", func() {
 		var (
 			opmBaseDir     = exutil.FixturePath("testdata", "opm")
 			includeFile    = filepath.Join(opmBaseDir, "45409_include.yaml")

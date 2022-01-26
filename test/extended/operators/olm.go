@@ -5515,7 +5515,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 	})
 
 	// It will cover test case: OCP-24917, author: tbuskey@redhat.com
-	g.It("Author:tbuskey-Medium-24917-Operators in SingleNamespace should not be granted namespace list [Disruptive]", func() {
+	g.It("Author:bandrade-Medium-24917-Operators in SingleNamespace should not be granted namespace list [Disruptive]", func() {
 		g.By("1) Install the OperatorGroup in a random project")
 		dr := make(describerResrouce)
 		itName := g.CurrentGinkgoTestDescription().TestText
@@ -5587,7 +5587,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 	})
 
 	// author: tbuskey@redhat.com
-	g.It("Author:tbuskey-Medium-25782-CatalogSource Status should have information on last observed state", func() {
+	g.It("Author:scolange-Medium-25782-CatalogSource Status should have information on last observed state", func() {
 		var err error
 		var (
 			catName             = "installed-community-25782-global-operators"
@@ -5659,7 +5659,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 	})
 
 	// It will cover test case: OCP-25644, author: tbuskey@redhat.com
-	g.It("Author:tbuskey-Medium-25644-OLM collect CSV health per version", func() {
+	g.It("Author:bandrade-Medium-25644-OLM collect CSV health per version", func() {
 		var err error
 		var (
 			itName              = g.CurrentGinkgoTestDescription().TestText
@@ -6118,7 +6118,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 	})
 
 	// author: tbuskey@redhat.com, test case OCP-21080
-	g.It("Author:tbuskey-High-21080-OLM Check OLM metrics [Serial]", func() {
+	g.It("Author:jiazha-High-21080-OLM Check OLM metrics [Serial]", func() {
 
 		type metrics struct {
 			csvCount              int
@@ -6322,7 +6322,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 	})
 
 	// author: tbuskey@redhat.com, test case OCP-40972
-	g.It("Author:tbuskey-High-40972-Provide more specific text when no candidates for Subscription spec", func() {
+	g.It("Author:xzha-High-40972-Provide more specific text when no candidates for Subscription spec", func() {
 		var (
 			itName              = g.CurrentGinkgoTestDescription().TestText
 			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
@@ -7617,7 +7617,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 	})
 
 	// author: tbuskey@redhat.com, test case OCP-43114
-	g.It("Author:tbuskey-High-43114-Subscription status should show the message for InstallPlan failure conditions", func() {
+	g.It("Author:xzha-High-43114-Subscription status should show the message for InstallPlan failure conditions", func() {
 		var (
 			itName              = g.CurrentGinkgoTestDescription().TestText
 			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
@@ -7722,7 +7722,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 	})
 
 	// author: tbuskey@redhat.com, test case OCP-43291
-	g.It("Author:tbuskey-High-43291-Indicate resolution conflicts on involved Subscription statuses [Flaky]", func() {
+	g.It("Author:xzha-High-43291-Indicate resolution conflicts on involved Subscription statuses [Flaky]", func() {
 		var (
 			itName              = g.CurrentGinkgoTestDescription().TestText
 			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
@@ -10109,7 +10109,7 @@ var _ = g.Describe("[sig-operators] OLM on VM for an end user handle within a na
 	})
 
 	// author: tbuskey@redhat.com
-	g.It("Author:tbuskey-High-21953-Ensure that operator deployment is in the master node", func() {
+	g.It("Author:jiazha-High-21953-Ensure that operator deployment is in the master node", func() {
 		var (
 			err            error
 			msg            string
