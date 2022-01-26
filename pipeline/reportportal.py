@@ -434,6 +434,9 @@ class ReportPortalClient:
             pipelineType = self.getAttrOption("pipeline_type")
             if pipelineType == None or pipelineType == "":
                 pipelineType = "notpipeline"
+            telcoProfileName = self.getAttrOption("telco_profile_name")
+            if telcoProfileName == None or telcoProfileName == "":
+                telcoProfileName = "unknowntelcoprofilename"
 
             if attMap == None:
                 attDict = {
@@ -445,7 +448,12 @@ class ReportPortalClient:
                 "gbuildnum": {"action": "add", "value":self.args.buildnum},
                 "launchtype": {"action": "add", "value":"golang"},
                 }
+                if telcoProfileName != "unknowntelcoprofilename":
+                    attDict["profilename"] = {"action": "add", "value":telcoProfileName}
             else:
+                finalProfileName = self.args.profilename
+                if telcoProfileName != "unknowntelcoprofilename":
+                    finalProfileName = telcoProfileName
                 attDict = {
                 "name":     {"action": "add", "value":os.path.splitext(os.path.basename(self.args.file))[0]},
                 "team":     {"action": "add", "value":self.args.subteam},
@@ -454,7 +462,7 @@ class ReportPortalClient:
                 "pipeline_type":  {"action": "add", "value":pipelineType},
                 "gbuildnum": {"action": "add", "value":self.args.buildnum},
                 "launchtype": {"action": "add", "value":"golang"},
-                "profilename": {"action": "add", "value":self.args.profilename},
+                "profilename": {"action": "add", "value":finalProfileName},
                 }
                 if self.args.triallaunch == "yes":
                     attDict["trial"] = {"action": "add", "value":"\"\""}

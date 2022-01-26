@@ -150,8 +150,12 @@ if [ "${pipelinetype}" != "None" ] && [ "${pipelinetype}" != "failtogetvalue" ] 
       profiletype="prod"
       ;;
     upgradepipeline)
-      echo "it is prod pipeline"
+      echo "it is upgrade pipeline"
       profiletype="upgrade"
+      ;;
+    telcopipeline)
+      echo "it is telco pipeline"
+      profiletype="telco"
       ;;
     *)
       echo "it is prerelease pipeline"
@@ -195,7 +199,7 @@ if [ "X${LAUNCHID}X" != "XX" ]; then
   else
     LAUNCHIDVALID=false
   fi
-  if [ "X${profiletype}X" == "XciX" ]; then
+  if [[ "X${profiletype}X" == "XciX" ]] || [[ "X${profiletype}X" == "XtelcoX" ]]; then
     if [ "X${buildversiontype}X" == "Xarm64X" ]; then
       existing=`ls ${WORKSPACE}"/cip/"${VERSION}"/arm/"|grep "${PROFILENAME}"".test"|grep "test_run.yaml"|wc -l|xargs`
     else
@@ -225,7 +229,9 @@ if [ "X${LAUNCHID}X" != "XX" ]; then
   fi
 
   if [ "${LAUNCHIDVALID}" != true ] || [ "${PROFILENAMEVALID}" != true ]  || [ "${REPOOWNERVALID}" != true ]; then
-    VERSION="personalbuild"
+    if ! [[ "X${profiletype}X" == "XtelcoX" ]]; then
+      VERSION="personalbuild"
+    fi
     PROFILENAME=""
   fi
 
@@ -236,7 +242,7 @@ if [ "X${LAUNCHID}X" != "XX" ]; then
   for subteamfile in `ls import-*.xml`; do
     subteam=${subteamfile:7:-4}
     eval zip -r "${LAUNCHID}.zip" "${subteamfile}"
-    if [ "X${profiletype}X" == "XciX" ]; then
+    if [[ "X${profiletype}X" == "XciX" ]] || [[ "X${profiletype}X" == "XtelcoX" ]]; then
       if [ "X${buildversiontype}X" == "Xarm64X" ]; then
         ppath="../cip/"${VERSION}"/arm/"
       else
