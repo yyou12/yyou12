@@ -37,7 +37,13 @@ func setStorageClassName(name string) storageClassOption {
 // Replace the default value of storageclass template parameter
 func setStorageClassTemplate(template string) storageClassOption {
 	return func(this *storageClass) {
-		this.template = template
+		split_result := strings.Split(template, "/")
+		if cloudProvider == "ibmcloud" && split_result[len(split_result)-1] == "storageclass-template.yaml" {
+			split_result[len(split_result)-1] = "ibm-storageclass-template.yaml"
+			this.template = strings.Replace(strings.Trim(fmt.Sprint(split_result), "[]"), " ", "/", -1)
+		} else {
+			this.template = template
+		}
 	}
 }
 

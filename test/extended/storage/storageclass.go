@@ -16,7 +16,7 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 
 		// Get pre-defined storageclass and default storageclass from testdata/storage/pre-defined-storageclass.json
 		g.By("Get pre-defined storage class and default storage class")
-		cloudProvider := getCloudProvider(oc)
+		cloudProvider = getCloudProvider(oc)
 		preDefinedStorageclassCheck(cloudProvider)
 		defaultsc := getClusterDefaultStorageclassByPlatform(cloudProvider)
 

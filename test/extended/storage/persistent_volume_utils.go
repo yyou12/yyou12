@@ -120,7 +120,13 @@ func createNewPersistVolumeWithRetainVolume(oc *exutil.CLI, originPvExportJson s
 		err            error
 		outputJsonFile string
 	)
-	for _, jsonPath := range []string{`spec.claimRef`, `spec.storageClassName`, `status`, `metadata`} {
+	jsonPathList := []string{`spec.claimRef`, `spec.storageClassName`, `status`, `metadata`}
+	// vSphere: Do not specify the key storage.kubernetes.io/csiProvisionerIdentity in csi.volumeAttributes in PV specification. This key indicates dynamically provisioned PVs.
+	// Note: https://docs.vmware.com/en/VMware-vSphere-Container-Storage-Plug-in/2.0/vmware-vsphere-csp-getting-started/GUID-D736C518-E641-4AA9-8BBD-973891AEB554.html
+	if cloudProvider == "vsphere" {
+		jsonPathList = append(jsonPathList, `spec.csi.volumeAttributes.storage\.kubernetes\.io\/csiProvisionerIdentity`)
+	}
+	for _, jsonPath := range jsonPathList {
 		originPvExportJson, err = sjson.Delete(originPvExportJson, jsonPath)
 		o.Expect(err).NotTo(o.HaveOccurred())
 	}

@@ -1,11 +1,9 @@
 package storage
 
 import (
-	"math/rand"
 	"path/filepath"
 	"strconv"
 	"strings"
-	"time"
 
 	g "github.com/onsi/ginkgo"
 	o "github.com/onsi/gomega"
@@ -15,34 +13,19 @@ import (
 
 var _ = g.Describe("[sig-storage] STORAGE", func() {
 	defer g.GinkgoRecover()
-	var (
-		oc            = exutil.NewCLI("storage-general-csi", exutil.KubeConfigPath())
-		cloudProvider string
-	)
+	var oc = exutil.NewCLI("storage-general-csi", exutil.KubeConfigPath())
 
 	// aws-csi test suite cloud provider support check
 	g.BeforeEach(func() {
 		cloudProvider = getCloudProvider(oc)
 		generalCsiSupportCheck(cloudProvider)
-		rand.Seed(time.Now().UnixNano())
-		switch cloudProvider {
-		// AlibabaCloud minimum volume size is 20Gi
-		case "alibabacloud":
-			globalDefaultVolSize = strconv.Itoa(rand.Intn(10)+20) + "Gi"
-		// IBMCloud minimum volume size is 10Gi
-		case "ibmcloud":
-			globalDefaultVolSize = strconv.Itoa(rand.Intn(10)+10) + "Gi"
-		// Other Clouds(AWS GCE Azure OSP vSphere) minimum volume size is 1Gi
-		default:
-			globalDefaultVolSize = strconv.Itoa(rand.Intn(10)+1) + "Gi"
-		}
 	})
 
 	// author: pewang@redhat.com
 	// OCP-44903 [CSI Driver] [Dynamic PV] [ext4] volumes should store data and allow exec of files on the volume
 	g.It("Author:pewang-High-44903-[CSI Driver] [Dynamic PV] [ext4] volumes should store data and allow exec of files on the volume", func() {
 		// Define the test scenario support provisioners
-		scenarioSupportProvisioners := []string{"ebs.csi.aws.com", "disk.csi.azure.com", "cinder.csi.openstack.org", "pd.csi.storage.gke.io", "csi.vsphere.vmware.com"}
+		scenarioSupportProvisioners := []string{"ebs.csi.aws.com", "disk.csi.azure.com", "cinder.csi.openstack.org", "pd.csi.storage.gke.io", "csi.vsphere.vmware.com", "vpc.block.csi.ibm.io"}
 		// Set the resource template for the scenario
 		var (
 			storageTeamBaseDir     = exutil.FixturePath("testdata", "storage")
@@ -324,7 +307,7 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 	// OCP-44904 [CSI Driver] [Dynamic PV] [xfs] volumes should store data and allow exec of files on the volume
 	g.It("Author:pewang-High-44904-[CSI Driver] [Dynamic PV] [xfs] volumes should store data and allow exec of files on the volume", func() {
 		// Define the test scenario support provisioners
-		scenarioSupportProvisioners := []string{"ebs.csi.aws.com", "disk.csi.azure.com", "cinder.csi.openstack.org", "pd.csi.storage.gke.io", "csi.vsphere.vmware.com"}
+		scenarioSupportProvisioners := []string{"ebs.csi.aws.com", "disk.csi.azure.com", "cinder.csi.openstack.org", "pd.csi.storage.gke.io", "csi.vsphere.vmware.com", "vpc.block.csi.ibm.io"}
 		// Set the resource template for the scenario
 		var (
 			storageTeamBaseDir     = exutil.FixturePath("testdata", "storage")
@@ -527,7 +510,7 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 
 			g.By("Check the volume umount from the node")
 			volName := pvc.getVolumeName(oc)
-			checkVolumeNotMountOnNode(oc, volName, nodeName)
+			checkVolumeDetachedFromNode(oc, volName, nodeName)
 
 			g.By("Create new pod with the pvc and wait for the pod ready")
 			pod_new := newPod(setPodTemplate(podTemplate), setPodPersistentVolumeClaim(pvc.name), setPodVolumeType("volumeDevices"), setPodPathType("devicePath"), setPodMountPath("/dev/dblock"))
@@ -589,6 +572,7 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 			g.By("Create a clone pvc with the preset csi storageclass")
 			pvc_clone.scname = getPresetStorageClassNameByProvisioner(cloudProvider, provisioner)
 			e2e.Logf("%s", pvc_ori.scname)
+			pvc_clone.capacity = pvc_ori.capacity
 			pvc_clone.createWithCloneDataSource(oc)
 			defer pvc_clone.deleteAsAdmin(oc)
 
@@ -651,11 +635,15 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 			pod_ori.execCommand(oc, "sync")
 
 			// Set the resource definition for the clone
-			pvc_clone := newPersistentVolumeClaim(setPersistentVolumeClaimTemplate(pvcTemplate), setPersistentVolumeClaimDataSourceName(pvc_ori.name), setPersistentVolumeClaimCapacity("2Gi"))
+			pvc_clone := newPersistentVolumeClaim(setPersistentVolumeClaimTemplate(pvcTemplate), setPersistentVolumeClaimDataSourceName(pvc_ori.name))
 			pod_clone := newPod(setPodTemplate(podTemplate), setPodPersistentVolumeClaim(pvc_clone.name))
 
 			g.By("Create a clone pvc with the preset csi storageclass")
 			pvc_clone.scname = getPresetStorageClassNameByProvisioner(cloudProvider, provisioner)
+			cloneCapacityInt64, err := strconv.ParseInt(strings.TrimRight(pvc_ori.capacity, "Gi"), 10, 64)
+			o.Expect(err).To(o.Not(o.HaveOccurred()))
+			cloneCapacityInt64 = cloneCapacityInt64 + getRandomNum(1, 10)
+			pvc_clone.capacity = strconv.FormatInt(cloneCapacityInt64, 10) + "Gi"
 			pvc_clone.createWithCloneDataSource(oc)
 			defer pvc_clone.deleteAsAdmin(oc)
 
@@ -664,11 +652,11 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 			defer pod_clone.deleteAsAdmin(oc)
 			pod_clone.waitReady(oc)
 
-			g.By("Check the cloned pvc size is 2Gi")
+			g.By("Check the cloned pvc size is as expected")
 			pvc_clone_size, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pvc", pvc_clone.name, "-n", pvc_clone.namespace, "-o=jsonpath={.status.capacity.storage}").Output()
 			o.Expect(err).NotTo(o.HaveOccurred())
 			e2e.Logf("The pvc.status.capacity.storage is %s", pvc_clone_size)
-			o.Expect(pvc_clone_size).To(o.Equal("2Gi"))
+			o.Expect(pvc_clone_size).To(o.Equal(pvc_clone.capacity))
 
 			g.By("Check the file exist in cloned volume")
 			output, err := pod_clone.execCommand(oc, "cat "+pod_clone.mountPath+"/testfile")
@@ -676,7 +664,9 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 			o.Expect(output).To(o.ContainSubstring("storage test"))
 
 			g.By("Check could write more data")
-			output1, err := pod_clone.execCommand(oc, "/bin/dd  if=/dev/zero of="+pod_clone.mountPath+"/testfile1 bs=1M count=1500")
+			blockCounts := strconv.FormatInt(cloneCapacityInt64*4*4/5, 10)
+			output1, err := pod_clone.execCommand(oc, "/bin/dd  if=/dev/zero of="+pod_clone.mountPath+"/testfile1 bs=256M count="+blockCounts)
+			o.Expect(err).NotTo(o.HaveOccurred())
 			o.Expect(output1).NotTo(o.ContainSubstring("No space left on device"))
 
 			g.By("******" + cloudProvider + " csi driver: \"" + provisioner + "\" test phase finished" + "******")
@@ -729,6 +719,7 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 
 			g.By("Create a clone pvc with the preset csi storageclass")
 			pvc_clone.scname = getPresetStorageClassNameByProvisioner(cloudProvider, provisioner)
+			pvc_clone.capacity = pvc_ori.capacity
 			pvc_clone.createWithCloneDataSource(oc)
 			defer pvc_clone.deleteAsAdmin(oc)
 
@@ -785,11 +776,15 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 			pod_ori.execCommand(oc, "sync")
 
 			// Set the resource definition for the clone
-			pvc_clone := newPersistentVolumeClaim(setPersistentVolumeClaimTemplate(pvcTemplate), setPersistentVolumeClaimVolumemode("Block"), setPersistentVolumeClaimDataSourceName(pvc_ori.name), setPersistentVolumeClaimCapacity("2Gi"))
+			pvc_clone := newPersistentVolumeClaim(setPersistentVolumeClaimTemplate(pvcTemplate), setPersistentVolumeClaimVolumemode("Block"), setPersistentVolumeClaimDataSourceName(pvc_ori.name))
 			pod_clone := newPod(setPodTemplate(podTemplate), setPodPersistentVolumeClaim(pvc_clone.name), setPodVolumeType("volumeDevices"), setPodPathType("devicePath"), setPodMountPath("/dev/dblock"))
 
 			g.By("Create a clone pvc with the preset csi storageclass")
 			pvc_clone.scname = getPresetStorageClassNameByProvisioner(cloudProvider, provisioner)
+			cloneCapacityInt64, err := strconv.ParseInt(strings.TrimRight(pvc_ori.capacity, "Gi"), 10, 64)
+			o.Expect(err).To(o.Not(o.HaveOccurred()))
+			cloneCapacityInt64 = cloneCapacityInt64 + getRandomNum(1, 10)
+			pvc_clone.capacity = strconv.FormatInt(cloneCapacityInt64, 10) + "Gi"
 			pvc_clone.createWithCloneDataSource(oc)
 			defer pvc_clone.deleteAsAdmin(oc)
 
@@ -798,11 +793,11 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 			defer pod_clone.deleteAsAdmin(oc)
 			pod_clone.waitReady(oc)
 
-			g.By("Check the cloned pvc size is 2Gi")
+			g.By("Check the cloned pvc size is as expected")
 			pvc_clone_size, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pvc", pvc_clone.name, "-n", pvc_clone.namespace, "-o=jsonpath={.status.capacity.storage}").Output()
 			o.Expect(err).NotTo(o.HaveOccurred())
 			e2e.Logf("The pvc.status.capacity.storage is %s", pvc_clone_size)
-			o.Expect(pvc_clone_size).To(o.Equal("2Gi"))
+			o.Expect(pvc_clone_size).To(o.Equal(pvc_clone.capacity))
 
 			g.By("Check the data exist in cloned volume")
 			pod_clone.checkDataInRawBlockVolume(oc)
@@ -883,7 +878,7 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 	// https://kubernetes.io/docs/concepts/storage/persistent-volumes/#delete
 	g.It("Author:pewang-High-44906-[CSI Driver] [Dynamic PV] [Delete reclaimPolicy] volumes should be deleted after the pvc deletion", func() {
 		// Define the test scenario support provisioners
-		scenarioSupportProvisioners := []string{"ebs.csi.aws.com", "disk.csi.azure.com", "cinder.csi.openstack.org", "pd.csi.storage.gke.io", "csi.vsphere.vmware.com"}
+		scenarioSupportProvisioners := []string{"ebs.csi.aws.com", "disk.csi.azure.com", "cinder.csi.openstack.org", "pd.csi.storage.gke.io", "csi.vsphere.vmware.com", "vpc.block.csi.ibm.io"}
 		// Set the resource template for the scenario
 		var (
 			storageTeamBaseDir   = exutil.FixturePath("testdata", "storage")
@@ -900,11 +895,8 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 		for _, provisioner := range supportProvisioners {
 			g.By("******" + cloudProvider + " csi driver: \"" + provisioner + "\" test phase start" + "******")
 			// Set the resource definition for the scenario
-			rand.Seed(time.Now().UnixNano())
-			randomNum := rand.Intn(10) + 2
-			randomCapacity := interfaceToString(randomNum) + "Gi"
 			storageClass := newStorageClass(setStorageClassTemplate(storageClassTemplate), setStorageClassProvisioner(provisioner), setStorageClassReclaimPolicy("Delete"), setStorageClassVolumeBindingMode("Immediate"))
-			pvc := newPersistentVolumeClaim(setPersistentVolumeClaimTemplate(pvcTemplate), setPersistentVolumeClaimCapacity(randomCapacity))
+			pvc := newPersistentVolumeClaim(setPersistentVolumeClaimTemplate(pvcTemplate))
 
 			g.By("# Make sure we have a csi storageclass with 'reclaimPolicy: Delete' and 'volumeBindingMode: Immediate'")
 			presetStorageClassName := getPresetStorageClassNameByProvisioner(cloudProvider, provisioner)
@@ -947,6 +939,8 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 	// https://kubernetes.io/docs/concepts/storage/persistent-volumes/#retain
 	g.It("Author:pewang-High-44907-[CSI Driver] [Dynamic PV] [Retain reclaimPolicy] [Static PV] volumes could be re-used after the pvc/pv deletion", func() {
 		// Define the test scenario support provisioners
+		// scenarioSupportProvisioners := []string{"ebs.csi.aws.com", "disk.csi.azure.com", "cinder.csi.openstack.org", "pd.csi.storage.gke.io", "csi.vsphere.vmware.com", "vpc.block.csi.ibm.io"}
+		// Tempfix: As IBMCloud known issue(https://bugzilla.redhat.com/show_bug.cgi?id=2044248), temporarily removed "vpc.block.csi.ibm.io"
 		scenarioSupportProvisioners := []string{"ebs.csi.aws.com", "disk.csi.azure.com", "cinder.csi.openstack.org", "pd.csi.storage.gke.io", "csi.vsphere.vmware.com"}
 		// Set the resource template for the scenario
 		var (
@@ -1312,6 +1306,7 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 
 			g.By("Create a restored pvc with the preset csi storageclass")
 			pvc_restore.scname = getPresetStorageClassNameByProvisioner(cloudProvider, provisioner)
+			pvc_restore.capacity = pvc_ori.capacity
 			pvc_restore.createWithSnapshotDataSource(oc)
 			defer pvc_restore.deleteAsAdmin(oc)
 
@@ -1401,6 +1396,7 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 
 			g.By("Create a restored pvc with the preset csi storageclass")
 			pvc_restore.scname = storageClass.name
+			pvc_restore.capacity = pvc_ori.capacity
 			pvc_restore.createWithSnapshotDataSource(oc)
 			defer pvc_restore.deleteAsAdmin(oc)
 
@@ -1490,6 +1486,7 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 
 			g.By("Create a restored pvc with the preset csi storageclass")
 			pvc_restore.scname = storageClass.name
+			pvc_restore.capacity = pvc_ori.capacity
 			pvc_restore.createWithSnapshotDataSource(oc)
 			defer pvc_restore.deleteAsAdmin(oc)
 
@@ -1584,17 +1581,17 @@ func ResizeOfflineCommonTestSteps(oc *exutil.CLI, pvc persistentVolumeClaim, dep
 		dep.writeDataBlockType(oc)
 	}
 
-	g.By("6. Apply the patch to Resize the pvc volume size to 2Gi")
-	o.Expect(applyVolumeResizePatch(oc, pvc.name, pvc.namespace, "2Gi")).To(o.ContainSubstring("patched"))
-
-	g.By("7. Get the volume mounted on the pod located node and Scale down the replicas number to 0")
+	g.By("6. Get the volume mounted on the pod located node and Scale down the replicas number to 0")
 	volName := pvc.getVolumeName(oc)
 	nodeName := getNodeNameByPod(oc, dep.namespace, dep.getPodList(oc)[0])
 	dep.scaleReplicas(oc, "0")
 
-	g.By("8. Wait for the deployment scale down completed and check nodes has no mounted volume")
+	g.By("7. Wait for the deployment scale down completed and check nodes has no mounted volume")
 	dep.waitReady(oc)
-	checkVolumeNotMountOnNode(oc, volName, nodeName)
+	checkVolumeDetachedFromNode(oc, volName, nodeName)
+
+	g.By("8. Apply the patch to Resize the pvc volume size to 2Gi")
+	o.Expect(applyVolumeResizePatch(oc, pvc.name, pvc.namespace, "2Gi")).To(o.ContainSubstring("patched"))
 
 	g.By("9. Get the pvc status type")
 	if dep.typepath == "mountPath" {

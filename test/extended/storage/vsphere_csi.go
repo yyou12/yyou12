@@ -17,7 +17,7 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 
 	// vsphere-csi test suite cloud provider support check
 	g.BeforeEach(func() {
-		cloudProvider := getCloudProvider(oc)
+		cloudProvider = getCloudProvider(oc)
 		if !strings.Contains(cloudProvider, "vsphere") {
 			g.Skip("Skip for non-supported cloud provider!!!")
 		}

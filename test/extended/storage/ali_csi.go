@@ -12,10 +12,7 @@ import (
 var _ = g.Describe("[sig-storage] STORAGE", func() {
 	defer g.GinkgoRecover()
 
-	var (
-		oc            = exutil.NewCLI("storage-alibaba-csi", exutil.KubeConfigPath())
-		cloudProvider string
-	)
+	var oc = exutil.NewCLI("storage-alibaba-csi", exutil.KubeConfigPath())
 
 	g.BeforeEach(func() {
 		cloudProvider = getCloudProvider(oc)

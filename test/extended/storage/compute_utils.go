@@ -44,15 +44,38 @@ func checkVolumeMountOnNode(oc *exutil.CLI, volumeName string, nodeName string) 
 
 // Check the Volume not mounted on the Node
 func checkVolumeNotMountOnNode(oc *exutil.CLI, volumeName string, nodeName string) {
-	command := "mount | grep " + volumeName
-	err := wait.Poll(10*time.Second, 60*time.Second, func() (bool, error) {
-		_, err := execCommandInSpecificNode(oc, nodeName, command)
+	command := "mount | grep -c \"" + volumeName + "\" || true"
+	err := wait.Poll(10*time.Second, 120*time.Second, func() (bool, error) {
+		count, err := execCommandInSpecificNode(oc, nodeName, command)
 		if err != nil {
+			e2e.Logf("Err Occurred: %v", err)
+			return false, err
+		}
+		if count == "0" {
+			e2e.Logf("Volume: \"%s\" umount from node \"%s\" successfully", volumeName, nodeName)
 			return true, nil
 		}
 		return false, nil
 	})
-	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("Check volume: \"%s\" unmount on node: \"%s\" failed", volumeName, nodeName))
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("Check volume: \"%s\" unmount from node: \"%s\" timeout", volumeName, nodeName))
+}
+
+// Check the Volume not detached from the Node
+func checkVolumeDetachedFromNode(oc *exutil.CLI, volumeName string, nodeName string) {
+	command := "lsblk | grep -c \"" + volumeName + "\" || true"
+	err := wait.Poll(10*time.Second, 120*time.Second, func() (bool, error) {
+		count, err := execCommandInSpecificNode(oc, nodeName, command)
+		if err != nil {
+			e2e.Logf("Err Occurred: %v", err)
+			return false, err
+		}
+		if count == "0" {
+			e2e.Logf("Volume: \"%s\" detached from node \"%s\" successfully", volumeName, nodeName)
+			return true, nil
+		}
+		return false, nil
+	})
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("Check volume: \"%s\" detached from node: \"%s\" timeout", volumeName, nodeName))
 }
 
 // Check the mounted volume on the Node contains content by cmd

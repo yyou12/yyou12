@@ -21,6 +21,9 @@ import (
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 )
 
+// Define the global cloudProvider
+var cloudProvider string
+
 //  Kubeadmin user use oc client apply yaml template
 func applyResourceFromTemplateAsAdmin(oc *exutil.CLI, parameters ...string) error {
 	var configFile string
@@ -74,7 +77,20 @@ func getRandomString() string {
 
 //  Get the cloud provider type of the test environment
 func getCloudProvider(oc *exutil.CLI) string {
-	output, _ := oc.WithoutNamespace().AsAdmin().Run("get").Args("infrastructure", "cluster", "-o=jsonpath={.status.platformStatus.type}").Output()
+	var (
+		err_msg error
+		output  string
+	)
+	err := wait.Poll(5*time.Second, 30*time.Second, func() (bool, error) {
+		output, err_msg = oc.WithoutNamespace().AsAdmin().Run("get").Args("infrastructure", "cluster", "-o=jsonpath={.status.platformStatus.type}").Output()
+		if err_msg != nil {
+			e2e.Logf("Get cloudProvider *failed with* :\"%v\",wait 5 seconds retry.", err_msg)
+			return false, err_msg
+		}
+		e2e.Logf("The test cluster cloudProvider is :\"%s\".", strings.ToLower(output))
+		return true, nil
+	})
+	exutil.AssertWaitPollNoErr(err, "Waiting for get cloudProvider timeout")
 	return strings.ToLower(output)
 }
 
@@ -171,6 +187,10 @@ func jsonAddExtraParametersToFile(jsonInput string, extraParameters map[string]i
 	}
 	for extraParametersKey, extraParametersValue := range extraParameters {
 		jsonInput, err = sjson.Set(jsonInput, jsonPath+extraParametersKey, extraParametersValue)
+		o.Expect(err).NotTo(o.HaveOccurred())
+	}
+	if cloudProvider == "ibmcloud" && !gjson.Get(jsonInput, `items.0.parameters.profile`).Bool() {
+		jsonInput, err = sjson.Set(jsonInput, jsonPath+"parameters.profile", "10iops-tier")
 		o.Expect(err).NotTo(o.HaveOccurred())
 	}
 	path := filepath.Join(e2e.TestContext.OutputDir, "storageConfig"+"-"+getRandomString()+".json")
@@ -291,4 +311,10 @@ func getOcDescribeInfo(oc *exutil.CLI, namespace string, resourceKind string, re
 	}
 	o.Expect(err).NotTo(o.HaveOccurred())
 	return ocDescribeInfo
+}
+
+// Get a random number of int64 type [m,n], n > m
+func getRandomNum(m int64, n int64) int64 {
+	rand.Seed(time.Now().UnixNano())
+	return rand.Int63n(n-m+1) + m
 }

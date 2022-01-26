@@ -16,7 +16,7 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 
 	// aws-csi test suite cloud provider support check
 	g.BeforeEach(func() {
-		cloudProvider := getCloudProvider(oc)
+		cloudProvider = getCloudProvider(oc)
 		if !strings.Contains(cloudProvider, "aws") {
 			g.Skip("Skip for non-supported cloud provider: *" + cloudProvider + "* !!!")
 		}

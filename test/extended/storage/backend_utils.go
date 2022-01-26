@@ -20,8 +20,7 @@ import (
 
 // Get the credential from cluster
 func getCredentialFromCluster(oc *exutil.CLI) {
-	cloudProvider := getCloudProvider(oc)
-	switch getCloudProvider(oc) {
+	switch cloudProvider {
 	case "aws":
 		credential, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("secret/aws-creds", "-n", "kube-system", "-o", "json").Output()
 		if strings.Contains(interfaceToString(err), "not found") {
@@ -80,8 +79,7 @@ func getAwsVolumeStatusByVolumeId(volumeId string) (string, error) {
 
 // Delete backend volume
 func deleteBackendVolumeByVolumeId(oc *exutil.CLI, volumeId string) (string, error) {
-	cloudProvider := getCloudProvider(oc)
-	switch getCloudProvider(oc) {
+	switch cloudProvider {
 	case "aws":
 		mySession := session.Must(session.NewSession())
 		svc := ec2.New(mySession, aws.NewConfig())
@@ -124,8 +122,7 @@ func checkVolumeDeletedOnBackend(volumeId string) (bool, error) {
 
 //  Waiting the volume become avaiable
 func waitVolumeAvaiableOnBackend(oc *exutil.CLI, volumeId string) {
-	cloudProvider := getCloudProvider(oc)
-	switch getCloudProvider(oc) {
+	switch cloudProvider {
 	case "aws":
 		err := wait.Poll(10*time.Second, 120*time.Second, func() (bool, error) {
 			volumeStatus, errinfo := checkVolumeAvaiableOnBackend(volumeId)
@@ -154,8 +151,7 @@ func waitVolumeAvaiableOnBackend(oc *exutil.CLI, volumeId string) {
 
 //  Waiting the volume become deleted
 func waitVolumeDeletedOnBackend(oc *exutil.CLI, volumeId string) {
-	cloudProvider := getCloudProvider(oc)
-	switch getCloudProvider(oc) {
+	switch cloudProvider {
 	case "aws":
 		err := wait.Poll(10*time.Second, 120*time.Second, func() (bool, error) {
 			volumeStatus, errinfo := checkVolumeDeletedOnBackend(volumeId)
