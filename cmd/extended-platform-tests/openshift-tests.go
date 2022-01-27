@@ -278,9 +278,9 @@ func bindOptions(opt *testginkgo.Options, flags *pflag.FlagSet) {
 
 func initProvider(provider string, dryRun bool) error {
 	// record the exit error to the output file
-	if err := decodeProviderTo(provider, exutil.TestContext, dryRun); err != nil {
-		e2e.Logf("Fail to decode Provider:%s, but continue to run with skeleton mode", provider)
-	}
+	// if err := decodeProviderTo(provider, exutil.TestContext, dryRun); err != nil {
+	// 	e2e.Logf("Fail to decode Provider:%s, but continue to run with skeleton mode", provider)
+	// }
 	exutil.TestContext.AllowedNotReadyNodes = 100
 	exutil.TestContext.MaxNodesToGather = 0
 	reale2e.SetViperConfig(os.Getenv("VIPERCONFIG"))
