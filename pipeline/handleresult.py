@@ -49,6 +49,8 @@ class TestResult:
         failnum = int(testsuites[0].getAttribute("failures")) - int(testsuites[0].getAttribute("skipped"))
         testsuites[0].setAttribute("tests", str(int(totalnum)))
         testsuites[0].setAttribute("failures", str(int(failnum)))
+        # it is not used by golang framework, and here hard-coded it as 0 to compatible with other tools
+        testsuites[0].setAttribute("errors", "0")
         with open(output, 'wb+') as f:
             writer = codecs.lookup('utf-8')[3](f)
             noderoot.writexml(writer, encoding='utf-8')
@@ -154,6 +156,7 @@ class TestResult:
         for case in cases:
             failcount = 0
             skippedcount = 0
+            errorcount = 0
             if len(case.getElementsByTagName("failure")) != 0:
                 failcount = 1
             if len(case.getElementsByTagName("skipped")) != 0:
@@ -167,13 +170,18 @@ class TestResult:
             # print(names)
             casedesc = {"case": case, "names":names}
             mod = mods.get(subteam)
+            # adjust to that tests is the total case, skipped is skipped case, and failures is only failure case.
             if mod is not None:
                 mod["cases"].append(casedesc)
-                mod["tests"] = mod["tests"] + 1 - skippedcount
+                mod["tests"] = mod["tests"] + 1
                 mod["skipped"] = mod["skipped"] + skippedcount
-                mod["failure"] = mod["failure"] + failcount + skippedcount
+                mod["failure"] = mod["failure"] + failcount
+                # mod["tests"] = mod["tests"] + 1 - skippedcount
+                # mod["skipped"] = mod["skipped"] + skippedcount
+                # mod["failure"] = mod["failure"] + failcount + skippedcount
             else:
-                mods[subteam] = {"cases": [casedesc], "tests": 1 - skippedcount, "skipped": skippedcount, "failure": failcount + skippedcount}
+                mods[subteam] = {"cases": [casedesc], "tests": 1, "skipped": skippedcount, "failure": failcount, "errors": errorcount}
+                # mods[subteam] = {"cases": [casedesc], "tests": 1 - skippedcount, "skipped": skippedcount, "failure": failcount + skippedcount}
 
         for k, v in mods.items():
             impl = xml.dom.minidom.getDOMImplementation()
@@ -182,6 +190,7 @@ class TestResult:
             testscount = v["tests"]
             failurescount = v["failure"]
             skippedcount = v["skipped"]
+            errorcount = v["errors"]
             testsuite.setAttribute("time", origintestsuite.getAttribute("time")) #RP does not depend on it
             testsuite.setAttribute("name", k)
 
@@ -203,7 +212,8 @@ class TestResult:
                         failnum = failnum + 1
                     if result == "SKIP":
                         skipnum = skipnum + 1
-                        failnum = failnum + 1
+                        testnum = testnum + 1
+                        # failnum = failnum + 1
                     dupcase = case["case"].cloneNode(True)
                     dupcase.setAttribute("name", name)
                     testsuite.appendChild(dupcase)
@@ -221,6 +231,7 @@ class TestResult:
             testsuite.setAttribute("tests", str(testscount))
             testsuite.setAttribute("failures", str(failurescount))
             testsuite.setAttribute("skipped", str(skippedcount))
+            testsuite.setAttribute("errors", str(errorcount))
             newdoc.appendChild(testsuite)
 
             with open("import-"+k+".xml", 'wb+') as f:
