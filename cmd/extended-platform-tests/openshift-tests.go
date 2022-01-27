@@ -278,9 +278,9 @@ func bindOptions(opt *testginkgo.Options, flags *pflag.FlagSet) {
 
 func initProvider(provider string, dryRun bool) error {
 	// record the exit error to the output file
-	if err := decodeProviderTo(provider, exutil.TestContext, dryRun); err != nil {
-		return err
-	}
+	// if err := decodeProviderTo(provider, exutil.TestContext, dryRun); err != nil {
+	// 	return err
+	// }
 	exutil.TestContext.AllowedNotReadyNodes = 100
 	exutil.TestContext.MaxNodesToGather = 0
 	reale2e.SetViperConfig(os.Getenv("VIPERCONFIG"))
