@@ -158,8 +158,7 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 		g.By("expecting the build logs to indicate the image was rejected")
 		buildLog, err := br.LogsNoTimestamp()
 		o.Expect(err).NotTo(o.HaveOccurred())
-		errInfo := fmt.Sprintf("Error initializing source docker://image-registry.openshift-image-registry.svc:5000/%s/inputimage", oc.Namespace())
-		o.Expect(buildLog).To(o.ContainSubstring(errInfo))
+		o.Expect(buildLog).To(o.MatchRegexp("[Ee]rror.*initializing source docker://image-registry.openshift-image-registry.svc:5000"))
 	})
 
 	// author: wewang@redhat.com
