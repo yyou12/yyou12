@@ -53,7 +53,7 @@ func NewQuayCLI() *QuayCLI {
 		authFilepath = "/home/cloud-user/.docker/auto/quay_auth.json"
 	}
 	if _, err := os.Stat(authFilepath); os.IsNotExist(err) {
-		e2e.Logf("auth file does not exist")
+		e2e.Logf("Quay auth file does not exist")
 	} else {
 		content, err := ioutil.ReadFile(authFilepath)
 		if err != nil {
