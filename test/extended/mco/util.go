@@ -247,8 +247,7 @@ func (mcp *MachineConfigPool) pollUpdatedStatus() func() string {
 	return mcp.Poll(`{.status.conditions[?(@.type=="Updated")].status}`)
 }
 
-func (mcp *MachineConfigPool) waitForComplete() {
-
+func (mcp *MachineConfigPool) estimateWaitTimeInMinutes() int {
 	var totalNodes int
 
 	o.Eventually(func() int {
@@ -261,7 +260,12 @@ func (mcp *MachineConfigPool) waitForComplete() {
 	},
 		"5m").Should(o.BeNumerically(">=", 0), fmt.Sprintf("machineCount field has no value in MCP %s", mcp.name))
 
-	timeToWait := time.Duration(totalNodes*10) * time.Minute
+	return totalNodes * 10
+
+}
+
+func (mcp *MachineConfigPool) waitForComplete() {
+	timeToWait := time.Duration(mcp.estimateWaitTimeInMinutes()) * time.Minute
 	e2e.Logf("Waiting %s for MCP %s to be completed.", timeToWait, mcp.name)
 
 	err := wait.Poll(1*time.Minute, timeToWait, func() (bool, error) {
@@ -499,6 +503,16 @@ func jsonEncode(s string) string {
 func getUrlEncodedFileConfig(destinationPath string, content string, mode string) string {
 	encodedContent := url.PathEscape(content)
 
+	return getFileConfig(destinationPath, "data:,"+encodedContent, mode)
+}
+
+func getBase64EncodedFileConfig(destinationPath string, content string, mode string) string {
+	encodedContent := b64.StdEncoding.EncodeToString([]byte(content))
+
+	return getFileConfig(destinationPath, "data:text/plain;charset=utf-8;base64,"+encodedContent, mode)
+}
+
+func getFileConfig(destinationPath string, source string, mode string) string {
 	decimalMode := mode
 	// if octal number we convert it to decimal. Json templates do not accept numbers with a leading zero (octal).
 	// if we don't do this conversion the 'oc process' command will not be able to render the template because {"mode": 0666}
@@ -515,9 +529,9 @@ func getUrlEncodedFileConfig(destinationPath string, content string, mode string
 
 	var fileConfig string
 	if mode == "" {
-		fileConfig = fmt.Sprintf(`{"contents": {"source": "data:,%s"}, "path": "%s"}`, encodedContent, destinationPath)
+		fileConfig = fmt.Sprintf(`{"contents": {"source": "%s"}, "path": "%s"}`, source, destinationPath)
 	} else {
-		fileConfig = fmt.Sprintf(`{"contents": {"source": "data:,%s"}, "path": "%s", "mode": %s}`, encodedContent, destinationPath, decimalMode)
+		fileConfig = fmt.Sprintf(`{"contents": {"source": "%s"}, "path": "%s", "mode": %s}`, source, destinationPath, decimalMode)
 	}
 
 	return fileConfig

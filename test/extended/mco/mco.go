@@ -1254,6 +1254,44 @@ nulla pariatur.`
 		useForceFile := true
 		verifyDriftConfig(mcp, rf, newMode, useForceFile)
 	})
+
+	g.It("Author:sregidor-Longduration-NonPreRelease-High-45508-cordon node before node drain [Serial]", func() {
+		g.By("Create a MC to deploy a config file")
+		fileMode := "0644" // decimal 420
+		filePath := "/etc/chrony.conf"
+		fileContent := "pool 0.rhel.pool.ntp.org iburst\ndriftfile /var/lib/chrony/drift\nmakestep 1.0 3\nrtcsync\nlogdir /var/log/chrony"
+		fileConfig := getBase64EncodedFileConfig(filePath, fileContent, fileMode)
+
+		mcName := "cordontest-change-workers-chrony-configuration"
+		mc := MachineConfig{name: mcName, pool: "worker"}
+		defer mc.delete(oc)
+
+		template := NewMCOTemplate(oc, "generic-machine-config-template.yml")
+		err := template.Create("-p", "NAME="+mcName, "-p", "POOL=worker", "-p", fmt.Sprintf("FILES=[%s]", fileConfig))
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Check MCD logs to make sure that the node is cordoned before being drained")
+		mcp := NewMachineConfigPool(oc.AsAdmin(), "worker")
+		workerNode := NewNodeList(oc).GetAllWorkerNodesOrFail()[0]
+
+		o.Eventually(workerNode.PollIsCordoned(), fmt.Sprintf("%dm", mcp.estimateWaitTimeInMinutes()), "20s").Should(o.BeTrue(), "Worker node must be cordoned")
+
+		o.Eventually(func() string {
+			podAllLogs, _ := exutil.GetSpecificPodLogs(oc, "openshift-machine-config-operator", "machine-config-daemon", workerNode.GetMachineConfigDaemon(), "")
+			return podAllLogs
+		}, "5m", "10s").Should(o.MatchRegexp("(?s)Node has been successfully cordoned.*Update prepared; beginning drain"), "Node should be cordoned before being drained")
+
+		g.By("Wait until worker MCP has finished the configuration. No machine should be degraded.")
+		mcp.waitForComplete()
+
+		g.By("Verfiy file content and permissions")
+		rf := NewRemoteFile(workerNode, filePath)
+		rferr := rf.Fetch()
+		o.Expect(rferr).NotTo(o.HaveOccurred())
+
+		o.Expect(rf.GetTextContent()).To(o.Equal(fileContent))
+		o.Expect(rf.GetNpermissions()).To(o.Equal(fileMode))
+	})
 })
 
 func createMcAndVerifyMCValue(oc *exutil.CLI, stepText string, mcName string, workerNode node, textToVerify TextToVerify, cmd ...string) {

@@ -76,6 +76,17 @@ func (n *node) GetUnitStatus(unitName string) (string, error) {
 	return n.DebugNodeWithChroot("systemctl", "status", unitName)
 }
 
+// PollIsCordoned returns a function that can be used by Gomega to poll the if the node is cordoned (with Eventually/Consistently)
+func (n *node) PollIsCordoned() func() bool {
+	return func() bool {
+		key, err := n.Get(`{.spec.taints[?(@.effect=="NoSchedule")].key}`)
+		if err != nil {
+			return false
+		}
+		return key == "node.kubernetes.io/unschedulable"
+	}
+}
+
 //GetAll returns a []node list with all existing nodes
 func (nl *nodeList) GetAll() ([]node, error) {
 	allNodeResources, err := nl.ResourceList.GetAll()
