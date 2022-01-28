@@ -2845,7 +2845,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		})
 
 		// author: pdhamdhe@redhat.com
-		g.It("Author:pdhamdhe-Low-42685-check the manual remediation for rule ocp4-moderate-file-integrity-exists working as expected [Slow]", func() {
+		g.It("Author:pdhamdhe-Low-42685-Low-46927-check the manual remediation for rules file-integrity-exists and file-integrity-notification-enabled working as expected [Slow]", func() {
 			var (
 				ssb = scanSettingBindingDescription{
 					name:            "moderate-test",
@@ -2909,14 +2909,14 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 				"-o=jsonpath={.items[0].status.phase}").Output()
 
 			if strings.Contains(fioObj, "Active") {
-				g.By("The fileintegrities object is exist, let's verify the rule status through compliancecheck result.. !!!\n")
+				g.By("The fileintegrity operator is installed, let's verify the rule status through compliancecheck result.. !!!\n")
 				newCheck("expect", asAdmin, withoutNamespace, contain, "PASS", ok, []string{"compliancecheckresult",
 					"ocp4-moderate-file-integrity-exists", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
-				g.By("The ocp-42685 verified the File-integrity object exist and operator is installed successfully... !!!!\n ")
+				newCheck("expect", asAdmin, withoutNamespace, contain, "PASS", ok, []string{"compliancecheckresult",
+					"ocp4-moderate-file-integrity-notification-enabled", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
+				g.By("The file-integrity-exists and file-integrity-notification-enabled rules are verified successfully... !!!!\n ")
 			} else {
-				g.By("Verify 'ocp4-moderate-file-integrity-exists' rule status through compliancecheck result.. !!!\n")
-				newCheck("expect", asAdmin, withoutNamespace, contain, "FAIL", ok, []string{"compliancecheckresult",
-					"ocp4-moderate-file-integrity-exists", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
+				g.By("\n\n Let's installed fileintegrity operator... !!!\n")
 
 				oc.SetupProject()
 				og.namespace = oc.Namespace()
@@ -2942,11 +2942,13 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 					"-o=jsonpath={.status.phase}"}).check(oc)
 				subD.complianceSuiteResult(oc, ssb.name, "NON-COMPLIANT")
 
-				g.By("Verify 'ocp4-moderate-file-integrity-exists' rule status again through compliancecheck result.. !!!\n")
+				g.By("Verify 'file-integrity-exists' & 'file-integrity-notification-enabled' rules status again through compliancecheck result.. !!!\n")
 				newCheck("expect", asAdmin, withoutNamespace, contain, "PASS", ok, []string{"compliancecheckresult",
 					"ocp4-moderate-file-integrity-exists", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
+				newCheck("expect", asAdmin, withoutNamespace, contain, "PASS", ok, []string{"compliancecheckresult",
+					"ocp4-moderate-file-integrity-notification-enabled", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
 
-				g.By("The ocp-42685 verified the File-integrity object exist and operator is installed successfully... !!!!\n ")
+				g.By("The file-integrity-exists and file-integrity-notification-enabled rules are verified successfully... !!!!\n ")
 			}
 		})
 
@@ -3780,6 +3782,89 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 			newCheck("expect", asAdmin, withoutNamespace, contain, "NonCompliant", ok, []string{"PrometheusRule", "compliance", "-n", subD.namespace, "-ojsonpath={.spec.groups[0].rules[0].alert}"}).check(oc)
 
 			g.By("ocp-43072 The metrics and alerts are getting reported for Compliance Operator error ... !!!\n")
+		})
+
+		// author: pdhamdhe@redhat.com
+		g.It("Author:pdhamdhe-Longduration-CPaasrunOnly-NonPreRelease-High-46419-Compliance operator supports remediation templating by setting custom variables in the tailored profile [Disruptive][Slow]", func() {
+			var (
+				tprofileD = tailoredProfileDescription{
+					name:         "ocp4-audit-tailored",
+					namespace:    "",
+					extends:      "ocp4-cis",
+					enrulename1:  "ocp4-audit-profile-set",
+					disrulename1: "ocp4-audit-error-alert-exists",
+					disrulename2: "ocp4-audit-log-forwarding-uses-tls",
+					varname:      "ocp4-var-openshift-audit-profile",
+					value:        "WriteRequestBodies",
+					template:     tprofileTemplate,
+				}
+				ssb = scanSettingBindingDescription{
+					name:            "ocp4-audit-ssb",
+					namespace:       "",
+					profilekind1:    "TailoredProfile",
+					profilename1:    "ocp4-audit-tailored",
+					scansettingname: "default-auto-apply",
+					template:        scansettingbindingSingleTemplate,
+				}
+				itName = g.CurrentGinkgoTestDescription().TestText
+			)
+
+			defer func() {
+				g.By("Reset the audit profile value to Default and remove resources... !!!\n")
+				patchResource(oc, asAdmin, withoutNamespace, "apiservers", "cluster", "--type", "merge", "-p",
+					"{\"spec\":{\"audit\":{\"profile\":\"Default\"}}}")
+				newCheck("expect", asAdmin, withoutNamespace, contain, "Default", ok, []string{"apiservers", "cluster",
+					"-o=jsonpath={.spec.audit.profile}"}).check(oc)
+				cleanupObjects(oc, objectTableRef{"scansettingbinding", subD.namespace, ssb.name})
+				cleanupObjects(oc, objectTableRef{"tailoredprofile", subD.namespace, tprofileD.name})
+			}()
+
+			g.By("Check default profiles name ocp4-cis .. !!!\n")
+			subD.getProfileName(oc, tprofileD.extends)
+
+			g.By("Create tailoredprofile ocp4-audit-tailored !!!\n")
+			tprofileD.namespace = subD.namespace
+			ssb.namespace = subD.namespace
+			tprofileD.create(oc, itName, dr)
+			g.By("Verify tailoredprofile name and status !!!\n")
+			subD.getTailoredProfileNameandStatus(oc, tprofileD.name)
+
+			g.By("Create scansettingbinding !!!\n")
+			ssb.create(oc, itName, dr)
+			newCheck("expect", asAdmin, withoutNamespace, contain, ssb.name, ok, []string{"scansettingbinding", "-n", subD.namespace,
+				"-o=jsonpath={.items[0].metadata.name}"}).check(oc)
+
+			g.By("Check ComplianceSuite status !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", ssb.name, "-n", subD.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+			g.By("Check complianceSuite name and result.. !!!\n")
+			subD.complianceSuiteResult(oc, ssb.name, "NON-COMPLIANT INCONSISTENT")
+			g.By("Check complianceSuite result through exit-code.. !!!\n")
+			subD.getScanExitCodeFromConfigmap(oc, "2")
+
+			g.By("Verify the rule status through compliancecheckresult and complianceremediations... !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "FAIL", ok, []string{"compliancecheckresult",
+				"ocp4-audit-tailored-audit-profile-set", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "Applied", ok, []string{"complianceremediations",
+				"ocp4-audit-tailored-audit-profile-set", "-n", subD.namespace, "-o=jsonpath={.status.applicationState}"}).check(oc)
+
+			g.By("Verify the audit profile set value through complianceremediations... !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "WriteRequestBodies", ok, []string{"complianceremediations",
+				"ocp4-audit-tailored-audit-profile-set", "-n", subD.namespace, "-o=jsonpath={.spec.current.object.spec.audit.profile}"}).check(oc)
+
+			g.By("Rerun the scan and check result... !!")
+			_, err := OcComplianceCLI().Run("rerun-now").Args("scansettingbinding", ssb.name, "-n", subD.namespace).Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", ssb.name, "-n", subD.namespace,
+				"-o=jsonpath={.status.phase}"}).check(oc)
+			subD.complianceSuiteResult(oc, ssb.name, "COMPLIANT")
+
+			g.By("Verify the rule status through compliancecheckresult and value through apiservers cluster object... !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "PASS", ok, []string{"compliancecheckresult",
+				"ocp4-audit-tailored-audit-profile-set", "-n", subD.namespace, "-o=jsonpath={.status}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "WriteRequestBodies", ok, []string{"apiservers", "cluster",
+				"-ojsonpath={.spec.audit.profile}"}).check(oc)
+
+			g.By("The compliance operator supports remediation templating by setting custom variables in the tailored profile... !!!\n")
 		})
 	})
 })
