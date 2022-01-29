@@ -92,7 +92,7 @@ func searchDocByQuery(oc *exutil.CLI, ns string, pod string, indexName string, q
 
 type externalES struct {
 	namespace  string
-	version    string // support 6.8 and 7.12
+	version    string // support 6.8 and 7.16
 	serverName string // ES cluster name, configmap/sa/deploy/svc name
 	httpSSL    bool   // `true` means enable `xpack.security.http.ssl`
 	clientAuth bool   // `true` means `xpack.security.http.ssl.client_authentication: required`, only can be set to `true` when httpSSL is `true`
