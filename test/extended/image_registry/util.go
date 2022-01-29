@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -777,4 +778,84 @@ func expectedResource(oc *exutil.CLI, asAdmin bool, withoutNamespace bool, isCom
 		e2e.Logf("---> Not as expected! Return false")
 		return false, nil
 	})
+}
+
+func exposeEdgeRoute(oc *exutil.CLI, ns, route, service string) string {
+	err := oc.WithoutNamespace().Run("create").Args("route", "edge", route, "--service="+service, "-n", ns).Execute()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	regRoute, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("route", route, "-n", ns, "-o=jsonpath={.spec.host}").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	return regRoute
+}
+func listRepositories(oc *exutil.CLI, regRoute, expect string) {
+	curlCmd := fmt.Sprintf("curl -k  https://%s/v2/_catalog | grep %s", regRoute, expect)
+	result, err := exec.Command("bash", "-c", curlCmd).Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	o.Expect(string(result)).To(o.ContainSubstring(expect))
+}
+
+func setSecureRegistryWithoutAuth(oc *exutil.CLI, ns, regName string) string {
+	err := oc.AsAdmin().WithoutNamespace().Run("new-app").Args("--name", regName, "quay.io/openshifttest/registry@sha256:01493571d994fd021da18c1f87aba1091482df3fc20825f443b4e60b3416c820", "-n", ns).Execute()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	newCheck("expect", asAdmin, withoutNamespace, contain, "Running", ok, []string{"pods", "-n", ns, "-l", "deployment=" + regName}).check(oc)
+	regRoute := exposeEdgeRoute(oc, ns, regName, regName)
+	listRepositories(oc, regRoute, "repositories")
+	return regRoute
+}
+
+func setSecureRegistryEnableAuth(oc *exutil.CLI, ns, regName, htpasswdFile string) string {
+	regRoute := setSecureRegistryWithoutAuth(oc, ns, regName)
+	err := oc.AsAdmin().WithoutNamespace().Run("create").Args("secret", "generic", "htpasswd", "--from-file="+htpasswdFile, "-n", ns).Execute()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	err = oc.WithoutNamespace().Run("set").Args("volume", "deployment/"+regName, "--add", "--mount-path=/auth", "--type=secret", "--secret-name=htpasswd", "-n", ns).Execute()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	err = oc.WithoutNamespace().Run("set").Args("env", "deployment/"+regName, "REGISTRY_AUTH_HTPASSWD_PATH=/auth/htpasswd", "REGISTRY_AUTH_HTPASSWD_REALM=Registry Realm", "REGISTRY_AUTH=htpasswd", "-n", ns).Execute()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	newCheck("expect", asAdmin, withoutNamespace, contain, "Running", ok, []string{"pods", "-n", ns, "-l", "deployment=" + regName}).check(oc)
+	return regRoute
+}
+
+func generateHtpasswdFile(tempDataDir, user, pass string) (string, error) {
+	htpasswdFile := filepath.Join(tempDataDir, "htpasswd")
+	generateCMD := fmt.Sprintf("htpasswd -Bbn %s %s > %s", user, pass, htpasswdFile)
+	_, err := exec.Command("bash", "-c", generateCMD).Output()
+	if err != nil {
+		e2e.Logf("Fail to generate htpasswd file: %v", err)
+		return htpasswdFile, err
+	}
+	return htpasswdFile, nil
+}
+
+func extractPullSecret(oc *exutil.CLI) (string, error) {
+	tempDataDir := filepath.Join("/tmp/", fmt.Sprintf("ir-%s", getRandomString()))
+	err := os.Mkdir(tempDataDir, 0755)
+	if err != nil {
+		e2e.Logf("Fail to create directory: %v", err)
+		return tempDataDir, err
+	}
+	err = oc.AsAdmin().Run("extract").Args("secret/pull-secret", "-n", "openshift-config", "--confirm", "--to="+tempDataDir).Execute()
+	if err != nil {
+		e2e.Logf("Fail to extract dockerconfig: %v", err)
+		return tempDataDir, err
+	}
+	return tempDataDir, nil
+}
+
+func appendPullSecretAuth(authFile, regRouter, newRegUser, newRegPass string) (string, error) {
+	fieldValue := newRegUser + ":" + newRegPass
+	regToken := base64.StdEncoding.EncodeToString([]byte(fieldValue))
+	authDir, _ := filepath.Split(authFile)
+	newAuthFile := filepath.Join(authDir, fmt.Sprintf("%s.json", getRandomString()))
+	jqCMD := fmt.Sprintf(`cat %s | jq '.auths += {"%s":{"auth":"%s"}}' > %s`, authFile, regRouter, regToken, newAuthFile)
+	_, err := exec.Command("bash", "-c", jqCMD).Output()
+	if err != nil {
+		e2e.Logf("Fail to extract dockerconfig: %v", err)
+		return newAuthFile, err
+	}
+	return newAuthFile, nil
+}
+
+func updatePullSecret(oc *exutil.CLI, authFile string) {
+	err := oc.AsAdmin().WithoutNamespace().Run("set").Args("data", "secret/pull-secret", "-n", "openshift-config", "--from-file=.dockerconfigjson="+authFile).Execute()
+	o.Expect(err).NotTo(o.HaveOccurred())
 }

@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
@@ -1137,6 +1138,7 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(output).To(o.ContainSubstring("image-registry.openshift-image-registry.svc:5000/" + oc.Namespace() + "/" + podsrc.image))
 	})
+
 	g.It("NonPreRelease-Author:xiuwang-VMonly-Critical-43260-Image registry pod could report to processing after openshift-apiserver reports unconnect quickly[Disruptive][Slow]", func() {
 		firstMaster, err := exutil.GetFirstMasterNode(oc)
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -1194,4 +1196,54 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 		}
 		e2e.Logf("Only baremetal platform supported for the test")
 	})
+
+	g.It("NonPreRelease-VMonly-Author:xiuwang-Medium-48045-Update global pull secret for additional private registries[Disruptive]", func() {
+		g.By("Setup a private registry")
+		oc.SetupProject()
+		var regUser, regPass = "testuser", getRandomString()
+		tempDataDir, err := extractPullSecret(oc)
+		defer os.RemoveAll(tempDataDir)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		originAuth := filepath.Join(tempDataDir, ".dockerconfigjson")
+		htpasswdFile, err := generateHtpasswdFile(tempDataDir, regUser, regPass)
+		defer os.RemoveAll(htpasswdFile)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		regRoute := setSecureRegistryEnableAuth(oc, oc.Namespace(), "myregistry", htpasswdFile)
+
+		g.By("Push image to private registry")
+		newAuthFile, err := appendPullSecretAuth(originAuth, regRoute, regUser, regPass)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		myimage := regRoute + "/" + oc.Namespace() + "/myimage:latest"
+		err = oc.AsAdmin().WithoutNamespace().Run("image").Args("mirror", "quay.io/openshifttest/busybox@sha256:c5439d7db88ab5423999530349d327b04279ad3161d7596d2126dfb5b02bfd1f", myimage, "--insecure", "-a", newAuthFile, "--keep-manifest-list=true", "--filter-by-os=.*").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Make sure the image can't be pulled without auth")
+		output, err := oc.AsAdmin().WithoutNamespace().Run("import-image").Args("firstis:latest", "--from="+myimage, "--reference-policy=local", "--insecure", "--confirm", "-n", oc.Namespace()).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(string(output)).To(o.ContainSubstring("Unauthorized"))
+
+		g.By("Update pull secret")
+		updatePullSecret(oc, newAuthFile)
+		defer updatePullSecret(oc, originAuth)
+		err = wait.Poll(5*time.Second, 2*time.Minute, func() (bool, error) {
+			podList, _ := oc.AdminKubeClient().CoreV1().Pods("openshift-apiserver").List(metav1.ListOptions{LabelSelector: "apiserver=true"})
+			for _, pod := range podList.Items {
+				output, err := oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-apiserver", pod.Name, "--", "bash", "-c", "cat /var/lib/kubelet/config.json").Output()
+				o.Expect(err).NotTo(o.HaveOccurred())
+				if !strings.Contains(output, oc.Namespace()) {
+					e2e.Logf("Go to next round")
+					return false, nil
+				}
+			}
+			return true, nil
+		})
+		exutil.AssertWaitPollNoErr(err, "Failed to update apiserver")
+
+		g.By("Make sure the image can be pulled after add auth")
+		err = oc.AsAdmin().WithoutNamespace().Run("tag").Args(myimage, "newis:latest", "--reference-policy=local", "--insecure", "-n", oc.Namespace()).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = exutil.WaitForAnImageStreamTag(oc, oc.Namespace(), "newis", "latest")
+		o.Expect(err).NotTo(o.HaveOccurred())
+	})
+
 })
