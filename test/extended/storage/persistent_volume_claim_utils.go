@@ -264,11 +264,11 @@ func (pvc *persistentVolumeClaim) waitResizeSuccess(oc *exutil.CLI, volResized s
 	err := wait.Poll(15*time.Second, 120*time.Second, func() (bool, error) {
 		status, err := getVolSizeFromPvc(oc, pvc.name, pvc.namespace)
 		if err != nil {
-			e2e.Logf("the err:%v, wait for volume Resize %v .", err, pvc.name)
+			e2e.Logf("Err occurred: \"%v\", get PVC: \"%s\" capacity failed.", err, pvc.name)
 			return false, err
 		} else {
 			if status == volResized {
-				e2e.Logf("The volume size Reached to expected status:%v", status)
+				e2e.Logf("The PVC capacity updated to : \"%v\"", status)
 				return true, nil
 			} else {
 				return false, nil

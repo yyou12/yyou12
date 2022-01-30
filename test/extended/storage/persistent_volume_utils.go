@@ -43,10 +43,9 @@ func getVolumeIdByPersistentVolumeClaimName(oc *exutil.CLI, namespace string, pv
 }
 
 // Use persistent volume name to get the volumeSize
-func getVolSizeFromPv(oc *exutil.CLI, pvcName string, namespace string) (string, error) {
+func getPvCapacityByPvcName(oc *exutil.CLI, pvcName string, namespace string) (string, error) {
 	pvName := getPersistentVolumeNameByPersistentVolumeClaim(oc, namespace, pvcName)
 	volumeSize, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pv", pvName, "-o=jsonpath={.spec.capacity.storage}").Output()
-	o.Expect(err).NotTo(o.HaveOccurred())
 	e2e.Logf("The PV %s volumesize is %s", pvName, volumeSize)
 	return volumeSize, err
 }
@@ -59,23 +58,24 @@ func checkVolumeCsiContainAttributes(oc *exutil.CLI, pvName string, content stri
 	return strings.Contains(volumeAttributes, content)
 }
 
-// Wait for PVC Volume Size to get Resized
-func waitPVVolSizeToGetResized(oc *exutil.CLI, namespace string, pvcName string, volResized string) {
+// Wait for PV capacity expand successfully
+func waitPVVolSizeToGetResized(oc *exutil.CLI, namespace string, pvcName string, expandedCapactiy string) {
+	pvName := getPersistentVolumeNameByPersistentVolumeClaim(oc, namespace, pvcName)
 	err := wait.Poll(15*time.Second, 120*time.Second, func() (bool, error) {
-		status, err := getVolSizeFromPv(oc, pvcName, namespace)
+		capacity, err := getPvCapacityByPvcName(oc, pvcName, namespace)
 		if err != nil {
-			e2e.Logf("the err:%v, wait for volume Resize %v .", err, pvcName)
+			e2e.Logf("Err occurred: \"%v\", get PV: \"%s\" capacity failed.", err, pvName)
 			return false, err
 		} else {
-			if status == volResized {
-				e2e.Logf("The volume Resize reached to expect status %s", status)
+			if capacity == expandedCapactiy {
+				e2e.Logf("The PV: \"%s\" capacity expand to \"%s\"", pvName, capacity)
 				return true, nil
 			} else {
 				return false, nil
 			}
 		}
 	})
-	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("The volume:%v, did not get Resized.", pvcName))
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("Wait for the PV :%s expand successfully timeout.", pvName))
 }
 
 // Wait specified Persist Volume status becomes to expected status

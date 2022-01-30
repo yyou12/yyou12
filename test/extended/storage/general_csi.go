@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"fmt"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -1047,7 +1048,7 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 	// [CSI Driver] [Dynamic PV] [Filesystem] volumes resize on-line
 	g.It("Author:ropatil-Critical-45984-[CSI Driver] [Dynamic PV] [Filesystem default] volumes resize on-line", func() {
 		// Define the test scenario support provisioners
-		scenarioSupportProvisioners := []string{"ebs.csi.aws.com", "cinder.csi.openstack.org", "pd.csi.storage.gke.io", "csi.vsphere.vmware.com"}
+		scenarioSupportProvisioners := []string{"ebs.csi.aws.com", "cinder.csi.openstack.org", "pd.csi.storage.gke.io", "csi.vsphere.vmware.com", "vpc.block.csi.ibm.io", "diskplugin.csi.alibabacloud.com"}
 		// Set the resource template for the scenario
 		var (
 			storageTeamBaseDir  = exutil.FixturePath("testdata", "storage")
@@ -1064,7 +1065,7 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 		for _, provisioner := range supportProvisioners {
 			g.By("******" + cloudProvider + " csi driver: \"" + provisioner + "\" test phase start" + "******")
 			// Set the resource definition for the scenario
-			pvc := newPersistentVolumeClaim(setPersistentVolumeClaimTemplate(pvcTemplate), setPersistentVolumeClaimCapacity("1Gi"), setPersistentVolumeClaimStorageClassName(getPresetStorageClassNameByProvisioner(cloudProvider, provisioner)))
+			pvc := newPersistentVolumeClaim(setPersistentVolumeClaimTemplate(pvcTemplate), setPersistentVolumeClaimStorageClassName(getPresetStorageClassNameByProvisioner(cloudProvider, provisioner)))
 			dep := newDeployment(setDeploymentTemplate(deploymentTemplate), setDeploymentPVCName(pvc.name))
 			pvc.namespace = oc.Namespace()
 			dep.namespace = pvc.namespace
@@ -1080,7 +1081,7 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 	// [CSI Driver] [Dynamic PV] [Raw Block] volumes resize on-line
 	g.It("Author:ropatil-Critical-45985-[CSI Driver] [Dynamic PV] [Raw block] volumes resize on-line", func() {
 		// Define the test scenario support provisioners
-		scenarioSupportProvisioners := []string{"ebs.csi.aws.com", "cinder.csi.openstack.org", "pd.csi.storage.gke.io", "csi.vsphere.vmware.com"}
+		scenarioSupportProvisioners := []string{"ebs.csi.aws.com", "cinder.csi.openstack.org", "pd.csi.storage.gke.io", "csi.vsphere.vmware.com", "vpc.block.csi.ibm.io", "diskplugin.csi.alibabacloud.com"}
 		// Set the resource template for the scenario
 		var (
 			storageTeamBaseDir  = exutil.FixturePath("testdata", "storage")
@@ -1097,7 +1098,7 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 		for _, provisioner := range supportProvisioners {
 			g.By("******" + cloudProvider + " csi driver: \"" + provisioner + "\" test phase start" + "******")
 			// Set the resource definition for the scenario
-			pvc := newPersistentVolumeClaim(setPersistentVolumeClaimTemplate(pvcTemplate), setPersistentVolumeClaimCapacity("1Gi"), setPersistentVolumeClaimVolumemode("Block"), setPersistentVolumeClaimStorageClassName(getPresetStorageClassNameByProvisioner(cloudProvider, provisioner)))
+			pvc := newPersistentVolumeClaim(setPersistentVolumeClaimTemplate(pvcTemplate), setPersistentVolumeClaimVolumemode("Block"), setPersistentVolumeClaimStorageClassName(getPresetStorageClassNameByProvisioner(cloudProvider, provisioner)))
 			dep := newDeployment(setDeploymentTemplate(deploymentTemplate), setDeploymentPVCName(pvc.name), setDeploymentVolumeType("volumeDevices"), setDeploymentVolumeTypePath("devicePath"), setDeploymentMountpath("/dev/dblock"))
 			pvc.namespace = oc.Namespace()
 			dep.namespace = pvc.namespace
@@ -1130,7 +1131,7 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 		for _, provisioner := range supportProvisioners {
 			g.By("******" + cloudProvider + " csi driver: \"" + provisioner + "\" test phase start" + "******")
 			// Set the resource definition for the scenario
-			pvc := newPersistentVolumeClaim(setPersistentVolumeClaimTemplate(pvcTemplate), setPersistentVolumeClaimCapacity("1Gi"), setPersistentVolumeClaimStorageClassName(getPresetStorageClassNameByProvisioner(cloudProvider, provisioner)))
+			pvc := newPersistentVolumeClaim(setPersistentVolumeClaimTemplate(pvcTemplate), setPersistentVolumeClaimStorageClassName(getPresetStorageClassNameByProvisioner(cloudProvider, provisioner)))
 			dep := newDeployment(setDeploymentTemplate(deploymentTemplate), setDeploymentPVCName(pvc.name))
 			pvc.namespace = oc.Namespace()
 			dep.namespace = pvc.namespace
@@ -1163,7 +1164,7 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 		for _, provisioner := range supportProvisioners {
 			g.By("******" + cloudProvider + " csi driver: \"" + provisioner + "\" test phase start" + "******")
 			// Set the resource definition for the scenario
-			pvc := newPersistentVolumeClaim(setPersistentVolumeClaimTemplate(pvcTemplate), setPersistentVolumeClaimCapacity("1Gi"), setPersistentVolumeClaimVolumemode("Block"), setPersistentVolumeClaimStorageClassName(getPresetStorageClassNameByProvisioner(cloudProvider, provisioner)))
+			pvc := newPersistentVolumeClaim(setPersistentVolumeClaimTemplate(pvcTemplate), setPersistentVolumeClaimVolumemode("Block"), setPersistentVolumeClaimStorageClassName(getPresetStorageClassNameByProvisioner(cloudProvider, provisioner)))
 			dep := newDeployment(setDeploymentTemplate(deploymentTemplate), setDeploymentPVCName(pvc.name), setDeploymentVolumeType("volumeDevices"), setDeploymentVolumeTypePath("devicePath"), setDeploymentMountpath("/dev/dblock"))
 			pvc.namespace = oc.Namespace()
 			dep.namespace = pvc.namespace
@@ -1532,30 +1533,38 @@ func ResizeOnlineCommonTestSteps(oc *exutil.CLI, pvc persistentVolumeClaim, dep 
 		dep.writeDataBlockType(oc)
 	}
 
-	g.By("6. Apply the patch to Resize the pvc volume size to 2Gi")
-	o.Expect(applyVolumeResizePatch(oc, pvc.name, pvc.namespace, "2Gi")).To(o.ContainSubstring("patched"))
+	g.By("6. Apply the patch to Resize the pvc volume")
+	capacityInt64, err := strconv.ParseInt(strings.TrimRight(pvc.capacity, "Gi"), 10, 64)
+	o.Expect(err).NotTo(o.HaveOccurred())
+	capacityInt64 = capacityInt64 + getRandomNum(1, 10)
+	expandedCapactiy := strconv.FormatInt(capacityInt64, 10) + "Gi"
+	o.Expect(applyVolumeResizePatch(oc, pvc.name, pvc.namespace, expandedCapactiy)).To(o.ContainSubstring("patched"))
+	pvc.capacity = expandedCapactiy
 
-	g.By("7. Waiting for the pvc Resize sucessfully")
-	pvc.waitResizeSuccess(oc, "2Gi")
-	waitPVVolSizeToGetResized(oc, pvc.namespace, pvc.name, "2Gi")
+	g.By("7. Waiting for the pvc capacity update sucessfully")
+	waitPVVolSizeToGetResized(oc, pvc.namespace, pvc.name, pvc.capacity)
+	pvc.waitResizeSuccess(oc, pvc.capacity)
 
-	g.By("8. Check and Write data in pod")
-	var inputfile, outputfile string
+	g.By("8. Check origin data intact and write new data in pod")
 	if dep.typepath == "mountPath" {
 		dep.getPodMountedVolumeData(oc)
-		inputfile = "/dev/zero"
-		outputfile = dep.mpath + "/1"
-
+		// After volume expand write 80% data of the new capacity should succeed
+		msg, err := execCommandInSpecificPod(oc, pvc.namespace, dep.getPodList(oc)[0], "fallocate -l "+fmt.Sprintf("%.2f", float64(capacityInt64)*0.8)+"G "+dep.mpath+"/"+getRandomString()+" ||true")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(msg).NotTo(o.ContainSubstring("No space left on device"))
+		// Continue write 30% data of the new capacity should fail of "No space left on device"
+		msg, err = execCommandInSpecificPod(oc, pvc.namespace, dep.getPodList(oc)[0], "fallocate -l "+fmt.Sprintf("%.2f", float64(capacityInt64)*0.3)+"G "+dep.mpath+"/"+getRandomString()+" ||true")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(msg).To(o.ContainSubstring("No space left on device"))
 	} else {
+		// Since fallocate doesn't support raw block write and dd cmd write big file is too slow, just check origin data intact
 		dep.checkDataBlockType(oc)
-		inputfile = dep.mpath
-		outputfile = "/tmp/testfile"
 	}
-	msg, _ := execCommandInSpecificPod(oc, pvc.namespace, dep.getPodList(oc)[0], "/bin/dd  if="+inputfile+" of="+outputfile+" bs=1M count=1500")
-	o.Expect(!strings.Contains(msg, "No space left on device")).To(o.BeTrue())
 }
 
-// Performing test steps for Offline Volume Resizing
+// Test steps for Offline Volume Resizing
+// E.g. Expand a Persistent Volume in Offline Mode (vmware doc)
+// https://docs.vmware.com/en/VMware-vSphere/7.0/vmware-vsphere-with-tanzu/GUID-90082E1C-DC01-4610-ABA2-6A4E97C18CBC.html?hWord=N4IghgNiBcIKIA8AOYB2ATABGTA1A9hAK4C2ApiAL5A
 func ResizeOfflineCommonTestSteps(oc *exutil.CLI, pvc persistentVolumeClaim, dep deployment, cloudProvider string, provisioner string) {
 	// Set up a specified project share for all the phases
 	g.By("1. Create a pvc with the preset csi storageclass")
@@ -1588,17 +1597,25 @@ func ResizeOfflineCommonTestSteps(oc *exutil.CLI, pvc persistentVolumeClaim, dep
 
 	g.By("7. Wait for the deployment scale down completed and check nodes has no mounted volume")
 	dep.waitReady(oc)
+	// Offline resize need the volume is detached from the node and when resize completely then comsume the volume
 	checkVolumeDetachedFromNode(oc, volName, nodeName)
 
-	g.By("8. Apply the patch to Resize the pvc volume size to 2Gi")
-	o.Expect(applyVolumeResizePatch(oc, pvc.name, pvc.namespace, "2Gi")).To(o.ContainSubstring("patched"))
+	g.By("8. Apply the patch to Resize the pvc volume")
+	capacityInt64, err := strconv.ParseInt(strings.TrimRight(pvc.capacity, "Gi"), 10, 64)
+	o.Expect(err).NotTo(o.HaveOccurred())
+	capacityInt64 = capacityInt64 + getRandomNum(1, 10)
+	expandedCapactiy := strconv.FormatInt(capacityInt64, 10) + "Gi"
+	o.Expect(applyVolumeResizePatch(oc, pvc.name, pvc.namespace, expandedCapactiy)).To(o.ContainSubstring("patched"))
+	pvc.capacity = expandedCapactiy
 
-	g.By("9. Get the pvc status type")
+	g.By("9. Check the pvc resizing status type and wait for the backend volume resized")
 	if dep.typepath == "mountPath" {
 		getPersistentVolumeClaimStatusMatch(oc, dep.namespace, pvc.name, "FileSystemResizePending")
 	} else {
 		getPersistentVolumeClaimStatusType(oc, dep.namespace, dep.pvcname)
 	}
+
+	waitPVVolSizeToGetResized(oc, pvc.namespace, pvc.name, pvc.capacity)
 
 	g.By("10. Scale up the replicas number to 1")
 	dep.scaleReplicas(oc, "1")
@@ -1606,22 +1623,23 @@ func ResizeOfflineCommonTestSteps(oc *exutil.CLI, pvc persistentVolumeClaim, dep
 	g.By("11. Get the pod status by label Running")
 	dep.waitReady(oc)
 
-	g.By("12. Waiting for the pvc Resize sucessfully")
-	pvc.waitResizeSuccess(oc, "2Gi")
-	waitPVVolSizeToGetResized(oc, pvc.namespace, pvc.name, "2Gi")
+	g.By("12. Waiting for the pvc size update sucessfully")
+	pvc.waitResizeSuccess(oc, pvc.capacity)
 
-	g.By("13. Check and Write data in pod")
-	var inputfile, outputfile string
+	g.By("13. Check origin data intact and write new data in pod")
 	if dep.typepath == "mountPath" {
 		dep.getPodMountedVolumeData(oc)
-		inputfile = "/dev/zero"
-		outputfile = dep.mpath + "/1"
-
+		// After volume expand write 80% data of the new capacity should succeed
+		msg, err := execCommandInSpecificPod(oc, pvc.namespace, dep.getPodList(oc)[0], "fallocate -l "+fmt.Sprintf("%.2f", float64(capacityInt64)*0.8)+"G "+dep.mpath+"/"+getRandomString()+" ||true")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(msg).NotTo(o.ContainSubstring("No space left on device"))
+		// Continue write 30% data of the new capacity should fail of "No space left on device"
+		msg, err = execCommandInSpecificPod(oc, pvc.namespace, dep.getPodList(oc)[0], "fallocate -l "+fmt.Sprintf("%.2f", float64(capacityInt64)*0.3)+"G "+dep.mpath+"/"+getRandomString()+" ||true")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(msg).To(o.ContainSubstring("No space left on device"))
 	} else {
+		// Since fallocate doesn't support raw block write and dd cmd write big file is too slow, just check origin data intact
 		dep.checkDataBlockType(oc)
-		inputfile = dep.mpath
-		outputfile = "/tmp/testfile"
+		dep.writeDataBlockType(oc)
 	}
-	msg, _ := execCommandInSpecificPod(oc, pvc.namespace, dep.getPodList(oc)[0], "/bin/dd  if="+inputfile+" of="+outputfile+" bs=1M count=1500")
-	o.Expect(!strings.Contains(msg, "No space left on device")).To(o.BeTrue())
 }

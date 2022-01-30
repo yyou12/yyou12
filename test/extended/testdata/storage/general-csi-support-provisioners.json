@@ -77,7 +77,7 @@
         "provisioners": [
           {
             "name": "vpc.block.csi.ibm.io",
-            "preset_scname": "ibmc-vpc-block-custom"
+            "preset_scname": "ibmc-vpc-block-10iops-tier"
           }
         ]
       }
