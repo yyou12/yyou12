@@ -316,6 +316,19 @@ var _ = g.Describe("[sig-operators] OLM opm should", func() {
 		}
 	})
 
+	// author: xzha@redhat.com
+	g.It("ConnectedOnly-Author:xzha-Medium-48438-opm render should support olm.constraint which is defined in dependencies", func() {
+		g.By("render bundle image")
+		output, err := opmCLI.Run("render").Args("quay.io/olmqe/etcd-bundle:v0.9.2-48438", "-oyaml").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("check output of render bundle image contain olm.constraint which is defined in dependencies.yaml")
+		o.Expect(output).To(o.ContainSubstring("olm.constraint"))
+
+		g.By("check output of render bundle image contain olm.bundle.object")
+		o.Expect(output).To(o.ContainSubstring("olm.bundle.object"))
+	})
+
 	// author: kuiwang@redhat.com
 	g.It("ConnectedOnly-Author:kuiwang-Medium-43096-opm alpha diff support heads only", func() {
 
