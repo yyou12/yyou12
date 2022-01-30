@@ -44,7 +44,5 @@ describe('Access to Node logs (OCP-43996,admin)', () => {
         // only provide filter by Unit
         logsPage.filterByUnit('systemd-journald');
         logsPage.logLinesNotContain('crio');     
-        logsPage.wrapLines();
-        logsPage.logsWrapped();       
     });
 })

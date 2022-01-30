@@ -14,5 +14,7 @@
   "retries": {
     "runMode": 1,
     "openMode": 0
-  }
+  },
+  "viewportWidth": 1440,
+  "viewportHeight": 900
 }
