@@ -18,9 +18,7 @@ const DEFAULT_STATUS_QUERY = "-o=jsonpath={.status.conditions[0].type}"
 const DEFAULT_EXPECTED_BEHAVIOR = "Ready"
 
 var _ = g.Describe("[sig-operators] ISV_Operators [Suite:openshift/isv]", func() {
-	var (
-		oc = exutil.NewCLI("operators", exutil.KubeConfigPath())
-	)
+	var oc = exutil.NewCLI("operators", exutil.KubeConfigPath())
 
 	g.It("ConnectedOnly-Author:bandrade-Medium-23955-[Intermediate] Operator amq-streams should work properly", func() {
 

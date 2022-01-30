@@ -16,18 +16,17 @@ var _ = g.Describe("[sig-etcd] ETCD", func() {
 	defer g.GinkgoRecover()
 
 	var oc = exutil.NewCLIWithoutNamespace("openshift-etcd")
-	var platform = ci.CheckPlatform(oc)
-	rtt_th := map[string]string{
-		"aws": "0.03",
-		"gcp": "0.06",
-	}
-	wall_fsync_th := map[string]string{
-		"aws": "0.04",
-		"gcp": "0.06",
-	}
-
 	// author: jgeorge@redhat.com
 	g.It("Author:jgeorge-High-44199-run etcd benchmark [Exclusive]", func() {
+		var platform = ci.CheckPlatform(oc)
+		rtt_th := map[string]string{
+			"aws": "0.03",
+			"gcp": "0.06",
+		}
+		wall_fsync_th := map[string]string{
+			"aws": "0.04",
+			"gcp": "0.06",
+		}
 
 		if _, exists := rtt_th[platform]; !exists {
 			g.Skip(fmt.Sprintf("Skip for non-supported platform: %s", platform))

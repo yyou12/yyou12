@@ -1,7 +1,6 @@
 package operators
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -78,57 +77,57 @@ var BasicPrefix = "[Basic]"
 const INSTALLPLAN_AUTOMATIC_MODE = "Automatic"
 const INSTALLPLAN_MANUAL_MODE = "Manual"
 
-var _ = g.Describe("[Suite:openshift/isv] ISV_Operators", func() {
+// var _ = g.Describe("[Suite:openshift/isv] ISV_Operators", func() {
 
-	var oc = exutil.NewCLI("isv", exutil.KubeConfigPath())
-	defer g.GinkgoRecover()
+// 	var oc = exutil.NewCLI("isv", exutil.KubeConfigPath())
+// 	defer g.GinkgoRecover()
 
-	buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
-	subTemplate := filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
-	ogSingleTemplate := filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+// 	buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
+// 	subTemplate := filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+// 	ogSingleTemplate := filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
 
-	for i := range ISVOperators {
-		operator := ISVOperators[i]
-		g.It(fmt.Sprintf("ConnectedOnly-Author:bandrade-Medium-%s-[Basic] Operator %s should work properly", CaseIDISVOperators[operator], operator), func() {
-			g.By("1) Constructing the subscription")
-			dr := make(describerResrouce)
-			itName := g.CurrentGinkgoTestDescription().TestText
-			dr.addIr(itName)
+// 	for i := range ISVOperators {
+// 		operator := ISVOperators[i]
+// 		g.It(fmt.Sprintf("ConnectedOnly-Author:bandrade-Medium-%s-[Basic] Operator %s should work properly", CaseIDISVOperators[operator], operator), func() {
+// 			g.By("1) Constructing the subscription")
+// 			dr := make(describerResrouce)
+// 			itName := g.CurrentGinkgoTestDescription().TestText
+// 			dr.addIr(itName)
 
-			subItems := constructSubscription(operator, oc, INSTALLPLAN_AUTOMATIC_MODE)
-			// Note: don't create OperatorGroup for openshift-operators namespace
-			if subItems.Namespace != "openshift-operators" {
-				og := operatorGroupDescription{
-					name:      fmt.Sprintf("og-%s", CaseIDISVOperators[operator]),
-					namespace: subItems.Namespace,
-					template:  ogSingleTemplate,
-				}
-				og.createwithCheck(oc, itName, dr)
-			}
-			// Create subscription
-			sub := subscriptionDescription{
-				subName:                fmt.Sprintf("sub-%s", CaseIDISVOperators[operator]),
-				namespace:              subItems.Namespace,
-				catalogSourceName:      subItems.CatalogSource,
-				catalogSourceNamespace: subItems.CatalogSourceNamespace,
-				channel:                subItems.DefaultChannel,
-				ipApproval:             "Automatic",
-				operatorPackage:        subItems.Name,
-				startingCSV:            subItems.CsvVersion,
-				singleNamespace:        subItems.SupportsSingleNamespace,
-				template:               subTemplate,
-			}
-			defer sub.delete(itName, dr)
-			g.By(fmt.Sprintf("2) Subscribe to %s", operator))
-			e2e.Logf("--> The subscription:\n %v", sub)
-			sub.create(oc, itName, dr)
+// 			subItems := constructSubscription(operator, oc, INSTALLPLAN_AUTOMATIC_MODE)
+// 			// Note: don't create OperatorGroup for openshift-operators namespace
+// 			if subItems.Namespace != "openshift-operators" {
+// 				og := operatorGroupDescription{
+// 					name:      fmt.Sprintf("og-%s", CaseIDISVOperators[operator]),
+// 					namespace: subItems.Namespace,
+// 					template:  ogSingleTemplate,
+// 				}
+// 				og.createwithCheck(oc, itName, dr)
+// 			}
+// 			// Create subscription
+// 			sub := subscriptionDescription{
+// 				subName:                fmt.Sprintf("sub-%s", CaseIDISVOperators[operator]),
+// 				namespace:              subItems.Namespace,
+// 				catalogSourceName:      subItems.CatalogSource,
+// 				catalogSourceNamespace: subItems.CatalogSourceNamespace,
+// 				channel:                subItems.DefaultChannel,
+// 				ipApproval:             "Automatic",
+// 				operatorPackage:        subItems.Name,
+// 				startingCSV:            subItems.CsvVersion,
+// 				singleNamespace:        subItems.SupportsSingleNamespace,
+// 				template:               subTemplate,
+// 			}
+// 			defer sub.delete(itName, dr)
+// 			g.By(fmt.Sprintf("2) Subscribe to %s", operator))
+// 			e2e.Logf("--> The subscription:\n %v", sub)
+// 			sub.create(oc, itName, dr)
 
-			defer sub.deleteCSV(itName, dr)
-			g.By(fmt.Sprintf("3) Check if %s works well", operator))
-			newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", sub.startingCSV, "-n", oc.Namespace(), "-o=jsonpath={.status.phase}"}).check(oc)
-		})
-	}
-})
+// 			defer sub.deleteCSV(itName, dr)
+// 			g.By(fmt.Sprintf("3) Check if %s works well", operator))
+// 			newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", sub.startingCSV, "-n", oc.Namespace(), "-o=jsonpath={.status.phase}"}).check(oc)
+// 		})
+// 	}
+// })
 
 func constructSubscription(operator string, oc *exutil.CLI, installPlanApprovalMode string) Packagemanifest {
 	p := CreatePackageManifest(operator, oc)
