@@ -147,7 +147,7 @@ var _ = g.Describe("[sig-cluster-lifecycle] Cluster_Infrastructure", func() {
 			},
 			{
 				patchstr: `{"spec":{"lifecycleHooks":{"preDrain":[{"name":"drain1","owner":"drain-controller1"},{"name":"drain1","owner":"drain-controller2"}]}}}`,
-				errormsg: "spec.lifecycleHooks.preDrain[1].name: Forbidden: hook names must be unique within a lifecycle stage, the following hook name is already set: drain1",
+				errormsg: "spec.lifecycleHooks.preDrain[1]: Duplicate value: map[string]interface {}{\"name\":\"drain1\"}",
 			},
 		}
 
