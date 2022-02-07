@@ -133,6 +133,12 @@ func ExecuteTest(t ginkgo.GinkgoTestingT, suite string) {
 }
 
 func AnnotateTestSuite() {
+	out, err := e2e.KubectlCmd("get", "clusterversion").CombinedOutput()
+	if err != nil && strings.Contains(string(out), "Service Unavailable") {
+		e2e.Logf("Fail to get the cluster:%v, error: %v", string(out), err)
+		os.Exit(1)
+	}
+
 	testRenamer := newGinkgoTestRenamerFromGlobals(e2e.TestContext.Provider, getNetworkSkips())
 
 	ginkgo.WalkTests(testRenamer.maybeRenameTest)
@@ -141,7 +147,7 @@ func AnnotateTestSuite() {
 func getNetworkSkips() []string {
 	out, err := e2e.KubectlCmd("get", "network.operator.openshift.io", "cluster", "--template", "{{.spec.defaultNetwork.type}}{{if .spec.defaultNetwork.openshiftSDNConfig}} {{.spec.defaultNetwork.type}}/{{.spec.defaultNetwork.openshiftSDNConfig.mode}}{{end}}").CombinedOutput()
 	if err != nil {
-		e2e.Logf("Could not get network operator configuration: not adding any plugin-specific skips")
+		e2e.Logf("Could not get network operator configuration: not adding any plugin-specific skips.")
 		return nil
 	}
 	return strings.Split(string(out), " ")
