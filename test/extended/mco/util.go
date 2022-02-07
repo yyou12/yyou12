@@ -48,7 +48,7 @@ type KubeletConfig struct {
 }
 
 type ContainerRuntimeConfig struct {
-	name     string
+	*Resource
 	template string
 }
 
@@ -160,19 +160,49 @@ func (icsp *ImageContentSourcePolicy) delete(oc *exutil.CLI) {
 	mcp.waitForComplete()
 }
 
-func (cr *ContainerRuntimeConfig) create(oc *exutil.CLI) {
-	exutil.CreateClusterResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", cr.template, "-p", "NAME="+cr.name)
-	mcp := NewMachineConfigPool(oc.AsAdmin(), "worker")
-	mcp.waitForComplete()
+func NewContainerRuntimeConfig(oc *exutil.CLI, name string, template string) *ContainerRuntimeConfig {
+	return &ContainerRuntimeConfig{Resource: NewResource(oc, "ctrcfg", name), template: template}
 }
 
-func (cr *ContainerRuntimeConfig) delete(oc *exutil.CLI) {
-	e2e.Logf("deleting container runtime config: %s", cr.name)
-	err := oc.AsAdmin().WithoutNamespace().Run("delete").Args("ctrcfg", cr.name, "--ignore-not-found=true").Execute()
-	o.Expect(err).NotTo(o.HaveOccurred())
-	mcp := NewMachineConfigPool(oc.AsAdmin(), "worker")
-	mcp.waitForComplete()
+func (cr *ContainerRuntimeConfig) create() {
+	exutil.CreateClusterResourceFromTemplate(cr.oc, "--ignore-unknown-parameters=true", "-f", cr.template, "-p", "NAME="+cr.name)
 }
+
+func (cr *ContainerRuntimeConfig) waitUntilSuccess(timeout string) {
+	e2e.Logf("wait for %s to report success", cr.name)
+	o.Eventually(func() map[string]interface{} {
+		successCond := cr.GetConditionByType("Success")
+
+		jsonbytes := []byte(successCond)
+		var condition map[string]interface{}
+		if jsonerr := json.Unmarshal(jsonbytes, &condition); jsonerr != nil {
+			return nil
+		} else {
+			e2e.Logf("umarshalled json: %v", condition)
+			return condition
+		}
+	},
+		timeout).Should(o.SatisfyAll(o.HaveKeyWithValue("status", "True"),
+		o.HaveKeyWithValue("message", "Success")))
+}
+
+func (cr *ContainerRuntimeConfig) waitUntilFailure(expectedMsg string, timeout string) {
+	e2e.Logf("wait for %s to report failure", cr.name)
+	o.Eventually(func() map[string]interface{} {
+		successCond := cr.GetConditionByType("Failure")
+
+		jsonbytes := []byte(successCond)
+		var condition map[string]interface{}
+		if jsonerr := json.Unmarshal(jsonbytes, &condition); jsonerr != nil {
+			return nil
+		} else {
+			e2e.Logf("umarshalled json: %v", condition)
+			return condition
+		}
+	},
+		timeout).Should(o.SatisfyAll(o.HaveKeyWithValue("status", "False"), o.HaveKeyWithValue("message", o.ContainSubstring(expectedMsg))))
+}
+
 
 func (mcp *MachineConfigPool) create() {
 	exutil.CreateClusterResourceFromTemplate(mcp.oc, "--ignore-unknown-parameters=true", "-f", mcp.template, "-p", "NAME="+mcp.name)
@@ -392,9 +422,6 @@ func getGoVersion(component string, commitId string) (float64, error) {
 	return strconv.ParseFloat(strings.TrimSuffix(goVersion, "\n"), 64)
 }
 
-func getContainerRuntimeConfigDetails(oc *exutil.CLI, crName string) (string, error) {
-	return oc.AsAdmin().WithoutNamespace().Run("get").Args("ctrcfg", crName, "-o", "yaml").Output()
-}
 
 func getStatusCondition(oc *exutil.CLI, resource string, ctype string) (map[string]interface{}, error) {
 	jsonstr, ocerr := oc.AsAdmin().WithoutNamespace().Run("get").Args(resource, "-o", "jsonpath='{.status.conditions[?(@.type==\""+ctype+"\")]}'").Output()

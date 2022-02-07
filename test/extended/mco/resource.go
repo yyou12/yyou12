@@ -140,6 +140,11 @@ func (r *Resource) GetAnnotationOrFail(annotation string) string {
 	return r.GetOrFail(fmt.Sprintf(`{.metadata.annotations.%s}`, scapedAnnotation))
 }
 
+// GetConditionByType returns the status.condition matching the given type
+func (r *Resource) GetConditionByType(ctype string) string {
+	return r.GetOrFail(`{.status.conditions[?(@.type=="` + ctype + `")]}`)
+}
+
 // NewMCOTemplate creates a new template using the MCO fixture directory as the base path of the template file
 func NewMCOTemplate(oc *exutil.CLI, fileName string) *Template {
 	return &Template{oc: oc, templateFile: generateTemplateAbsolutePath(fileName)}

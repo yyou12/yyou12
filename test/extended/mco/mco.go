@@ -283,20 +283,26 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		g.By("Create container runtime config")
 		crName := "change-ctr-cr-config"
 		crTemplate := generateTemplateAbsolutePath(crName + ".yaml")
-		cr := ContainerRuntimeConfig{name: crName, template: crTemplate}
-		defer cr.delete(oc)
-		cr.create(oc)
+		cr := NewContainerRuntimeConfig(oc.AsAdmin(), crName, crTemplate)
+		defer func() {
+			err := cr.Delete()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			mcp := NewMachineConfigPool(oc.AsAdmin(), "worker")
+			mcp.waitForComplete()
+		}()
+		cr.create()
+		mcp := NewMachineConfigPool(cr.oc.AsAdmin(), "worker")
+		mcp.waitForComplete()
 		e2e.Logf("Container runtime config is created successfully!")
 
 		g.By("Check container runtime config values in the created config")
-		crOut, err := getContainerRuntimeConfigDetails(oc, cr.name)
-		o.Expect(err).NotTo(o.HaveOccurred())
+		crOut := cr.GetOrFail(`{.spec}`)
 		o.Expect(crOut).Should(
 			o.And(
-				o.ContainSubstring("logLevel: debug"),
-				o.ContainSubstring("logSizeMax: \"-1\""),
-				o.ContainSubstring("pidsLimit: 2048"),
-				o.ContainSubstring("overlaySize: 8G")))
+				o.ContainSubstring(`"logLevel":"debug"`),
+				o.ContainSubstring(`"logSizeMax":"-1"`),
+				o.ContainSubstring(`"pidsLimit":2048`),
+				o.ContainSubstring(`"overlaySize":"8G"`)))
 		e2e.Logf("Container runtime config values are verified in the created config!")
 
 		g.By("Check container runtime config values in the worker node")
@@ -876,6 +882,61 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		o.Expect(kcCounter).Should(o.Equal(10), "Only 10 Kubeletconfig resources should be generated")
 
 	})
+
+	g.It("Author:sregidor-NonPreRelease-High-48468-ContainerRuntimeConfig has a limit of 10 per cluster [Disruptive]", func() {
+		g.By("Pause mcp worker")
+		mcp := NewMachineConfigPool(oc.AsAdmin(), "worker")
+		defer mcp.pause(false)
+		mcp.pause(true)
+
+		g.By("Create 10 container runtime configs to add 500 max pods")
+		allCrs := []ContainerRuntimeConfig{}
+		crTemplate := generateTemplateAbsolutePath("change-ctr-cr-config.yaml")
+		for n := 1; n <= 10; n++ {
+			crName := fmt.Sprintf("change-ctr-cr-config-%d", n)
+			cr := NewContainerRuntimeConfig(oc.AsAdmin(), crName, crTemplate)
+			defer func() { o.Expect(cr.Delete()).NotTo(o.HaveOccurred()) }()
+			cr.create()
+			allCrs = append(allCrs, *cr)
+			e2e.Logf("Created:\n %s", crName)
+		}
+
+		g.By("Created ContainerRuntimeConfigs must be successful")
+		for _, crItem := range allCrs {
+			crItem.waitUntilSuccess("10s")
+		}
+
+		g.By("Check that 10 machine configs were created")
+		verifyCrRenderedMcs(oc, allCrs)
+
+		g.By("Create a new ContainerRuntimeConfig. The 11th one")
+		crName := "change-ctr-cr-config-11"
+		cr := NewContainerRuntimeConfig(oc.AsAdmin(), crName, crTemplate)
+		defer func() { o.Expect(cr.Delete()).NotTo(o.HaveOccurred()) }()
+		cr.create()
+
+		g.By("Created container runtime configs over the limit must report a failure regarding the 10 configs limit")
+		expectedMsg := "could not get ctrcfg key: max number of supported ctrcfgs (10) has been reached. Please delete old ctrcfgs before retrying"
+		cr.waitUntilFailure(expectedMsg, "10s")
+
+		g.By("Created kubeletconfigs inside the limit must be successful")
+		for _, crItem := range allCrs {
+			crItem.waitUntilSuccess("10s")
+		}
+
+		g.By("Check that only the right machine configs were created")
+		allMcs := verifyCrRenderedMcs(oc, allCrs)
+
+		crCounter := 0
+		for _, mc := range allMcs {
+			if strings.HasPrefix(mc.name, "99-worker-generated-containerruntime") {
+				crCounter++
+			}
+		}
+		o.Expect(crCounter).Should(o.Equal(10), "Only 10 containerruntime resources should be generated")
+
+	})
+
 	g.It("Author:sregidor-Longduration-NonPreRelease-High-46314-Incorrect file contents if compression field is specified [Serial]", func() {
 		g.By("Create a new MachineConfig to provision a config file in zipped format")
 
@@ -1389,6 +1450,30 @@ func verifyKcRenderedMcs(oc *exutil.CLI, allKcs []KubeletConfig) []string {
 		o.Expect(slices).Should(o.ContainElement(o.ContainSubstring(mcSubstring)))
 	}
 	return slices
+}
+
+func verifyCrRenderedMcs(oc *exutil.CLI, allCrs []ContainerRuntimeConfig) []Resource {
+	// TODO: Use MachineConfigList when MC code is refactored
+	allMcs, err := NewResourceList(oc.AsAdmin(), "mc").GetAll()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	o.Expect(allMcs).NotTo(o.BeEmpty())
+
+	allMcNames := []string{}
+	for _, mc := range allMcs {
+		allMcNames = append(allMcNames, mc.name)
+	}
+
+	for index := range allCrs {
+		suffix := ""
+		if index > 0 {
+			suffix = fmt.Sprintf("-%d", index)
+		}
+
+		mcSubstring := "worker-generated-containerruntime" + suffix
+		e2e.Logf("Machine config '%s' should exist", mcSubstring)
+		o.Expect(allMcNames).Should(o.ContainElement(o.ContainSubstring(mcSubstring)))
+	}
+	return allMcs
 }
 
 func verifyDriftConfig(mcp *MachineConfigPool, rf *RemoteFile, newMode string, forceFile bool) {
