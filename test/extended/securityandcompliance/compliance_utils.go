@@ -772,9 +772,9 @@ func checkMachineConfigPoolStatus(oc *exutil.CLI, nodeSelector string) {
 	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("Fails to update %v machineconfigpool", nodeSelector))
 }
 
-func checkNodeContents(oc *exutil.CLI, nodeName string, contentList []string, filePath string) {
+func checkNodeContents(oc *exutil.CLI, nodeName string, contentList []string, filePath string, namespace string) {
 	err := wait.Poll(5*time.Second, 30*time.Second, func() (bool, error) {
-		nContent, err := oc.AsAdmin().WithoutNamespace().Run("debug").Args("nodes/"+nodeName, "--", "chroot", "/host", "cat", filePath).OutputToFile(getRandomString() + "content.json")
+		nContent, err := oc.AsAdmin().WithoutNamespace().Run("debug").Args("-n", namespace, "nodes/"+nodeName, "--", "chroot", "/host", "cat", filePath).OutputToFile(getRandomString() + "content.json")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		results, _ := exec.Command("bash", "-c", "cat "+nContent+"; rm -rf "+nContent).Output()
 		result := string(results)

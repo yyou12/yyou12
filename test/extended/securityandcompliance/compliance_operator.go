@@ -3481,7 +3481,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 
 			g.By("Verify the ntp settings from node contents.. !!!\n")
 			contList := []string{"server 0.pool.ntp.org minpoll 4 maxpoll 10", "server 1.pool.ntp.org minpoll 4 maxpoll 10", "server 2.pool.ntp.org minpoll 4 maxpoll 10", "server 3.pool.ntp.org minpoll 4 maxpoll 10"}
-			checkNodeContents(oc, workerNodeName, contList, "/etc/chrony.d/ntp-server.conf")
+			checkNodeContents(oc, workerNodeName, contList, "/etc/chrony.d/ntp-server.conf", csuiteCD.namespace)
 		})
 
 		// author: pdhamdhe@redhat.com

@@ -227,7 +227,7 @@ func (fi1 *fileintegrity) checkFileintegritynodestatus(oc *exutil.CLI, nodeName 
 }
 
 func (fi1 *fileintegrity) checkOnlyOneDaemonset(oc *exutil.CLI) {
-	err := wait.Poll(5*time.Second, 20*time.Second, func() (bool, error) {
+	err := wait.Poll(5*time.Second, 45*time.Second, func() (bool, error) {
 		daemonsetPodNumber, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("daemonset", "-n", fi1.namespace, "-o=jsonpath={.items[].status.numberReady}").Output()
 		e2e.Logf("the result of daemonsetPodNumber:%v", daemonsetPodNumber)
 		podNameString, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-l file-integrity.openshift.io/pod=", "-n", fi1.namespace, "-o=jsonpath={.items[*].metadata.name}").Output()
