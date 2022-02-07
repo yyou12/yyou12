@@ -93,9 +93,9 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance Pre-check and post-check f
 		g.It("Author:xiyuan-CPaasrunOnly-NonPreRelease-High-37721-High-37824-High-45014-precheck for compliance operator", func() {
 
 			g.By("Get the compliance operator resources..!!!\n")
-			getOperatorResources(oc, "rules", ns1)
-			getOperatorResources(oc, "variables", ns1)
-			getOperatorResources(oc, "profiles.compliance", ns1)
+			getOperatorResources(oc, "rules", ns2)
+			getOperatorResources(oc, "variables", ns2)
+			getOperatorResources(oc, "profiles.compliance", ns2)
 
 			g.By("Create scansettingbinding !!!\n")
 			ssb.namespace = ns1
@@ -139,9 +139,9 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance Pre-check and post-check f
 				objectTableRef{"project", ns2, ns2})
 
 			g.By("Compare the compliance operator resource count after upgrade.. !!\n")
-			readFileLinesToCompare(oc, "rules", "rules.json", ns1)
-			readFileLinesToCompare(oc, "variables", "variables.json", ns1)
-			readFileLinesToCompare(oc, "profiles.compliance", "profiles.compliance.json", ns1)
+			readFileLinesToCompare(oc, "rules", "rules.json", ns2)
+			readFileLinesToCompare(oc, "variables", "variables.json", ns2)
+			readFileLinesToCompare(oc, "profiles.compliance", "profiles.compliance.json", ns2)
 
 			g.By("Trigger rescan using oc-compliance plugin.. !!")
 			_, err := OcComplianceCLI().Run("rerun-now").Args("scansettingbinding", ssb.name, "-n", ns1).Output()
