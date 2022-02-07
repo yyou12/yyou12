@@ -6880,6 +6880,66 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		g.By("4) SUCCESS")
 	})
 
+	// author: xzha@redhat.com, test case OCP-48439
+	g.It("ConnectedOnly-Author:xzha-Medium-48439-OLM upgrades operators immediately", func() {
+		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
+		ogSingleTemplate := filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+		subTemplate := filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+		catsrcImageTemplate := filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
+		oc.SetupProject()
+		namespaceName := oc.Namespace()
+		var (
+			catsrc = catalogSourceDescription{
+				name:        "catsrc-ditto-48439",
+				namespace:   namespaceName,
+				displayName: "Test Catsrc ditto Operators",
+				publisher:   "Red Hat",
+				sourceType:  "grpc",
+				address:     "quay.io/olmqe/ditto-index:48439",
+				template:    catsrcImageTemplate,
+			}
+			og = operatorGroupDescription{
+				name:      "og-48439",
+				namespace: namespaceName,
+				template:  ogSingleTemplate,
+			}
+			sub = subscriptionDescription{
+				subName:                "sub-48439",
+				namespace:              namespaceName,
+				catalogSourceName:      "catsrc-ditto-48439",
+				catalogSourceNamespace: namespaceName,
+				channel:                "v0.1.0",
+				ipApproval:             "Automatic",
+				operatorPackage:        "ditto-operator",
+				template:               subTemplate,
+				startingCSV:            "ditto-operator.v0.1.0",
+			}
+		)
+		itName := g.CurrentGinkgoTestDescription().TestText
+		g.By("1) create the catalog source and OperatorGroup")
+		defer catsrc.delete(itName, dr)
+		catsrc.createWithCheck(oc, itName, dr)
+		og.createwithCheck(oc, itName, dr)
+
+		g.By("2) install sub")
+		sub.create(oc, itName, dr)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", "ditto-operator.v0.1.0", "-n", oc.Namespace(), "-o=jsonpath={.status.phase}"}).checkWithoutAssert(oc)
+
+		g.By("3) update sub channel")
+		sub.patch(oc, "{\"spec\": {\"channel\": \"v0.1.1\"}}")
+		err := wait.Poll(5*time.Second, 30*time.Second, func() (bool, error) {
+			ips := getResource(oc, asAdmin, withoutNamespace, "installplan", "-n", sub.namespace)
+			if strings.Contains(ips, "ditto-operator.v0.1.1") {
+				e2e.Logf("Install plan for ditto-operator.v0.1.1 is created")
+				return true, nil
+			}
+			return false, nil
+		})
+		exutil.AssertWaitPollNoErr(err, "no install plan for ditto-operator.v0.1.1")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", "ditto-operator.v0.1.1", "-n", oc.Namespace(), "-o=jsonpath={.status.phase}"}).checkWithoutAssert(oc)
+		g.By("4) SUCCESS")
+	})
+
 	// It will cover test case: OCP-40958, author: kuiwang@redhat.com
 	g.It("ConnectedOnly-Author:kuiwang-Medium-40958-Indicate invalid OperatorGroup on InstallPlan status [Flaky]", func() {
 		var (
