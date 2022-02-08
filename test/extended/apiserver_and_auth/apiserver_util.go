@@ -184,3 +184,19 @@ func verify_ciphers(oc *exutil.CLI, expectedCipher string, operator string) erro
 		return false, nil
 	})
 }
+
+func restore_cluster_ocp_41899(oc *exutil.CLI) {
+	e2e.Logf("Checking openshift-controller-manager operator should be Available")
+	expected_status := map[string]string{"Available": "True", "Progressing": "False", "Degraded": "False"}
+	err := waitCoBecomes(oc, "openshift-controller-manager", 300, expected_status)
+	exutil.AssertWaitPollNoErr(err, "openshift-controller-manager operator is not becomes available")
+	output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("configmap", "-n", "openshift-config").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	if strings.Contains(output, "client-ca-custom") {
+		configmap_err := oc.AsAdmin().WithoutNamespace().Run("delete").Args("configmap", "client-ca-custom", "-n", "openshift-config").Execute()
+		o.Expect(configmap_err).NotTo(o.HaveOccurred())
+		e2e.Logf("Cluster configmap reset to default values")
+	} else {
+		e2e.Logf("Cluster configmap not changed from default values")
+	}
+}

@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"os/exec"
+	"os"
 
 	"k8s.io/apimachinery/pkg/util/wait"
 
@@ -472,5 +474,175 @@ spec:
 			err = waitCoBecomes(oc, "authentication", 60, expectedStatus)
 			exutil.AssertWaitPollNoErr(err, "authentication operator is not becomes available in 60 seconds")
 		}
+	})
+
+	// author: rgangwar@redhat.com
+	g.It("NonPreRelease-Author:rgangwar-High-41899-Replacing the admin kubeconfig generated at install time [Disruptive] [Slow]", func() {
+		var (
+			dirname          = "/tmp/-OCP-41899-ca/"
+			name             = dirname + "custom"
+			validity         = 3650
+			ca_subj          = dirname + "/OU=openshift/CN=admin-kubeconfig-signer-custom"
+			user             = "system:admin"
+			user_cert        = dirname + "system-admin"
+			group            = "system:masters"
+			user_subj        = dirname + "/O="+group+"/CN="+user
+			new_kubeconfig   = dirname + "kubeconfig." + user
+			patch            = `[{"op": "add", "path": "/spec/clientCA", "value":{"name":"client-ca-custom"}}]`
+			patch_to_recover = `[{"op": "replace", "path": "/spec/clientCA", "value":}]`
+			configmap_bkp    = dirname + "OCP-41899-bkp.yaml"
+		)
+
+		defer os.RemoveAll(dirname)
+		defer func() {
+			g.By("Restoring cluster")
+			output, err := oc.AsAdmin().WithoutNamespace().Run("whoami").Args("").Output()
+			if strings.Contains(string(output), "Unauthorized") {
+				err = oc.AsAdmin().WithoutNamespace().Run("replace").Args("--kubeconfig", new_kubeconfig, "-f", configmap_bkp).Execute()
+				o.Expect(err).NotTo(o.HaveOccurred())
+				err = wait.Poll(5*time.Second, 100*time.Second, func() (bool, error) {
+					output, _ := oc.AsAdmin().WithoutNamespace().Run("whoami").Args("").Output()
+					if output == "system:admin" {
+						e2e.Logf("Old kubeconfig is restored : %s", output)
+						// Adding wait time to ensure old kubeconfig restored properly
+						time.Sleep(60 * time.Second)
+						return true, nil
+					} else if output == "error: You must be logged in to the server (Unauthorized)" {
+						return false, nil
+					}
+					return false, nil
+				})
+				exutil.AssertWaitPollNoErr(err, "Old kubeconfig is not restored")
+				restore_cluster_ocp_41899(oc)
+				e2e.Logf("Cluster recovered")
+			} else if err == nil {
+				output, err = oc.AsAdmin().WithoutNamespace().Run("patch").Args("apiserver/cluster", "--type=json", "-p", patch_to_recover).Output()
+				o.Expect(err).NotTo(o.HaveOccurred())
+				if strings.Contains(output, "patched (no change)") {
+					e2e.Logf("Apiserver/cluster is not changed from the default values")
+					restore_cluster_ocp_41899(oc)
+				} else {
+					output, err = oc.AsAdmin().WithoutNamespace().Run("patch").Args("apiserver/cluster", "--type=json", "-p", patch_to_recover).Output()
+					o.Expect(err).NotTo(o.HaveOccurred())
+					restore_cluster_ocp_41899(oc)
+				}
+			}
+		}()
+
+		//Taking backup of configmap "admin-kubeconfig-client-ca" to restore old kubeconfig
+		err := os.MkdirAll(dirname, 0755)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		g.By("Get the default CA backup")
+		configmap_bkp, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("configmap", "admin-kubeconfig-client-ca", "-n", "openshift-config", "-o", "yaml").OutputToFile("OCP-41899-ca/OCP-41899-bkp.yaml")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		sed_cmd := fmt.Sprintf(`sed -i '/creationTimestamp:\|resourceVersion:\|uid:/d' %s`, configmap_bkp)
+		_, err = exec.Command("bash", "-c", sed_cmd ).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		// Generation of a new self-signed CA, in case a corporate or another CA is already existing can be used.
+		g.By("Generation of a new self-signed CA")
+		e2e.Logf("Generate the CA private key")
+		openssl_cmd := fmt.Sprintf(`openssl genrsa -out %s-ca.key 4096`, name)
+		_, err = exec.Command("bash", "-c", openssl_cmd).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		e2e.Logf("Create the CA certificate")
+		openssl_cmd = fmt.Sprintf(`openssl req -x509 -new -nodes -key %s-ca.key -sha256 -days %d -out %s-ca.crt -subj %s`, name, validity, name, ca_subj)
+		_ ,err = exec.Command("bash", "-c", openssl_cmd).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		// Generation of a new system:admin certificate. The client certificate must have the user into the x.509 subject CN field and the group into the O field.
+		g.By("Generation of a new system:admin certificate")
+		e2e.Logf("Create the user CSR")
+		openssl_cmd = fmt.Sprintf(`openssl req -nodes -newkey rsa:2048 -keyout %s.key -subj %s -out %s.csr`, user_cert, user_subj, user_cert)
+		_, err = exec.Command("bash", "-c", openssl_cmd).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		// sign the user CSR and generate the certificate, the certificate must have the `clientAuth` extension
+		e2e.Logf("Sign the user CSR and generate the certificate")
+		openssl_cmd = fmt.Sprintf(`openssl x509 -extfile <(printf "extendedKeyUsage = clientAuth") -req -in %s.csr -CA %s-ca.crt -CAkey %s-ca.key -CAcreateserial -out %s.crt -days %d -sha256`, user_cert, name, name, user_cert, validity)
+		_, err = exec.Command("bash", "-c", openssl_cmd).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		// In order to have a safe replacement, before removing the default CA the new certificate is added as an additional clientCA.
+		g.By("Create the client-ca ConfigMap")
+		ca_file := fmt.Sprintf(`--from-file=ca-bundle.crt=%s-ca.crt`, name)
+		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("configmap", "client-ca-custom", "-n", "openshift-config", ca_file).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf("Patching apiserver")
+		err = oc.AsAdmin().WithoutNamespace().Run("patch").Args("apiserver/cluster", "--type=json", "-p", patch).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		e2e.Logf("Checking openshift-controller-manager operator should be in Progressing in 100 seconds")
+		expected_status := map[string]string{"Progressing": "True"}
+		err = waitCoBecomes(oc, "openshift-controller-manager", 100, expected_status) // Wait it to become Progressing=True
+		exutil.AssertWaitPollNoErr(err, "openshift-controller-manager operator is not start progressing in 100 seconds")
+		e2e.Logf("Checking openshift-controller-manager operator should be Available in 300 seconds")
+		expected_status = map[string]string{"Available": "True", "Progressing": "False", "Degraded": "False"}
+		err = waitCoBecomes(oc, "openshift-controller-manager", 300, expected_status) // Wait it to become Available=True and Progressing=False and Degraded=False
+		exutil.AssertWaitPollNoErr(err, "openshift-controller-manager operator is not becomes available in 300 seconds")
+
+		g.By("Create the new kubeconfig")
+		e2e.Logf("Add system:admin credentials, context to the kubeconfig")
+		err = oc.AsAdmin().WithoutNamespace().Run("config").Args("set-credentials", user, "--client-certificate="+user_cert+".crt", "--client-key="+user_cert+".key", "--embed-certs", "--kubeconfig="+new_kubeconfig).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		e2e.Logf("Create context for the user")
+		cluster_name, _ := oc.AsAdmin().WithoutNamespace().Run("config").Args("view", "-o", `jsonpath={.clusters[0].name}`).Output()
+		err = oc.AsAdmin().WithoutNamespace().Run("config").Args("set-context", user, "--cluster="+cluster_name, "--namespace=default", "--user="+user, "--kubeconfig="+new_kubeconfig).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		e2e.Logf("Extract certificate authority")
+		podnames, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-n", "openshift-authentication", "-o", "name").Output()
+		podname := strings.Fields(podnames)
+		ingress_crt, err := oc.AsAdmin().WithoutNamespace().Run("rsh").Args("-n", "openshift-authentication", podname[0], "cat", "/run/secrets/kubernetes.io/serviceaccount/ca.crt").OutputToFile("OCP-41899-ca/OCP-41899-ingress-ca.crt")
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		e2e.Logf("Set certificate authority data")
+		server_name, _ := oc.AsAdmin().WithoutNamespace().Run("config").Args("view", "-o", `jsonpath={.clusters[0].cluster.server}`).Output()
+		err = oc.AsAdmin().WithoutNamespace().Run("config").Args("set-cluster", cluster_name, "--server="+server_name, "--certificate-authority="+ingress_crt, "--kubeconfig="+new_kubeconfig, "--embed-certs").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		e2e.Logf("Set current context")
+		err = oc.AsAdmin().WithoutNamespace().Run("config").Args("use-context", user, "--kubeconfig="+new_kubeconfig).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		// Test the new kubeconfig, be aware that the following command may requires some seconds for let the operator reconcile the newly added CA.
+		g.By("Testing the new kubeconfig")
+		err = oc.AsAdmin().WithoutNamespace().Run("login").Args("--kubeconfig", new_kubeconfig, "-u", user).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = oc.AsAdmin().WithoutNamespace().Run("get").Args("--kubeconfig", new_kubeconfig, "node").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		// If the previous commands are successful is possible to replace the default CA.
+		e2e.Logf("Replace the default CA")
+		configmap_yaml, err := oc.AsAdmin().WithoutNamespace().Run("create").Args("--kubeconfig", new_kubeconfig, "configmap", "admin-kubeconfig-client-ca", "-n", "openshift-config", ca_file, "--dry-run=client", "-o", "yaml").OutputToFile("OCP-41899-ca/OCP-41899.yaml")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = oc.AsAdmin().WithoutNamespace().Run("replace").Args("--kubeconfig", new_kubeconfig, "-f", configmap_yaml).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		// Is now possible to remove the additional CA which we set earlier.
+		e2e.Logf("Removing the additional CA")
+		err = oc.AsAdmin().WithoutNamespace().Run("patch").Args("--kubeconfig", new_kubeconfig, "apiserver/cluster", "--type=json", "-p", patch_to_recover).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		// Now the old kubeconfig should be invalid, the following command is expected to fail (make sure to set the proper kubeconfig path).
+		e2e.Logf("Testing old kubeconfig")
+		err = oc.AsAdmin().WithoutNamespace().Run("config").Args("use-context", "admin").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = wait.Poll(5*time.Second, 100*time.Second, func() (bool, error) {
+			output, err := oc.AsAdmin().WithoutNamespace().Run("whoami").Args("").Output()
+			if strings.Contains(string(output), "Unauthorized") {
+				e2e.Logf("Test pass: Old kubeconfig not working!")
+				// Adding wait time to ensure new kubeconfig work properly
+				time.Sleep(60 * time.Second)
+				return true, nil
+			} else if err == nil {
+				e2e.Logf("Still Old kubeconfig is working!")
+				return false, nil
+			}
+			return false, nil
+		})
+		exutil.AssertWaitPollNoErr(err, "Test failed: Old kubeconfig is working!")
 	})
 })
