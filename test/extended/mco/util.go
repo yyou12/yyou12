@@ -43,7 +43,7 @@ type PodDisruptionBudget struct {
 }
 
 type KubeletConfig struct {
-	name     string
+	*Resource
 	template string
 }
 
@@ -102,31 +102,46 @@ func (mc *MachineConfig) delete(oc *exutil.CLI) {
 	mcp.waitForComplete()
 }
 
-func (kc *KubeletConfig) create(oc *exutil.CLI) {
-	exutil.CreateClusterResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", kc.template, "-p", "NAME="+kc.name)
+func NewKubeletConfig(oc *exutil.CLI, name string, template string) *KubeletConfig {
+	return &KubeletConfig{Resource: NewResource(oc, "kubeletconfig", name), template: template}
 }
 
-func (kc *KubeletConfig) delete(oc *exutil.CLI) {
-	e2e.Logf("deleting kubelet config: %s", kc.name)
-	err := oc.AsAdmin().WithoutNamespace().Run("delete").Args("kubeletconfig", kc.name, "--ignore-not-found=true").Execute()
-	o.Expect(err).NotTo(o.HaveOccurred())
+func (kc *KubeletConfig) create() {
+	exutil.CreateClusterResourceFromTemplate(kc.oc, "--ignore-unknown-parameters=true", "-f", kc.template, "-p", "NAME="+kc.name)
 }
 
-func (kc *KubeletConfig) waitUntilSuccess(oc *exutil.CLI, timeout string) {
+func (kc *KubeletConfig) waitUntilSuccess(timeout string) {
 	e2e.Logf("wait for %s to report success", kc.name)
 	o.Eventually(func() map[string]interface{} {
-		successCond, _ := getStatusCondition(oc, "kubeletconfig/"+kc.name, "Success")
-		return successCond
+		successCond := kc.GetConditionByType("Success")
+
+		jsonbytes := []byte(successCond)
+		var condition map[string]interface{}
+		if jsonerr := json.Unmarshal(jsonbytes, &condition); jsonerr != nil {
+			return nil
+		} else {
+			e2e.Logf("umarshalled json: %v", condition)
+			return condition
+		}
 	},
 		timeout).Should(o.SatisfyAll(o.HaveKeyWithValue("status", "True"),
 		o.HaveKeyWithValue("message", "Success")))
 }
 
-func (kc *KubeletConfig) waitUntilFailure(oc *exutil.CLI, expectedMsg, timeout string) {
+func (kc *KubeletConfig) waitUntilFailure(expectedMsg, timeout string) {
+
 	e2e.Logf("wait for %s to report failure", kc.name)
 	o.Eventually(func() map[string]interface{} {
-		successCond, _ := getStatusCondition(oc, "kubeletconfig/"+kc.name, "Failure")
-		return successCond
+		successCond := kc.GetConditionByType("Failure")
+
+		jsonbytes := []byte(successCond)
+		var condition map[string]interface{}
+		if jsonerr := json.Unmarshal(jsonbytes, &condition); jsonerr != nil {
+			return nil
+		} else {
+			e2e.Logf("umarshalled json: %v", condition)
+			return condition
+		}
 	},
 		timeout).Should(o.SatisfyAll(o.HaveKeyWithValue("status", "False"), o.HaveKeyWithValue("message", o.ContainSubstring(expectedMsg))))
 }
@@ -202,7 +217,6 @@ func (cr *ContainerRuntimeConfig) waitUntilFailure(expectedMsg string, timeout s
 	},
 		timeout).Should(o.SatisfyAll(o.HaveKeyWithValue("status", "False"), o.HaveKeyWithValue("message", o.ContainSubstring(expectedMsg))))
 }
-
 
 func (mcp *MachineConfigPool) create() {
 	exutil.CreateClusterResourceFromTemplate(mcp.oc, "--ignore-unknown-parameters=true", "-f", mcp.template, "-p", "NAME="+mcp.name)
@@ -421,7 +435,6 @@ func getGoVersion(component string, commitId string) (float64, error) {
 	goVersion := string(curlOutput)[3:]
 	return strconv.ParseFloat(strings.TrimSuffix(goVersion, "\n"), 64)
 }
-
 
 func getStatusCondition(oc *exutil.CLI, resource string, ctype string) (map[string]interface{}, error) {
 	jsonstr, ocerr := oc.AsAdmin().WithoutNamespace().Run("get").Args(resource, "-o", "jsonpath='{.status.conditions[?(@.type==\""+ctype+"\")]}'").Output()

@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	g "github.com/onsi/ginkgo"
+	o "github.com/onsi/gomega"
 	"github.com/onsi/gomega/types"
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
@@ -104,6 +105,11 @@ func (r *Resource) Delete() error {
 	}
 
 	return err
+}
+
+func (r *Resource) DeleteOrFail() {
+	err := r.Delete()
+	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
 // Exists returns true if the resource exists and false if not

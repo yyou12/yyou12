@@ -253,22 +253,21 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		g.By("create kubelet config to add 500 max pods")
 		kcName := "change-maxpods-kubelet-config"
 		kcTemplate := generateTemplateAbsolutePath(kcName + ".yaml")
-		kc := KubeletConfig{name: kcName, template: kcTemplate}
+		kc := NewKubeletConfig(oc.AsAdmin(), kcName, kcTemplate)
 		defer func() {
-			kc.delete(oc)
+			kc.DeleteOrFail()
 			mcp := NewMachineConfigPool(oc.AsAdmin(), "worker")
 			mcp.waitForComplete()
 		}()
-		kc.create(oc)
-		kc.waitUntilSuccess(oc, "10s")
+		kc.create()
+		kc.waitUntilSuccess("10s")
 		mcp := NewMachineConfigPool(oc.AsAdmin(), "worker")
 		mcp.waitForComplete()
 		e2e.Logf("Kubelet config is created successfully!")
 
 		g.By("Check max pods in the created kubelet config")
-		kcOut, err := getKubeletConfigDetails(oc, kc.name)
-		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(kcOut).Should(o.ContainSubstring("maxPods: 500"))
+		kcOut := kc.GetOrFail(`{.spec}`)
+		o.Expect(kcOut).Should(o.ContainSubstring(`"maxPods":500`))
 		e2e.Logf("Max pods are verified in the created kubelet config!")
 
 		g.By("Check kubelet config in the worker node")
@@ -285,8 +284,7 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		crTemplate := generateTemplateAbsolutePath(crName + ".yaml")
 		cr := NewContainerRuntimeConfig(oc.AsAdmin(), crName, crTemplate)
 		defer func() {
-			err := cr.Delete()
-			o.Expect(err).NotTo(o.HaveOccurred())
+			cr.DeleteOrFail()
 			mcp := NewMachineConfigPool(oc.AsAdmin(), "worker")
 			mcp.waitForComplete()
 		}()
@@ -840,42 +838,43 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		kcTemplate := generateTemplateAbsolutePath("change-maxpods-kubelet-config.yaml")
 		for n := 1; n <= 10; n++ {
 			kcName := fmt.Sprintf("change-maxpods-kubelet-config-%d", n)
-			kc := KubeletConfig{name: kcName, template: kcTemplate}
-			defer kc.delete(oc)
-			kc.create(oc)
-			allKcs = append(allKcs, kc)
+			kc := NewKubeletConfig(oc.AsAdmin(), kcName, kcTemplate)
+			defer kc.DeleteOrFail()
+			kc.create()
+			allKcs = append(allKcs, *kc)
 			e2e.Logf("Created:\n %s", kcName)
 		}
 
 		g.By("Created kubeletconfigs must be successful")
 		for _, kcItem := range allKcs {
-			kcItem.waitUntilSuccess(oc, "10s")
+			kcItem.waitUntilSuccess("10s")
 		}
 
 		g.By("Check that 10 machine configs were created")
-		verifyKcRenderedMcs(oc, allKcs)
+		renderedKcConfigsSuffix := "worker-generated-kubelet"
+		verifyRenderedMcs(oc, renderedKcConfigsSuffix, allKcs)
 
 		g.By("Create a new Kubeletconfig. The 11th one")
 		kcName := "change-maxpods-kubelet-config-11"
-		kc := KubeletConfig{name: kcName, template: kcTemplate}
-		defer kc.delete(oc)
-		kc.create(oc)
+		kc := NewKubeletConfig(oc.AsAdmin(), kcName, kcTemplate)
+		defer kc.DeleteOrFail()
+		kc.create()
 
 		g.By("Created kubeletconfigs over the limit must report a failure regarding the 10 configs limit")
 		expectedMsg := "could not get kubelet config key: max number of supported kubelet config (10) has been reached. Please delete old kubelet configs before retrying"
-		kc.waitUntilFailure(oc, expectedMsg, "10s")
+		kc.waitUntilFailure(expectedMsg, "10s")
 
 		g.By("Created kubeletconfigs inside the limit must be successful")
 		for _, kcItem := range allKcs {
-			kcItem.waitUntilSuccess(oc, "10s")
+			kcItem.waitUntilSuccess("10s")
 		}
 
 		g.By("Check that only the right machine configs were created")
-		allMcs := verifyKcRenderedMcs(oc, allKcs)
+		allMcs := verifyRenderedMcs(oc, renderedKcConfigsSuffix, allKcs)
 
 		kcCounter := 0
-		for _, line := range allMcs {
-			if strings.Contains(line, "generated-kubelet") {
+		for _, mc := range allMcs {
+			if strings.HasPrefix(mc.name, "99-"+renderedKcConfigsSuffix) {
 				kcCounter++
 			}
 		}
@@ -895,7 +894,7 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		for n := 1; n <= 10; n++ {
 			crName := fmt.Sprintf("change-ctr-cr-config-%d", n)
 			cr := NewContainerRuntimeConfig(oc.AsAdmin(), crName, crTemplate)
-			defer func() { o.Expect(cr.Delete()).NotTo(o.HaveOccurred()) }()
+			defer cr.DeleteOrFail()
 			cr.create()
 			allCrs = append(allCrs, *cr)
 			e2e.Logf("Created:\n %s", crName)
@@ -907,12 +906,13 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		}
 
 		g.By("Check that 10 machine configs were created")
-		verifyCrRenderedMcs(oc, allCrs)
+		renderedCrConfigsSuffix := "worker-generated-containerruntime"
+		verifyRenderedMcs(oc, renderedCrConfigsSuffix, allCrs)
 
 		g.By("Create a new ContainerRuntimeConfig. The 11th one")
 		crName := "change-ctr-cr-config-11"
 		cr := NewContainerRuntimeConfig(oc.AsAdmin(), crName, crTemplate)
-		defer func() { o.Expect(cr.Delete()).NotTo(o.HaveOccurred()) }()
+		defer cr.DeleteOrFail()
 		cr.create()
 
 		g.By("Created container runtime configs over the limit must report a failure regarding the 10 configs limit")
@@ -925,11 +925,11 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		}
 
 		g.By("Check that only the right machine configs were created")
-		allMcs := verifyCrRenderedMcs(oc, allCrs)
+		allMcs := verifyRenderedMcs(oc, renderedCrConfigsSuffix, allCrs)
 
 		crCounter := 0
 		for _, mc := range allMcs {
-			if strings.HasPrefix(mc.name, "99-worker-generated-containerruntime") {
+			if strings.HasPrefix(mc.name, "99-"+renderedCrConfigsSuffix) {
 				crCounter++
 			}
 		}
@@ -1434,25 +1434,15 @@ func createMcAndVerifyIgnitionVersion(oc *exutil.CLI, stepText string, mcName st
 	o.Expect(mcDataMap["message"].(string)).Should(o.ContainSubstring("One or more machine config pools are degraded, please see `oc get mcp` for further details and resolve before upgrading"))
 }
 
-func verifyKcRenderedMcs(oc *exutil.CLI, allKcs []KubeletConfig) []string {
-	renderedConfs, renderedErr := oc.AsAdmin().WithoutNamespace().Run("get").Args("mc").Output()
-	o.Expect(renderedErr).NotTo(o.HaveOccurred())
-	o.Expect(renderedConfs).NotTo(o.BeEmpty())
-	slices := strings.Split(strings.Trim(renderedConfs, "'"), " ")
-	for index := range allKcs {
-		suffix := ""
-		if index > 0 {
-			suffix = fmt.Sprintf("-%d", index)
-		}
+// verifyRenderedMcs verifies that the resources provided in the parameter "resourcesSlice" have created a 
+//       a new MachineConfig owned by those resources
+// TODO: stop using the suffixes and use the value of metadata.ownerReferences in the MC data to actually verify the rendered MCs
+//       depending on the Resources. To be done after MC refactoring
+func verifyRenderedMcs(oc *exutil.CLI, renderSuffix string, resourcesSlice interface{}) []Resource {
+	// Convert the resourceSlice interface to []Resource type
+	allRes, ok := resourcesSlice.([]Resource)
+	o.Expect(ok).NotTo(o.BeTrue(), "type []Resource must be used in verifyRenderedMcs function")
 
-		mcSubstring := "worker-generated-kubelet" + suffix
-		e2e.Logf("Machine config '%s' should exist", mcSubstring)
-		o.Expect(slices).Should(o.ContainElement(o.ContainSubstring(mcSubstring)))
-	}
-	return slices
-}
-
-func verifyCrRenderedMcs(oc *exutil.CLI, allCrs []ContainerRuntimeConfig) []Resource {
 	// TODO: Use MachineConfigList when MC code is refactored
 	allMcs, err := NewResourceList(oc.AsAdmin(), "mc").GetAll()
 	o.Expect(err).NotTo(o.HaveOccurred())
@@ -1463,18 +1453,19 @@ func verifyCrRenderedMcs(oc *exutil.CLI, allCrs []ContainerRuntimeConfig) []Reso
 		allMcNames = append(allMcNames, mc.name)
 	}
 
-	for index := range allCrs {
-		suffix := ""
+	for index := range allRes {
+		extraSuffix := ""
 		if index > 0 {
-			suffix = fmt.Sprintf("-%d", index)
+			extraSuffix = fmt.Sprintf("-%d", index)
 		}
 
-		mcSubstring := "worker-generated-containerruntime" + suffix
+		mcSubstring := renderSuffix + extraSuffix
 		e2e.Logf("Machine config '%s' should exist", mcSubstring)
 		o.Expect(allMcNames).Should(o.ContainElement(o.ContainSubstring(mcSubstring)))
 	}
 	return allMcs
 }
+
 
 func verifyDriftConfig(mcp *MachineConfigPool, rf *RemoteFile, newMode string, forceFile bool) {
 	workerNode := rf.node
