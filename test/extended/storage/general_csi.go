@@ -26,7 +26,7 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 	// OCP-44903 [CSI Driver] [Dynamic PV] [ext4] volumes should store data and allow exec of files on the volume
 	g.It("Author:pewang-High-44903-[CSI Driver] [Dynamic PV] [ext4] volumes should store data and allow exec of files on the volume", func() {
 		// Define the test scenario support provisioners
-		scenarioSupportProvisioners := []string{"ebs.csi.aws.com", "disk.csi.azure.com", "cinder.csi.openstack.org", "pd.csi.storage.gke.io", "csi.vsphere.vmware.com", "vpc.block.csi.ibm.io"}
+		scenarioSupportProvisioners := []string{"ebs.csi.aws.com", "disk.csi.azure.com", "cinder.csi.openstack.org", "pd.csi.storage.gke.io", "csi.vsphere.vmware.com", "vpc.block.csi.ibm.io", "diskplugin.csi.alibabacloud.com"}
 		// Set the resource template for the scenario
 		var (
 			storageTeamBaseDir     = exutil.FixturePath("testdata", "storage")
@@ -112,7 +112,7 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 	// [CSI Driver] [Dynamic PV] [Filesystem default] volumes should store data and allow exec of files
 	g.It("Author:pewang-Critical-24485-[CSI Driver] [Dynamic PV] [Filesystem default] volumes should store data and allow exec of files", func() {
 		// Define the test scenario support provisioners
-		scenarioSupportProvisioners := []string{"ebs.csi.aws.com", "disk.csi.azure.com", "cinder.csi.openstack.org", "pd.csi.storage.gke.io", "csi.vsphere.vmware.com", "vpc.block.csi.ibm.io"}
+		scenarioSupportProvisioners := []string{"ebs.csi.aws.com", "disk.csi.azure.com", "cinder.csi.openstack.org", "pd.csi.storage.gke.io", "csi.vsphere.vmware.com", "vpc.block.csi.ibm.io", "diskplugin.csi.alibabacloud.com"}
 		// Set the resource template for the scenario
 		var (
 			storageTeamBaseDir  = exutil.FixturePath("testdata", "storage")
@@ -156,7 +156,7 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 	// OCP-44911 -[CSI Driver] [Dynamic PV] [Filesystem] could not write into read-only volume
 	g.It("Author:pewang-High-44911-[CSI Driver] [Dynamic PV] [Filesystem] could not write into read-only volume", func() {
 		// Define the test scenario support provisioners
-		scenarioSupportProvisioners := []string{"ebs.csi.aws.com", "disk.csi.azure.com", "cinder.csi.openstack.org", "pd.csi.storage.gke.io", "csi.vsphere.vmware.com"}
+		scenarioSupportProvisioners := []string{"ebs.csi.aws.com", "disk.csi.azure.com", "cinder.csi.openstack.org", "pd.csi.storage.gke.io", "csi.vsphere.vmware.com", "diskplugin.csi.alibabacloud.com"}
 		// Set the resource template for the scenario
 		var (
 			storageTeamBaseDir  = exutil.FixturePath("testdata", "storage")
@@ -308,7 +308,7 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 	// OCP-44904 [CSI Driver] [Dynamic PV] [xfs] volumes should store data and allow exec of files on the volume
 	g.It("Author:pewang-High-44904-[CSI Driver] [Dynamic PV] [xfs] volumes should store data and allow exec of files on the volume", func() {
 		// Define the test scenario support provisioners
-		scenarioSupportProvisioners := []string{"ebs.csi.aws.com", "disk.csi.azure.com", "cinder.csi.openstack.org", "pd.csi.storage.gke.io", "csi.vsphere.vmware.com", "vpc.block.csi.ibm.io"}
+		scenarioSupportProvisioners := []string{"ebs.csi.aws.com", "disk.csi.azure.com", "cinder.csi.openstack.org", "pd.csi.storage.gke.io", "csi.vsphere.vmware.com", "vpc.block.csi.ibm.io", "diskplugin.csi.alibabacloud.com"}
 		// Set the resource template for the scenario
 		var (
 			storageTeamBaseDir     = exutil.FixturePath("testdata", "storage")
@@ -472,7 +472,7 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 	// OCP-44905 - [CSI-Driver] [Dynamic PV] [block volume] volumes should store data
 	g.It("Author:wduan-Critical-44905-[CSI-Driver] [Dynamic PV] [block volume] volumes should store data", func() {
 		// Define the test scenario support provisioners
-		scenarioSupportProvisioners := []string{"ebs.csi.aws.com", "disk.csi.azure.com", "cinder.csi.openstack.org", "pd.csi.storage.gke.io", "csi.vsphere.vmware.com", "vpc.block.csi.ibm.io"}
+		scenarioSupportProvisioners := []string{"ebs.csi.aws.com", "disk.csi.azure.com", "cinder.csi.openstack.org", "pd.csi.storage.gke.io", "csi.vsphere.vmware.com", "vpc.block.csi.ibm.io", "diskplugin.csi.alibabacloud.com"}
 		// Set the resource template for the scenario
 		var (
 			storageTeamBaseDir  = exutil.FixturePath("testdata", "storage")
@@ -879,7 +879,7 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 	// https://kubernetes.io/docs/concepts/storage/persistent-volumes/#delete
 	g.It("Author:pewang-High-44906-[CSI Driver] [Dynamic PV] [Delete reclaimPolicy] volumes should be deleted after the pvc deletion", func() {
 		// Define the test scenario support provisioners
-		scenarioSupportProvisioners := []string{"ebs.csi.aws.com", "disk.csi.azure.com", "cinder.csi.openstack.org", "pd.csi.storage.gke.io", "csi.vsphere.vmware.com", "vpc.block.csi.ibm.io"}
+		scenarioSupportProvisioners := []string{"ebs.csi.aws.com", "disk.csi.azure.com", "cinder.csi.openstack.org", "pd.csi.storage.gke.io", "csi.vsphere.vmware.com", "vpc.block.csi.ibm.io", "diskplugin.csi.alibabacloud.com"}
 		// Set the resource template for the scenario
 		var (
 			storageTeamBaseDir   = exutil.FixturePath("testdata", "storage")
@@ -1559,6 +1559,7 @@ func ResizeOnlineCommonTestSteps(oc *exutil.CLI, pvc persistentVolumeClaim, dep 
 	} else {
 		// Since fallocate doesn't support raw block write and dd cmd write big file is too slow, just check origin data intact
 		dep.checkDataBlockType(oc)
+		dep.writeDataBlockType(oc)
 	}
 }
 
