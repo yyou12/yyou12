@@ -389,18 +389,18 @@ func (subD *subscriptionDescription) getPVCSize(oc *exutil.CLI, expected string)
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
-func (subD *subscriptionDescription) getRuleStatus(oc *exutil.CLI, expected string) {
-	ruleName, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", subD.namespace, "compliancecheckresult", "-o=jsonpath={.items[0:5].metadata.name}").Output()
-	lines := strings.Fields(ruleName)
-	for _, line := range lines {
-		e2e.Logf("\n%v\n\n", line)
-		ruleStatus, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("compliancecheckresult", line, "-n", subD.namespace, "-o=jsonpath={.status}").Output()
-		if strings.Contains(ruleStatus, expected) {
-			e2e.Logf("\n%v\n\n", ruleStatus)
-			continue
+func getRuleStatus(oc *exutil.CLI, remsRule []string, expected string, scanName string, namespace string) {
+	err := wait.Poll(5*time.Second, 30*time.Second, func() (bool, error) {
+		for _, rule := range remsRule {
+			ruleStatus, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("compliancecheckresult", scanName+"-"+rule, "-n", namespace, "-o=jsonpath={.status}").Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			if strings.Compare(ruleStatus, expected) == 0 {
+				return true, nil
+			}
 		}
-		o.Expect(err).NotTo(o.HaveOccurred())
-	}
+		return false, nil
+	})
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("The rule status %s is not matching", expected))
 }
 
 func (subD *subscriptionDescription) getProfileBundleNameandStatus(oc *exutil.CLI, pbName string, status string) {
@@ -902,4 +902,22 @@ func checkMetric(oc *exutil.CLI, metricString []string, namespace string, operat
 		return true, nil
 	})
 	exutil.AssertWaitPollNoErr(err, "The string does not contain in compliance operator matrics")
+}
+
+func getRemRuleStatus(oc *exutil.CLI, suiteName string, expected string, namespace string) {
+	err := wait.Poll(5*time.Second, 30*time.Second, func() (bool, error) {
+		remsRules, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("complianceremediations", "--no-headers", "-lcompliance.openshift.io/suite="+suiteName, "-n", namespace).OutputToFile(getRandomString() + "remrules.json")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		result, _ := exec.Command("bash", "-c", "cat "+remsRules+" | grep -v -e protect-kernel-defaults; rm -rf "+remsRules).Output()
+		remsRule := strings.Fields(string(result))
+		for _, rule := range remsRule {
+			ruleStatus, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("compliancecheckresult", rule, "-n", namespace, "-o=jsonpath={.status}").Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			if strings.Compare(ruleStatus, expected) == 0 {
+				return true, nil
+			}
+		}
+		return false, nil
+	})
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("The remsRule status %s is not matching", expected))
 }
