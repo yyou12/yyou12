@@ -940,9 +940,7 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 	// https://kubernetes.io/docs/concepts/storage/persistent-volumes/#retain
 	g.It("Author:pewang-High-44907-[CSI Driver] [Dynamic PV] [Retain reclaimPolicy] [Static PV] volumes could be re-used after the pvc/pv deletion", func() {
 		// Define the test scenario support provisioners
-		// scenarioSupportProvisioners := []string{"ebs.csi.aws.com", "disk.csi.azure.com", "cinder.csi.openstack.org", "pd.csi.storage.gke.io", "csi.vsphere.vmware.com", "vpc.block.csi.ibm.io"}
-		// Tempfix: As IBMCloud known issue(https://bugzilla.redhat.com/show_bug.cgi?id=2044248), temporarily removed "vpc.block.csi.ibm.io"
-		scenarioSupportProvisioners := []string{"ebs.csi.aws.com", "disk.csi.azure.com", "cinder.csi.openstack.org", "pd.csi.storage.gke.io", "csi.vsphere.vmware.com"}
+		scenarioSupportProvisioners := []string{"ebs.csi.aws.com", "disk.csi.azure.com", "cinder.csi.openstack.org", "pd.csi.storage.gke.io", "csi.vsphere.vmware.com", "vpc.block.csi.ibm.io"}
 		// Set the resource template for the scenario
 		var (
 			storageTeamBaseDir   = exutil.FixturePath("testdata", "storage")
