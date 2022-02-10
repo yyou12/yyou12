@@ -978,6 +978,13 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
 		output, err = operatorsdkCLI.Run("scorecard").Args("/tmp/ocp-43973/memcached-operator/bundle", "-c", "/tmp/ocp-43973/memcached-operator/bundle/tests/scorecard/config.yaml", "-w", "60s", "--selector=test=olm-status-descriptors-test", "-n", oc.Namespace()).Output()
 		o.Expect(output).To(o.ContainSubstring("State: fail"))
 		o.Expect(output).To(o.ContainSubstring("memcacheds.cache.example.com does not have a status descriptor"))
+
+		//ocp-48630
+		g.By("scorecard proxy container port should be configurable")
+		exec.Command("bash", "-c", "sed -i '$a\\proxy-port: 9001' /tmp/ocp-43973/memcached-operator/bundle/tests/scorecard/config.yaml").Output()
+		output, err = operatorsdkCLI.Run("scorecard").Args("/tmp/ocp-43973/memcached-operator/bundle", "-c", "/tmp/ocp-43973/memcached-operator/bundle/tests/scorecard/config.yaml", "-w", "60s", "--selector=test=olm-bundle-validation-test", "-n", oc.Namespace()).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring("State: pass"))
 	})
 	// author: chuo@redhat.com
 	g.It("ConnectedOnly-Author:chuo-High-31219-scorecard bundle is mandatory ", func() {
