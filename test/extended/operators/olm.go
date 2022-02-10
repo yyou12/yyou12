@@ -8483,17 +8483,22 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle to support", func
 		if !strings.Contains(output, "AWS") {
 			g.Skip("Skip for non-supported platform")
 		}
-		g.By("make all worker nodes as unschedulable")
-		nodeName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("nodes", "--selector=node-role.kubernetes.io/worker=", "-o=jsonpath={.items[*].metadata.name}").Output()
+		catalogs := []string{"certified-operators", "community-operators", "redhat-marketplace", "redhat-operators"}
+		output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("catsrc", "-n", "openshift-marketplace").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
-		e2e.Logf("Node Names are %v", nodeName)
-		node := strings.Fields(nodeName)
-
-		defer func() {
-			for _, nodeIndex := range node {
-				oc.AsAdmin().WithoutNamespace().Run("adm").Args("uncordon", fmt.Sprintf("%s", nodeIndex)).Execute()
+		for _, catsrc := range catalogs {
+			if !strings.Contains(output, catsrc) {
+				e2e.Logf("cannot get catsrc %s", catsrc)
+				g.Skip("Not all default catalogsources are installed")
 			}
-			err = wait.Poll(10*time.Second, 60*time.Second, func() (bool, error) {
+		}
+
+		g.By("modify nodeSelector of all default catalogsources")
+		defer func() {
+			for _, catsrc := range catalogs {
+				patchResource(oc, asAdmin, withoutNamespace, "-n", "openshift-marketplace", "catsrc", catsrc, "-p", "[{\"op\":\"remove\", \"path\":/spec/grpcPodConfig/nodeSelector/fake43642}]", "--type=json")
+			}
+			err := wait.Poll(10*time.Second, 60*time.Second, func() (bool, error) {
 				catalogstrings := []string{"Certified Operators", "Community Operators", "Red Hat Operators", "Red Hat Marketplace"}
 				output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("packagemanifests").Output()
 				o.Expect(err).NotTo(o.HaveOccurred())
@@ -8509,16 +8514,8 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle to support", func
 			exutil.AssertWaitPollNoErr(err, "cannot get packagemanifests for Certified Operators, Community Operators, Red Hat Operators and Red Hat Marketplace")
 		}()
 
-		for _, nodeIndex := range node {
-			err = oc.AsAdmin().WithoutNamespace().Run("adm").Args("cordon", fmt.Sprintf("%s", nodeIndex)).Execute()
-			o.Expect(err).NotTo(o.HaveOccurred())
-		}
-
-		g.By("delete default catsrc certified-operators community-operators redhat-marketplace redhat-operators")
-		catalogs := []string{"certified-operators", "community-operators", "redhat-marketplace", "redhat-operators"}
-		for _, catalog := range catalogs {
-			err = oc.AsAdmin().WithoutNamespace().Run("delete").Args("catsrc", catalog, "-n", "openshift-marketplace").Execute()
-			o.Expect(err).NotTo(o.HaveOccurred())
+		for _, catsrc := range catalogs {
+			patchResource(oc, asAdmin, withoutNamespace, "-n", "openshift-marketplace", "catsrc", catsrc, "-p", "{\"spec\":{\"grpcPodConfig\":{\"nodeSelector\":{\"fake43642\":\"fake\"}}}}", "--type=merge")
 		}
 
 		g.By("check alert has been raised")
