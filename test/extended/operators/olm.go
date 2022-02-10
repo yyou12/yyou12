@@ -2205,7 +2205,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	})
 
 	// author: jiazha@redhat.com
-	g.It("Author:jiazha-Critical-22070-support grpc sourcetype [Serial]", func() {
+	g.It("ConnectedOnly-Author:jiazha-Critical-22070-support grpc sourcetype [Serial]", func() {
 		buildPruningBaseDir := exutil.FixturePath("testdata", "olm")
 		csTemplate := filepath.Join(buildPruningBaseDir, "catalogsource-image.yaml")
 		subTemplate := filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
