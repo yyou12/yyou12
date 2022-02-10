@@ -1671,7 +1671,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	})
 
 	// author: bandrade@redhat.com
-	g.It("Author:bandrade-Medium-43073-Indicate dependency class in resolution constraint text", func() {
+	g.It("ConnectedOnly-Author:bandrade-Medium-43073-Indicate dependency class in resolution constraint text", func() {
 
 		oc.SetupProject()
 		dr := make(describerResrouce)
@@ -3103,7 +3103,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	})
 
 	// author: scolange@redhat.com
-	g.It("Author:scolange-Medium-24586-Prevent Operator Conflicts in OperatorHub", func() {
+	g.It("ConnectedOnly-Author:scolange-Medium-24586-Prevent Operator Conflicts in OperatorHub", func() {
 
 		var (
 			itName              = g.CurrentGinkgoTestDescription().TestText
@@ -7782,7 +7782,7 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 	})
 
 	// author: tbuskey@redhat.com, test case OCP-43291
-	g.It("Author:xzha-High-43291-Indicate resolution conflicts on involved Subscription statuses [Flaky]", func() {
+	g.It("ConnectedOnly-Author:xzha-High-43291-Indicate resolution conflicts on involved Subscription statuses [Flaky]", func() {
 		var (
 			itName              = g.CurrentGinkgoTestDescription().TestText
 			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
