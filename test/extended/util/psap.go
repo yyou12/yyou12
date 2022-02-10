@@ -8,7 +8,6 @@ import (
 	"time"
 
 	o "github.com/onsi/gomega"
-	exutil "github.com/openshift/openshift-tests/test/extended/util"
 	"k8s.io/apimachinery/pkg/util/wait"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 )
@@ -283,7 +282,7 @@ func AssertOprPodLogsbyFilterWithDuration(oc *CLI, podName string, namespace str
 				return false, nil
 			}
 		})
-		exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("the pod of %v is not running", podName))
+		AssertWaitPollNoErr(waitErr, fmt.Sprintf("the pod of %v is not running", podName))
 	}
 }
 

@@ -8,8 +8,8 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/openshift/openshift-tests/test/extended/testdata"
-	exutil "github.com/openshift/openshift-tests/test/extended/util"
+	"github.com/openshift/openshift-tests-private/test/extended/testdata"
+	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
 )
 
 const (

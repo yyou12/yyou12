@@ -14,7 +14,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/openshift/openshift-tests/pkg/monitor"
+	"github.com/openshift/openshift-tests-private/pkg/monitor"
 
 	"github.com/onsi/ginkgo/config"
 )

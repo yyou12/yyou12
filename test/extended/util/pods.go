@@ -6,8 +6,6 @@ import (
 	"strings"
 	"time"
 
-	exutil "github.com/openshift/openshift-tests/test/extended/util"
-
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kutilerrors "k8s.io/apimachinery/pkg/util/errors"
@@ -127,7 +125,7 @@ func WaitAndGetSpecificPodLogs(oc *CLI, namespace string, container string, podN
 			}
 			return false, nil
 		})
-		exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("Pod logs does not contain %s", filter))
+		AssertWaitPollNoErr(waitErr, fmt.Sprintf("Pod logs does not contain %s", filter))
 	}
 	return logs, err
 }
@@ -171,7 +169,7 @@ func AssertPodToBeReady(oc *CLI, podName string, namespace string) {
 		}
 		return false, nil
 	})
-	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("Pod %s status is not ready!", podName))
+	AssertWaitPollNoErr(err, fmt.Sprintf("Pod %s status is not ready!", podName))
 }
 
 // GetSpecificPodLogs returns the pod logs by the specific filter

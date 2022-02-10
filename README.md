@@ -51,7 +51,7 @@ $ git push <Your Name> <Branch Name>:<Branch Name>
 And then there will be a prompt in your Github repo console to open a PR, click it to do so.
 
 ### Run the automation test case
-The binary finds the test case via searching for the test case title. It searches the test case titles by RE (`Regular Expression`). So, you can filter your test cases by using `grep`. Such as, if I want to run all [OLM test cases](https://github.com/openshift/openshift-tests/blob/master/test/extended/operators/olm.go#L21), and all of them contain the `OLM` letter, I can use the `grep OLM` to filter them, as follows: 
+The binary finds the test case via searching for the test case title. It searches the test case titles by RE (`Regular Expression`). So, you can filter your test cases by using `grep`. Such as, if I want to run all [OLM test cases](https://github.com/openshift/openshift-tests-private/blob/master/test/extended/operators/olm.go#L21), and all of them contain the `OLM` letter, I can use the `grep OLM` to filter them, as follows: 
 ```console
 $ ./bin/extended-platform-tests run all --dry-run | grep "OLM" | ./bin/extended-platform-tests run -f -
 I0624 22:48:36.599578 2404223 test_context.go:419] Tolerating taints "node-role.kubernetes.io/master" when considering if nodes are ready

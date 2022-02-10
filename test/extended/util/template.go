@@ -5,7 +5,6 @@ import (
 	"math/rand"
 	"time"
 
-	exutil "github.com/openshift/openshift-tests/test/extended/util"
 	"k8s.io/apimachinery/pkg/util/wait"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 )
@@ -49,7 +48,7 @@ func resourceFromTemplate(oc *CLI, create bool, namespace string, parameters ...
 		configFile = stdout
 		return true, nil
 	})
-	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("fail to process %v", parameters))
+	AssertWaitPollNoErr(err, fmt.Sprintf("fail to process %v", parameters))
 
 	e2e.Logf("the file of resource is %s", configFile)
 
@@ -67,7 +66,7 @@ func resourceFromTemplate(oc *CLI, create bool, namespace string, parameters ...
 			resourceErr = oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", configFile).Execute()
 		}
 	}
-	exutil.AssertWaitPollNoErr(resourceErr, fmt.Sprintf("fail to create/apply resource %v", resourceErr))
+	AssertWaitPollNoErr(resourceErr, fmt.Sprintf("fail to create/apply resource %v", resourceErr))
 }
 
 func GetRandomString() string {
