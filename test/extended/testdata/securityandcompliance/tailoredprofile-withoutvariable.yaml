@@ -10,25 +10,31 @@ objects:
     namespace: "${NAMESPACE}"
   spec:
     extends: "${EXTENDS}"
-    title: My little profile
-    description: cis profile rules
+    title: "${TITLE}"
+    description: "${DISCRIPTION}"
     enableRules:
       - name: "${ENRULENAME1}"
-        rationale: testing this
+        rationale: "${RATIONALE1}"
       - name: "${ENRULENAME2}"
-        rationale: testing this
+        rationale: "${RATIONALE2}"
     disableRules:
       - name: "${DISRULENAME1}"
-        rationale: testing this
+        rationale: "${DRATIONALE1}"
       - name: "${DISRULENAME2}"
-        rationale: testing this
+        rationale: "${DRATIONALE1}"
 
 parameters:
 - name: NAME
 - name: NAMESPACE  
 - name: EXTENDS
+- name: TITLE
+- name: DISCRIPTION
 - name: ENRULENAME1
+- name: RATIONALE1
 - name: ENRULENAME2
+- name: RATIONALE2
 - name: DISRULENAME1
+- name: DRATIONALE1
 - name: DISRULENAME2
+- name: DRATIONALE2
 

@@ -86,10 +86,16 @@ type tailoredProfileWithoutVarDescription struct {
 	name         string
 	namespace    string
 	extends      string
+	title        string
+	description  string
 	enrulename1  string
+	rationale1   string
 	enrulename2  string
+	rationale2   string
 	disrulename1 string
+	drationale1  string
 	disrulename2 string
+	drationale2  string
 	template     string
 }
 
@@ -201,8 +207,9 @@ func (tprofile *tailoredProfileDescription) delete(itName string, dr describerRe
 
 func (tprofile *tailoredProfileWithoutVarDescription) create(oc *exutil.CLI, itName string, dr describerResrouce) {
 	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", tprofile.template, "-p", "NAME="+tprofile.name, "NAMESPACE="+tprofile.namespace,
-		"EXTENDS="+tprofile.extends, "ENRULENAME1="+tprofile.enrulename1, "ENRULENAME2="+tprofile.enrulename2, "DISRULENAME1="+tprofile.disrulename1,
-		"DISRULENAME2="+tprofile.disrulename2)
+		"EXTENDS="+tprofile.extends, "TITLE="+tprofile.title, "DISCRIPTION="+tprofile.description, "ENRULENAME1="+tprofile.enrulename1, "RATIONALE1="+tprofile.rationale1,
+		"ENRULENAME2="+tprofile.enrulename2, "RATIONALE2="+tprofile.rationale2, "DISRULENAME1="+tprofile.disrulename1, "DRATIONALE1="+tprofile.drationale1,
+		"DISRULENAME2="+tprofile.disrulename2, "DRATIONALE2="+tprofile.drationale2)
 	o.Expect(err).NotTo(o.HaveOccurred())
 	dr.getIr(itName).add(newResource(oc, "tailoredprofile", tprofile.name, requireNS, tprofile.namespace))
 }

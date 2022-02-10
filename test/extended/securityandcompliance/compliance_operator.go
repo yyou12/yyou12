@@ -53,6 +53,9 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		consoleNotificationYAML          string
 		networkPolicyYAML                string
 		machineConfigPoolYAML            string
+		prometheusAuditRuleYAML          string
+		wordpressRouteYAML               string
+		resourceQuotaYAML                string
 		catSrc                           catalogSourceDescription
 		ogD                              operatorGroupDescription
 		subD                             subscriptionDescription
@@ -95,7 +98,9 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		consoleNotificationYAML = filepath.Join(buildPruningBaseDir, "consolenotification.yaml")
 		networkPolicyYAML = filepath.Join(buildPruningBaseDir, "network-policy.yaml")
 		machineConfigPoolYAML = filepath.Join(buildPruningBaseDir, "machineConfigPool.yaml")
-
+		prometheusAuditRuleYAML = filepath.Join(buildPruningBaseDir, "prometheus-audit.yaml")
+		wordpressRouteYAML = filepath.Join(buildPruningBaseDir, "wordpress-route.yaml")
+		resourceQuotaYAML = filepath.Join(buildPruningBaseDir, "resource-quota.yaml")
 		catSrc = catalogSourceDescription{
 			name:        "compliance-operator",
 			namespace:   "",
@@ -1966,10 +1971,16 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 					name:         "ocp4-cis-custom",
 					namespace:    "",
 					extends:      "ocp4-cis",
+					title:        "My little profile",
+					description:  "cis profile rules",
 					enrulename1:  "ocp4-scc-limit-root-containers",
+					rationale1:   "None",
 					enrulename2:  "ocp4-scheduler-no-bind-address",
+					rationale2:   "Platform",
 					disrulename1: "ocp4-api-server-encryption-provider-cipher",
+					drationale1:  "Platform",
 					disrulename2: "ocp4-scc-drop-container-capabilities",
+					drationale2:  "None",
 					template:     tprofileWithoutVarTemplate,
 				}
 				ss = scanSettingDescription{
@@ -4031,6 +4042,277 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 				"ocp4-cis-node-wrscan-kubelet-enable-protect-kernel-defaults", "-n", ssbCis.namespace, "-o=jsonpath={.status}"}).check(oc)
 			newCheck("expect", asAdmin, withoutNamespace, contain, "PASS", ok, []string{"compliancecheckresult",
 				"ocp4-pci-dss-node-wrscan-kubelet-enable-protect-kernel-defaults", "-n", ssbCis.namespace, "-o=jsonpath={.status}"}).check(oc)
+		})
+
+		// author: pdhamdhe@redhat.com
+		g.It("Author:pdhamdhe-Longduration-CPaasrunOnly-NonPreRelease-High-47147-Check rules work if all non-openshift namespaces has resourcequota and route rate limit [Disruptive][Slow]", func() {
+			var (
+				ssb = scanSettingBindingDescription{
+					name:            "moderate-test",
+					namespace:       "",
+					profilekind1:    "Profile",
+					profilename1:    "ocp4-moderate",
+					scansettingname: "default",
+					template:        scansettingbindingSingleTemplate,
+				}
+				itName = g.CurrentGinkgoTestDescription().TestText
+			)
+
+			defer func() {
+				g.By("Remove route and resourcequota objects from all non-control plane namespace.. !!!\n")
+				cleanupObjects(oc, objectTableRef{"scansettingbinding", subD.namespace, ssb.name})
+				nsName := "ns-47147-1"
+				cleanupObjects(oc, objectTableRef{"route", nsName, "wordpress"})
+				cleanupObjects(oc, objectTableRef{"ns", nsName, nsName})
+				newCheck("expect", asAdmin, withoutNamespace, contain, "wordpress", nok, []string{"route", "-n", nsName, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
+				nonControlNamespacesList := getNonControlNamespaces(oc, "Active")
+				for _, v := range nonControlNamespacesList {
+					cleanupObjects(oc, objectTableRef{"resourcequota", v, "example"})
+					newCheck("expect", asAdmin, withoutNamespace, contain, "example", nok, []string{"resourcequota", "-n", v, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
+				}
+			}()
+
+			g.By("Check for default profile 'ocp4-moderate' .. !!!\n")
+			subD.getProfileName(oc, "ocp4-moderate")
+
+			g.By("Create route in non-control namespace .. !!!\n")
+			nsName := "ns-47147-1"
+			_, err := oc.AsAdmin().WithoutNamespace().Run("create").Args("ns", nsName).Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			_, err1 := oc.AsAdmin().WithoutNamespace().Run("create").Args("-n", nsName, "-f", wordpressRouteYAML).Output()
+			o.Expect(err1).NotTo(o.HaveOccurred())
+			newCheck("expect", asAdmin, withoutNamespace, contain, "wordpress", ok, []string{"route", "-n", nsName, "-o=jsonpath={.items[*].metadata.name}"}).check(oc)
+
+			g.By("Create scansettingbinding !!!\n")
+			ssb.namespace = subD.namespace
+			ssb.create(oc, itName, dr)
+			newCheck("expect", asAdmin, withoutNamespace, contain, ssb.name, ok, []string{"scansettingbinding", "-n", ssb.namespace,
+				"-o=jsonpath={.items[0].metadata.name}"}).check(oc)
+			g.By("Check ComplianceSuite status and result.. !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", ssb.name, "-n", ssb.namespace,
+				"-o=jsonpath={.status.phase}"}).check(oc)
+			subD.complianceSuiteResult(oc, ssb.name, "NON-COMPLIANT")
+
+			g.By("Verify rules status through compliancecheck result.. !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "FAIL", ok, []string{"compliancecheckresult",
+				"ocp4-moderate-resource-requests-quota", "-n", ssb.namespace, "-o=jsonpath={.status}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "FAIL", ok, []string{"compliancecheckresult",
+				"ocp4-moderate-routes-rate-limit", "-n", ssb.namespace, "-o=jsonpath={.status}"}).check(oc)
+
+			g.By("Annotate route in non-control namespace.. !!!\n")
+			_, err2 := oc.AsAdmin().WithoutNamespace().Run("annotate").Args("-n", nsName, "route", "wordpress", "haproxy.router.openshift.io/rate-limit-connections=true").Output()
+			o.Expect(err2).NotTo(o.HaveOccurred())
+
+			nonControlNamespacesTerList1 := getNonControlNamespaces(oc, "Terminating")
+			if len(nonControlNamespacesTerList1) == 0 {
+				nonControlNamespacesList := getNonControlNamespaces(oc, "Active")
+				e2e.Logf("Here namespace : %v\n", nonControlNamespacesList)
+				g.By("Create resourcequota in all non-control plane namespace .. !!!\n")
+				for _, v := range nonControlNamespacesList {
+					_, err := oc.AsAdmin().WithoutNamespace().Run("create").Args("-n", v, "-f", resourceQuotaYAML).Output()
+					o.Expect(err).NotTo(o.HaveOccurred())
+					newCheck("expect", asAdmin, withoutNamespace, contain, "example", ok, []string{"resourcequota", "-n", v,
+						"-o=jsonpath={.items[*].metadata.name}"}).check(oc)
+				}
+			}
+
+			g.By("Rerun scan using oc-compliance plugin.. !!!\n")
+			_, err3 := OcComplianceCLI().Run("rerun-now").Args("compliancesuite", ssb.name, "-n", ssb.namespace).Output()
+			o.Expect(err3).NotTo(o.HaveOccurred())
+			newCheck("expect", asAdmin, withoutNamespace, contain, ssb.name, ok, []string{"scansettingbinding", "-n", ssb.namespace,
+				"-o=jsonpath={.items[0].metadata.name}"}).check(oc)
+			g.By("Check ComplianceSuite status and result.. !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", ssb.name, "-n", ssb.namespace,
+				"-o=jsonpath={.status.phase}"}).check(oc)
+			subD.complianceSuiteResult(oc, ssb.name, "NON-COMPLIANT")
+
+			g.By("Verify rules status through compliancecheck result.. !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "PASS", ok, []string{"compliancecheckresult",
+				"ocp4-moderate-resource-requests-quota", "-n", ssb.namespace, "-o=jsonpath={.status}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "PASS", ok, []string{"compliancecheckresult",
+				"ocp4-moderate-routes-rate-limit", "-n", ssb.namespace, "-o=jsonpath={.status}"}).check(oc)
+		})
+
+		// author: pdhamdhe@redhat.com
+		g.It("Author:pdhamdhe-Medium-47173-Verify the rule that check for API Server audit error alerts [Slow]", func() {
+			var (
+				ssb = scanSettingBindingDescription{
+					name:            "ocp4-moderate-test",
+					namespace:       "",
+					profilekind1:    "Profile",
+					profilename1:    "ocp4-moderate",
+					scansettingname: "default",
+					template:        scansettingbindingSingleTemplate,
+				}
+				itName = g.CurrentGinkgoTestDescription().TestText
+			)
+
+			defer cleanupObjects(oc, objectTableRef{"scansettingbinding", subD.namespace, ssb.name})
+
+			g.By("Check for default profile 'ocp4-moderate' .. !!!\n")
+			subD.getProfileName(oc, "ocp4-moderate")
+
+			g.By("Create scansettingbinding !!!\n")
+			ssb.namespace = subD.namespace
+			ssb.create(oc, itName, dr)
+			newCheck("expect", asAdmin, withoutNamespace, contain, ssb.name, ok, []string{"scansettingbinding", "-n", ssb.namespace,
+				"-o=jsonpath={.items[0].metadata.name}"}).check(oc)
+			g.By("Check ComplianceSuite status and result.. !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", ssb.name, "-n", ssb.namespace,
+				"-o=jsonpath={.status.phase}"}).check(oc)
+			subD.complianceSuiteResult(oc, ssb.name, "NON-COMPLIANT")
+
+			g.By("Check if audit prometheusrules is already available.. !!!\n")
+			prometheusrules, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("prometheusrules", "-n", "openshift-kube-apiserver", "-ojsonpath={.items[*].metadata.name}").Output()
+			if strings.Contains(prometheusrules, "audit-errors") {
+				newCheck("expect", asAdmin, withoutNamespace, contain, "audit-errors", ok, []string{"prometheusrules", "-n", "openshift-kube-apiserver",
+					"-ojsonpath={.items[*].metadata.name}"}).check(oc)
+				g.By("Verify audit rule status through compliancecheck result.. !!!\n")
+				newCheck("expect", asAdmin, withoutNamespace, contain, "PASS", ok, []string{"compliancecheckresult",
+					"ocp4-moderate-audit-error-alert-exists", "-n", ssb.namespace, "-o=jsonpath={.status}"}).check(oc)
+			} else {
+				g.By("Verify audit rule status through compliancecheck result.. !!!\n")
+				newCheck("expect", asAdmin, withoutNamespace, contain, "FAIL", ok, []string{"compliancecheckresult",
+					"ocp4-moderate-audit-error-alert-exists", "-n", ssb.namespace, "-o=jsonpath={.status}"}).check(oc)
+				g.By("Create the prometheusrules for audit.. !!!\n")
+				_, err := oc.AsAdmin().WithoutNamespace().Run("create").Args("-n", "openshift-kube-apiserver", "-f", prometheusAuditRuleYAML).Output()
+				o.Expect(err).NotTo(o.HaveOccurred())
+				newCheck("expect", asAdmin, withoutNamespace, contain, "audit-errors", ok, []string{"prometheusrules", "-n", "openshift-kube-apiserver",
+					"-ojsonpath={.items[*].metadata.name}"}).check(oc)
+				defer cleanupObjects(oc, objectTableRef{"prometheusrules", "openshift-kube-apiserver", "audit-errors"})
+
+				g.By("Rerun scan using oc-compliance plugin.. !!!\n")
+				_, err1 := OcComplianceCLI().Run("rerun-now").Args("compliancesuite", ssb.name, "-n", ssb.namespace).Output()
+				o.Expect(err1).NotTo(o.HaveOccurred())
+				newCheck("expect", asAdmin, withoutNamespace, contain, ssb.name, ok, []string{"scansettingbinding", "-n", ssb.namespace,
+					"-o=jsonpath={.items[0].metadata.name}"}).check(oc)
+				g.By("Check ComplianceSuite status and result.. !!!\n")
+				newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", ssb.name, "-n", ssb.namespace,
+					"-o=jsonpath={.status.phase}"}).check(oc)
+				subD.complianceSuiteResult(oc, ssb.name, "NON-COMPLIANT")
+				g.By("Verify audit rule status through compliancecheck result.. !!!\n")
+				newCheck("expect", asAdmin, withoutNamespace, contain, "PASS", ok, []string{"compliancecheckresult",
+					"ocp4-moderate-audit-error-alert-exists", "-n", ssb.namespace, "-o=jsonpath={.status}"}).check(oc)
+			}
+		})
+
+		// author: pdhamdhe@redhat.com
+		g.It("Author:pdhamdhe-Medium-47373-Low-47371-Enable TailoredProfiles without extending a Profile and also validate that title and description [Slow]", func() {
+			var (
+				tprofileDN = tailoredProfileWithoutVarDescription{
+					name:         "new-profile-node",
+					namespace:    "",
+					extends:      "",
+					title:        "new profile with node rules from scratch",
+					description:  "new profile with node rules",
+					enrulename1:  "ocp4-file-groupowner-cni-conf",
+					rationale1:   "Node",
+					enrulename2:  "ocp4-accounts-restrict-service-account-tokens",
+					rationale2:   "None",
+					disrulename1: "ocp4-file-groupowner-etcd-data-dir",
+					drationale1:  "Node",
+					disrulename2: "ocp4-accounts-unique-service-account",
+					drationale2:  "None",
+					template:     tprofileWithoutVarTemplate,
+				}
+				tprofileDP = tailoredProfileWithoutVarDescription{
+					name:         "new-profile-platform",
+					namespace:    "",
+					extends:      "",
+					title:        "new profile with platform rules from scratch",
+					description:  "new profile with platform rules",
+					enrulename1:  "ocp4-api-server-admission-control-plugin-alwaysadmit",
+					rationale1:   "Platform",
+					enrulename2:  "ocp4-accounts-restrict-service-account-tokens",
+					rationale2:   "None",
+					disrulename1: "ocp4-api-server-admission-control-plugin-alwayspullimages",
+					drationale1:  "Platform",
+					disrulename2: "ocp4-configure-network-policies",
+					drationale2:  "None",
+					template:     tprofileWithoutVarTemplate,
+				}
+				tprofileDNP = tailoredProfileWithoutVarDescription{
+					name:         "new-profile-both",
+					namespace:    "",
+					extends:      "",
+					title:        "new profile with both checktype rules from scratch",
+					description:  "new profile with both checkType rules",
+					enrulename1:  "ocp4-file-groupowner-cni-conf",
+					rationale1:   "Node",
+					enrulename2:  "ocp4-api-server-admission-control-plugin-alwayspullimages",
+					rationale2:   "Platform",
+					disrulename1: "ocp4-file-groupowner-etcd-data-dir",
+					drationale1:  "Node",
+					disrulename2: "ocp4-api-server-admission-control-plugin-alwaysadmit",
+					drationale2:  "Platform",
+					template:     tprofileWithoutVarTemplate,
+				}
+				ssbN = scanSettingBindingDescription{
+					name:            "tailor-profile-node",
+					namespace:       "",
+					profilekind1:    "TailoredProfile",
+					profilename1:    "new-profile-node",
+					scansettingname: "default",
+					template:        scansettingbindingSingleTemplate,
+				}
+				ssbP = scanSettingBindingDescription{
+					name:            "tailor-profile-platform",
+					namespace:       "",
+					profilekind1:    "TailoredProfile",
+					profilename1:    "new-profile-platform",
+					scansettingname: "default",
+					template:        scansettingbindingSingleTemplate,
+				}
+				itName = g.CurrentGinkgoTestDescription().TestText
+			)
+			var errmsg = "Rule 'ocp4-api-server-admission-control-plugin-alwayspullimages' with type 'Platform' didn't match expected type: Node"
+			defer func() {
+				cleanupObjects(oc, objectTableRef{"scansettingbinding", subD.namespace, ssbN.name})
+				cleanupObjects(oc, objectTableRef{"scansettingbinding", subD.namespace, ssbP.name})
+				cleanupObjects(oc, objectTableRef{"tailoredprofile", subD.namespace, tprofileDN.name})
+				cleanupObjects(oc, objectTableRef{"tailoredprofile", subD.namespace, tprofileDP.name})
+				cleanupObjects(oc, objectTableRef{"tailoredprofile", subD.namespace, tprofileDNP.name})
+			}()
+
+			g.By("Create tailoredprofiles !!!\n")
+			tprofileDN.namespace = subD.namespace
+			tprofileDP.namespace = subD.namespace
+			tprofileDNP.namespace = subD.namespace
+			tprofileDN.create(oc, itName, dr)
+			tprofileDP.create(oc, itName, dr)
+			tprofileDNP.create(oc, itName, dr)
+			subD.getTailoredProfileNameandStatus(oc, tprofileDN.name)
+			subD.getTailoredProfileNameandStatus(oc, tprofileDP.name)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "ERROR", ok, []string{"tailoredprofile", tprofileDNP.name, "-n", tprofileDNP.namespace,
+				"-o=jsonpath={.status.state}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, errmsg, ok, []string{"tailoredprofile", tprofileDNP.name, "-n", tprofileDNP.namespace,
+				"-o=jsonpath={.status.errorMessage}"}).check(oc)
+
+			g.By("Create scansettingbindings !!!\n")
+			ssbN.namespace = subD.namespace
+			ssbP.namespace = subD.namespace
+			ssbN.create(oc, itName, dr)
+			ssbP.create(oc, itName, dr)
+			newCheck("expect", asAdmin, withoutNamespace, contain, ssbN.name, ok, []string{"scansettingbinding", "-n", ssbN.namespace,
+				"-o=jsonpath={.items[*].metadata.name}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, ssbP.name, ok, []string{"scansettingbinding", "-n", ssbP.namespace,
+				"-o=jsonpath={.items[*].metadata.name}"}).check(oc)
+
+			g.By("Check ComplianceSuite status !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", ssbN.name, "-n", ssbN.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+			g.By("Check complianceSuite name and result.. !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "DONE", ok, []string{"compliancesuite", ssbP.name, "-n", ssbP.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+			g.By("Check complianceSuite name and result.. !!!\n")
+			subD.complianceSuiteResult(oc, ssbN.name, "COMPLIANT")
+			subD.complianceSuiteResult(oc, ssbP.name, "COMPLIANT")
+
+			g.By("Verify the rule status through compliancecheckresult... !!!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "PASS", ok, []string{"compliancecheckresult",
+				"new-profile-node-master-file-groupowner-cni-conf", "-n", ssbN.namespace, "-o=jsonpath={.status}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "MANUAL", ok, []string{"compliancecheckresult",
+				"new-profile-node-worker-accounts-restrict-service-account-tokens", "-n", ssbN.namespace, "-o=jsonpath={.status}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "PASS", ok, []string{"compliancecheckresult",
+				"new-profile-platform-api-server-admission-control-plugin-alwaysadmit", "-n", ssbP.namespace, "-o=jsonpath={.status}"}).check(oc)
 		})
 	})
 })
