@@ -414,9 +414,9 @@ func checkIpStackType(oc *exutil.CLI) string {
 
 func installSctpModule(oc *exutil.CLI, configFile string) {
 	status, _ := oc.AsAdmin().Run("get").Args("machineconfigs").Output()
-        if !strings.Contains(status, "load-sctp-module") {
-	    err := oc.WithoutNamespace().AsAdmin().Run("create").Args("-f", configFile).Execute()
-	    o.Expect(err).NotTo(o.HaveOccurred())
+	if !strings.Contains(status, "load-sctp-module") {
+		err := oc.WithoutNamespace().AsAdmin().Run("create").Args("-f", configFile).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
 	}
 }
 
@@ -436,14 +436,14 @@ func checkSctpModule(oc *exutil.CLI, nodeName string) {
 	exutil.AssertWaitPollNoErr(err, "stcp module is installed in the nodes")
 }
 
-func getPodIPv4(oc *exutil.CLI, namespace string, podName string) (string) {
+func getPodIPv4(oc *exutil.CLI, namespace string, podName string) string {
 	podIPv4, err := oc.WithoutNamespace().Run("get").Args("pod", "-n", namespace, podName, "-o=jsonpath={.status.podIPs[0].ip}").Output()
 	o.Expect(err).NotTo(o.HaveOccurred())
 	e2e.Logf("The pod  %s IP in namespace %s is %q", podName, namespace, podIPv4)
 	return podIPv4
 }
 
-func getPodIPv6(oc *exutil.CLI, namespace string, podName string, ipStack string) (string) {
+func getPodIPv6(oc *exutil.CLI, namespace string, podName string, ipStack string) string {
 	if ipStack == "ipv6single" {
 		podIPv6, err := oc.WithoutNamespace().Run("get").Args("pod", "-n", namespace, podName, "-o=jsonpath={.status.podIPs[0].ip}").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -453,7 +453,7 @@ func getPodIPv6(oc *exutil.CLI, namespace string, podName string, ipStack string
 		podIPv6, err := oc.WithoutNamespace().Run("get").Args("pod", "-n", namespace, podName, "-o=jsonpath={.status.podIPs[1].ip}").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		e2e.Logf("The pod  %s IP in namespace %s is %q", podName, namespace, podIPv6)
-		return podIPv6	
+		return podIPv6
 	}
 	return ""
 }
@@ -480,14 +480,14 @@ func waitForPodWithLabelReady(oc *exutil.CLI, ns, label string) error {
 	})
 }
 
-func getSvcIPv4(oc *exutil.CLI, namespace string, svcName string) (string) {
+func getSvcIPv4(oc *exutil.CLI, namespace string, svcName string) string {
 	svcIPv4, err := oc.WithoutNamespace().Run("get").Args("service", "-n", namespace, svcName, "-o=jsonpath={.spec.clusterIPs[0]}").Output()
 	o.Expect(err).NotTo(o.HaveOccurred())
 	e2e.Logf("The service %s IPv4 in namespace %s is %q", svcName, namespace, svcIPv4)
 	return svcIPv4
 }
 
-func getSvcIPv6(oc *exutil.CLI, namespace string, svcName string) (string) {
+func getSvcIPv6(oc *exutil.CLI, namespace string, svcName string) string {
 	svcIPv6, err := oc.WithoutNamespace().Run("get").Args("service", "-n", namespace, svcName, "-o=jsonpath={.spec.clusterIPs[0]}").Output()
 	o.Expect(err).NotTo(o.HaveOccurred())
 	e2e.Logf("The service %s IPv6 in namespace %s is %q", svcName, namespace, svcIPv6)
@@ -498,10 +498,30 @@ func getSvcIPdualstack(oc *exutil.CLI, namespace string, svcName string) (string
 	svcIPv4, err := oc.WithoutNamespace().Run("get").Args("service", "-n", namespace, svcName, "-o=jsonpath={.spec.clusterIPs[0]}").Output()
 	o.Expect(err).NotTo(o.HaveOccurred())
 	e2e.Logf("The service %s IPv4 in namespace %s is %q", svcName, namespace, svcIPv4)
-    svcIPv6, err := oc.WithoutNamespace().Run("get").Args("service", "-n", namespace, svcName, "-o=jsonpath={.spec.clusterIPs[1]}").Output()
+	svcIPv6, err := oc.WithoutNamespace().Run("get").Args("service", "-n", namespace, svcName, "-o=jsonpath={.spec.clusterIPs[1]}").Output()
 	o.Expect(err).NotTo(o.HaveOccurred())
 	e2e.Logf("The service %s IPv6 in namespace %s is %q", svcName, namespace, svcIPv6)
 	return svcIPv4, svcIPv6
 }
 
+// check if a configmap is created in specific namespace [usage: checkConfigMap(oc, namesapce, configmapName)]
+func checkConfigMap(oc *exutil.CLI, ns, configmapName string) error {
+	return wait.Poll(5*time.Second, 3*time.Minute, func() (bool, error) {
+		searchOutput, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("cm", "-n", ns).Output()
+		if err != nil {
+			e2e.Logf("failed to get configmap: %v", err)
+			return false, nil
+		}
+		if o.Expect(searchOutput).To(o.ContainSubstring(configmapName)) {
+			e2e.Logf("configmap %v found", configmapName)
+			return true, nil
+		}
+		return false, nil
+	})
+}
 
+// For Admin to patch a resource in the specified namespace
+func patchResourceAsAdmin(oc *exutil.CLI, resource, patch string) {
+	err := oc.AsAdmin().WithoutNamespace().Run("patch").Args(resource, "-p", patch, "--type=merge").Execute()
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
