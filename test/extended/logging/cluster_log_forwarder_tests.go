@@ -341,10 +341,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			WaitForEFKPodsToBeReady(oc, cloNS)
 
 			g.By("check logs in rsyslog server")
-			cmd := "ls -l /var/log/clf/"
-			stdout, err := e2e.RunHostCmdWithRetries(rsyslog.namespace, rsyslog.getPodName(oc), cmd, 3*time.Second, 30*time.Second)
-			o.Expect(err).NotTo(o.HaveOccurred())
-			o.Expect(stdout).Should(o.ContainSubstring("app-container.log"))
+			rsyslog.checkData(oc, true, "app-container.log")
 
 			g.By("check logs in internal ES")
 			podList, err := oc.AdminKubeClient().CoreV1().Pods(cloNS).List(metav1.ListOptions{LabelSelector: "es-node-master=true"})
