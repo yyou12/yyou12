@@ -290,6 +290,16 @@ func (ntoRes *ntoResource) createDebugTunedProfileIfNotExist(oc *exutil.CLI, isD
 	}
 }
 
+func (ntoRes *ntoResource) createIRQSMPAffinityProfileIfNotExist(oc *exutil.CLI) {
+	output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("tuned", ntoRes.name, "-n", ntoRes.namespace).Output()
+	if strings.Contains(output, "NotFound") || strings.Contains(output, "No resources") || err != nil {
+		e2e.Logf(fmt.Sprintf("No tuned in project: %s, create one: %s", ntoRes.namespace, ntoRes.name))
+		exutil.CreateNsResourceFromTemplate(oc, ntoRes.namespace, "--ignore-unknown-parameters=true", "-f", ntoRes.template, "-p", "TUNED_NAME="+ntoRes.name, "SYSCTLPARM="+ntoRes.sysctlparm, "SYSCTLVALUE="+ntoRes.sysctlvalue)
+	} else {
+		e2e.Logf(fmt.Sprintf("Already exist %v in project: %s", ntoRes.name, ntoRes.namespace))
+	}
+}
+
 func (ntoRes *ntoResource) delete(oc *exutil.CLI) {
 	_ = oc.AsAdmin().WithoutNamespace().Run("delete").Args("-n", ntoRes.namespace, "tuned", ntoRes.name, "--ignore-not-found").Execute()
 }
@@ -385,5 +395,67 @@ func assertDebugSettings(oc *exutil.CLI, tunedNodeName string, ntoNamespace stri
 		return true
 	} else {
 		return false
+	}
+}
+
+func getDefaultSMPAffinityBitMaskbyCPUCores(oc *exutil.CLI, workerNodeName string) string {
+	//Currently support 32core cpu worker nodes
+	smpbitMask := 0xffffffff
+	smpbitMaskIntStr := fmt.Sprintf("%d", smpbitMask)
+
+	//Get CPU number in specified worker nodes
+	cpuNum, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("node", workerNodeName, "-ojsonpath={.status.capacity.cpu}").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	cpuNumStr := string(cpuNum)
+	cpuNumInt, err := strconv.Atoi(cpuNumStr)
+	o.Expect(err).NotTo(o.HaveOccurred())
+	e2e.Logf("the total cpu numbers in worker nodes %v is : %v", workerNodeName, cpuNumStr)
+
+	//Get corresponding smpMask
+	rightMoveBit := 32 - cpuNumInt
+	smpMaskInt, err := strconv.Atoi(smpbitMaskIntStr)
+	o.Expect(err).NotTo(o.HaveOccurred())
+	smpMaskStr := fmt.Sprintf("%x", smpMaskInt>>rightMoveBit)
+	e2e.Logf("the bit mask for cpu numbers in worker nodes %v is : %v", workerNodeName, smpMaskStr)
+	return smpMaskStr
+}
+
+//Convert hex into int string
+func hexToInt(x string) string {
+	base, err := strconv.ParseInt(x, 16, 10)
+	o.Expect(err).NotTo(o.HaveOccurred())
+	return strconv.FormatInt(base, 10)
+}
+
+func assertIsolateCPUCoresAffectedBitMask(defaultSMPBitMask string, isolatedCPU string) string {
+
+	defaultSMPBitMaskStr := hexToInt(defaultSMPBitMask)
+	isolatedCPUStr := hexToInt(isolatedCPU)
+
+	defaultSMPBitMaskInt, err := strconv.Atoi(defaultSMPBitMaskStr)
+	o.Expect(err).NotTo(o.HaveOccurred())
+	isolatedCPUInt, err := strconv.Atoi(isolatedCPUStr)
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	SMPBitMask := fmt.Sprintf("%x", defaultSMPBitMaskInt^isolatedCPUInt)
+	return SMPBitMask
+}
+
+func assertDefaultIRQSMPAffinityAffectedBitMask(defaultSMPBitMask string, isolatedCPU string) bool {
+
+	var isMatch bool
+	defaultSMPBitMaskStr := hexToInt(defaultSMPBitMask)
+	isolatedCPUStr := hexToInt(isolatedCPU)
+
+	defaultSMPBitMaskInt, _ := strconv.Atoi(defaultSMPBitMaskStr)
+	isolatedCPUInt, err := strconv.Atoi(isolatedCPUStr)
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	if defaultSMPBitMaskInt == isolatedCPUInt {
+		isMatch = true
+		return isMatch
+	} else {
+		isMatch = false
+		return isMatch
 	}
 }

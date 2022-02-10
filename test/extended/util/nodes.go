@@ -65,6 +65,11 @@ func DebugNodeWithOptions(oc *CLI, nodeName string, options []string, cmd ...str
 	return debugNode(oc, nodeName, options, false, cmd...)
 }
 
+// DebugNodeWithOptions launch debug container with options e.g. --image
+func DebugNodeWithOptionsAndChroot(oc *CLI, nodeName string, options []string, cmd ...string) (string, error) {
+	return debugNode(oc, nodeName, options, true, cmd...)
+}
+
 // DebugNode creates a debugging session of the node
 func DebugNode(oc *CLI, nodeName string, cmd ...string) (string, error) {
 	return debugNode(oc, nodeName, []string{}, false, cmd...)

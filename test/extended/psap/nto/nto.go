@@ -22,6 +22,7 @@ var _ = g.Describe("[sig-node] PSAP should", func() {
 		custom_tuned_profile_file        = exutil.FixturePath("testdata", "psap", "nto", "custom-tuned-profiles.yaml")
 		affine_default_cpuset_file       = exutil.FixturePath("testdata", "psap", "nto", "affine-default-cpuset.yaml")
 		nto_tuned_debug_file             = exutil.FixturePath("testdata", "psap", "nto", "nto-tuned-debug.yaml")
+		nto_irq_smp_file                 = exutil.FixturePath("testdata", "psap", "nto", "default-irq-smp-affinity.yaml")
 		isNTO                            bool
 		isAllInOne                       bool
 	)
@@ -693,5 +694,83 @@ var _ = g.Describe("[sig-node] PSAP should", func() {
 		//The log shouldn't contain debug in log
 		g.By("Check if tuned pod log contains debug key word, the log should contain DEBUG")
 		exutil.AssertOprPodLogsbyFilterWithDuration(oc, tunedPodName, ntoNamespace, "DEBUG", 60, 2)
+	})
+
+	g.It("Author:liqcui-Medium-37415-Allow setting isolated_cores without touching the default_irq_affinity [Disruptive]", func() {
+		// test requires NTO to be installed
+		if !isNTO {
+			g.Skip("NTO is not installed - skipping test ...")
+		}
+
+		//Get the tuned pod name that run on first worker node
+		tunedNodeName, err := exutil.GetFirstLinuxWorkerNode(oc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		defer oc.AsAdmin().WithoutNamespace().Run("label").Args("node", tunedNodeName, "tuned.openshift.io/default-irq-smp-affinity-").Execute()
+
+		g.By("Label the node with default-irq-smp-affinity ")
+		err = oc.AsAdmin().WithoutNamespace().Run("label").Args("node", tunedNodeName, "tuned.openshift.io/default-irq-smp-affinity=", "--overwrite").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Check the default values of /proc/irq/default_smp_affinity on worker nodes")
+		defaultSMPAffinity, err := exutil.DebugNodeWithOptionsAndChroot(oc, tunedNodeName, []string{"--quiet=true"}, "cat", "/proc/irq/default_smp_affinity")
+		e2e.Logf("the default value of /proc/irq/default_smp_affinity without cpu affinity is: %v", defaultSMPAffinity)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		defaultSMPAffinityMask := getDefaultSMPAffinityBitMaskbyCPUCores(oc, tunedNodeName)
+		o.Expect(defaultSMPAffinity).To(o.ContainSubstring(defaultSMPAffinityMask))
+		e2e.Logf("the value of /proc/irq/default_smp_affinity: %v", defaultSMPAffinityMask)
+
+		ntoRes1 := ntoResource{
+			name:        "default-irq-smp-affinity",
+			namespace:   ntoNamespace,
+			template:    nto_irq_smp_file,
+			sysctlparm:  "#default_irq_smp_affinity",
+			sysctlvalue: "1",
+		}
+
+		defer ntoRes1.delete(oc)
+
+		g.By("Create default-irq-smp-affinity profile to enable isolated_cores=1")
+		ntoRes1.createIRQSMPAffinityProfileIfNotExist(oc)
+
+		g.By("Check if new NTO profile was applied")
+		ntoRes1.assertTunedProfileApplied(oc)
+
+		g.By("Check values of /proc/irq/default_smp_affinity on worker nodes after enabling isolated_cores=1")
+		isolatedcoresSMPAffinity, err := exutil.DebugNodeWithOptionsAndChroot(oc, tunedNodeName, []string{"--quiet=true"}, "cat", "/proc/irq/default_smp_affinity")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf("the value of default_smp_affinity after setting isolated_cores=1 is: %v", isolatedcoresSMPAffinity)
+
+		g.By("Verify if the value of /proc/irq/default_smp_affinity is affected by isolated_cores=1")
+		//Isolate the second cpu cores, the default_smp_affinity should be changed
+		newSMPAffinityMask := assertIsolateCPUCoresAffectedBitMask(defaultSMPAffinityMask, "2")
+		o.Expect(isolatedcoresSMPAffinity).To(o.ContainSubstring(newSMPAffinityMask))
+
+		g.By("Remove the old profile and create a new one later ...")
+		ntoRes1.delete(oc)
+
+		ntoRes2 := ntoResource{
+			name:        "default-irq-smp-affinity",
+			namespace:   ntoNamespace,
+			template:    nto_irq_smp_file,
+			sysctlparm:  "default_irq_smp_affinity",
+			sysctlvalue: "1",
+		}
+
+		defer ntoRes2.delete(oc)
+		g.By("Create default-irq-smp-affinity profile to enable default_irq_smp_affinity=1")
+		ntoRes2.createIRQSMPAffinityProfileIfNotExist(oc)
+
+		g.By("Check if new NTO profile was applied")
+		ntoRes2.assertTunedProfileApplied(oc)
+
+		g.By("Check values of /proc/irq/default_smp_affinity on worker nodes")
+		IRQSMPAffinity, err := exutil.DebugNodeWithOptionsAndChroot(oc, tunedNodeName, []string{"--quiet=true"}, "cat", "/proc/irq/default_smp_affinity")
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		//Isolate the second cpu cores, the default_smp_affinity should be changed
+		isMatch := assertDefaultIRQSMPAffinityAffectedBitMask(IRQSMPAffinity, "2")
+		e2e.Logf("the value of default_smp_affinity after setting default_irq_smp_affinity=1 is: %v", IRQSMPAffinity)
+		o.Expect(isMatch).To(o.Equal(true))
 	})
 })
