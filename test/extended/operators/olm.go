@@ -6598,9 +6598,9 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		og.createwithCheck(oc, itName, dr)
 
 		g.By("STEP 2: create sub")
-		defer sub.delete(itName, dr)
-		defer sub.deleteCSV(itName, dr)
 		sub.create(oc, itName, dr)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+		newCheck("expect", asAdmin, withoutNamespace, contain, "hive-operator", ok, []string{"deployment", "-n", sub.namespace}).check(oc)
 
 		g.By("STEP 3: check OPERATOR_CONDITION_NAME")
 		cpuCSV := getResource(oc, asAdmin, withoutNamespace, "csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={..containers[?(@.name==\"hive-operator\")].resources.requests.cpu}")
