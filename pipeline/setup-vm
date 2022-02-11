@@ -83,6 +83,25 @@ else
     echo "skip get operatorSDK"
 fi
 
+#get hypershift
+if echo $INSTALL_TOOLS | grep -i 'hypershift' > /dev/null; then
+    unset http_proxy https_proxy
+    echo "------------------get hypershift------------------------"
+    mkdir ${WORKSPACE}/hypershift
+    BUILD_CMD="sudo make hypershift"
+    sudo git clone --depth=1 git@github.com:openshift/hypershift.git ${WORKSPACE}/hypershift --branch main
+    cd ${WORKSPACE}/hypershift
+    echo "buid command is [${BUILD_CMD}]"
+    eval "${BUILD_CMD}"
+    sudo mv -f bin/hypershift $WORKDIR
+    sudo rm -fr ../hypershift
+    sudo chown -R cloud-user:cloud-user $WORKDIR
+    hypershift -h
+    cd $WORKDIR
+else
+    echo "skip get hypershift"
+fi
+
 
 #get opm client
 if echo $INSTALL_TOOLS | grep -i 'opm' > /dev/null; then
