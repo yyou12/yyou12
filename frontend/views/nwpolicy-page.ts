@@ -1,14 +1,23 @@
 export const nwpolicyPage = {
-    goToNetworkPolicy: () => cy.visit('/k8s/all-namespaces/networkpolicies'),
+    getProjectPolicyURL: (projectName?: string) => {
+        if (!projectName) {
+            return '/k8s/all-namespaces/networkpolicies'
+        }
+        else {
+            return `/k8s/ns/${projectName}/networkpolicies`
+        }
+
+    },
+    goToNetworkPolicy: (projectName?: string) => cy.visit(nwpolicyPage.getProjectPolicyURL(projectName)),
     creatPolicyForm: () => cy.get(nwpolicyPageSelectors.createFormButton).should('exist').click().then($form => {
         cy.wrap($form).get('form').should('be.visible')
     }),
-    deleteAllPolicies: () => {
-        cy.visit('/k8s/all-namespaces/networkpolicies').its('yaml-create').then(content => {
-            expect(content).to.be.visible
+    deleteAllPolicies: (projectName?: string) => {
+        cy.visit(nwpolicyPage.getProjectPolicyURL(projectName)).its('yaml-create').then(content => {
+            deletePolicies(projectName)
         })
 
-        const deletePolicies = () => {
+        const deletePolicies = (projectName: string) => {
             cy.get('body').then($body => {
                 if ($body.find('tr[data-id="0-0"]').length > 0) {
                     cy.get('tr[data-id="0-0"]').find('button[data-test-id]').should('exist').then($rrow => {
@@ -18,13 +27,12 @@ export const nwpolicyPage = {
                         })
                     })
 
-                    nwpolicyPage.goToNetworkPolicy().its('yaml-create').then(content => {
-                        deletePolicies()
+                    nwpolicyPage.goToNetworkPolicy(projectName).its('yaml-create').then(content => {
+                        deletePolicies(projectName)
                     })
                 }
             })
         }
-        deletePolicies()
     },
     addPodOrNamespace: (groupSelector, key, value) => {
         let button;

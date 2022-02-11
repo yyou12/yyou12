@@ -11,7 +11,14 @@ declare global {
 }
 
 Cypress.Commands.add("switchPerspective", (perspective: string) => {
-    cy.get('#nav-toggle').click()
+
+    /* if side bar is collapsed then expand it
+    before switching perspecting */
+    cy.get('body').then((body) => {
+        if (body.find('.pf-m-collapsed').length > 0) {
+            cy.get('#nav-toggle').click()
+        }
+    });
     nav.sidenav.switcher.changePerspectiveTo(perspective);
     nav.sidenav.switcher.shouldHaveText(perspective);
 });

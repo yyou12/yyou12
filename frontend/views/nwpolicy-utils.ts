@@ -1,16 +1,6 @@
 import { OCCli, OCCreds } from "./cluster-cliops"
 import { nwpolicyPageSelectors } from "./nwpolicy-page"
 
-export namespace helperfuncs {
-    export function setNetworkProviderAlias() {
-        cy.exec("oc get Network.config.openshift.io cluster -o json").then(result => {
-            expect(result.stdout).to.be.not.empty
-            const networkprovider = JSON.parse(result.stdout)
-            cy.wrap(networkprovider.spec.networkType).as('networkprovider')
-        })
-    }
-}
-
 export class VerifyPolicyForm {
     creds: OCCreds
     oc: OCCli

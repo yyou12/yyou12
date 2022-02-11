@@ -21,8 +21,8 @@ export class OCCli {
         })
     }
 
-    createPods(specFilePath, project, kubeconfig = Cypress.env('KUBECONFIG')): void {
-        cy.exec(`oc create -f ${specFilePath} -n ${project} --kubeconfig=${kubeconfig}`);
+    createPods(specFilePath, project): void {
+        cy.exec(`oc create -f ${specFilePath} -n ${project}`);
     }
 
     switchProject(project: string): void {

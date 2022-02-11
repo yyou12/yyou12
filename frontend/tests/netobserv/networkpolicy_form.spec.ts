@@ -1,9 +1,10 @@
 import { checkErrors } from '../../upstream/support';
 import { nwpolicyPage, nwpolicyPageSelectors } from '../../views/nwpolicy-page';
+import { OverviewSelectors } from '../../views/overview';
 import { OCCreds, OCCli } from '../../views/cluster-cliops';
 import { podsPageUtils } from '../../views/pods';
 import testFixture from '../../fixtures/network_policy_form_test.json'
-import * as utils from '../../views/utils'
+import { helperfuncs } from '../../views/utils'
 import { VerifyPolicyForm } from '../../views/nwpolicy-utils'
 
 const projects: string[] = ['test0', 'test1', 'test2']
@@ -11,14 +12,16 @@ const podLabels: string[] = ["test-pods", 'test-pods2']
 const pod_label_key = 'name';
 const ns_label_key = 'kubernetes.io/metadata.name'
 const fixtureFile = 'network_policy_form_test'
+const operatingProject = 'test0'
 
-describe.skip('Console Network Policies form tests (OCP-41858, OCP-45303, NETOBSERV)', function () {
+describe('Console Network Policies form tests (OCP-41858, OCP-45303, NETOBSERV)', function () {
     before('any test', function () {
-        let tmpFile = `/tmp/${utils.getRandomName()}`
+        let tmpFile = `/tmp/${helperfuncs.getRandomName()}`
         cy.writeFile(tmpFile, JSON.stringify(testFixture))
 
         let creds: OCCreds = { idp: Cypress.env('LOGIN_IDP'), user: Cypress.env('LOGIN_USERNAME'), password: Cypress.env('LOGIN_PASSWORD') }
         cy.login(creds.idp, creds.user, creds.password);
+        helperfuncs.clickIfExist(OverviewSelectors.skipTour)
         cy.switchPerspective('Administrator');
         this.cli = new OCCli(creds)
         this.creds = creds
@@ -44,10 +47,7 @@ describe.skip('Console Network Policies form tests (OCP-41858, OCP-45303, NETOBS
     })
 
     beforeEach('test', function () {
-        cy.visit('/k8s/all-namespaces/networkpolicies')
-        cy.get('span.pf-c-menu-toggle__text').should('have.text', 'Project: All Projects').click()
-        cy.get('span.pf-c-menu__item-text').contains('test0').click()
-
+        cy.visit(nwpolicyPage.getProjectPolicyURL(operatingProject))
     })
 
     afterEach(() => {
@@ -61,10 +61,15 @@ describe.skip('Console Network Policies form tests (OCP-41858, OCP-45303, NETOBS
         cy.logout();
     })
 
-    describe.skip("UI validating tests", function () {
+    describe("UI validating tests", function () {
+
+        beforeEach('any UI validation tests', function () {
+            if (this.currentTest.title.includes('kube:admin') && Cypress.env('LOGIN_IDP') != 'kube:admin') {
+                this.skip()
+            }
+        })
 
         it('should validate network policy form (OCP-41858)', function () {
-            nwpolicyPage.goToNetworkPolicy()
             nwpolicyPage.creatPolicyForm()
 
             cy.get('input[id="name"]').should('have.attr', 'name')
@@ -88,8 +93,7 @@ describe.skip('Console Network Policies form tests (OCP-41858, OCP-45303, NETOBS
         })
 
         it('should show affected pods, (OCP-45303)', function () {
-            // nwpolicyPage.goToNetworkPolicy()
-            // nwpolicyPage.creatPolicyForm()
+            nwpolicyPage.creatPolicyForm()
 
             const projectName = 'test0'
             const affectedPodsLinkText = 'show-affected-pods'
@@ -111,11 +115,27 @@ describe.skip('Console Network Policies form tests (OCP-41858, OCP-45303, NETOBS
             cy.byTestID(affectedPodsLinkText).click()
             verify.podslist(projectName, `${pod_label_key}=${podLabels[1]}`)
 
+            // verify message and no pods show up when there are none in project
+            const newProject = 'test4'
+            cy.createProject(newProject)
+            cy.visit(`k8s/ns/${newProject}/networkpolicies/~new/form`)
+            cy.byTestID(affectedPodsLinkText).click()
+            cy.byTestID(nwpolicyPageSelectors.podsPreviewTitle).should('have.text', "No pods matching the provided labels in the current namespace")
+            cy.deleteProject(newProject)
+
+        })
+
+        it('kube:admin - should show affected max pods count, (OCP-45303)', function () {
             /* 
             verify the popover lists max 10 pods
             if there are more 10 pods in tree view, then it has footer link 
             ensure footer link has attributes to open in new tab upon clicking.
             */
+            nwpolicyPage.creatPolicyForm()
+
+            const projectName = 'test0'
+            cy.visit(`k8s/ns/${projectName}/networkpolicies/~new/form`)
+
             cy.byTestID(nwpolicyPageSelectors.addIngress).click()
             cy.get(nwpolicyPageSelectors.dropdownBtn).should('have.text', 'Add allowed source').click()
             cy.get(nwpolicyPageSelectors.srcDestOptions[1]).click()
@@ -128,19 +148,10 @@ describe.skip('Console Network Policies form tests (OCP-41858, OCP-45303, NETOBS
                 expect(link).to.have.attr('rel', 'noopener noreferrer')
                 cy.request(link.prop('href')).its('status').should('eq', 200)
             })
-
-            // verify message and no pods show up when there are none in project
-            const newProject = 'test4'
-            cy.createProject(newProject)
-            cy.visit(`k8s/ns/${newProject}/networkpolicies/~new/form`)
-            cy.byTestID(affectedPodsLinkText).click()
-            cy.byTestID(nwpolicyPageSelectors.podsPreviewTitle).should('have.text', "No pods matching the provided labels in the current namespace")
-            cy.deleteProject(newProject)
-
         })
     })
 
-    describe.skip("network policy end-to-end tests (OCP-41858)", function () {
+    describe("network policy end-to-end tests (OCP-41858)", function () {
         before('any end-to-end test', function () {
             /* map labels to number replicas for pods to those labels */
             const labels_npods = new Map()
@@ -161,15 +172,13 @@ describe.skip('Console Network Policies form tests (OCP-41858, OCP-45303, NETOBS
         })
 
         beforeEach('end-to-end test', function () {
-            cy.visit('/k8s/all-namespaces/networkpolicies')
-            cy.get('span.pf-c-menu-toggle__text').should('have.text', 'Project: All Projects').click()
-            cy.get('span.pf-c-menu__item-text').contains('test0').click()
+            cy.visit(nwpolicyPage.getProjectPolicyURL(operatingProject))
         })
 
         describe("ingress policies tests", function () {
             beforeEach('ingress tests', function () {
                 nwpolicyPage.creatPolicyForm()
-                cy.get(nwpolicyPageSelectors.nwPolicyName).type(utils.getRandomName())
+                cy.get(nwpolicyPageSelectors.nwPolicyName).type(helperfuncs.getRandomName())
 
                 if (this.currentTest.title.includes('deny all')) {
                     return
@@ -308,7 +317,7 @@ describe.skip('Console Network Policies form tests (OCP-41858, OCP-45303, NETOBS
         describe('egress policies tests', function () {
             beforeEach('egress test', function () {
                 nwpolicyPage.creatPolicyForm()
-                cy.get(nwpolicyPageSelectors.nwPolicyName).type(utils.getRandomName())
+                cy.get(nwpolicyPageSelectors.nwPolicyName).type(helperfuncs.getRandomName())
 
                 if (this.currentTest.title.includes('deny all')) {
                     return
@@ -444,7 +453,7 @@ describe.skip('Console Network Policies form tests (OCP-41858, OCP-45303, NETOBS
 
 
         afterEach(() => {
-            nwpolicyPage.deleteAllPolicies()
+            nwpolicyPage.deleteAllPolicies(operatingProject)
         });
     })
 })
