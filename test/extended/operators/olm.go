@@ -1318,7 +1318,7 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	})
 
 	// author: bandrade@redhat.com
-	g.It("Author:bandrade-High-24387-Any CRD upgrade is allowed if there is only one owner in a cluster [Disruptive] [Flaky]", func() {
+	g.It("ConnectedOnly-Author:bandrade-High-24387-Any CRD upgrade is allowed if there is only one owner in a cluster [Disruptive] [Flaky]", func() {
 		var (
 			catName             = "cs-24387"
 			buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
