@@ -102,4 +102,23 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 		o.Expect(string(tag)).To(o.ContainSubstring("customTag"))
 		o.Expect(string(tag)).To(o.ContainSubstring("installer-qe"))
 	})
+
+	// author: xiuwang@redhat.com
+	g.It("NonPreRelease-PstChkUpgrade-Author:xiuwang-Medium-45346-Payload imagestream new tags should properly updated during cluster upgrade prepare", func() {
+		g.By("Check payload imagestream")
+		output, err := oc.WithoutNamespace().AsAdmin().Run("get").Args("is", "-n", "openshift", "-l", "samples.operator.openshift.io/managed!=true", "-o=jsonpath={.items[*].metadata.name}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		plimage := strings.Split(output, " ")
+		for _, isname := range plimage {
+			output, err := oc.WithoutNamespace().AsAdmin().Run("get").Args("is", isname, "-n", "openshift", "-o=jsonpath={.spec.tags[*].name}").Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			tagname := strings.Split(output, " ")
+			for _, tname := range tagname {
+				e2e.Logf("tag is %s", tname)
+				if tname == "" {
+					e2e.Failf("The imagestream %s is broken after upgrade", isname)
+				}
+			}
+		}
+	})
 })
