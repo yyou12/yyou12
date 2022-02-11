@@ -509,3 +509,38 @@ func waitCorefileUpdated(oc *exutil.CLI, attrList [][]string) [][]string {
 	updated_attrList := waitAllCorefilesUpdated(oc, attrList)
 	return updated_attrList
 }
+
+// this fucntion will return the master pod who has the virtual ip
+func getVipOwnerPod(oc *exutil.CLI, ns string, podname []string, vip string) string {
+	cmd := fmt.Sprintf("ip address |grep %s", vip)
+	var primary_node string
+	for i := 0; i < len(podname); i++ {
+		output, err := oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", ns, podname[i], "--", "bash", "-c", cmd).Output()
+		if len(podname) == 1 && output == "command terminated with exit code 1" {
+			e2e.Failf("The given pod is not master")
+		}
+		if output == "command terminated with exit code 1" {
+			e2e.Logf("This Pod %v does not have the VIP", podname[i])
+		} else if o.Expect(output).To(o.ContainSubstring(vip)) {
+			e2e.Logf("The pod owning the VIP is %v", podname[i])
+			primary_node = podname[i]
+			break
+		} else {
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}
+	}
+	return primary_node
+}
+
+// this function will remove the given element from the slice
+func slicingElement(element string, podList []string) []string {
+	var newPodList []string
+	for index, pod := range podList {
+		if pod == element {
+			newPodList = append(podList[:index], podList[index+1:]...)
+			break
+		}
+	}
+	e2e.Logf("The remaining pod/s in the list is %v", newPodList)
+	return newPodList
+}
