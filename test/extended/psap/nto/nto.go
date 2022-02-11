@@ -773,4 +773,44 @@ var _ = g.Describe("[sig-node] PSAP should", func() {
 		e2e.Logf("the value of default_smp_affinity after setting default_irq_smp_affinity=1 is: %v", IRQSMPAffinity)
 		o.Expect(isMatch).To(o.Equal(true))
 	})
+
+	g.It("Author:liqcui-Medium-44650-NTO profiles provided with TuneD [Disruptive]", func() {
+		// test requires NTO to be installed
+		if !isNTO {
+			g.Skip("NTO is not installed - skipping test ...")
+		}
+
+		//Get the tuned pod name that run on first worker node
+		tunedNodeName, err := exutil.GetFirstLinuxWorkerNode(oc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		tunedPodName := getTunedPodNamebyNodeName(oc, tunedNodeName, ntoNamespace)
+
+		g.By("Check default tuned profile list, should contain openshift-control-plane and openshift-node")
+		defaultTunedOutput, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", ntoNamespace, "tuned", "default", "-ojsonpath={.spec.recommend}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(defaultTunedOutput).To(o.And(
+			o.ContainSubstring("openshift-control-plane"),
+			o.ContainSubstring("openshift-node")))
+
+		g.By("Check content of tuned file /usr/lib/tuned/openshift/tuned.conf to match cgroup_ps_blacklist")
+		openshiftTunedConf, err := exutil.RemoteShPod(oc, ntoNamespace, tunedPodName, "cat", "/usr/lib/tuned/openshift/tuned.conf")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(openshiftTunedConf).To(o.Or(
+			o.ContainSubstring("net.ipv4.ip_forward"),
+			o.ContainSubstring("cgroup_ps_blacklist")))
+
+		g.By("Check content of tuned file /usr/lib/tuned/openshift-control-plane/tuned.conf to match sched_min_granularity_ns")
+		openshiftControlPlaneTunedConf, err := exutil.RemoteShPod(oc, ntoNamespace, tunedPodName, "cat", "/usr/lib/tuned/openshift-control-plane/tuned.conf")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(openshiftControlPlaneTunedConf).To(o.And(
+			o.ContainSubstring("include=openshift"),
+			o.ContainSubstring("sched_min_granularity_ns")))
+
+		g.By("Check content of tuned file /usr/lib/tuned/openshift-node/tuned.conf to match fs.inotify.max_user_watches")
+		openshiftNodeTunedConf, err := exutil.RemoteShPod(oc, ntoNamespace, tunedPodName, "cat", "/usr/lib/tuned/openshift-node/tuned.conf")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(openshiftNodeTunedConf).To(o.And(
+			o.ContainSubstring("include=openshift"),
+			o.ContainSubstring("fs.inotify.max_user_watches")))
+	})
 })
