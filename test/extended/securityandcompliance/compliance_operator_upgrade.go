@@ -23,6 +23,7 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance Pre-check and post-check f
 		var (
 			buildPruningBaseDir        = exutil.FixturePath("testdata", "securityandcompliance")
 			scansettingbindingTemplate = filepath.Join(buildPruningBaseDir, "scansettingbinding.yaml")
+			upResourceConfMapTemplate  = filepath.Join(buildPruningBaseDir, "upgrade_rsconfigmap.yaml")
 			ssb                        = scanSettingBindingDescription{
 				name:            "cossb1",
 				namespace:       "",
@@ -40,6 +41,14 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance Pre-check and post-check f
 				profilename2:    "ocp4-cis",
 				scansettingname: "default",
 				template:        scansettingbindingTemplate,
+			}
+			confmap = resourceConfigMapDescription{
+				name:      "resource-config",
+				namespace: "",
+				rule:      "",
+				variable:  "",
+				profile:   "",
+				template:  upResourceConfMapTemplate,
 			}
 		)
 
@@ -91,12 +100,6 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance Pre-check and post-check f
 
 		// author: xiyuan@redhat.com
 		g.It("Author:xiyuan-CPaasrunOnly-NonPreRelease-High-37721-High-37824-High-45014-precheck for compliance operator", func() {
-
-			g.By("Get the compliance operator resources..!!!\n")
-			getOperatorResources(oc, "rules", ns2)
-			getOperatorResources(oc, "variables", ns2)
-			getOperatorResources(oc, "profiles.compliance", ns2)
-
 			g.By("Create scansettingbinding !!!\n")
 			ssb.namespace = ns1
 			ssb2.namespace = ns2
@@ -126,8 +129,33 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance Pre-check and post-check f
 			checkComplianceSuiteResult(oc, ns2, ssb2.name, "NON-COMPLIANT INCONSISTENT")
 		})
 
+		// author: pdhamdhe@redhat.com
+		g.It("Author:pdhamdhe-CPaasrunOnly-NonPreRelease-High-45014-High-45956-precheck for compliance operator resources count and MachineConfigPool status", func() {
+			g.By("Check the MachineConfigPool status after upgrade.. !!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "false", ok, []string{"machineconfigpool", "master", "-n", ns1,
+				"-ojsonpath={.spec.paused}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "false", ok, []string{"machineconfigpool", "worker", "-n", ns1,
+				"-ojsonpath={.spec.paused}"}).check(oc)
+
+			g.By("Get the compliance operator resources before upgrade..!!!\n")
+			ruleCnt := getOperatorResources(oc, "rules", ns2)
+			variableCnt := getOperatorResources(oc, "variables", ns2)
+			profileCnt := getOperatorResources(oc, "profiles.compliance", ns2)
+
+			g.By("Create confimap to store data before upgrade.. !!\n")
+			confmap.namespace = ns2
+			confmap.rule = ruleCnt
+			confmap.variable = variableCnt
+			confmap.profile = profileCnt
+			err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", confmap.template, "-p", "NAME="+confmap.name, "NAMESPACE="+confmap.namespace,
+				"RULE="+confmap.rule, "VARIABLE="+confmap.variable, "PROFILE="+confmap.profile)
+			o.Expect(err).NotTo(o.HaveOccurred())
+			newCheck("expect", asAdmin, withoutNamespace, contain, confmap.name, ok, []string{"configmap", "-n", confmap.namespace,
+				"-o=jsonpath={.items[*].metadata.name}"}).check(oc)
+		})
+
 		// author: xiyuan@redhat.com
-		g.It("Author:xiyuan-CPaasrunOnly-NonPreRelease-High-37721-High-37824-High-45014-postcheck for compliance operator", func() {
+		g.It("Author:xiyuan-CPaasrunOnly-NonPreRelease-High-37721-High-37824-postcheck for compliance operator", func() {
 			defer cleanupObjects(oc,
 				objectTableRef{"scansettingbinding", ns1, ssb.name},
 				objectTableRef{"scansettingbinding", ns2, ssb2.name},
@@ -137,11 +165,6 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance Pre-check and post-check f
 				objectTableRef{"profilebundle.compliance", ns2, "rhcos4"},
 				objectTableRef{"project", ns1, ns1},
 				objectTableRef{"project", ns2, ns2})
-
-			g.By("Compare the compliance operator resource count after upgrade.. !!\n")
-			readFileLinesToCompare(oc, "rules", "rules.json", ns2)
-			readFileLinesToCompare(oc, "variables", "variables.json", ns2)
-			readFileLinesToCompare(oc, "profiles.compliance", "profiles.compliance.json", ns2)
 
 			g.By("Trigger rescan using oc-compliance plugin.. !!")
 			_, err := OcComplianceCLI().Run("rerun-now").Args("scansettingbinding", ssb.name, "-n", ns1).Output()
@@ -162,6 +185,27 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance Pre-check and post-check f
 				"-o=jsonpath={.status.phase}"}).check(oc)
 			checkComplianceSuiteResult(oc, ns1, ssb.name, "NON-COMPLIANT INCONSISTENT")
 			checkComplianceSuiteResult(oc, ns2, ssb2.name, "NON-COMPLIANT INCONSISTENT")
+		})
+
+		// author: pdhamdhe@redhat.com
+		g.It("Author:pdhamdhe-CPaasrunOnly-NonPreRelease-High-45014-High-45956-postcheck for compliance operator resources count and MachineConfigPool status", func() {
+			confmap.namespace = ns2
+			defer cleanupObjects(oc, objectTableRef{"configmap", confmap.namespace, confmap.name})
+			g.By("Check the MachineConfigPool status after upgrade.. !!\n")
+			newCheck("expect", asAdmin, withoutNamespace, contain, "false", ok, []string{"machineconfigpool", "master", "-n", ns1,
+				"-ojsonpath={.spec.paused}"}).check(oc)
+			newCheck("expect", asAdmin, withoutNamespace, contain, "false", ok, []string{"machineconfigpool", "worker", "-n", ns1,
+				"-ojsonpath={.spec.paused}"}).check(oc)
+
+			g.By("Get the compliance operator resources after upgrade..!!!\n")
+			ruleCnt := getOperatorResources(oc, "rules", ns2)
+			variableCnt := getOperatorResources(oc, "variables", ns2)
+			profileCnt := getOperatorResources(oc, "profiles.compliance", ns2)
+
+			g.By("Compare the compliance operator resource count before and after upgrade.. !!\n")
+			readFileLinesToCompare(oc, confmap.name, ruleCnt, ns2, "rule")
+			readFileLinesToCompare(oc, confmap.name, variableCnt, ns2, "variable")
+			readFileLinesToCompare(oc, confmap.name, profileCnt, ns2, "profile")
 		})
 	})
 })

@@ -135,6 +135,15 @@ type storageClassDescription struct {
 	template          string
 }
 
+type resourceConfigMapDescription struct {
+	name      string
+	namespace string
+	rule      string
+	variable  string
+	profile   string
+	template  string
+}
+
 func (csuite *complianceSuiteDescription) create(oc *exutil.CLI, itName string, dr describerResrouce) {
 	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", csuite.template, "-p", "NAME="+csuite.name, "NAMESPACE="+csuite.namespace,
 		"SCHEDULE="+csuite.schedule, "SCANNAME="+csuite.scanname, "SCANTYPE="+csuite.scanType, "PROFILE="+csuite.profile, "CONTENT="+csuite.content,
@@ -221,6 +230,12 @@ func (tprofile *tailoredProfileWithoutVarDescription) delete(itName string, dr d
 func (sclass *storageClassDescription) create(oc *exutil.CLI, itName string, dr describerResrouce) {
 	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", sclass.template, "-p", "NAME="+sclass.name,
 		"PROVISIONER="+sclass.provisioner, "RECLAIMPOLICY="+sclass.reclaimPolicy, "VOLUMEBINDINGMODE="+sclass.volumeBindingMode)
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+func (confmap *resourceConfigMapDescription) create(oc *exutil.CLI, itName string, dr describerResrouce) {
+	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", confmap.template, "-p", "NAME="+confmap.name,
+		"NAMESPACE="+confmap.namespace, "RULE="+confmap.rule, "VARIABLE="+confmap.variable, "PROFILE="+confmap.profile)
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
@@ -856,29 +871,29 @@ func genFluentdSecret(oc *exutil.CLI, namespace string, serverName string) {
 	e2e.Logf("The secrete is generated for %s in %s namespace \n", serverName, namespace)
 }
 
-func getOperatorResources(oc *exutil.CLI, resourcename string, namespace string) {
-	rPath, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args(resourcename, "--no-headers", "-n", namespace).OutputToFile(resourcename + ".json")
-	_, err := exec.Command("bash", "-c", "mv "+rPath+" /tmp/"+resourcename+".json").Output()
+func getOperatorResources(oc *exutil.CLI, resourcename string, namespace string) string {
+	rPath, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args(resourcename, "--no-headers", "-n", namespace).OutputToFile(getRandomString() + ".json")
+	resCnt, err := exec.Command("bash", "-c", "cat "+rPath+" | wc -l; rm -rf "+rPath).Output()
+	orgCnt := string(resCnt)
 	o.Expect(err).NotTo(o.HaveOccurred())
-	e2e.Logf("%s", rPath)
+	e2e.Logf("The %s resource count is: %s \n", resourcename, orgCnt)
+	return orgCnt
 }
 
-func readFileLinesToCompare(oc *exutil.CLI, resourcename string, fileName string, namespace string) {
+func readFileLinesToCompare(oc *exutil.CLI, confMap string, actCnt string, namespace string, resName string) {
 	err := wait.Poll(5*time.Second, 30*time.Second, func() (bool, error) {
-		orgCnts, err := exec.Command("bash", "-c", "cat /tmp/"+fileName+" | wc -l ; rm -rf /tmp/"+fileName).Output()
+		rsPath, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("configmap", confMap, "-n", namespace, "-ojsonpath={.data."+resName+"}").OutputToFile(getRandomString() + ".json")
 		o.Expect(err).NotTo(o.HaveOccurred())
-		orgCnt := string(orgCnts)
-		rsPath, err := oc.AsAdmin().WithoutNamespace().Run("get").Args(resourcename, "--no-headers", "-n", namespace).OutputToFile(getRandomString() + ".json")
-		o.Expect(err).NotTo(o.HaveOccurred())
-		result, _ := exec.Command("bash", "-c", "cat "+rsPath+" | wc -l; rm -rf "+rsPath).Output()
-		actCnt := string(result)
-		if strings.Compare(orgCnt, actCnt) == 0 {
-			e2e.Logf("The original %s count before upgrade was %s and that matches with the actual %s count %s after upgrade \n", resourcename, orgCnt, resourcename, actCnt)
+		result, _ := exec.Command("bash", "-c", "cat "+rsPath+"; rm -rf "+rsPath).Output()
+		orgCnt := string(result)
+		if strings.Contains(actCnt, orgCnt) {
+			e2e.Logf("The original %s count before upgrade was %s and that matches with the actual %s count %s after upgrade \n", resName, actCnt, resName, orgCnt)
 			return true, nil
 		}
+		e2e.Logf("The original %s count before upgrade was %s and that matches with the actual %s count %s after upgrade \n", resName, actCnt, resName, orgCnt)
 		return false, nil
 	})
-	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("The orignal %s count before upgrade does not match with the actual %s count after upgrade \n", resourcename, resourcename))
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("The orignal count before upgrade does not match with the actual count after upgrade \n"))
 }
 
 func labelNameSpace(oc *exutil.CLI, namespace string, label string) {
