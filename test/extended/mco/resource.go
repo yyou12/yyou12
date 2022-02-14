@@ -24,6 +24,23 @@ type Template struct {
 	templateFile string
 }
 
+// ResourceInterface defines all methods available in a resource
+type ResourceInterface interface {
+	GetKind() string
+	GetName() string
+	GetNamespace() string
+	Get(jsonPath string, extraParams ...string) (string, error)
+	GetSafe(jsonPath string, defaultValue string, extraParams ...string) string
+	GetOrFail(jsonPath string, extraParams ...string) string
+	Poll(jsonPath string) func() string
+	Delete() error
+	DeleteOrFail()
+	Exists() bool
+	Patch(patchType string, patch string) error
+	GetAnnotationOrFail(annotation string) string
+	GetConditionByType(ctype string) string
+}
+
 // Resource will provide the functionality to hanlde general openshift resources
 type Resource struct {
 	ocGetter
@@ -42,6 +59,21 @@ func (r *ocGetter) getCommonParams() []string {
 	}
 
 	return params
+}
+
+// GetName returns the 'name' field
+func (r ocGetter) GetName() string {
+	return r.name
+}
+
+// GetKind returns the 'kind' field
+func (r ocGetter) GetKind() string {
+	return r.kind
+}
+
+// GetNamespace returns the 'namespace' field
+func (r ocGetter) GetNamespace() string {
+	return r.namespace
 }
 
 // Get uses the CLI to retrieve the return value for this jsonpath

@@ -103,45 +103,35 @@ func (mc *MachineConfig) delete(oc *exutil.CLI) {
 }
 
 func NewKubeletConfig(oc *exutil.CLI, name string, template string) *KubeletConfig {
-	return &KubeletConfig{Resource: NewResource(oc, "kubeletconfig", name), template: template}
+	return &KubeletConfig{Resource: NewResource(oc, "KubeletConfig", name), template: template}
 }
 
 func (kc *KubeletConfig) create() {
 	exutil.CreateClusterResourceFromTemplate(kc.oc, "--ignore-unknown-parameters=true", "-f", kc.template, "-p", "NAME="+kc.name)
 }
 
-func (kc *KubeletConfig) waitUntilSuccess(timeout string) {
+func (kc KubeletConfig) waitUntilSuccess(timeout string) {
 	e2e.Logf("wait for %s to report success", kc.name)
 	o.Eventually(func() map[string]interface{} {
-		successCond := kc.GetConditionByType("Success")
-
-		jsonbytes := []byte(successCond)
-		var condition map[string]interface{}
-		if jsonerr := json.Unmarshal(jsonbytes, &condition); jsonerr != nil {
-			return nil
-		} else {
-			e2e.Logf("umarshalled json: %v", condition)
-			return condition
+		successCond := JSON(kc.GetConditionByType("Success"))
+		if successCond.Exists() {
+			return successCond.ToMap()
 		}
+		return nil
 	},
 		timeout).Should(o.SatisfyAll(o.HaveKeyWithValue("status", "True"),
 		o.HaveKeyWithValue("message", "Success")))
 }
 
-func (kc *KubeletConfig) waitUntilFailure(expectedMsg, timeout string) {
+func (kc KubeletConfig) waitUntilFailure(expectedMsg, timeout string) {
 
 	e2e.Logf("wait for %s to report failure", kc.name)
 	o.Eventually(func() map[string]interface{} {
-		successCond := kc.GetConditionByType("Failure")
-
-		jsonbytes := []byte(successCond)
-		var condition map[string]interface{}
-		if jsonerr := json.Unmarshal(jsonbytes, &condition); jsonerr != nil {
-			return nil
-		} else {
-			e2e.Logf("umarshalled json: %v", condition)
-			return condition
+		failureCond := JSON(kc.GetConditionByType("Failure"))
+		if failureCond.Exists() {
+			return failureCond.ToMap()
 		}
+		return nil
 	},
 		timeout).Should(o.SatisfyAll(o.HaveKeyWithValue("status", "False"), o.HaveKeyWithValue("message", o.ContainSubstring(expectedMsg))))
 }
@@ -176,44 +166,34 @@ func (icsp *ImageContentSourcePolicy) delete(oc *exutil.CLI) {
 }
 
 func NewContainerRuntimeConfig(oc *exutil.CLI, name string, template string) *ContainerRuntimeConfig {
-	return &ContainerRuntimeConfig{Resource: NewResource(oc, "ctrcfg", name), template: template}
+	return &ContainerRuntimeConfig{Resource: NewResource(oc, "ContainerRuntimeConfig", name), template: template}
 }
 
 func (cr *ContainerRuntimeConfig) create() {
 	exutil.CreateClusterResourceFromTemplate(cr.oc, "--ignore-unknown-parameters=true", "-f", cr.template, "-p", "NAME="+cr.name)
 }
 
-func (cr *ContainerRuntimeConfig) waitUntilSuccess(timeout string) {
+func (cr ContainerRuntimeConfig) waitUntilSuccess(timeout string) {
 	e2e.Logf("wait for %s to report success", cr.name)
 	o.Eventually(func() map[string]interface{} {
-		successCond := cr.GetConditionByType("Success")
-
-		jsonbytes := []byte(successCond)
-		var condition map[string]interface{}
-		if jsonerr := json.Unmarshal(jsonbytes, &condition); jsonerr != nil {
-			return nil
-		} else {
-			e2e.Logf("umarshalled json: %v", condition)
-			return condition
+		successCond := JSON(cr.GetConditionByType("Success"))
+		if successCond.Exists() {
+			return successCond.ToMap()
 		}
+		return nil
 	},
 		timeout).Should(o.SatisfyAll(o.HaveKeyWithValue("status", "True"),
 		o.HaveKeyWithValue("message", "Success")))
 }
 
-func (cr *ContainerRuntimeConfig) waitUntilFailure(expectedMsg string, timeout string) {
+func (cr ContainerRuntimeConfig) waitUntilFailure(expectedMsg string, timeout string) {
 	e2e.Logf("wait for %s to report failure", cr.name)
 	o.Eventually(func() map[string]interface{} {
-		successCond := cr.GetConditionByType("Failure")
-
-		jsonbytes := []byte(successCond)
-		var condition map[string]interface{}
-		if jsonerr := json.Unmarshal(jsonbytes, &condition); jsonerr != nil {
-			return nil
-		} else {
-			e2e.Logf("umarshalled json: %v", condition)
-			return condition
+		failureCond := JSON(cr.GetConditionByType("Failure"))
+		if failureCond.Exists() {
+			return failureCond.ToMap()
 		}
+		return nil
 	},
 		timeout).Should(o.SatisfyAll(o.HaveKeyWithValue("status", "False"), o.HaveKeyWithValue("message", o.ContainSubstring(expectedMsg))))
 }

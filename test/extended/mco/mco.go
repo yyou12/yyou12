@@ -834,7 +834,7 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		mcp.pause(true)
 
 		g.By("Create 10 kubelet config to add 500 max pods")
-		allKcs := []KubeletConfig{}
+		allKcs := []ResourceInterface{}
 		kcTemplate := generateTemplateAbsolutePath("change-maxpods-kubelet-config.yaml")
 		for n := 1; n <= 10; n++ {
 			kcName := fmt.Sprintf("change-maxpods-kubelet-config-%d", n)
@@ -847,7 +847,7 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 
 		g.By("Created kubeletconfigs must be successful")
 		for _, kcItem := range allKcs {
-			kcItem.waitUntilSuccess("10s")
+			kcItem.(KubeletConfig).waitUntilSuccess("10s")
 		}
 
 		g.By("Check that 10 machine configs were created")
@@ -866,7 +866,7 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 
 		g.By("Created kubeletconfigs inside the limit must be successful")
 		for _, kcItem := range allKcs {
-			kcItem.waitUntilSuccess("10s")
+			kcItem.(KubeletConfig).waitUntilSuccess("10s")
 		}
 
 		g.By("Check that only the right machine configs were created")
@@ -889,7 +889,7 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 		mcp.pause(true)
 
 		g.By("Create 10 container runtime configs to add 500 max pods")
-		allCrs := []ContainerRuntimeConfig{}
+		allCrs := []ResourceInterface{}
 		crTemplate := generateTemplateAbsolutePath("change-ctr-cr-config.yaml")
 		for n := 1; n <= 10; n++ {
 			crName := fmt.Sprintf("change-ctr-cr-config-%d", n)
@@ -902,11 +902,13 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 
 		g.By("Created ContainerRuntimeConfigs must be successful")
 		for _, crItem := range allCrs {
-			crItem.waitUntilSuccess("10s")
+			crItem.(ContainerRuntimeConfig).waitUntilSuccess("10s")
 		}
 
 		g.By("Check that 10 machine configs were created")
 		renderedCrConfigsSuffix := "worker-generated-containerruntime"
+
+		e2e.Logf("Pre function res: %v", allCrs)
 		verifyRenderedMcs(oc, renderedCrConfigsSuffix, allCrs)
 
 		g.By("Create a new ContainerRuntimeConfig. The 11th one")
@@ -921,7 +923,7 @@ var _ = g.Describe("[sig-mco] MCO", func() {
 
 		g.By("Created kubeletconfigs inside the limit must be successful")
 		for _, crItem := range allCrs {
-			crItem.waitUntilSuccess("10s")
+			crItem.(ContainerRuntimeConfig).waitUntilSuccess("10s")
 		}
 
 		g.By("Check that only the right machine configs were created")
@@ -1434,38 +1436,49 @@ func createMcAndVerifyIgnitionVersion(oc *exutil.CLI, stepText string, mcName st
 	o.Expect(mcDataMap["message"].(string)).Should(o.ContainSubstring("One or more machine config pools are degraded, please see `oc get mcp` for further details and resolve before upgrading"))
 }
 
-// verifyRenderedMcs verifies that the resources provided in the parameter "resourcesSlice" have created a 
+// verifyRenderedMcs verifies that the resources provided in the parameter "allRes" have created a
 //       a new MachineConfig owned by those resources
-// TODO: stop using the suffixes and use the value of metadata.ownerReferences in the MC data to actually verify the rendered MCs
-//       depending on the Resources. To be done after MC refactoring
-func verifyRenderedMcs(oc *exutil.CLI, renderSuffix string, resourcesSlice interface{}) []Resource {
-	// Convert the resourceSlice interface to []Resource type
-	allRes, ok := resourcesSlice.([]Resource)
-	o.Expect(ok).NotTo(o.BeTrue(), "type []Resource must be used in verifyRenderedMcs function")
-
+func verifyRenderedMcs(oc *exutil.CLI, renderSuffix string, allRes []ResourceInterface) []Resource {
 	// TODO: Use MachineConfigList when MC code is refactored
 	allMcs, err := NewResourceList(oc.AsAdmin(), "mc").GetAll()
 	o.Expect(err).NotTo(o.HaveOccurred())
 	o.Expect(allMcs).NotTo(o.BeEmpty())
 
-	allMcNames := []string{}
+	// cache all MCs owners to avoid too many oc binary executions while searching
+	mcOwners := make(map[Resource]*JSONData, len(allMcs))
 	for _, mc := range allMcs {
-		allMcNames = append(allMcNames, mc.name)
+		owners := JSON(mc.GetOrFail(`{.metadata.ownerReferences}`))
+		mcOwners[mc] = owners
 	}
 
-	for index := range allRes {
-		extraSuffix := ""
-		if index > 0 {
-			extraSuffix = fmt.Sprintf("-%d", index)
+	// Every resource should own one MC
+	for _, res := range allRes {
+		var ownedMc *Resource = nil
+		for mc, owners := range mcOwners {
+			if owners.Exists() {
+				for _, owner := range owners.Items() {
+					if strings.ToLower(owner.Get("kind").ToString()) == strings.ToLower(res.GetKind()) && owner.Get("name").ToString() == res.GetName() {
+						e2e.Logf("Resource '%s' '%s' owns MC '%s'", res.GetKind(), res.GetName(), mc.GetName())
+						// Each resource can only own one MC
+						o.Expect(ownedMc).To(o.BeNil(), "Resource %s owns more than 1 MC: %s and %s", res.GetName(), mc.GetName(), ownedMc)
+						// we need to do this to avoid the loop variable to override our value
+						key := mc
+						ownedMc = &key
+						break
+					}
+				}
+			} else {
+				e2e.Logf("MC '%s' has no owner.", mc.name)
+			}
+
 		}
-
-		mcSubstring := renderSuffix + extraSuffix
-		e2e.Logf("Machine config '%s' should exist", mcSubstring)
-		o.Expect(allMcNames).Should(o.ContainElement(o.ContainSubstring(mcSubstring)))
+		o.Expect(ownedMc).NotTo(o.BeNil(), fmt.Sprintf("Resource '%s' '%s' should have generated a MC but it has not. It owns no MC.", res.GetKind(), res.GetName()))
+		o.Expect(ownedMc.name).To(o.ContainSubstring(renderSuffix), "Mc '%s' is owned by '%s' '%s' but its name does not contain the expected substring '%s'",
+			ownedMc.GetName(), res.GetKind(), res.GetName(), renderSuffix)
 	}
+
 	return allMcs
 }
-
 
 func verifyDriftConfig(mcp *MachineConfigPool, rf *RemoteFile, newMode string, forceFile bool) {
 	workerNode := rf.node

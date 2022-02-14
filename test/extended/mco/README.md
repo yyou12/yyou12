@@ -2,7 +2,7 @@
 
 ## Resources
 
-In order to handle generic resources we can use the Resource struct. 
+In order to handle generic resources we can use the Resource struct.
 
 There are 2 kinds of resources, the namespaced resources and the cluster scoped resources.
 
@@ -178,4 +178,87 @@ o.Expect(DUadminCM).NotTo(Exist())
 
 // Admin user can see the CM in the namespace that can only be read by admin
 o.Expect(AadminCM).To(Exist())
+```
+
+
+
+## JSONData
+
+Utility struct to handle json data
+
+### JSON
+
+A function that will return a JSONData struct containing the given value
+
+```go
+                resource := NewResource(oc.AsAdmin(), "mcp", "worker")
+                spec := JSON(resource.GetOrFail("{.spec}"))
+```
+
+### Get
+
+Gets a JSONData struct containing the value of the given key. It will fail if the current JSONData object is not a map[string]interface{}
+
+```go
+                resource := NewResource(oc.AsAdmin(), "mcp", "worker")
+                spec := JSON(resource.GetOrFail("{.spec}"))
+                e2e.Logf("machineConfigSelector %v", spec.Get("machineConfigSelector").Get("matchLabels"))
+```
+
+### Item
+
+Returns a JSONData struct containing the value of the given index. It will fail if the current JSONData object is not a list []interface{}
+
+```go
+                resource := NewResource(oc.AsAdmin(), "mcp", "worker")
+                spec := JSON(resource.GetOrFail("{.spec}"))
+                e2e.Logf("machineConfigSelector %v", spec.Get("configuration").Get("source").Item(0).Get("name"))  // name of the first MC as interface
+                e2e.Logf("machineConfigSelector %s", spec.Get("configuration").Get("source").Item(0).Get("name").ToString()) // name of the first MC as string
+```
+
+### Items
+
+Returns a list of JSONData structs containing the values in the list. It will fail if the current JSONData object is not a list []interface{}
+
+
+The difference with ToList() method is that ToList() method will return `[]interface` and Items() method will return `[]JSONData`
+
+```go
+                resource := NewResource(oc.AsAdmin(), "mc", "00-master")
+                owners := JSON(resource.GetOrFail("{.metadata.ownerReferences}"))
+		if owners.Exists() {
+			for _, owner := range owners.Items() {
+                		e2e.Logf("Owner name %s", owner.Get("name").ToString()) // print owner.name field
+                		e2e.Logf("Owner kind %s", owner.Get("kind").ToString()) // print owner.kind field
+			}
+		}
+```
+
+### GetJSONPath
+
+Executes a jsonpath query and returns the result. For simplicity the result will be flattened
+
+Will always return a list of JSONPath structs, since filter like [?(@.type=="RenderDegraded")] or [\*] are never guaranteed to return unique values.
+
+```go
+                allData := JSON(resource.GetOrFail("{}"))
+                values, err := allData.GetJSONPath(`{.status.conditions[?(@.type=="RenderDegraded")]}`)
+		o.Expect(err).NotTo(o.HaveOccurred())
+                condition, err := values[0].AsJSONString()  // print the  RenderDegraded condition in json format string
+		o.Expect(err).NotTo(o.HaveOccurred())
+                e2e.Logf("condition:\n %s", condition)
+```
+
+### ToInt, ToFloat, ToString, ToMap, ToList, ToInterface
+
+Will return the value stored in the JSONData struct casting it to the corresponding type
+
+### Exists
+
+It is true if the stored value is not nil
+
+```go
+                resource := NewResource(oc.AsAdmin(), "mcp", "worker")
+                spec := JSON(resource.GetOrFail("{.spec}"))
+                o.Expect(spec.Get("configuration").Exists()).To(o.BeTrue())  // Make sure that the MCP spec contains the "configuration" key values
 ```
