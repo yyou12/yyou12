@@ -859,3 +859,16 @@ func updatePullSecret(oc *exutil.CLI, authFile string) {
 	err := oc.AsAdmin().WithoutNamespace().Run("set").Args("data", "secret/pull-secret", "-n", "openshift-config", "--from-file=.dockerconfigjson="+authFile).Execute()
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
+
+func foundAffinityRules(oc *exutil.CLI, affinityRules string) bool {
+	podList, _ := oc.AdminKubeClient().CoreV1().Pods("openshift-image-registry").List(metav1.ListOptions{LabelSelector: "docker-registry=default"})
+	for _, pod := range podList.Items {
+		out, err := oc.WithoutNamespace().AsAdmin().Run("get").Args("pod/"+pod.Name, "-n", pod.Namespace, "-o=jsonpath={.spec.affinity.podAntiAffinity}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		if !strings.Contains(out, affinityRules) {
+			return false
+			break
+		}
+	}
+	return true
+}

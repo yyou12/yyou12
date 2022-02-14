@@ -44,6 +44,8 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 		tenantIdErrInfo      = "Authentication failed"
 		queryCredentialMode  = "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query=cco_credentials_mode"
 		imageRegistryBaseDir = exutil.FixturePath("testdata", "image_registry")
+		requireRules         = "requiredDuringSchedulingIgnoredDuringExecution"
+		preRules             = "preferredDuringSchedulingIgnoredDuringExecution"
 	)
 	// author: wewang@redhat.com
 	g.It("Author:wewang-High-39027-Check AWS secret and access key with an OpenShift installed in a regular way", func() {
@@ -1246,4 +1248,49 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 	})
 
+	// author: wewang@redhat.com
+	g.It("NonPreRelease-ConnectedOnly-Author:wewang-Medium-43731-Image registry pods should have anti-affinity rules [Disruptive]", func() {
+		g.By("Check pods anti-affinity match requiredDuringSchedulingIgnoredDuringExecution rule when replicas is 2")
+		foundrequiredRules := false
+		foundrequiredRules = foundAffinityRules(oc, requireRules)
+		o.Expect(foundrequiredRules).To(o.BeTrue())
+
+		g.By("Set image registry replica to 3")
+		defer recoverRegistryDefaultReplicas(oc)
+		err := oc.WithoutNamespace().AsAdmin().Run("patch").Args("configs.imageregistry/cluster", "-p", `{"spec":{"replicas":3}}`, "--type=merge").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		g.By("Confirm 3 pods scaled up")
+		err = wait.Poll(30*time.Second, 2*time.Minute, func() (bool, error) {
+			podList, _ := oc.AdminKubeClient().CoreV1().Pods("openshift-image-registry").List(metav1.ListOptions{LabelSelector: "docker-registry=default"})
+			if len(podList.Items) != 3 {
+				e2e.Logf("Continue to next round")
+				return false, nil
+			} else {
+				for _, pod := range podList.Items {
+					if pod.Status.Phase != corev1.PodRunning {
+						e2e.Logf("Continue to next round")
+						return false, nil
+					}
+				}
+				return true, nil
+			}
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
+		foundrequiredRules = foundAffinityRules(oc, preRules)
+		o.Expect(foundrequiredRules).To(o.BeTrue())
+		/*
+		   when https://bugzilla.redhat.com/show_bug.cgi?id=2000940 is fixed, will open this part
+		   		g.By("Set deployment.apps replica to 0")
+		   		err = oc.WithoutNamespace().AsAdmin().Run("patch").Args("deployment.apps/image-registry", "-p", `{"spec":{"replicas":0}}`, "--type=merge", "-n", "openshift-image-registry").Execute()
+		   		o.Expect(err).NotTo(o.HaveOccurred())
+		   		output, err := oc.WithoutNamespace().AsAdmin().Run("get").Args("co/image-registry", "-o=jsonpath={.status.conditions[0]}").Output()
+		   		o.Expect(err).NotTo(o.HaveOccurred())
+		   		o.Expect(output).To(o.ContainSubstring("\"status\":\"False\""))
+		   		o.Expect(output).To(o.ContainSubstring("The deployment does not have available replicas"))
+		   		o.Expect(output).To(o.ContainSubstring("\"type\":\"Available\""))
+		   		output, err = oc.WithoutNamespace().AsAdmin().Run("get").Args("config.imageregistry/cluster", "-o=jsonpath={.status.readyReplicas}").Output()
+		   		o.Expect(err).NotTo(o.HaveOccurred())
+		   		o.Expect(output).To(o.Equal("0"))
+		*/
+	})
 })
