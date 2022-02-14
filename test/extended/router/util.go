@@ -544,3 +544,19 @@ func slicingElement(element string, podList []string) []string {
 	e2e.Logf("The remaining pod/s in the list is %v", newPodList)
 	return newPodList
 }
+
+//this function checks whether given pod becomes primary
+func waitForPreemptPod(oc *exutil.CLI, ns string, pod string, vip string) {
+	cmd := fmt.Sprintf("ip address |grep %s", vip)
+	waitErr := wait.Poll(5*time.Second, 30*time.Second, func() (bool, error) {
+		output, _ := oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", ns, pod, "--", "bash", "-c", cmd).Output()
+		if o.Expect(output).To(o.ContainSubstring(vip)) {
+			e2e.Logf("The new pod %v preempt to become Primary", pod)
+			return true, nil
+		} else {
+			e2e.Logf("pod failed to become Primary yet, retrying...", output)
+			return false, nil
+		}
+	})
+	exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("max time reached, pod failed to become Primary"))
+}

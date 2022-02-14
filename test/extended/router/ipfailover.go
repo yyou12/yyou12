@@ -3,6 +3,7 @@ package router
 import (
 	"fmt"
 	"path/filepath"
+	"time"
 
 	g "github.com/onsi/ginkgo"
 	o "github.com/onsi/gomega"
@@ -196,5 +197,66 @@ var _ = g.Describe("[sig-network-edge] Network_Edge should", func() {
 
 		g.By("verify whether the other pod becomes master and it has the VIP")
 		_ = getVipOwnerPod(oc, oc.Namespace(), secondary_pod, virtualIP)
+	})
+
+	// author: mjoseph@redhat.com
+	// might conflict with other ipfailover cases so set it as Serial
+	g.It("Author:mjoseph-ConnectedOnly-High-41030-preemption strategy for keepalived ipfailover [Disruptive]", func() {
+		buildPruningBaseDir := exutil.FixturePath("testdata", "router")
+		customTemp := filepath.Join(buildPruningBaseDir, "ipfailover.yaml")
+		var (
+			ipf = ipfailoverDescription{
+				name:      "ipf-41030",
+				namespace: "",
+				image:     "",
+				template:  customTemp,
+			}
+		)
+		g.By("get pull spec of ipfailover image from payload")
+		oc.SetupProject()
+		ipf.image = getImagePullSpecFromPayload(oc, "keepalived-ipfailover")
+		ipf.namespace = oc.Namespace()
+		g.By("create ipfailover deployment and ensure one of pod enter MASTER state")
+		ipf.create(oc, oc.Namespace())
+		err := waitForPodWithLabelReady(oc, oc.Namespace(), "ipfailover=hello-openshift")
+		exutil.AssertWaitPollNoErr(err, "the pod with ipfailover=hello-openshift Ready status not met")
+		err2 := waitForIpfailoverEnterMaster(oc, oc.Namespace(), "ipfailover=hello-openshift")
+		exutil.AssertWaitPollNoErr(err2, fmt.Sprintf("label %s no ipfailover pod is in MASTER state", "ipfailover=hello-openshift"))
+
+		g.By("set the HA virtual IP for the failover group")
+		podNames := getPodName(oc, oc.Namespace(), "ipfailover=hello-openshift")
+		ipv4Address := getPodv4Address(oc, oc.Namespace(), podNames[0])
+		virtualIP := replaceIpOctet(ipv4Address, 3, "100")
+		setEnvVariable(oc, oc.Namespace(), "deploy/"+ipf.name, "OPENSHIFT_HA_VIRTUAL_IPS="+virtualIP)
+		setEnvVariable(oc, oc.Namespace(), "deploy/"+ipf.name, `OPENSHIFT_HA_PREEMPTION=preempt_delay 60`)
+
+		g.By("verify the HA virtual ip ENV variable")
+		err1 := waitForPodWithLabelReady(oc, oc.Namespace(), "ipfailover=hello-openshift")
+		exutil.AssertWaitPollNoErr(err1, "the pod with ipfailover=hello-openshift Ready status not met")
+		err3 := waitForIpfailoverEnterMaster(oc, oc.Namespace(), "ipfailover=hello-openshift")
+		exutil.AssertWaitPollNoErr(err3, fmt.Sprintf("label %s no ipfailover pod is in MASTER state", "ipfailover=hello-openshift"))
+		newPodName := getPodName(oc, oc.Namespace(), "ipfailover=hello-openshift")
+		checkenv := readPodEnv(oc, newPodName[0], oc.Namespace(), "OPENSHIFT_HA_VIRTUAL_IPS")
+		o.Expect(checkenv).To(o.ContainSubstring("OPENSHIFT_HA_VIRTUAL_IPS=" + virtualIP))
+		checkenv1 := readPodEnv(oc, newPodName[0], oc.Namespace(), "OPENSHIFT_HA_PREEMPTION")
+		o.Expect(checkenv1).To(o.ContainSubstring("preempt_delay 60"))
+
+		g.By("find the primary and the secondary pod")
+		primary_pod := getVipOwnerPod(oc, oc.Namespace(), newPodName, virtualIP)
+		secondary_pod := slicingElement(primary_pod, newPodName)
+		g.By("restarting the ipfailover primary pod")
+		err = oc.AsAdmin().WithoutNamespace().Run("delete").Args("-n", oc.Namespace(), "pod", primary_pod).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("verify whether the other pod becomes primary and it has the VIP")
+		_ = getVipOwnerPod(oc, oc.Namespace(), secondary_pod, virtualIP)
+
+		g.By("verify the new pod preempts the exiting primary after the delay expires")
+		latestpods := getPodName(oc, oc.Namespace(), "ipfailover=hello-openshift")
+		// Identifying the new pod from the other
+		futurePrimary_pod := slicingElement(secondary_pod[0], latestpods)
+		// Waiting till the preempt delay 60 seconds expires
+		time.Sleep(60 * time.Second)
+		waitForPreemptPod(oc, oc.Namespace(), futurePrimary_pod[0], virtualIP)
 	})
 })
