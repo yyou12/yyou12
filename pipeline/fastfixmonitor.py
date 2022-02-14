@@ -16,6 +16,7 @@ class BugzillaClient:
         self.session = requests.Session()
         self.session.headers["Content-type"] = "application/json"
         self.session.headers["Accept"] = "application/json"
+        self.session.headers["Authorization"] = "bearer {0}".format(args.apikey)
         self.session.verify = False
         retry = Retry(connect=3, backoff_factor=0.5)
         adapter = HTTPAdapter(max_retries=retry)
