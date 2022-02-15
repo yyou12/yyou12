@@ -2649,219 +2649,6 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 	})
 
 	// author: scolange@redhat.com
-	g.It("ConnectedOnly-Author:scolange-Medium-24738-CRD should update if previously defined schemas do not change [Disruptive] [Flaky]", func() {
-		var buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
-		var cfgMap = filepath.Join(buildPruningBaseDir, "configmap-etcd.yaml")
-		var patchCfgMap = filepath.Join(buildPruningBaseDir, "configmap-ectd-alpha-beta.yaml")
-		var catSource = filepath.Join(buildPruningBaseDir, "catalogsource-configmap.yaml")
-		var og = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
-		var Sub = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
-		var etcdCluster = filepath.Join(buildPruningBaseDir, "etcd-cluster.yaml")
-		var operatorWait = 150 * time.Second
-
-		g.By("check precondition and prepare env")
-		if isPresentResource(oc, asAdmin, withoutNamespace, present, "crd", "etcdclusters.etcd.database.coreos.com") && isPresentResource(oc, asAdmin, withoutNamespace, present, "EtcdCluster", "-A") {
-			e2e.Logf("It is distruptive case and the resources exists, do not destory it. exit")
-			return
-		}
-		oc.AsAdmin().Run("delete").Args("crd", "etcdclusters.etcd.database.coreos.com").Output()
-		oc.AsAdmin().Run("delete").Args("crd", "etcdbackups.etcd.database.coreos.com").Output()
-		oc.AsAdmin().Run("delete").Args("crd", "etcdrestores.etcd.database.coreos.com").Output()
-
-		defer oc.AsAdmin().Run("delete").Args("ns", "test-automation-24738").Execute()
-		defer oc.AsAdmin().Run("delete").Args("ns", "test-automation-24738-1").Execute()
-		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("configmap", "installed-community-24738-global-operators", "-n", "openshift-marketplace").Execute()
-		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("catalogsource", "installed-community-24738-global-operators", "-n", "openshift-marketplace").Execute()
-
-		g.By("create new namespace")
-		var err = oc.AsAdmin().Run("create").Args("ns", "test-automation-24738").Execute()
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		g.By("create ConfigMap")
-		createCfgMap, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", cfgMap, "-p", "NAME=installed-community-24738-global-operators", "NAMESPACE=openshift-marketplace").OutputToFile("config-24738.json")
-		o.Expect(err).NotTo(o.HaveOccurred())
-		e2e.Logf("TEST1********** %v", createCfgMap)
-
-		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", createCfgMap, "-n", "openshift-marketplace").Execute()
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		g.By("create CatalogSource")
-		createCatSource, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", catSource, "-p", "NAME=installed-community-24738-global-operators", "NAMESPACE=openshift-marketplace", "ADDRESS=installed-community-24738-global-operators", "DISPLAYNAME=Community Operators", "PUBLISHER=Community", "SOURCETYPE=internal").OutputToFile("config-24738.json")
-		o.Expect(err).NotTo(o.HaveOccurred())
-		e2e.Logf("TEST2oc get ********** %v", createCatSource)
-
-		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", createCatSource, "-n", "openshift-marketplace").Execute()
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		createOg, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", og, "-p", "NAME=test-operators-og", "NAMESPACE=test-automation-24738").OutputToFile("config-24738.json")
-		o.Expect(err).NotTo(o.HaveOccurred())
-		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", createOg).Execute()
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		err = wait.Poll(60*time.Second, operatorWait, func() (bool, error) {
-			checkCatSource, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("catalogsource", "installed-community-24738-global-operators", "-n", "openshift-marketplace", "-o", "jsonpath={.status.connectionState.lastObservedState}").Output()
-			o.Expect(err).NotTo(o.HaveOccurred())
-			//o.Expect(checkCatSource).To(o.Equal("READY"))
-			if checkCatSource == "READY" {
-				e2e.Logf("Installed catalogsource")
-				return true, nil
-			} else {
-				e2e.Logf("FAIL - Installed catalogsource ")
-				return false, nil
-			}
-		})
-		exutil.AssertWaitPollNoErr(err, "installed-community-24738-global-operators is not READY")
-
-		createImgSub, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", Sub, "-p", "SUBNAME=etcd-etcdoperator.v0.9.2", "SUBNAMESPACE=test-automation-24738", "CHANNEL=alpha", "APPROVAL=Automatic", "OPERATORNAME=etcd-update", "SOURCENAME=installed-community-24738-global-operators", "SOURCENAMESPACE=openshift-marketplace", "STARTINGCSV=etcdoperator.v0.9.2").OutputToFile("config-24738.json")
-		o.Expect(err).NotTo(o.HaveOccurred())
-		defer func() {
-			oc.AsAdmin().Run("delete").Args("crd", "etcdclusters.etcd.database.coreos.com").Output()
-			oc.AsAdmin().Run("delete").Args("crd", "etcdbackups.etcd.database.coreos.com").Output()
-			oc.AsAdmin().Run("delete").Args("crd", "etcdrestores.etcd.database.coreos.com").Output()
-		}()
-		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", createImgSub).Execute()
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		err = wait.Poll(60*time.Second, operatorWait, func() (bool, error) {
-			checknameCsv, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", "etcdoperator.v0.9.2", "-n", "test-automation-24738", "-o", "jsonpath={.status.phase}").Output()
-			o.Expect(err).NotTo(o.HaveOccurred())
-			e2e.Logf(checknameCsv)
-			if checknameCsv == "Succeeded" {
-				e2e.Logf("CSV Installed ")
-				return true, nil
-			} else {
-				e2e.Logf("CSV not installed  ")
-				return false, nil
-			}
-		})
-		exutil.AssertWaitPollNoErr(err, "etcdoperator.v0.9.2 is not installed")
-
-		createEtcdCluster, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", etcdCluster, "-p", "NAME=example", "NAMESPACE=test-automation-24738").OutputToFile("config-24738.json")
-		o.Expect(err).NotTo(o.HaveOccurred())
-		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", createEtcdCluster).Execute()
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		err = wait.Poll(30*time.Second, operatorWait, func() (bool, error) {
-			checkCreateEtcdCluster, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-n", "test-automation-24738").Output()
-			o.Expect(err).NotTo(o.HaveOccurred())
-			e2e.Logf(checkCreateEtcdCluster)
-
-			lines := strings.Split(checkCreateEtcdCluster, "\n")
-			var count = 0
-			for _, line := range lines {
-				e2e.Logf(line)
-				if strings.Contains(line, "example") {
-					count++
-				}
-				e2e.Logf(line)
-			}
-			if count == 3 {
-				e2e.Logf("EtcCluster Create Installed ")
-				return true, nil
-			} else {
-				e2e.Logf("EtcCluster Not Installed ")
-				return false, nil
-			}
-		})
-		exutil.AssertWaitPollNoErr(err, "test-automation-24738 EtcCluster is not installed")
-
-		g.By("create new namespace")
-		err = oc.AsAdmin().Run("create").Args("ns", "test-automation-24738-1").Execute()
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		createOg1, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", og, "-p", "NAME=test-operators-og", "NAMESPACE=test-automation-24738-1").OutputToFile("cconfig-24738.json")
-		o.Expect(err).NotTo(o.HaveOccurred())
-		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", createOg1).Execute()
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		createImgSub1, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", Sub, "-p", "SUBNAME=etcd-etcdoperator.v0.9.2", "SUBNAMESPACE=test-automation-24738-1", "CHANNEL=alpha", "APPROVAL=Automatic", "OPERATORNAME=etcd-update", "SOURCENAME=installed-community-24738-global-operators", "SOURCENAMESPACE=openshift-marketplace", "STARTINGCSV=etcdoperator.v0.9.2").OutputToFile("config-24738.json")
-		o.Expect(err).NotTo(o.HaveOccurred())
-		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", createImgSub1).Execute()
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		createEtcdCluster1, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", etcdCluster, "-p", "NAME=example", "NAMESPACE=test-automation-24738-1").OutputToFile("config-24738.json")
-		o.Expect(err).NotTo(o.HaveOccurred())
-		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", createEtcdCluster1).Execute()
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		err = wait.Poll(30*time.Second, operatorWait, func() (bool, error) {
-			checkCreateEtcdCluster, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-n", "test-automation-24738-1").Output()
-			o.Expect(err).NotTo(o.HaveOccurred())
-			e2e.Logf(checkCreateEtcdCluster)
-
-			lines := strings.Split(checkCreateEtcdCluster, "\n")
-			var count = 0
-			for _, line := range lines {
-				e2e.Logf(line)
-				if strings.Contains(line, "example") {
-					count++
-				}
-				e2e.Logf(line)
-			}
-			if count == 3 {
-				e2e.Logf("EtcCluster Create Installed ")
-				return true, nil
-			} else {
-				e2e.Logf("EtcCluster Not Installed ")
-				return false, nil
-			}
-		})
-		exutil.AssertWaitPollNoErr(err, "test-automation-24738-1 EtcCluster is not installed")
-
-		g.By("update ConfigMap")
-		createPatchCfgMap, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", patchCfgMap, "-p", "NAME=installed-community-24738-global-operators", "NAMESPACE=openshift-marketplace").OutputToFile("config-24738.json")
-		o.Expect(err).NotTo(o.HaveOccurred())
-		e2e.Logf("TEST1********** %v", createPatchCfgMap)
-
-		err = oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", createPatchCfgMap, "-n", "openshift-marketplace").Execute()
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		patchIP, err2 := oc.AsAdmin().WithoutNamespace().Run("patch").Args("sub", "etcd-etcdoperator.v0.9.2", "-n", "test-automation-24738-1", "--type=json", "-p", "[{\"op\": \"replace\" , \"path\" : \"/spec/channel\", \"value\":beta}]").Output()
-		e2e.Logf(patchIP)
-		o.Expect(err2).NotTo(o.HaveOccurred())
-		o.Expect(patchIP).To(o.ContainSubstring("patched"))
-
-		err = wait.Poll(30*time.Second, operatorWait, func() (bool, error) {
-			checkCreateEtcdCluster, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("installplan", "-n", "test-automation-24738-1").Output()
-			o.Expect(err).NotTo(o.HaveOccurred())
-			e2e.Logf(checkCreateEtcdCluster)
-
-			lines := strings.Split(checkCreateEtcdCluster, "\n")
-			var count = 0
-			for _, line := range lines {
-				e2e.Logf(line)
-				if strings.Contains(line, "install") {
-					count++
-				}
-				e2e.Logf(line)
-			}
-			if count == 2 {
-				e2e.Logf("Ip Channel created")
-				return true, nil
-			} else {
-				e2e.Logf("Ip Channel NOT created")
-				return false, nil
-			}
-		})
-		exutil.AssertWaitPollNoErr(err, "test-automation-24738-1 Ip Channel NOT created")
-
-		err = wait.Poll(60*time.Second, operatorWait, func() (bool, error) {
-			checknameCsv, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", "etcdoperator.v0.9.4", "-n", "test-automation-24738-1", "-o", "jsonpath={.status.phase}").Output()
-			o.Expect(err).NotTo(o.HaveOccurred())
-			e2e.Logf(checknameCsv)
-			if checknameCsv == "Succeeded" {
-				e2e.Logf("CSV Installed ")
-				return true, nil
-			} else {
-				e2e.Logf("CSV not installed  ")
-				return false, nil
-			}
-		})
-		exutil.AssertWaitPollNoErr(err, "test-automation-24738-1 CSV not installed")
-
-	})
-
-	// author: scolange@redhat.com
 	// only community operator ready for the disconnected env now
 	g.It("ConnectedOnly-Author:scolange-Medium-32862-Pods found with invalid container images not present in release payload [Flaky]", func() {
 
@@ -5667,6 +5454,180 @@ var _ = g.Describe("[sig-operators] OLM for an end user handle within a namespac
 		})
 		exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("catalogsource %s is not TRANSIENT_FAILURE", catName))
 		e2e.Logf("cleaning up")
+	})
+
+	// author: scolange@redhat.com
+	g.It("ConnectedOnly-Author:scolange-Medium-24738-CRD should update if previously defined schemas do not change [Disruptive] [Flaky]", func() {
+		var buildPruningBaseDir = exutil.FixturePath("testdata", "olm")
+		var cmTemplate = filepath.Join(buildPruningBaseDir, "configmap-etcd.yaml")
+		var patchCfgMap = filepath.Join(buildPruningBaseDir, "configmap-ectd-alpha-beta.yaml")
+		var catsrcCmTemplate = filepath.Join(buildPruningBaseDir, "catalogsource-configmap.yaml")
+		var subTemplate = filepath.Join(buildPruningBaseDir, "olm-subscription.yaml")
+		var etcdCluster = filepath.Join(buildPruningBaseDir, "etcd-cluster.yaml")
+		var ogSingleTemplate = filepath.Join(buildPruningBaseDir, "operatorgroup.yaml")
+		var operatorWait = 150 * time.Second
+
+		g.By("check precondition and prepare env")
+		if isPresentResource(oc, asAdmin, withoutNamespace, present, "crd", "etcdclusters.etcd.database.coreos.com") && isPresentResource(oc, asAdmin, withoutNamespace, present, "EtcdCluster", "-A") {
+			e2e.Logf("It is distruptive case and the resources exists, do not destory it. exit")
+			return
+		}
+		var (
+			cmName     = "cm-24738"
+			catsrcName = "operators-24738"
+			cm         = configMapDescription{
+				name:      cmName,
+				namespace: "openshift-marketplace",
+				template:  cmTemplate,
+			}
+			catsrc = catalogSourceDescription{
+				name:        catsrcName,
+				namespace:   "openshift-marketplace",
+				displayName: "Community 24738 Operators",
+				publisher:   "QE",
+				sourceType:  "configmap",
+				address:     cmName,
+				template:    catsrcCmTemplate,
+			}
+			og = operatorGroupDescription{
+				name:      "og-24738",
+				namespace: "",
+				template:  ogSingleTemplate,
+			}
+			sub = subscriptionDescription{
+				subName:                "sub-24738",
+				namespace:              "",
+				catalogSourceName:      catsrcName,
+				catalogSourceNamespace: "openshift-marketplace",
+				channel:                "alpha",
+				ipApproval:             "Automatic",
+				operatorPackage:        "etcd-update",
+				template:               subTemplate,
+			}
+			etcdCr = customResourceDescription{
+				name:      "example-24738",
+				namespace: "",
+				typename:  "EtcdCluster",
+				template:  etcdCluster,
+			}
+			og1 = operatorGroupDescription{
+				name:      "og-24738",
+				namespace: "",
+				template:  ogSingleTemplate,
+			}
+			sub1 = subscriptionDescription{
+				subName:                "sub-24738-1",
+				namespace:              "",
+				catalogSourceName:      catsrcName,
+				catalogSourceNamespace: "openshift-marketplace",
+				channel:                "alpha",
+				ipApproval:             "Automatic",
+				operatorPackage:        "etcd-update",
+				template:               subTemplate,
+			}
+			etcdCr1 = customResourceDescription{
+				name:      "example-24738-1",
+				namespace: "",
+				typename:  "EtcdCluster",
+				template:  etcdCluster,
+			}
+		)
+
+		oc.AsAdmin().Run("delete").Args("crd", "etcdclusters.etcd.database.coreos.com").Output()
+		oc.AsAdmin().Run("delete").Args("crd", "etcdbackups.etcd.database.coreos.com").Output()
+		oc.AsAdmin().Run("delete").Args("crd", "etcdrestores.etcd.database.coreos.com").Output()
+
+		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("configmap", cmName, "-n", "openshift-marketplace").Execute()
+		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("catalogsource", catsrcName, "-n", "openshift-marketplace").Execute()
+
+		oc.SetupProject()
+		g.By("create new namespace " + oc.Namespace())
+		itName := g.CurrentGinkgoTestDescription().TestText
+		og.namespace = oc.Namespace()
+		sub.namespace = oc.Namespace()
+		etcdCr.namespace = oc.Namespace()
+
+		g.By("Create ConfigMap with operator manifest")
+		cm.create(oc, itName, dr)
+
+		g.By("Check configmap")
+		msg, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("cm", "-n", cm.namespace).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(strings.Contains(msg, cmName)).To(o.BeTrue())
+
+		g.By("Create catalog source")
+		catsrc.create(oc, itName, dr)
+		err = wait.Poll(60*time.Second, operatorWait, func() (bool, error) {
+			checkCatSource, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("catalogsource", catsrcName, "-n", catsrc.namespace, "-o", "jsonpath={.status.connectionState.lastObservedState}").Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			if checkCatSource == "READY" {
+				e2e.Logf("Installed catalogsource")
+				return true, nil
+			} else {
+				e2e.Logf("FAIL - Installed catalogsource ")
+				return false, nil
+			}
+		})
+		if err != nil {
+			catsrcStatus, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("catalogsource", catsrcName, "-n", catsrc.namespace, "-o", "jsonpath={.status}").Output()
+			e2e.Logf("catsrcStatus is %s", catsrcStatus)
+		}
+		exutil.AssertWaitPollNoErr(err, catsrcName+" is not READY")
+
+		g.By("Create og")
+		og.createwithCheck(oc, itName, dr)
+
+		g.By("Install the etcdoperator v0.9.2 with Automatic approval")
+		defer func() {
+			oc.AsAdmin().Run("delete").Args("crd", "etcdclusters.etcd.database.coreos.com").Output()
+			oc.AsAdmin().Run("delete").Args("crd", "etcdbackups.etcd.database.coreos.com").Output()
+			oc.AsAdmin().Run("delete").Args("crd", "etcdrestores.etcd.database.coreos.com").Output()
+		}()
+		sub.create(oc, itName, dr)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", "etcdoperator.v0.9.2", "-n", sub.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+
+		g.By("creat cr")
+		etcdCr.create(oc, itName, dr)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Running", ok, []string{etcdCr.typename, etcdCr.name, "-n", etcdCr.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+
+		oc.SetupProject()
+		g.By("create new namespace " + oc.Namespace())
+		itName = g.CurrentGinkgoTestDescription().TestText
+		og1.namespace = oc.Namespace()
+		sub1.namespace = oc.Namespace()
+		etcdCr1.namespace = oc.Namespace()
+
+		g.By("Create og")
+		og1.createwithCheck(oc, itName, dr)
+
+		g.By("Create sub")
+		sub1.create(oc, itName, dr)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", "etcdoperator.v0.9.2", "-n", sub1.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+
+		g.By("creat etcd cr in namespace test-automation-24738-1")
+		etcdCr1.create(oc, itName, dr)
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Running", ok, []string{etcdCr1.typename, etcdCr1.name, "-n", etcdCr1.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+
+		g.By("update ConfigMap")
+		cm.template = patchCfgMap
+		cm.create(oc, itName, dr)
+
+		patchIP, err2 := oc.AsAdmin().WithoutNamespace().Run("patch").Args("sub", sub1.subName, "-n", sub1.namespace, "--type=json", "-p", "[{\"op\": \"replace\" , \"path\" : \"/spec/channel\", \"value\":beta}]").Output()
+		e2e.Logf(patchIP)
+		o.Expect(err2).NotTo(o.HaveOccurred())
+		o.Expect(patchIP).To(o.ContainSubstring("patched"))
+
+		err = wait.Poll(5*time.Second, 150*time.Second, func() (bool, error) {
+			ips := getResource(oc, asAdmin, withoutNamespace, "installplan", "-n", sub1.namespace)
+			if strings.Contains(ips, "etcdoperator.v0.9.4") {
+				e2e.Logf("Install plan for etcdoperator.v0.9.4 is created")
+				return true, nil
+			}
+			return false, nil
+		})
+		exutil.AssertWaitPollNoErr(err, "no install plan for ditto-operator.v0.1.1")
+		newCheck("expect", asAdmin, withoutNamespace, compare, "Succeeded", ok, []string{"csv", "etcdoperator.v0.9.4", "-n", sub1.namespace, "-o=jsonpath={.status.phase}"}).check(oc)
+
 	})
 
 	// It will cover test case: OCP-25644, author: tbuskey@redhat.com
