@@ -415,4 +415,63 @@ var _ = g.Describe("[sig-network-edge] Network_Edge should", func() {
 		o.Expect(msg2).To(o.ContainSubstring("HSTS max-age is greater than maximum age 3000s"))
 
 	})
+
+	// author: aiyengar@redhat.com
+	g.It("Author:aiyengar-High-43884-lobal HSTS policy can be enforced strictly on a specific namespace using namespaceSelector for given domain pattern filtering [Serial]", func() {
+		buildPruningBaseDir := exutil.FixturePath("testdata", "router")
+		customTemp := filepath.Join(buildPruningBaseDir, "ingresscontroller-np.yaml")
+		testPodSvc := filepath.Join(buildPruningBaseDir, "web-server-rc.yaml")
+		var (
+			ingctrl = ingctrlNodePortDescription{
+				name:      "ocp43884",
+				namespace: "openshift-ingress-operator",
+				domain:    "",
+				template:  customTemp,
+			}
+		)
+		g.By("Create one custom ingresscontroller")
+		baseDomain := getBaseDomain(oc)
+		ingctrl.domain = ingctrl.name + "." + baseDomain
+		defer ingctrl.delete(oc)
+		ingctrl.create(oc)
+		err := waitForCustomIngressControllerAvailable(oc, ingctrl.name)
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("ingresscontroller %s conditions not available", ingctrl.name))
+
+		g.By("Deploy project 1 with pods and service resources")
+		oc.SetupProject()
+		project1 := oc.Namespace()
+		createResourceFromFile(oc, project1, testPodSvc)
+		err = waitForPodWithLabelReady(oc, oc.Namespace(), "name=web-server-rc")
+		exutil.AssertWaitPollNoErr(err, "pod failed to be ready state within allowed time!")
+
+		g.By("Deploy project 2 with pods and service resources")
+		oc.SetupProject()
+		project2 := oc.Namespace()
+		createResourceFromFile(oc, project2, testPodSvc)
+		err = waitForPodWithLabelReady(oc, oc.Namespace(), "name=web-server-rc")
+		exutil.AssertWaitPollNoErr(err, "pod failed to be ready state within allowed time!")
+
+		g.By("set up HSTS policy for the custom domain with namespace selector set to label of project1 namespace")
+		ingctldomain := getIngressctlDomain(oc, ingctrl.name)
+		defer patchGlobalResourceAsAdmin(oc, "ingresses.config.openshift.io/cluster", "[{\"op\":\"remove\" , \"path\" : \"/spec/requiredHSTSPolicies\"}]")
+		patchGlobalResourceAsAdmin(oc, "ingresses.config.openshift.io/cluster", "[{\"op\":\"add\" , \"path\" : \"/spec/requiredHSTSPolicies\" , \"value\" : [{\"domainPatterns\" :"+"['*"+"."+ingctldomain+"'"+"],\"includeSubDomainsPolicy\":\"NoOpinion\",\"maxAge\":{\"largestMaxAge\":5000,\"smallestMaxAge\":1},\"namespaceSelector\":{\"matchLabels\":{\"kubernetes.io/metadata.name\":\""+project1+"\"}},\"preloadPolicy\":\"NoOpinion\"}]}]")
+		output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("ingresses.config.openshift.io/cluster", "-o=jsonpath={.spec.requiredHSTSPolicies[0]}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring("largestMaxAge"))
+
+		g.By("Test for outcome by creating an edge route via the HSTS implemented domain through the project1")
+		routehost1 := "route-edge" + "-" + project1 + "." + ingctrl.domain
+		output, err1 := oc.AsAdmin().WithoutNamespace().Run("create").Args("-n", project1, "route", "edge", "route-edge", "--service=service-unsecure", "--hostname="+routehost1).Output()
+		o.Expect(err1).To(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring("HSTS max-age must be set correctly in HSTS annotation"))
+
+		g.By("Test for outcome by creating an edge route via the default non-HSTS policy controlled domain through the project2")
+		routehost2 := "route-edge2" + "-" + project2 + "." + ingctrl.domain
+		exposeRouteEdge(oc, project2, "route-edge", "service-unsecure", routehost2)
+		output2, err := oc.Run("get").Args("route").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output2).To(o.ContainSubstring("route-edge2"))
+
+	})
+
 })
