@@ -1490,8 +1490,19 @@ var _ = g.Describe("[sig-operators] OLM should", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		g.By("4) Check OperatorGroup status")
-		newCheck("expect", asAdmin, withoutNamespace, compare, "", ok, []string{"og", og.name, "-n", ns, "-o=jsonpath={.status.conditions..reason}"}).check(oc)
-
+		err = wait.Poll(10*time.Second, 360*time.Second, func() (bool, error) {
+			output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("og", og.name, "-n", ns, "-o=jsonpath={.status.conditions..reason}").Output()
+			if err != nil {
+				e2e.Logf("Fail to get og: %s, error: %s and try again", og.name, err)
+				return false, nil
+			}
+			if strings.Compare(output, "") == 0 {
+				return true, nil
+			}
+			e2e.Logf("The error ServiceAccountNotFound still be reported in status, try gain")
+			return false, nil
+		})
+		exutil.AssertWaitPollNoErr(err, "The error ServiceAccountNotFound still be reported in status")
 	})
 	// author: jiazha@redhat.com
 	g.It("Author:jiazha-ConnectedOnly-Medium-33902-Catalog Weighting [Flaky]", func() {
