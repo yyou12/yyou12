@@ -1293,4 +1293,69 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 		   		o.Expect(output).To(o.Equal("0"))
 		*/
 	})
+
+	// author: jitli@redhat.com
+	g.It("NonPreRelease-Author:jitli-Critical-34895-Image registry can work well on Gov Cloud with custom endpoint defined [Disruptive]", func() {
+
+		g.By("Check platforms")
+		output, err := oc.WithoutNamespace().AsAdmin().Run("get").Args("infrastructure.config.openshift.io", "-o=jsonpath={..status.platformStatus.type}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		if !strings.Contains(output, "AWS") {
+			g.Skip("Skip for non-supported platform")
+		}
+
+		g.By("Check the cluster is with us-gov")
+		output, err = oc.WithoutNamespace().AsAdmin().Run("get").Args("config.image/cluster", "-o=jsonpath={.status.storage.s3.region}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		if !strings.Contains(output, "us-gov") {
+			g.Skip("Skip for wrong region")
+		}
+
+		g.By("Set regionEndpoint if it not set")
+		regionEndpoint, err := oc.WithoutNamespace().AsAdmin().Run("get").Args("config.image/cluster", "-o=jsonpath={.status.storage.s3.regionEndpoint}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		if !strings.Contains(regionEndpoint, "https://s3.us-gov-west-1.amazonaws.com") {
+			defer func() {
+				output, err = oc.AsAdmin().Run("patch").Args("config.image/cluster", "-p", `{"spec":{"storage":{"s3":{"regionEndpoint": null ,"virtualHostedStyle": null}}}}`, "--type=merge").Output()
+				o.Expect(err).NotTo(o.HaveOccurred())
+				o.Expect(string(output)).To(o.ContainSubstring("patched"))
+			}()
+			output, err = oc.AsAdmin().Run("patch").Args("config.image/cluster", "-p", `{"spec":{"storage":{"s3":{"regionEndpoint": "https://s3.us-gov-west-1.amazonaws.com" ,"virtualHostedStyle": true}}}}`, "--type=merge").Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			o.Expect(output).To(o.ContainSubstring("patched"))
+		}
+
+		err = wait.Poll(2*time.Second, 10*time.Second, func() (bool, error) {
+			regionEndpoint, err = oc.WithoutNamespace().AsAdmin().Run("get").Args("config.image/cluster", "-o=jsonpath={.status.storage.s3.regionEndpoint}").Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			if strings.Contains(regionEndpoint, "https://s3.us-gov-west-1.amazonaws.com") {
+				return true, nil
+			} else {
+				e2e.Logf("regionEndpoint not found, go next round")
+				return false, nil
+			}
+		})
+		exutil.AssertWaitPollNoErr(err, "regionEndpoint not found")
+
+		g.By("Check if registry operator degraded")
+		err = wait.Poll(10*time.Second, 60*time.Second, func() (bool, error) {
+			registryDegrade := checkRegistryDegraded(oc)
+			if registryDegrade {
+				return false, nil
+			} else {
+				return true, nil
+			}
+		})
+		exutil.AssertWaitPollNoErr(err, "Image registry is degraded")
+
+		g.By("Import an image with reference-policy=local")
+		oc.SetupProject()
+		err = oc.WithoutNamespace().AsAdmin().Run("import-image").Args("image-34895", "--from=registry.access.redhat.com/rhel7", "--reference-policy=local", "--confirm", "-n", oc.Namespace()).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Start a build")
+		checkRegistryFunctionFine(oc, "test-34895", oc.Namespace())
+
+	})
+
 })
