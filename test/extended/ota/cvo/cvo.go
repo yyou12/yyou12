@@ -26,6 +26,56 @@ var _ = g.Describe("[sig-updates] OTA cvo should", func() {
 
 	oc := exutil.NewCLIWithoutNamespace(project_name)
 
+	//author: yanyang@redhat.com
+	g.It("ConnectedOnly-Author:yanyang-Low-47175-upgrade cluster by using oc adm upgrade --to when there are no possible updates [Serial]", func() {
+		orgUpstream, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("clusterversion", "-o=jsonpath={.items[].spec.upstream}").Output()
+
+		defer restoreCVSpec(orgUpstream, "nochange", oc)
+
+		g.By("Patch upstream")
+		projectID := "openshift-qe"
+		ctx := context.Background()
+		client, err := storage.NewClient(ctx)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		defer client.Close()
+
+		graphURL, bucket, object, _, _, err := buildGraph(client, oc, projectID, "cincy-conditional-edge-invalid-multi-risks.json")
+		defer DeleteBucket(client, bucket)
+		defer DeleteObject(client, bucket, object)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		err = oc.AsAdmin().WithoutNamespace().Run("patch").Args("clusterversion/version", "--type=merge", "--patch", fmt.Sprintf("{\"spec\":{\"upstream\":\"%s\"}}", graphURL)).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Check no updates but RetrievedUpdates=True")
+		err = wait.Poll(5*time.Second, 15*time.Second, func() (bool, error) {
+			cmdOut, err := oc.AsAdmin().WithoutNamespace().Run("adm").Args("upgrade").Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			if strings.Contains(cmdOut, "No updates available") {
+				return true, nil
+			}
+			return false, nil
+		})
+		exutil.AssertWaitPollNoErr(err, "Failed to check updates")
+
+		status, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("clusterversion", "-o=jsonpath={.items[].status.conditions[?(.type=='RetrievedUpdates')].status}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(status).To(o.Equal("True"))
+
+		target := GenerateReleaseVersion(oc)
+		o.Expect(target).NotTo(o.BeEmpty())
+
+		g.By("Upgrade with oc adm upgrade --to")
+		cmdOut, err := oc.AsAdmin().WithoutNamespace().Run("adm").Args("upgrade", "--to", target).Output()
+		o.Expect(err).To(o.HaveOccurred())
+		o.Expect(cmdOut).To(o.ContainSubstring("no recommended updates"))
+
+		g.By("Upgrade with oc adm upgrade --to --allow-not-recommended")
+		cmdOut, err = oc.AsAdmin().WithoutNamespace().Run("adm").Args("upgrade", "--allow-not-recommended", "--to", target).Output()
+		o.Expect(err).To(o.HaveOccurred())
+		o.Expect(cmdOut).To(o.ContainSubstring("no recommended or conditional updates"))
+	})
+
 	//author: jialiu@redhat.com
 	g.It("Author:jialiu-Medium-41391-cvo serves metrics over only https not http", func() {
 		g.By("Check cvo delopyment config file...")
@@ -129,7 +179,7 @@ var _ = g.Describe("[sig-updates] OTA cvo should", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 		defer client.Close()
 
-		graphURL, bucket, object, _, _, err := buildGraph(client, oc, projectID)
+		graphURL, bucket, object, _, _, err := buildGraph(client, oc, projectID, "cincy.json")
 		defer DeleteBucket(client, bucket)
 		defer DeleteObject(client, bucket, object)
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -313,7 +363,7 @@ var _ = g.Describe("[sig-updates] OTA cvo should", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 		defer client.Close()
 
-		graphURL, bucket, object, targetVersion, targetPayload, err := buildGraph(client, oc, projectID)
+		graphURL, bucket, object, targetVersion, targetPayload, err := buildGraph(client, oc, projectID, "cincy.json")
 		defer DeleteBucket(client, bucket)
 		defer DeleteObject(client, bucket, object)
 		o.Expect(err).NotTo(o.HaveOccurred())

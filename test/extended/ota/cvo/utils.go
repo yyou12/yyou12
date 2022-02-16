@@ -316,9 +316,9 @@ func GenerateReleasePayload(oc *exutil.CLI) string {
 // return value: string: target version
 // return value: string: target payload
 // return value: error: any error
-func updateGraph(oc *exutil.CLI) (string, string, string, error) {
+func updateGraph(oc *exutil.CLI, graphName string) (string, string, string, error) {
 	graphDataDir := exutil.FixturePath("testdata", "ota/cvo")
-	graphTemplate := filepath.Join(graphDataDir, "cincy.json")
+	graphTemplate := filepath.Join(graphDataDir, graphName)
 
 	e2e.Logf("Graph Template: %v", graphTemplate)
 
@@ -344,7 +344,7 @@ func updateGraph(oc *exutil.CLI) (string, string, string, error) {
 	// Give the new graph a unique name
 	// graphFile := fmt.Sprintf("cincy-%d", time.Now().Unix())
 
-	sedCmd := fmt.Sprintf("sed -i -e 's|sourceversion|%s|; s|sourcepayload|%s|; s|targetversion|%s|; s|targetpayload|%s|' %s", sourceVersion, sourcePayload, targetVersion, targetPayload, graphTemplate)
+	sedCmd := fmt.Sprintf("sed -i -e 's|sourceversion|%s|g; s|sourcepayload|%s|g; s|targetversion|%s|g; s|targetpayload|%s|g' %s", sourceVersion, sourcePayload, targetVersion, targetPayload, graphTemplate)
 	//fmt.Println(sedCmd)
 	if err := exec.Command("bash", "-c", sedCmd).Run(); err == nil {
 		return graphTemplate, targetVersion, targetPayload, nil
@@ -362,8 +362,8 @@ func updateGraph(oc *exutil.CLI) (string, string, string, error) {
 // return value: string: the target version
 // return value: string: the target payload
 // return value: error: any error
-func buildGraph(client *storage.Client, oc *exutil.CLI, projectID string) (string, string, string, string, string, error) {
-	graphFile, targetVersion, targetPayload, err := updateGraph(oc)
+func buildGraph(client *storage.Client, oc *exutil.CLI, projectID string, graphName string) (string, string, string, string, string, error) {
+	graphFile, targetVersion, targetPayload, err := updateGraph(oc, graphName)
 	if err != nil {
 		return "", "", "", "", "", err
 	}
@@ -393,21 +393,27 @@ func buildGraph(client *storage.Client, oc *exutil.CLI, projectID string) (strin
 }
 
 //restoreCVSpec restores upstream and channel of clusterversion
+//if no need to restore, pass "nochange" to the argument(s)
 func restoreCVSpec(upstream string, channel string, oc *exutil.CLI) {
-	oc.AsAdmin().WithoutNamespace().Run("adm").Args("upgrade", "channel", "--allow-explicit-channel", channel).Execute()
-	exec.Command("bash", "-c", "sleep 5").Output()
-	currChannel, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("clusterversion", "-o=jsonpath={.items[].spec.channel}").Output()
-	if currChannel != channel {
-		e2e.Logf("Error on channel recovery, expected %s, but got %s", channel, currChannel)
+	if channel != "nochange" {
+		oc.AsAdmin().WithoutNamespace().Run("adm").Args("upgrade", "channel", "--allow-explicit-channel", channel).Execute()
+		exec.Command("bash", "-c", "sleep 5").Output()
+		currChannel, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("clusterversion", "-o=jsonpath={.items[].spec.channel}").Output()
+		if currChannel != channel {
+			e2e.Logf("Error on channel recovery, expected %s, but got %s", channel, currChannel)
+		}
 	}
-	if upstream == "" {
-		oc.AsAdmin().WithoutNamespace().Run("patch").Args("clusterversion/version", "--type=json", "-p", "[{\"op\":\"remove\", \"path\":\"/spec/upstream\"}]").Execute()
-	} else {
-		oc.AsAdmin().WithoutNamespace().Run("patch").Args("clusterversion/version", "--type=merge", "--patch", fmt.Sprintf("{\"spec\":{\"upstream\":\"%s\"}}", upstream)).Execute()
-	}
-	currUpstream, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("clusterversion", "-o=jsonpath={.items[].spec.upstream}").Output()
-	if currUpstream != upstream {
-		e2e.Logf("Error on upstream recovery, expected %s, but got %s", upstream, currUpstream)
+
+	if upstream != "nochange" {
+		if upstream == "" {
+			oc.AsAdmin().WithoutNamespace().Run("patch").Args("clusterversion/version", "--type=json", "-p", "[{\"op\":\"remove\", \"path\":\"/spec/upstream\"}]").Execute()
+		} else {
+			oc.AsAdmin().WithoutNamespace().Run("patch").Args("clusterversion/version", "--type=merge", "--patch", fmt.Sprintf("{\"spec\":{\"upstream\":\"%s\"}}", upstream)).Execute()
+		}
+		currUpstream, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("clusterversion", "-o=jsonpath={.items[].spec.upstream}").Output()
+		if currUpstream != upstream {
+			e2e.Logf("Error on upstream recovery, expected %s, but got %s", upstream, currUpstream)
+		}
 	}
 }
 
