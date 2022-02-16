@@ -52,6 +52,8 @@ func patchTunedState(oc *exutil.CLI, namespace string, tunedName string, state s
 		return oc.AsAdmin().WithoutNamespace().Run("patch").Args("tuned", tunedName, "-p", `{"spec":{"managementState":"Unmanaged"}}`, "--type", "merge", "-n", namespace).Execute()
 	} else if state == "managed" {
 		return oc.AsAdmin().WithoutNamespace().Run("patch").Args("tuned", tunedName, "-p", `{"spec":{"managementState":"Managed"}}`, "--type", "merge", "-n", namespace).Execute()
+	} else if state == "removed" {
+		return oc.AsAdmin().WithoutNamespace().Run("patch").Args("tuned", tunedName, "-p", `{"spec":{"managementState":"Removed"}}`, "--type", "merge", "-n", namespace).Execute()
 	} else {
 		return fmt.Errorf("specified state %s is unsupported", state)
 	}
@@ -459,3 +461,4 @@ func assertDefaultIRQSMPAffinityAffectedBitMask(defaultSMPBitMask string, isolat
 		return isMatch
 	}
 }
+

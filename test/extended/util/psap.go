@@ -317,3 +317,18 @@ func AssertOprPodLogsbyFilter(oc *CLI, podName string, namespace string, filter 
 	}
 	return isMatch
 }
+
+func WaitForNoPodsAvailableByKind(oc *CLI, kind string, name string, namespace string) {
+	err := wait.Poll(10*time.Second, 180*time.Second, func() (bool, error) {
+		kindNames, err := oc.AsAdmin().WithoutNamespace().Run("get").Args(kind, name, "-n", namespace, "-oname").Output()
+		if strings.Contains(kindNames, "NotFound") || strings.Contains(kindNames, "No resources") || len(kindNames) == 0 || err != nil {
+			//Check if the new profiles name applied on a node
+			e2e.Logf("All the pod has been terminated:\n %v", kindNames)
+			return true, nil
+		} else {
+			e2e.Logf("The pod is still terminating, waiting for a while: \n%v", kindNames)
+			return false, nil
+		}
+	})
+	AssertWaitPollNoErr(err, "No pod was found ...")
+}

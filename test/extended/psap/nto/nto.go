@@ -813,4 +813,136 @@ var _ = g.Describe("[sig-node] PSAP should", func() {
 			o.ContainSubstring("include=openshift"),
 			o.ContainSubstring("fs.inotify.max_user_watches")))
 	})
+
+	g.It("NonPreRelease-Author:liqcui-Medium-33238-Test NTO support for operatorapi Removed state [Disruptive]", func() {
+
+		// test requires NTO to be installed
+		if !isNTO {
+			g.Skip("NTO is not installed - skipping test ...")
+		}
+
+		g.By("Remove custom profile (if not already removed) and patch default tuned back to Managed")
+		//Cleanup tuned and change back to managed state
+		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("-n", ntoNamespace, "tuned", "user-max-pid-namespaces", "--ignore-not-found").Execute()
+		defer patchTunedState(oc, ntoNamespace, "default", "Managed")
+
+		ntoRes := ntoResource{
+			name:        "user-max-pid-namespaces",
+			namespace:   ntoNamespace,
+			template:    custom_tuned_profile_file,
+			sysctlparm:  "user.max_pid_namespaces",
+			sysctlvalue: "182218",
+		}
+
+		oc.SetupProject()
+		ntoTestNS := oc.Namespace()
+		//Clean up the custom profile user-max-mnt-namespaces and unlabel the nginx pod
+		defer ntoRes.delete(oc)
+
+		//Create a nginx web application pod
+		g.By("Create a nginx web pod in nto temp namespace")
+		exutil.ApplyOperatorResourceByYaml(oc, ntoTestNS, pod_nginx_file)
+
+		//Check if nginx pod is ready
+		exutil.AssertPodToBeReady(oc, "nginx", ntoTestNS)
+
+		//Get the node name in the same node as nginx app
+		tunedNodeName, err := exutil.GetPodNodeName(oc, ntoTestNS, "nginx")
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		//Get the tuned pod name in the same node as nginx app
+		tunedPodName := getTunedPodNamebyNodeName(oc, tunedNodeName, ntoNamespace)
+
+		e2e.Logf("the tuned name on node %v is %v", tunedNodeName, tunedPodName)
+		//Label pod nginx with tuned.openshift.io/elasticsearch=
+		g.By("Label nginx pod as tuned.openshift.io/elasticsearch=")
+		err = exutil.LabelPod(oc, ntoTestNS, "nginx", "tuned.openshift.io/elasticsearch=")
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		//Apply new profile that match label tuned.openshift.io/elasticsearch=
+		g.By("Apply new profile from CR")
+		ntoRes.createTunedProfileIfNotExist(oc)
+
+		//Verify if the new profile is applied
+		ntoRes.assertTunedProfileApplied(oc)
+		profileCheck, err := getTunedProfile(oc, ntoNamespace, tunedNodeName)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(profileCheck).To(o.Equal("user-max-pid-namespaces"))
+
+		g.By("Check if new profile in in rendered tuned")
+		renderCheck, err := getTunedRender(oc, ntoNamespace)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(renderCheck).To(o.ContainSubstring("user-max-pid-namespaces"))
+
+		g.By("Check logs, profile changes SHOULD be applied since tuned is MANAGED")
+		logsCheck, err := oc.AsAdmin().WithoutNamespace().Run("logs").Args("-n", ntoNamespace, "--tail=9", tunedPodName).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(logsCheck).To(o.ContainSubstring("user-max-pid-namespaces"))
+
+		g.By("Compare if the value user.max_ipc_namespaces in on node with labeled pod, should be 182218")
+		compareSysctlValueOnSepcifiedNodeByName(oc, tunedNodeName, "user.max_pid_namespaces", "", "182218")
+
+		g.By("Patch default tuned to 'Removed'")
+		err = patchTunedState(oc, ntoNamespace, "default", "Removed")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		state, err := getTunedState(oc, ntoNamespace, "default")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(state).To(o.Equal("Removed"))
+
+		g.By("Check logs, profiles, and nodes (profile changes SHOULD NOT be applied since tuned is REMOVED)")
+
+		g.By("Check pod status, all tuned pod should be terminated since tuned is REMOVED")
+		exutil.WaitForNoPodsAvailableByKind(oc, "daemonset", "tuned", ntoNamespace)
+		podCheck, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", ntoNamespace, "pods").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(podCheck).NotTo(o.ContainSubstring("tuned"))
+
+		g.By("The rendered profile has been removed since tuned is REMOVED)")
+		renderCheck, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", ntoNamespace, "tuned").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(renderCheck).NotTo(o.ContainSubstring("rendered"))
+
+		g.By("Check profile status, all node profile should be removed since tuned is REMOVED)")
+		profileCheck, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", ntoNamespace, "profile").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(profileCheck).To(o.ContainSubstring("No resources"))
+
+		g.By("Check all nodes for user.max_mnt_namespaces value, all node should different from 182218")
+		compareSysctlDifferentFromSpecifiedValueByName(oc, "user.max_pid_namespaces", "182218")
+
+		g.By("Change tuned state back to managed ...")
+		err = patchTunedState(oc, ntoNamespace, "default", "Managed")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		state, err = getTunedState(oc, ntoNamespace, "default")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(state).To(o.Equal("Managed"))
+
+		g.By("Get the tuned node and pod names")
+		//Get the node name in the same node as nginx app
+		tunedNodeName, err = exutil.GetPodNodeName(oc, ntoTestNS, "nginx")
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		//Get the tuned pod name in the same node as nginx app
+		tunedPodName = getTunedPodNamebyNodeName(oc, tunedNodeName, ntoNamespace)
+
+		g.By("Check logs, profiles, and nodes (profile changes SHOULD be applied since tuned is MANAGED)")
+		//Verify if the new profile is applied
+		ntoRes.assertTunedProfileApplied(oc)
+		profileCheck, err = getTunedProfile(oc, ntoNamespace, tunedNodeName)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(profileCheck).To(o.Equal("user-max-pid-namespaces"))
+
+		g.By("Check if new profile in in rendered tuned")
+		renderCheck, err = getTunedRender(oc, ntoNamespace)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(renderCheck).To(o.ContainSubstring("user-max-pid-namespaces"))
+
+		g.By("Check logs, profile changes SHOULD be applied since tuned is MANAGED)")
+		logsCheck, err = oc.AsAdmin().WithoutNamespace().Run("logs").Args("-n", ntoNamespace, "--tail=9", tunedPodName).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(logsCheck).To(o.ContainSubstring("user-max-pid-namespaces"))
+
+		g.By("Compare if the value user.max_ipc_namespaces in on node with labeled pod, should be 182218")
+		compareSysctlValueOnSepcifiedNodeByName(oc, tunedNodeName, "user.max_pid_namespaces", "", "182218")
+	})
 })
