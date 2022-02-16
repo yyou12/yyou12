@@ -188,6 +188,75 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease elasticsearch-
 		})
 		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("The EO doesn't remove %s from index setting", "index.blocks.read_only_allow_delete"))
 	})
+
+	// author qitang@redhat.com
+	g.It("CPaasrunOnly-Author:qitang-Medium-48657-Take redundancyPolicy into consideration when scale down ES nodes[Serial][Slow]", func() {
+		g.By("deploy EFK pods")
+		sc, err := getStorageClassName(oc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		instance := exutil.FixturePath("testdata", "logging", "clusterlogging", "cl-storage-template.yaml")
+		cl := resource{"clusterlogging", "instance", cloNS}
+		defer cl.deleteClusterLogging(oc)
+		cl.createClusterLogging(oc, "-n", cl.namespace, "-f", instance, "-p", "NAMESPACE="+cl.namespace, "-p", "STORAGE_CLASS="+sc, "-p", "PVC_SIZE=5Gi", "-p", "ES_NODE_COUNT=5", "-p", "REDUNDANCY_POLICY=ZeroRedundancy")
+		WaitForEFKPodsToBeReady(oc, cloNS)
+
+		g.By("scale down ES nodes when redundancy podlicy is ZeroRedundancy")
+		err = oc.AsAdmin().WithoutNamespace().Run("patch").Args("-n", cloNS, "cl/instance", "-p", "{\"spec\": {\"logStore\": {\"elasticsearch\": {\"nodeCount\": 4}}}}", "--type=merge").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		message := "Data node scale down rate is too high based on minimum number of replicas for all indices"
+
+		g.By("check ES status")
+		checkResource(oc, true, false, message, []string{"elasticsearches.logging.openshift.io", "elasticsearch", "-n", cloNS, "-ojsonpath={.status.conditions}"})
+		checkResource(oc, true, true, "green", []string{"elasticsearches.logging.openshift.io", "elasticsearch", "-n", cloNS, "-ojsonpath={.status.cluster.status}"})
+		esPods_1, err := oc.AdminKubeClient().CoreV1().Pods(cloNS).List(metav1.ListOptions{LabelSelector: "es-node-data=true"})
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(len(esPods_1.Items) == 5).To(o.BeTrue())
+
+		g.By("update redundancy policy to SingleRedundancy")
+		err = oc.AsAdmin().WithoutNamespace().Run("patch").Args("-n", cloNS, "cl/instance", "-p", "{\"spec\": {\"logStore\": {\"elasticsearch\": {\"redundancyPolicy\": \"SingleRedundancy\"}}}}", "--type=merge").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("check ES status, no pod removed")
+		checkResource(oc, true, false, message, []string{"elasticsearches.logging.openshift.io", "elasticsearch", "-n", cloNS, "-ojsonpath={.status.conditions}"})
+		esPods_2, err := oc.AdminKubeClient().CoreV1().Pods(cloNS).List(metav1.ListOptions{LabelSelector: "es-node-data=true"})
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(len(esPods_2.Items) == 5).To(o.BeTrue())
+
+		g.By("update index settings, change number_of_replicas to 1")
+		masterPods, _ := oc.AdminKubeClient().CoreV1().Pods(cloNS).List(metav1.ListOptions{LabelSelector: "es-node-master=true"})
+		for _, index := range []string{"app", "infra", "audit"} {
+			cmd := "es_util --query=" + index + "*/_settings?pretty -XPUT -d'{\"index\": {\"number_of_replicas\": 1}}'"
+			_, err = e2e.RunHostCmd(cloNS, masterPods.Items[0].Name, cmd)
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}
+
+		g.By("check ES status, should have one pod removed")
+		err = wait.Poll(3*time.Second, 180*time.Second, func() (done bool, err error) {
+			esPods, err := oc.AdminKubeClient().CoreV1().Pods(cloNS).List(metav1.ListOptions{LabelSelector: "es-node-data=true"})
+			if err != nil {
+				return false, err
+			} else {
+				if len(esPods.Items) == 4 {
+					return true, nil
+				}
+				return false, nil
+			}
+		})
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("ES pod count is not %d", 4))
+		checkResource(oc, true, true, "green", []string{"elasticsearches.logging.openshift.io", "elasticsearch", "-n", cloNS, "-ojsonpath={.status.cluster.status}"})
+
+		g.By("reduce ES nodeCount to 2")
+		err = oc.AsAdmin().WithoutNamespace().Run("patch").Args("-n", cloNS, "cl/instance", "-p", "{\"spec\": {\"logStore\": {\"elasticsearch\": {\"nodeCount\": 2}}}}", "--type=merge").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("check ES status, no pod removed")
+		checkResource(oc, true, false, message, []string{"elasticsearches.logging.openshift.io", "elasticsearch", "-n", cloNS, "-ojsonpath={.status.conditions}"})
+		esPods_3, err := oc.AdminKubeClient().CoreV1().Pods(cloNS).List(metav1.ListOptions{LabelSelector: "es-node-data=true"})
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(len(esPods_3.Items) == 4).To(o.BeTrue())
+		checkResource(oc, true, true, "green", []string{"elasticsearches.logging.openshift.io", "elasticsearch", "-n", cloNS, "-ojsonpath={.status.cluster.status}"})
+	})
 })
 
 var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease operators upgrade testing", func() {
