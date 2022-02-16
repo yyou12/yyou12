@@ -872,3 +872,10 @@ func foundAffinityRules(oc *exutil.CLI, affinityRules string) bool {
 	}
 	return true
 }
+
+func saveGlobalProxy(oc *exutil.CLI) (string, string, string) {
+	httpProxy := getResource(oc, asAdmin, withoutNamespace, "proxy", "cluster", "-o=jsonpath={.status.httpProxy}")
+	httpsProxy := getResource(oc, asAdmin, withoutNamespace, "proxy", "cluster", "-o=jsonpath={.status.httpsProxy}")
+	noProxy := getResource(oc, asAdmin, withoutNamespace, "proxy", "cluster", "-o=jsonpath={.status.noProxy}")
+	return httpProxy, httpsProxy, noProxy
+}

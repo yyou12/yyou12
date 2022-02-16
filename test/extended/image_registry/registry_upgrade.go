@@ -121,4 +121,60 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 			}
 		}
 	})
+
+	// author: xiuwang@redhat.com
+	g.It("NonPreRelease-PreChkUpgrade-Author:xiuwang-Critial-24345-Set proxy in Image-registry-operator before upgrade", func() {
+		g.By("Check if it's a proxy cluster")
+		httpProxy, httpsProxy, noProxy := saveGlobalProxy(oc)
+		if !strings.Contains(httpProxy, "http") {
+			g.Skip("Skip for non-proxy platform")
+		}
+
+		g.By("Check if registry operator degraded")
+		registryDegrade := checkRegistryDegraded(oc)
+		if registryDegrade {
+			e2e.Failf("Image registry is degraded")
+		}
+
+		g.By("Set image-registry proxy setting")
+		err := oc.WithoutNamespace().AsAdmin().Run("patch").Args("configs.imageregistry/cluster", "-p", `{"spec":{"proxy":{"http": "`+httpProxy+`","https":"`+httpsProxy+`","noProxy":"`+noProxy+`"}}}`, "--type=merge").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = wait.PollImmediate(10*time.Second, 2*time.Minute, func() (bool, error) {
+			registryDegrade := checkRegistryDegraded(oc)
+			if registryDegrade {
+				e2e.Logf("wait for next round")
+				return false, nil
+			}
+			return true, nil
+		})
+		exutil.AssertWaitPollNoErr(err, "Image registry is degraded")
+		oc.SetupProject()
+		checkRegistryFunctionFine(oc, "prepare-24345", oc.Namespace())
+	})
+
+	// author: xiuwang@redhat.com
+	g.It("NonPreRelease-PstChkUpgrade-Author:xiuwang-Critial-24345-Set proxy in Image-registry-operator after upgrade", func() {
+		g.By("Check if it's a proxy cluster")
+		httpProxy, httpsProxy, noProxy := saveGlobalProxy(oc)
+		if !strings.Contains(httpProxy, "http") {
+			g.Skip("Skip for non-proxy platform")
+		}
+
+		g.By("Check if registry operator degraded")
+		registryDegrade := checkRegistryDegraded(oc)
+		if registryDegrade {
+			e2e.Failf("Image registry is degraded")
+		}
+
+		g.By("Check image-registry proxy setting")
+		Output, err := oc.WithoutNamespace().AsAdmin().Run("get").Args("configs.imageregistry/cluster", "-o=jsonpath={.spec.proxy}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		if !strings.Contains(Output, httpProxy) || !strings.Contains(Output, httpsProxy) || !strings.Contains(Output, noProxy) {
+			e2e.Failf("http proxy is not same")
+		}
+
+		oc.SetupProject()
+		checkRegistryFunctionFine(oc, "check-24345", oc.Namespace())
+	})
+
 })
