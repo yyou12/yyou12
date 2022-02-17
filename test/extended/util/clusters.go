@@ -2,6 +2,8 @@ package util
 
 import (
 	"strings"
+
+	e2e "k8s.io/kubernetes/test/e2e/framework"
 )
 
 // GetClusterVersion returns the cluster version as string value (Ex: 4.8) and cluster build (Ex: 4.8.0-0.nightly-2021-09-28-165247)
@@ -31,4 +33,13 @@ func GetGcpProjectId(oc *CLI) (string, error) {
 		return "", err
 	}
 	return strings.Trim(projectId, "'"), err
+}
+
+func GetClusterPrefixName(oc *CLI) string {
+	output, err := oc.WithoutNamespace().AsAdmin().Run("get").Args("route", "console", "-n", "openshift-console", "-o=jsonpath={.spec.host}").Output()
+	if err != nil {
+		e2e.Logf("Get cluster console route failed with err %v .", err)
+		return ""
+	}
+	return strings.Split(output, ".")[2]
 }
