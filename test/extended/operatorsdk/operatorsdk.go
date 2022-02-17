@@ -927,7 +927,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
 	})
 
 	// author: chuo@redhat.com
-	g.It("VMonly-ConnectedOnly-Author:chuo-Medium-43973-Medium-43976-scorecard basic test migration and migrate olm tests", func() {
+	g.It("VMonly-ConnectedOnly-Author:chuo-Critical-45428-Medium-43973-Medium-43976-Medium-48630-scorecard basic test migration and migrate olm tests and proxy configurable and xunit adjustment", func() {
 		operatorsdkCLI.showInfo = true
 		oc.SetupProject()
 
@@ -985,6 +985,17 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
 		output, err = operatorsdkCLI.Run("scorecard").Args("/tmp/ocp-43973/memcached-operator/bundle", "-c", "/tmp/ocp-43973/memcached-operator/bundle/tests/scorecard/config.yaml", "-w", "60s", "--selector=test=olm-bundle-validation-test", "-n", oc.Namespace()).Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(output).To(o.ContainSubstring("State: pass"))
+
+		//ocp-45428 xunit adjustments - add nested tags and attributes
+		g.By("migrate OLM tests-bundle validation to generate a pass xunit output")
+		output, err = operatorsdkCLI.Run("scorecard").Args("/tmp/ocp-43973/memcached-operator/bundle", "-c", "/tmp/ocp-43973/memcached-operator/bundle/tests/scorecard/config.yaml", "-w", "60s", "--selector=test=olm-bundle-validation-test", "-o", "xunit","-n", oc.Namespace()).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring("<testsuite name=\"olm-bundle-validation\" id=\"olm-bundle-validation\""))
+
+		g.By("migrate OLM tests-status descriptors to generate a failed xunit output")
+		output, err = operatorsdkCLI.Run("scorecard").Args("/tmp/ocp-43973/memcached-operator/bundle", "-c", "/tmp/ocp-43973/memcached-operator/bundle/tests/scorecard/config.yaml", "-w", "60s", "--selector=test=olm-status-descriptors-test", "-o", "xunit","-n", oc.Namespace()).Output()
+		o.Expect(output).To(o.ContainSubstring("<testsuite name=\"olm-status-descriptors\" failures=\"Loaded ClusterServiceVersion"))
+
 	})
 	// author: chuo@redhat.com
 	g.It("ConnectedOnly-Author:chuo-High-31219-scorecard bundle is mandatory ", func() {
