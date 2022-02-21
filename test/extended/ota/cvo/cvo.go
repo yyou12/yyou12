@@ -647,4 +647,53 @@ var _ = g.Describe("[sig-updates] OTA cvo should", func() {
 		o.Expect(err).To(o.HaveOccurred())
 		o.Expect(output).To(o.ContainSubstring("NotFound"))
 	})
+
+	//author: yanyang@redhat.com
+	g.It("Author:yanyang-Medium-47757-cvo respects the deployment strategy in manifests [Serial]", func() {
+		g.By("Get the strategy for openshift-insights/insights-operator in manifest")
+		tempDataDir, err := extractManifest(oc)
+		defer os.RemoveAll(tempDataDir)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		manifestDir := filepath.Join(tempDataDir, "manifest")
+		namespace, name := "openshift-insights", "insights-operator"
+		cmd := fmt.Sprintf("grep -rlZ 'kind: Deployment' %s | xargs -0 grep -l 'name: %s' | xargs grep strategy -A1 | sed -n 2p | cut -f2 -d ':'", manifestDir, name)
+		e2e.Logf(cmd)
+		out, _ := exec.Command("bash", "-c", cmd).Output()
+		o.Expect(out).NotTo(o.BeEmpty())
+		expectStrategy := strings.TrimSpace(string(out))
+		e2e.Logf(expectStrategy)
+
+		g.By("Check in-cluster insights-operator has the same strategy with manifest")
+		existStrategy, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("deployment", name, "-o=jsonpath={.spec.strategy}", "-n", namespace).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(existStrategy).To(o.ContainSubstring(expectStrategy))
+
+		g.By("Change the strategy")
+		if expectStrategy == "Recreate" {
+			_, err = oc.AsAdmin().WithoutNamespace().Run("patch").Args(fmt.Sprintf("deployment/%s", name), "-n", namespace, "--type=json", "-p", "[{\"op\":\"replace\", \"path\":\"/spec/strategy/type\", \"value\": \"RollingUpdate\"}]").Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+		} else {
+			_, err = oc.AsAdmin().WithoutNamespace().Run("patch").Args(fmt.Sprintf("deployment/%s", name), "-n", namespace, "--type=json", "-p", "[{\"op\": \"remove\", \"path\": \"/spec/strategy/rollingUpdate\"}, {\"op\": \"replace\", \"path\": \"/spec/strategy/type\", \"value\": \"Recreate\"}]").Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}
+
+		g.By("Check the strategy reverted after 5 minutes")
+		if pollErr := wait.Poll(30*time.Second, 5*time.Minute, func() (bool, error) {
+			curStrategy, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("deployment", name, "-o=jsonpath={.spec.strategy}", "-n", namespace).Output()
+			if strings.Contains(string(curStrategy), expectStrategy) {
+				return true, nil
+			}
+			return false, nil
+		}); pollErr != nil {
+			//If the strategy is not reverted, manually change it back
+			if expectStrategy == "Recreate" {
+				_, err = oc.AsAdmin().WithoutNamespace().Run("patch").Args(fmt.Sprintf("deployment/%s", name), "-n", namespace, "--type=json", "-p", "[{\"op\": \"remove\", \"path\": \"/spec/strategy/rollingUpdate\"}, {\"op\": \"replace\", \"path\": \"/spec/strategy/type\", \"value\": \"Recreate\"}]").Output()
+				o.Expect(err).NotTo(o.HaveOccurred())
+			} else {
+				_, err = oc.AsAdmin().WithoutNamespace().Run("patch").Args(fmt.Sprintf("deployment/%s", name), "-n", namespace, "--type=json", "-p", "[{\"op\":\"replace\", \"path\":\"/spec/strategy/type\", \"value\": \"RollingUpdate\"}]").Output()
+				o.Expect(err).NotTo(o.HaveOccurred())
+			}
+			exutil.AssertWaitPollNoErr(pollErr, "Strategy is not reverted back after 5 minutes")
+		}
+	})
 })
