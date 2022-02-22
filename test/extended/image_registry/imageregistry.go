@@ -1358,4 +1358,52 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 
 	})
 
+	// author: xiuwangredhat.com
+	g.It("VMonly-Author:xiuwang-Critical-48744-Pull through for images that have dots in their namespace", func() {
+
+		g.By("Setup a private registry")
+		oc.SetupProject()
+		var regUser, regPass = "testuser", getRandomString()
+		tempDataDir := filepath.Join("/tmp/", fmt.Sprintf("ir-%s", getRandomString()))
+		defer os.RemoveAll(tempDataDir)
+		err := os.Mkdir(tempDataDir, 0755)
+		if err != nil {
+			e2e.Logf("Fail to create directory: %v", err)
+		}
+		htpasswdFile, err := generateHtpasswdFile(tempDataDir, regUser, regPass)
+		defer os.RemoveAll(htpasswdFile)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		regRoute := setSecureRegistryEnableAuth(oc, oc.Namespace(), "myregistry", htpasswdFile)
+
+		g.By("Create secret for the private registry")
+		err = oc.WithoutNamespace().AsAdmin().Run("create").Args("secret", "docker-registry", "myregistry-auth", "--docker-username="+regUser, "--docker-password="+regPass, "--docker-server="+regRoute, "-n", oc.Namespace()).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = oc.AsAdmin().Run("extract").Args("secret/myregistry-auth", "-n", oc.Namespace(), "--confirm", "--to="+tempDataDir).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Mirror image with dots in namespace")
+		myimage := regRoute + "/" + fmt.Sprintf("48744-test.%s", getRandomString()) + ":latest"
+		err = oc.AsAdmin().WithoutNamespace().Run("image").Args("mirror", "quay.io/openshifttest/busybox@sha256:c5439d7db88ab5423999530349d327b04279ad3161d7596d2126dfb5b02bfd1f", myimage, "--insecure", "-a", tempDataDir+"/.dockerconfigjson", "--keep-manifest-list=true", "--filter-by-os=.*").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		myimage1 := regRoute + "/" + fmt.Sprintf("48744-test1.%s", getRandomString()) + "/rh-test:latest"
+		err = oc.AsAdmin().WithoutNamespace().Run("image").Args("mirror", myimage, myimage1, "--insecure", "-a", tempDataDir+"/.dockerconfigjson", "--keep-manifest-list=true", "--filter-by-os=.*").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Create imagestream with pull through")
+		err = oc.AsAdmin().WithoutNamespace().Run("import-image").Args("first:latest", "--from="+myimage, "--reference-policy=local", "--insecure", "--confirm", "-n", oc.Namespace()).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = exutil.WaitForAnImageStreamTag(oc, oc.Namespace(), "first", "latest")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = oc.AsAdmin().WithoutNamespace().Run("tag").Args(myimage1, "second:latest", "--reference-policy=local", "--insecure", "-n", oc.Namespace()).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = exutil.WaitForAnImageStreamTag(oc, oc.Namespace(), "second", "latest")
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Create pod with the imagestreams")
+		err = oc.Run("set").Args("image-lookup", "--all", "-n", oc.Namespace()).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		expectInfo := `Successfully pulled image "image-registry.openshift-image-registry.svc:5000/` + oc.Namespace()
+		createSimpleRunPod(oc, "first:latest", expectInfo)
+		createSimpleRunPod(oc, "second:latest", expectInfo)
+	})
 })

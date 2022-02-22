@@ -879,3 +879,20 @@ func saveGlobalProxy(oc *exutil.CLI) (string, string, string) {
 	noProxy := getResource(oc, asAdmin, withoutNamespace, "proxy", "cluster", "-o=jsonpath={.status.noProxy}")
 	return httpProxy, httpsProxy, noProxy
 }
+
+func createSimpleRunPod(oc *exutil.CLI, image, expectInfo string) {
+	podName := getRandomString()
+	err := oc.AsAdmin().WithoutNamespace().Run("run").Args(podName, "--image="+image, "-n", oc.Namespace(), "--", "sleep", "300").Execute()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	err = wait.Poll(3*time.Second, 30*time.Second, func() (bool, error) {
+		output, err := oc.AsAdmin().WithoutNamespace().Run("describe").Args("pod", podName, "-n", oc.Namespace()).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		if o.Expect(output).To(o.ContainSubstring(expectInfo)) {
+			return true, nil
+		} else {
+			e2e.Logf("Continue to next round")
+			return false, nil
+		}
+	})
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("Pod doesn't pull expected image"))
+}
