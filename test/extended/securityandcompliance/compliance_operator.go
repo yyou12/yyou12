@@ -56,6 +56,8 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		prometheusAuditRuleYAML          string
 		wordpressRouteYAML               string
 		resourceQuotaYAML                string
+		tprofileWithoutDescriptionYAML   string
+		tprofileWithoutTitleYAML         string
 		catSrc                           catalogSourceDescription
 		ogD                              operatorGroupDescription
 		subD                             subscriptionDescription
@@ -101,6 +103,8 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 		prometheusAuditRuleYAML = filepath.Join(buildPruningBaseDir, "prometheus-audit.yaml")
 		wordpressRouteYAML = filepath.Join(buildPruningBaseDir, "wordpress-route.yaml")
 		resourceQuotaYAML = filepath.Join(buildPruningBaseDir, "resource-quota.yaml")
+		tprofileWithoutDescriptionYAML = filepath.Join(buildPruningBaseDir, "tailoredprofile-withoutdescription.yaml")
+		tprofileWithoutTitleYAML = filepath.Join(buildPruningBaseDir, "tailoredprofile-withouttitle.yaml")
 		catSrc = catalogSourceDescription{
 			name:        "compliance-operator",
 			namespace:   "",
@@ -4287,6 +4291,10 @@ var _ = g.Describe("[sig-isc] Security_and_Compliance The Compliance Operator au
 				"-o=jsonpath={.status.state}"}).check(oc)
 			newCheck("expect", asAdmin, withoutNamespace, contain, errmsg, ok, []string{"tailoredprofile", tprofileDNP.name, "-n", tprofileDNP.namespace,
 				"-o=jsonpath={.status.errorMessage}"}).check(oc)
+
+			errorMsg := []string{"The TailoredProfile \"profile-description\" is invalid: spec.description: Required value", "The TailoredProfile \"profile-title\" is invalid: spec.title: Required value"}
+			verifyTailoredProfile(oc, errorMsg, subD.namespace, tprofileWithoutDescriptionYAML)
+			verifyTailoredProfile(oc, errorMsg, subD.namespace, tprofileWithoutTitleYAML)
 
 			g.By("Create scansettingbindings !!!\n")
 			ssbN.namespace = subD.namespace

@@ -943,3 +943,16 @@ func getRemRuleStatus(oc *exutil.CLI, suiteName string, expected string, namespa
 	})
 	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("The remsRule status %s is not matching", expected))
 }
+
+func verifyTailoredProfile(oc *exutil.CLI, errmsgs []string, namespace string, filename string) {
+	err := wait.Poll(2*time.Second, 20*time.Second, func() (bool, error) {
+		tpErr, _ := oc.AsAdmin().WithoutNamespace().Run("create").Args("-n", namespace, "-f", filename).Output()
+		for _, errmsg := range errmsgs {
+			if strings.Contains(errmsg, tpErr) {
+				return true, nil
+			}
+		}
+		return false, nil
+	})
+	exutil.AssertWaitPollNoErr(err, "The tailoredprofile requires title and description to create")
+}
