@@ -73,6 +73,22 @@ type podOOMDescription struct {
 	template         string
 }
 
+type podInitConDescription struct {
+	name      string
+	namespace string
+	template  string
+}
+
+func (podInitCon *podInitConDescription) create(oc *exutil.CLI) {
+	err := createResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", podInitCon.template, "-p", "NAME="+podInitCon.name, "NAMESPACE="+podInitCon.namespace)
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+func (podInitCon *podInitConDescription) delete(oc *exutil.CLI) {
+	err := oc.AsAdmin().WithoutNamespace().Run("delete").Args("-n", podInitCon.namespace, "pod", podInitCon.name).Execute()
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
 func (podOOM *podOOMDescription) create(oc *exutil.CLI) {
 	err := createResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", podOOM.template, "-p", "NAME="+podOOM.name, "NAMESPACE="+podOOM.namespace)
 	o.Expect(err).NotTo(o.HaveOccurred())
@@ -368,6 +384,52 @@ func (podOOM *podOOMDescription) podOOMStatus(oc *exutil.CLI) error {
 		} else {
 			e2e.Logf("\nWaiting for status....")
 			return false, nil
+		}
+		return false, nil
+	})
+}
+
+func (podInitCon *podInitConDescription) containerExit(oc *exutil.CLI) error {
+	return wait.Poll(2*time.Second, 2*time.Minute, func() (bool, error) {
+		initConStatus, err :=oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-o=jsonpath={.items[0].status.initContainerStatuses[0].state.terminated.reason}", "-n", podInitCon.namespace).Output()
+		e2e.Logf("The initContainer status is %v", initConStatus)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		if strings.Contains(string(initConStatus), "Completed") {
+			e2e.Logf("The initContainer exit normally")
+			return true, nil
+		} else {
+			e2e.Logf("The initContainer not exit!")
+			return false, nil
+		}
+		return false, nil
+	})
+}
+
+func (podInitCon *podInitConDescription) deleteInitContainer(oc *exutil.CLI) error {
+	nodename, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-o=jsonpath={.items[0].spec.nodeName}", "-n", podInitCon.namespace).Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	containerID, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-o=jsonpath={.items[0].status.initContainerStatuses[0].containerID}", "-n", podInitCon.namespace).Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	e2e.Logf("The containerID is %v", containerID)
+	initContainerID := string(containerID)[8:]
+	e2e.Logf("The initContainerID is %s", initContainerID)
+	return oc.AsAdmin().Run("debug").Args(`node/`+fmt.Sprintf("%s", nodename), "--", "chroot", "/host", "crictl", "rm", initContainerID).Execute()
+}
+
+func (podInitCon *podInitConDescription) initContainerNotRestart(oc *exutil.CLI) error { 
+	return wait.Poll(3*time.Minute, 6*time.Minute, func() (bool, error) {
+		re := regexp.MustCompile("running")
+		podname, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-o=jsonpath={.items[0].metadata.name}", "-n", podInitCon.namespace).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		output, err := oc.AsAdmin().WithoutNamespace().Run("exec").Args(string(podname), "-n", podInitCon.namespace, "--", "cat", "/mnt/data/test").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		found := re.FindAllString(output, -1)
+		if lenStr := len(found); lenStr > 1 {
+			e2e.Logf("initContainer restart %d times.", (lenStr-1))
+			return false, nil
+		} else if lenStr == 1 {
+			e2e.Logf("initContainer not restart")
+			return true, nil
 		}
 		return false, nil
 	})

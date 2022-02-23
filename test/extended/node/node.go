@@ -18,6 +18,7 @@ var _ = g.Describe("[sig-node] NODE initContainer policy,volume,readines,quota",
 		customTemp          = filepath.Join(buildPruningBaseDir, "pod-modify.yaml")
 		podTerminationTemp  = filepath.Join(buildPruningBaseDir, "pod-termination.yaml")
 		podOOMTemp          = filepath.Join(buildPruningBaseDir, "pod-oom.yaml")
+		podInitConTemp      = filepath.Join(buildPruningBaseDir, "pod-initContainer.yaml")
 
 		podModify = podModifyDescription{
 			name:          "",
@@ -42,6 +43,11 @@ var _ = g.Describe("[sig-node] NODE initContainer policy,volume,readines,quota",
 			name:              "",
 			namespace:         "",
 			template:          podOOMTemp,
+		}
+		podInitCon38271 = podInitConDescription{
+			name:        "",
+			namespace:   "",
+			template:    podInitConTemp,
 		}
 	)
 
@@ -224,6 +230,34 @@ var _ = g.Describe("[sig-node] NODE initContainer policy,volume,readines,quota",
 		exutil.AssertWaitPollNoErr(err, "terminationGracePeriodSeconds is not valid")
 		g.By("Delete Pod\n")
 		podTermination.delete(oc)
+	})
+
+	// author: minmli@redhat.com
+	g.It("Author:minmli-High-38271-Init containers should not restart when the exited init container is removed from node", func() {
+		g.By("Test for case OCP-38271")
+		oc.SetupProject()
+		podInitCon38271.name = "initcon-pod"
+		podInitCon38271.namespace = oc.Namespace()
+		
+		g.By("Create a pod with init container")
+		podInitCon38271.create(oc)
+		defer podInitCon38271.delete(oc)
+
+		g.By("Check pod status")
+		err := podStatus(oc)
+		exutil.AssertWaitPollNoErr(err, "pod is not running")
+
+		g.By("Check init container exit normally")
+		err = podInitCon38271.containerExit(oc)
+		exutil.AssertWaitPollNoErr(err, "conainer not exit normally")
+
+		g.By("Delete init container")
+		err = podInitCon38271.deleteInitContainer(oc)
+		exutil.AssertWaitPollNoErr(err, "fail to delete container")
+
+		g.By("Check init container not restart again")
+		err = podInitCon38271.initContainerNotRestart(oc)
+		exutil.AssertWaitPollNoErr(err, "init container restart")
 	})
 
 		// author: pmali@redhat.com
