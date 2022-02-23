@@ -27,7 +27,7 @@ var _ = g.Describe("[sig-updates] OTA cvo should", func() {
 	oc := exutil.NewCLIWithoutNamespace(project_name)
 
 	//author: yanyang@redhat.com
-	g.It("ConnectedOnly-Author:yanyang-Low-47175-upgrade cluster by using oc adm upgrade --to when there are no possible updates [Serial]", func() {
+	g.It("ConnectedOnly-Author:yanyang-Low-47175-upgrade cluster when current version is in the upstream but there are not update paths [Serial]", func() {
 		orgUpstream, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("clusterversion", "-o=jsonpath={.items[].spec.upstream}").Output()
 
 		defer restoreCVSpec(orgUpstream, "nochange", oc)
@@ -68,12 +68,25 @@ var _ = g.Describe("[sig-updates] OTA cvo should", func() {
 		g.By("Upgrade with oc adm upgrade --to")
 		cmdOut, err := oc.AsAdmin().WithoutNamespace().Run("adm").Args("upgrade", "--to", target).Output()
 		o.Expect(err).To(o.HaveOccurred())
-		o.Expect(cmdOut).To(o.ContainSubstring("no recommended updates"))
+		o.Expect(cmdOut).To(o.ContainSubstring("no recommended updates, specify --to-image to continue with the update or wait for new updates to be available"))
 
 		g.By("Upgrade with oc adm upgrade --to --allow-not-recommended")
 		cmdOut, err = oc.AsAdmin().WithoutNamespace().Run("adm").Args("upgrade", "--allow-not-recommended", "--to", target).Output()
 		o.Expect(err).To(o.HaveOccurred())
-		o.Expect(cmdOut).To(o.ContainSubstring("no recommended or conditional updates"))
+		o.Expect(cmdOut).To(o.ContainSubstring("no recommended or conditional updates, specify --to-image to continue with the update or wait for new updates to be available"))
+
+		targetPullspec := GenerateReleasePayload(oc)
+		o.Expect(targetPullspec).NotTo(o.BeEmpty())
+
+		g.By("Upgrade with oc adm upgrade --to-image")
+		cmdOut, err = oc.AsAdmin().WithoutNamespace().Run("adm").Args("upgrade", "--to-image", targetPullspec).Output()
+		o.Expect(err).To(o.HaveOccurred())
+		o.Expect(cmdOut).To(o.ContainSubstring("no recommended updates, specify --allow-explicit-upgrade to continue with the update or wait for new updates to be available"))
+
+		g.By("Upgrade with oc adm upgrade --to-image --allow-not-recommended")
+		cmdOut, err = oc.AsAdmin().WithoutNamespace().Run("adm").Args("upgrade", "--allow-not-recommended", "--to-image", targetPullspec).Output()
+		o.Expect(err).To(o.HaveOccurred())
+		o.Expect(cmdOut).To(o.ContainSubstring("no recommended or conditional updates, specify --allow-explicit-upgrade to continue with the update or wait for new updates to be available"))
 	})
 
 	//author: jialiu@redhat.com
