@@ -884,7 +884,7 @@ func createSimpleRunPod(oc *exutil.CLI, image, expectInfo string) {
 	podName := getRandomString()
 	err := oc.AsAdmin().WithoutNamespace().Run("run").Args(podName, "--image="+image, "-n", oc.Namespace(), "--", "sleep", "300").Execute()
 	o.Expect(err).NotTo(o.HaveOccurred())
-	err = wait.Poll(3*time.Second, 30*time.Second, func() (bool, error) {
+	err = wait.Poll(3*time.Second, 2*time.Minute, func() (bool, error) {
 		output, err := oc.AsAdmin().WithoutNamespace().Run("describe").Args("pod", podName, "-n", oc.Namespace()).Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		if o.Expect(output).To(o.ContainSubstring(expectInfo)) {

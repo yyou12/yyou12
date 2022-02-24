@@ -1406,4 +1406,37 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 		createSimpleRunPod(oc, "first:latest", expectInfo)
 		createSimpleRunPod(oc, "second:latest", expectInfo)
 	})
+
+	// author: xiuwang@redhat.com
+	g.It("DisconnectedOnly-Author:xiuwang-High-48739-Pull through works with icsp which source and mirror without full path", func() {
+		g.By("Check if image-policy-aosqe created")
+		output, err := oc.WithoutNamespace().AsAdmin().Run("get").Args("imagecontentsourcepolicy").Output()
+		if !strings.Contains(output, "image-policy-aosqe") {
+			e2e.Failf("image-policy-aosqe is not created in this disconnect cluster")
+		}
+
+		g.By("Create imagestream using source image only match to mirrors namespace in icsp")
+		oc.SetupProject()
+		err = oc.WithoutNamespace().AsAdmin().Run("import-image").Args("skopeo:latest", "--from=quay.io/openshifttest/skopeo@sha256:426196e376cf045012289d53fec986554241496ed7f38e347fc56505aa8ad322", "--reference-policy=local", "--confirm", "-n", oc.Namespace()).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = exutil.WaitForAnImageStreamTag(oc, oc.Namespace(), "skopeo", "latest")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = oc.Run("set").Args("image-lookup", "skopeo", "-n", oc.Namespace()).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		expectInfo := `Successfully pulled image "image-registry.openshift-image-registry.svc:5000/` + oc.Namespace()
+		createSimpleRunPod(oc, "skopeo:latest", expectInfo)
+
+		g.By("Create imagestream using source image which use the whole mirrors")
+		manifest := saveImageMetadataName(oc, "rhel8/mysql-80")
+		mysqlImage := "registry.redhat.io/rhel8/mysql-80@" + manifest
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = oc.AsAdmin().WithoutNamespace().Run("tag").Args(mysqlImage, "mysqlx:latest", "--reference-policy=local", "-n", oc.Namespace()).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = exutil.WaitForAnImageStreamTag(oc, oc.Namespace(), "mysqlx", "latest")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = oc.Run("set").Args("image-lookup", "mysqlx", "-n", oc.Namespace()).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		createSimpleRunPod(oc, "mysqlx:latest", expectInfo)
+	})
+
 })
