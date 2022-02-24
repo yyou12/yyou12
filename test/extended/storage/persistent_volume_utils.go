@@ -3,6 +3,7 @@ package storage
 import (
 	"fmt"
 	"io/ioutil"
+	"strconv"
 	"strings"
 	"time"
 
@@ -12,6 +13,130 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 )
+
+// Define PersistVolume struct
+type persistentVolume struct {
+	name          string
+	accessmode    string
+	capacity      string
+	driver        string
+	volumeHandle  string
+	reclaimPolicy string
+	scname        string
+	template      string
+	volumeMode    string
+}
+
+// function option mode to change the default values of PersistentVolume Object attributes, e.g. name, namespace, accessmode, capacity, volumemode etc.
+type persistentVolumeOption func(*persistentVolume)
+
+// Replace the default value of PersistentVolume name attribute
+func setPersistentVolumeName(name string) persistentVolumeOption {
+	return func(this *persistentVolume) {
+		this.name = name
+	}
+}
+
+// Replace the default value of PersistentVolume template attribute
+func setPersistentVolumeTemplate(template string) persistentVolumeOption {
+	return func(this *persistentVolume) {
+		this.template = template
+	}
+}
+
+// Replace the default value of PersistentVolume accessmode attribute
+func setPersistentVolumeAccessMode(accessmode string) persistentVolumeOption {
+	return func(this *persistentVolume) {
+		this.accessmode = accessmode
+	}
+}
+
+// Replace the default value of PersistentVolume capacity attribute
+func setPersistentVolumeCapacity(capacity string) persistentVolumeOption {
+	return func(this *persistentVolume) {
+		this.accessmode = capacity
+	}
+}
+
+// Replace the default value of PersistentVolume capacity attribute
+func setPersistentVolumeDriver(driver string) persistentVolumeOption {
+	return func(this *persistentVolume) {
+		this.driver = driver
+	}
+}
+
+// Replace the default value of PersistentVolume volumeHandle attribute
+func setPersistentVolumeHandle(volumeHandle string) persistentVolumeOption {
+	return func(this *persistentVolume) {
+		this.volumeHandle = volumeHandle
+	}
+}
+
+// Replace the default value of PersistentVolume reclaimPolicy attribute
+func setPersistentVolumeReclaimPolicy(reclaimPolicy string) persistentVolumeOption {
+	return func(this *persistentVolume) {
+		this.reclaimPolicy = reclaimPolicy
+	}
+}
+
+// Replace the default value of PersistentVolume scname attribute
+func setPersistentVolumeStorageClassName(scname string) persistentVolumeOption {
+	return func(this *persistentVolume) {
+		this.scname = scname
+	}
+}
+
+// Replace the default value of PersistentVolume volumeMode attribute
+func setPersistentVolumeMode(volumeMode string) persistentVolumeOption {
+	return func(this *persistentVolume) {
+		this.volumeMode = volumeMode
+	}
+}
+
+//  Create a new customized PersistentVolume object
+func newPersistentVolume(opts ...persistentVolumeOption) persistentVolume {
+	var defaultVolSize string
+	switch cloudProvider {
+	// AlibabaCloud minimum volume size is 20Gi
+	case "alibabacloud":
+		defaultVolSize = strconv.FormatInt(getRandomNum(20, 30), 10) + "Gi"
+	// IBMCloud minimum volume size is 10Gi
+	case "ibmcloud":
+		defaultVolSize = strconv.FormatInt(getRandomNum(10, 20), 10) + "Gi"
+	// Other Clouds(AWS GCE Azure OSP vSphere) minimum volume size is 1Gi
+	default:
+		defaultVolSize = strconv.FormatInt(getRandomNum(1, 10), 10) + "Gi"
+	}
+	defaultPersistentVolume := persistentVolume{
+		name:          "manual-pv-" + getRandomString(),
+		template:      "csi-pv-template.yaml",
+		accessmode:    "ReadWriteOnce",
+		capacity:      defaultVolSize,
+		driver:        "csi.vsphere.vmware.com",
+		volumeHandle:  "",
+		reclaimPolicy: "Delete",
+		scname:        "slow",
+		volumeMode:    "Filesystem",
+	}
+
+	for _, o := range opts {
+		o(&defaultPersistentVolume)
+	}
+
+	return defaultPersistentVolume
+}
+
+// Create new PersistentVolume with customized attributes
+func (pv *persistentVolume) create(oc *exutil.CLI) {
+	err := applyResourceFromTemplateAsAdmin(oc, "--ignore-unknown-parameters=true", "-f", pv.template, "-p", "NAME="+pv.name, "ACCESSMODE="+pv.accessmode, "CAPACITY="+pv.capacity,
+		"DRIVER="+pv.driver, "VOLUMEHANDLE="+pv.volumeHandle, "RECLAIMPOLICY="+pv.reclaimPolicy, "SCNAME="+pv.scname, "VOLUMEMODE="+pv.volumeMode)
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+//  Delete the PersistentVolume use kubeadmin
+func (pv *persistentVolume) deleteAsAdmin(oc *exutil.CLI) {
+	oc.WithoutNamespace().AsAdmin().Run("delete").Args("pv", pv.name).Execute()
+}
 
 // Use the bounded persistent volume claim name get the persistent volume name
 func getPersistentVolumeNameByPersistentVolumeClaim(oc *exutil.CLI, namespace string, pvcName string) string {

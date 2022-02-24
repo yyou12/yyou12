@@ -506,7 +506,7 @@ func newDeployment(opts ...deployOption) deployment {
 		replicasno: "1",
 		applabel:   "myapp-" + getRandomString(),
 		mpath:      "/mnt/storage",
-		pvcname:    "my-pvc",
+		pvcname:    "",
 		volumetype: "volumeMounts",
 		typepath:   "mountPath",
 	}
@@ -553,7 +553,11 @@ func (dep *deployment) deleteAsAdmin(oc *exutil.CLI) {
 
 // Get deployment pod list
 func (dep *deployment) getPodList(oc *exutil.CLI) []string {
-	output, err := oc.WithoutNamespace().Run("get").Args("pod", "-n", dep.namespace, "-l", "app="+dep.applabel, "-o=jsonpath={.items[*].metadata.name}").Output()
+	selectorLable := dep.applabel
+	if !strings.Contains(dep.applabel, "=") {
+		selectorLable = "app=" + dep.applabel
+	}
+	output, err := oc.WithoutNamespace().Run("get").Args("pod", "-n", dep.namespace, "-l", selectorLable, "-o=jsonpath={.items[*].metadata.name}").Output()
 	o.Expect(err).NotTo(o.HaveOccurred())
 	return strings.Split(output, " ")
 }
@@ -563,6 +567,16 @@ func (dep *deployment) scaleReplicas(oc *exutil.CLI, replicasno string) {
 	err := oc.WithoutNamespace().Run("scale").Args("deployment", dep.name, "--replicas="+replicasno, "-n", dep.namespace).Execute()
 	o.Expect(err).NotTo(o.HaveOccurred())
 	dep.replicasno = replicasno
+}
+
+// Restart the Deployment by scale down to '0' and then scale up to origin number
+func (dep *deployment) restart(oc *exutil.CLI) {
+	originReplicasNum := dep.replicasno
+	dep.scaleReplicas(oc, "0")
+	dep.waitReady(oc)
+	dep.scaleReplicas(oc, originReplicasNum)
+	dep.waitReady(oc)
+	e2e.Logf("deployment/%s in namespace %s restart successfully", dep.name, dep.namespace)
 }
 
 // Check the deployment ready
@@ -598,7 +612,10 @@ func (dep *deployment) waitReady(oc *exutil.CLI) {
 
 	if err != nil {
 		e2e.Logf("oc describe pod %s:\n%s", dep.name, dep.describe(oc))
-		describePersistentVolumeClaim(oc, dep.namespace, dep.pvcname)
+		// When the deployment with persistVolumeClaim and not ready describe the persistVolumeClaim detail
+		if dep.pvcname != "" {
+			describePersistentVolumeClaim(oc, dep.namespace, dep.pvcname)
+		}
 	}
 	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("Deployment %s not ready", dep.name))
 }

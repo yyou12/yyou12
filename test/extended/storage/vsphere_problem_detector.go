@@ -3,7 +3,9 @@ package storage
 import (
 	//"path/filepath"
 	"fmt"
+	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 
 	g "github.com/onsi/ginkgo"
@@ -87,11 +89,13 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 
 	// author:wduan@redhat.com
 	g.It("Author:wduan-High-45514-[vsphere-problem-detector] should report metric about vpshere env", func() {
-		g.By("Check metric: vsphere_vcenter_info, vsphere_esxi_version_total, vsphere_node_hw_version_total, vsphere_datastore_total")
+		// Add 'vsphere_rwx_volumes_total' metric from ocp 4.10
+		g.By("Check metric: vsphere_vcenter_info, vsphere_esxi_version_total, vsphere_node_hw_version_total, vsphere_datastore_total, vsphere_rwx_volumes_total")
 		checkStorageMetricsContent(oc, "vsphere_vcenter_info", "api_version")
 		checkStorageMetricsContent(oc, "vsphere_esxi_version_total", "api_version")
 		checkStorageMetricsContent(oc, "vsphere_node_hw_version_total", "hw_version")
 		checkStorageMetricsContent(oc, "vsphere_datastore_total", "instance")
+		checkStorageMetricsContent(oc, "vsphere_rwx_volumes_total", "value")
 	})
 
 	// author:wduan@redhat.com
@@ -112,5 +116,66 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 		for i := range node_check_list {
 			o.Expect(metric).To(o.ContainSubstring(node_check_list[i]))
 		}
+	})
+
+	// author:pewang@redhat.com
+	// Since it'll restart deployment/vsphere-problem-detector-operator maybe conflict with the other vsphere-problem-detector cases,so set it as [Serial]
+	g.It("NonPreRelease-Author:pewang-High-48763-[vsphere-problem-detector] should report 'vsphere_rwx_volumes_total' metric correctly [Serial]", func() {
+		g.By("# Get the value of 'vsphere_rwx_volumes_total' metric real init value")
+		// Define the CSO vsphere-problem-detector-operator deployment object
+		detector := newDeployment(setDeploymentName("vsphere-problem-detector-operator"), setDeploymentNamespace("openshift-cluster-storage-operator"), setDeploymentApplabel("name=vsphere-problem-detector-operator"))
+		orignReplicasNum, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("deployment", detector.name, "-n", detector.namespace, "-o", "jsonpath={.spec.replicas}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		detector.replicasno = orignReplicasNum
+		mo := newMonitor(oc.AsAdmin())
+		// Restart vsphere-problem-detector-operator and get the init value of 'vsphere_rwx_volumes_total' metric
+		detector.scaleReplicas(oc.AsAdmin(), "0")
+		// VSphereProblemDetectorController will automated recover the dector replicas number
+		detector.replicasno = orignReplicasNum
+		detector.waitReady(oc.AsAdmin())
+		// Get the report metric pod's new name (Restart deployment the pod name will changed)
+		newInstanceName := detector.getPodList(oc.AsAdmin())[0]
+		debugLogf("newInstanceName:%s", newInstanceName)
+		// When the metric update by restart the instance the metric's pod's `data.result.0.metric.pod` name will change to the newInstanceName
+		mo.waitSpecifiedMetricValueAsExpected("vsphere_rwx_volumes_total", `data.result.0.metric.pod`, newInstanceName)
+		initCount, err := mo.getSpecifiedMetricValue("vsphere_rwx_volumes_total", `data.result.0.value.1`)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("# Create two manual fileshare persist volumes(vSphere CNS File Volume) and one manual general volume")
+		// The backend service count the total number of 'fileshare persist volumes' by only count the pvs which volumeHandle prefix with `file:`
+		// https://github.com/openshift/vsphere-problem-detector/pull/64/files
+		// So I create 2 pvs volumeHandle prefix with `file:` with different accessModes to check the count logic's accurateness
+		storageTeamBaseDir := exutil.FixturePath("testdata", "storage")
+		pvTemplate := filepath.Join(storageTeamBaseDir, "csi-pv-template.yaml")
+		rwxPersistVolume := newPersistentVolume(setPersistentVolumeAccessMode("ReadWriteMany"), setPersistentVolumeHandle("file:a7d6fcdd-1cbd-4e73-a54f-a3c7"+getRandomString()), setPersistentVolumeTemplate(pvTemplate))
+		rwxPersistVolume.create(oc)
+		defer rwxPersistVolume.deleteAsAdmin(oc)
+		rwoPersistVolume := newPersistentVolume(setPersistentVolumeAccessMode("ReadWriteOnce"), setPersistentVolumeHandle("file:a7d6fcdd-1cbd-4e73-a54f-a3c7"+getRandomString()), setPersistentVolumeTemplate(pvTemplate))
+		rwoPersistVolume.create(oc)
+		defer rwoPersistVolume.deleteAsAdmin(oc)
+		generalPersistVolume := newPersistentVolume(setPersistentVolumeHandle("a7d6fcdd-1cbd-4e73-a54f-a3c7qawkdl"+getRandomString()), setPersistentVolumeTemplate(pvTemplate))
+		generalPersistVolume.create(oc)
+		defer generalPersistVolume.deleteAsAdmin(oc)
+
+		g.By("# Check the metric update correctly")
+		// Since the vsphere-problem-detector update the metric every hour restart the deployment to trigger the update right now
+		detector.scaleReplicas(oc.AsAdmin(), "0")
+		// VSphereProblemDetectorController will automated recover the dector replicas number
+		detector.replicasno = orignReplicasNum
+		detector.waitReady(oc.AsAdmin())
+		// Wait for 'vsphere_rwx_volumes_total' metric value update correctly
+		initCountInt, err := strconv.Atoi(initCount)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		mo.waitSpecifiedMetricValueAsExpected("vsphere_rwx_volumes_total", `data.result.0.value.1`, interfaceToString(initCountInt+2))
+
+		g.By("# Delete one RWX pv and wait for it deleted successfully")
+		rwxPersistVolume.deleteAsAdmin(oc)
+		waitForPersistentVolumeStatusAsExpected(oc, rwxPersistVolume.name, "deleted")
+
+		g.By("# Check the metric update correctly again")
+		detector.scaleReplicas(oc.AsAdmin(), "0")
+		detector.replicasno = orignReplicasNum
+		detector.waitReady(oc.AsAdmin())
+		mo.waitSpecifiedMetricValueAsExpected("vsphere_rwx_volumes_total", `data.result.0.value.1`, interfaceToString(initCountInt+1))
 	})
 })

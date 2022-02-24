@@ -9,14 +9,61 @@ import (
 
 	o "github.com/onsi/gomega"
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
+	"github.com/tidwall/gjson"
 	"k8s.io/apimachinery/pkg/util/wait"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 )
 
+const (
+	prometheusQueryUrl  = "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query="
+	prometheusNamespace = "openshift-monitoring"
+	prometheusK8s       = "prometheus-k8s"
+)
+
+//  Define a monitor object
+type monitor struct {
+	token    string
+	ocClient *exutil.CLI
+}
+
+// Init a monitor
+func newMonitor(oc *exutil.CLI) *monitor {
+	var mo monitor
+	mo.ocClient = oc
+	mo.token = getSAToken(oc)
+	return &mo
+}
+
+// Get a specified metric's value from prometheus
+func (mo *monitor) getSpecifiedMetricValue(metricName string, valueJsonPath string) (string, error) {
+	getCmd := "curl -k -s -H \"" + fmt.Sprintf("Authorization: Bearer %v", mo.token) + "\" " + prometheusQueryUrl + metricName
+	respsonce, err := execCommandInSpecificPod(mo.ocClient, prometheusNamespace, "statefulsets/"+prometheusK8s, getCmd)
+	metricValue := gjson.Get(respsonce, valueJsonPath).String()
+	return metricValue, err
+}
+
+// Waiting for a specified metric's value update to expected
+func (mo *monitor) waitSpecifiedMetricValueAsExpected(metricName string, valueJsonPath string, expectedValue string) {
+	err := wait.Poll(10*time.Second, 300*time.Second, func() (bool, error) {
+		realValue, err := mo.getSpecifiedMetricValue(metricName, valueJsonPath)
+		if err != nil {
+			e2e.Logf("Can't get %v metrics, error: %s. Trying again", metricName, err)
+			return false, nil
+		}
+		if realValue == expectedValue {
+			e2e.Logf("The metric: %s's {%s} value become to expected \"%s\"", metricName, valueJsonPath, expectedValue)
+			return true, nil
+		}
+		e2e.Logf("The metric: %s's {%s} current value is \"%s\"", metricName, valueJsonPath, realValue)
+		return false, nil
+	})
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("Waiting for metric: metric: %s's {%s} value become to expected timeout", metricName, valueJsonPath))
+}
+
 // GetSAToken get a token assigned to prometheus-k8s from openshift-monitoring namespace
 func getSAToken(oc *exutil.CLI) string {
 	e2e.Logf("Getting a token assgined to prometheus-k8s from openshift-monitoring namespace...")
-	token, err := oc.AsAdmin().WithoutNamespace().Run("sa").Args("get-token", "prometheus-k8s", "-n", "openshift-monitoring").Output()
+	token, err := oc.AsAdmin().WithoutNamespace().Run("sa").Args("get-token", prometheusK8s, "-n", prometheusNamespace).Output()
 	o.Expect(err).NotTo(o.HaveOccurred())
 	o.Expect(token).NotTo(o.BeEmpty())
 	return token
@@ -25,7 +72,7 @@ func getSAToken(oc *exutil.CLI) string {
 // Check the alert raied (pengding or firing)
 func checkAlertRaised(oc *exutil.CLI, alert_name string) {
 	token := getSAToken(oc)
-	url, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("route", "prometheus-k8s", "-n", "openshift-monitoring", "-o=jsonpath={.spec.host}").Output()
+	url, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("route", prometheusK8s, "-n", prometheusNamespace, "-o=jsonpath={.spec.host}").Output()
 	o.Expect(err).NotTo(o.HaveOccurred())
 	alertCMD := fmt.Sprintf("curl -s -k -H \"Authorization: Bearer %s\" https://%s/api/v1/alerts | jq -r '.data.alerts[] | select (.labels.alertname == \"%s\")'", token, url, alert_name)
 	//alertAnnoCMD := fmt.Sprintf("curl -s -k -H \"Authorization: Bearer %s\" https://%s/api/v1/alerts | jq -r '.data.alerts[] | select (.labels.alertname == \"%s\").annotations'", token, url, alert_name)
@@ -53,18 +100,17 @@ func checkAlertRaised(oc *exutil.CLI, alert_name string) {
 // Get metric with metric name
 func getStorageMetrics(oc *exutil.CLI, metricName string) string {
 	token := getSAToken(oc)
-	storage_url := "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query="
-	output, _, err := oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-monitoring", "prometheus-k8s-0", "-c", "prometheus", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", token), storage_url+metricName).Outputs()
+	output, _, err := oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-monitoring", "prometheus-k8s-0", "-c", "prometheus", "--", "curl", "-k", "-s", "-H", fmt.Sprintf("Authorization: Bearer %v", token), prometheusQueryUrl+metricName).Outputs()
 	o.Expect(err).NotTo(o.HaveOccurred())
+	debugLogf("The metric outout is:\n %s", output)
 	return output
 }
 
 // Check if metric contains specified content
 func checkStorageMetricsContent(oc *exutil.CLI, metricName string, content string) {
 	token := getSAToken(oc)
-	storage_url := "https://prometheus-k8s.openshift-monitoring.svc:9091/api/v1/query?query="
 	err := wait.Poll(5*time.Second, 30*time.Second, func() (bool, error) {
-		output, _, err := oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-monitoring", "prometheus-k8s-0", "-c", "prometheus", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", token), storage_url+metricName).Outputs()
+		output, _, err := oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", prometheusNamespace, "prometheus-k8s-0", "-c", "prometheus", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", token), prometheusQueryUrl+metricName).Outputs()
 		if err != nil {
 			e2e.Logf("Can't get %v metrics, error: %s. Trying again", metricName, err)
 			return false, nil
