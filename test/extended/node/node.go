@@ -2,7 +2,6 @@ package node
 
 import (
 	"path/filepath"
-
 	g "github.com/onsi/ginkgo"
 
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
@@ -19,6 +18,7 @@ var _ = g.Describe("[sig-node] NODE initContainer policy,volume,readines,quota",
 		podTerminationTemp  = filepath.Join(buildPruningBaseDir, "pod-termination.yaml")
 		podOOMTemp          = filepath.Join(buildPruningBaseDir, "pod-oom.yaml")
 		podInitConTemp      = filepath.Join(buildPruningBaseDir, "pod-initContainer.yaml")
+		podSleepTemp        = filepath.Join(buildPruningBaseDir, "sleepPod46306.yaml")
 
 		podModify = podModifyDescription{
 			name:          "",
@@ -48,6 +48,11 @@ var _ = g.Describe("[sig-node] NODE initContainer policy,volume,readines,quota",
 			name:        "",
 			namespace:   "",
 			template:    podInitConTemp,
+		}
+
+		podSleep = podSleepDescription{
+			namespace: "",
+			template:  podSleepTemp,
 		}
 	)
 
@@ -274,5 +279,43 @@ var _ = g.Describe("[sig-node] NODE initContainer policy,volume,readines,quota",
 		exutil.AssertWaitPollNoErr(err, "pod is running")
 		g.By("Delete Pod\n")
 		podOOM.delete(oc)
+	})
+
+	// author: pmali@redhat.com
+	g.It("NonPreRelease-Author:pmali-High-46306-Node should not becomes NotReady with error creating container storage layer not known[Disruptive][Slow]", func() {
+
+		oc.SetupProject()
+		podSleep.namespace = oc.Namespace()
+
+		g.By("Get Worker Node and Add label app=sleep\n")
+		workerNodeName := getSingleWorkerNode(oc)
+                addLabelToNode(oc, "app=sleep", workerNodeName)
+		defer removeLabelFromNode(oc, "app-",workerNodeName )
+
+		g.By("Create a 50 pods on the same node\n")
+		for i := 0; i < 50; i++ {
+			podSleep.create(oc)
+		}
+
+		g.By("Check pod status\n")
+		err := podStatus(oc)
+		exutil.AssertWaitPollNoErr(err, "pod is NOT running")
+
+		g.By("Delete project\n")
+		go podSleep.deleteProject(oc)
+
+		g.By("Reboot Worker node\n")
+		go rebootNode(oc, workerNodeName)
+
+		g.By("Check Nodes Status\n")
+		err = checkNodeStatus(oc, workerNodeName)
+		exutil.AssertWaitPollNoErr(err, "node is not ready")
+
+		g.By("Get Master node\n")
+		masterNode := getSingleMasterNode(oc)
+
+		g.By("Check Master Node Logs\n")
+		err = masterNodeLog(oc, masterNode)
+		exutil.AssertWaitPollNoErr(err, "Logs Found, Test Failed")
 	})
 })

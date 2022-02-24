@@ -79,6 +79,22 @@ type podInitConDescription struct {
 	template  string
 }
 
+type podSleepDescription struct {
+	namespace string
+	template  string
+}
+
+func (podSleep *podSleepDescription) create(oc *exutil.CLI) {
+	err := createResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", podSleep.template, "-p", "NAMESPACE="+podSleep.namespace)
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+//Delete Namespace with all resources
+func (podSleep *podSleepDescription) deleteProject(oc *exutil.CLI) error {
+	e2e.Logf("Deleting Project ...")
+	return oc.AsAdmin().WithoutNamespace().Run("delete").Args("project", podSleep.namespace).Execute()
+}
+
 func (podInitCon *podInitConDescription) create(oc *exutil.CLI) {
 	err := createResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", podInitCon.template, "-p", "NAME="+podInitCon.name, "NAMESPACE="+podInitCon.namespace)
 	o.Expect(err).NotTo(o.HaveOccurred())
@@ -216,7 +232,7 @@ func podStatus(oc *exutil.CLI) error {
 			e2e.Failf("the result of ReadFile:%v", err)
 			return false, nil
 		}
-		if strings.Contains(status, "Running") {
+		if strings.Contains(status, "Running") && !strings.Contains(status, "Pending"){
 			e2e.Logf("Pod status is : %s", status)
 			return true, nil
 		}
@@ -432,5 +448,69 @@ func (podInitCon *podInitConDescription) initContainerNotRestart(oc *exutil.CLI)
 			return true, nil
 		}
 		return false, nil
+	})
+}
+
+func checkNodeStatus(oc *exutil.CLI, workerNodeName string) error {
+	return wait.Poll(30*time.Second, 3*time.Minute, func() (bool, error) {
+			nodeStatus, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("nodes", workerNodeName, "-o=jsonpath={.status.conditions[3].type}").Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			e2e.Logf("\nNode Status is %s\n", nodeStatus)
+			if nodeStatus == "Ready" {
+				e2e.Logf("\n WORKER NODE IS READY\n ")
+			} else {
+				e2e.Logf("\n WORKERNODE IS NOT READY\n ")
+				return false, nil
+			}
+		return true, nil
+	})
+}
+
+func getSingleWorkerNode(oc *exutil.CLI) string {
+	workerNodeName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("nodes", "--selector=node-role.kubernetes.io/worker=", "-o=jsonpath={.items[0].metadata.name}").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	e2e.Logf("\nWorker Node Name is %v", workerNodeName)
+	return workerNodeName
+}
+
+func getSingleMasterNode(oc *exutil.CLI) string {
+	masterNodeName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("nodes", "--selector=node-role.kubernetes.io/master=", "-o=jsonpath={.items[1].metadata.name}").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	e2e.Logf("\nMaster Node Name is %v", masterNodeName)
+	return masterNodeName
+}
+
+func addLabelToNode(oc *exutil.CLI, label string, workerNodeName string) {
+	_, err := oc.AsAdmin().WithoutNamespace().Run("label").Args("nodes", workerNodeName, label).Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	e2e.Logf("\nLabel Added")
+}
+
+func removeLabelFromNode(oc *exutil.CLI, label string, workerNodeName string) {
+	_, err := oc.AsAdmin().WithoutNamespace().Run("label").Args("nodes", workerNodeName, label).Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	e2e.Logf("\nLabel Removed")
+}
+
+func rebootNode(oc *exutil.CLI, workerNodeName string) error {
+	return wait.Poll(1*time.Second, 1*time.Second, func() (bool, error) {
+		e2e.Logf("\nRebooting....")
+		_, err1 := oc.AsAdmin().WithoutNamespace().Run("debug").Args(`node/`+workerNodeName, "--", "chroot", "/host", "reboot").Output()
+		o.Expect(err1).NotTo(o.HaveOccurred())
+		return true, nil
+	})
+}
+
+func masterNodeLog(oc *exutil.CLI, masterNode string) error {
+	return wait.Poll(1*time.Second, 1*time.Second, func() (bool, error) {
+		status, err := oc.AsAdmin().WithoutNamespace().Run("debug").Args(`node/`+masterNode, "--", "chroot", "/host", "journalctl", "-u", "crio").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		if !strings.Contains(status, "layer not known") {
+			e2e.Logf("\nTest successfully executed")
+		}  else {
+			e2e.Logf("\nTest fail executed, and try next")
+		   return false, nil
+	 }
+		return true, nil
 	})
 }
