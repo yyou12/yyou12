@@ -9626,7 +9626,7 @@ var _ = g.Describe("[sig-operators] OLM on VM for an end user handle within a na
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(string(outputCurl)).To(o.ContainSubstring("cockroachdb.v5.0.3"))
 		o.Expect(string(outputCurl)).To(o.ContainSubstring("cockroachdb.v5.0.4"))
-		o.Expect(string(outputCurl)).To(o.ContainSubstring("olm.maxOpenShiftVersion"))
+		o.Expect(string(outputCurl)).To(o.ContainSubstring("type5.type5"))
 		o.Expect(string(outputCurl)).To(o.ContainSubstring("version is 5.0.3"))
 		o.Expect(string(outputCurl)).To(o.ContainSubstring("version is 5.0.4"))
 		cmd.Process.Kill()
@@ -9691,7 +9691,7 @@ var _ = g.Describe("[sig-operators] OLM on VM for an end user handle within a na
 		sub.expectCSV(oc, itName, dr, "cockroachdb.v5.0.4")
 		csvOutput := getResource(oc, asAdmin, withoutNamespace, "csv", sub.installedCSV, "-n", sub.namespace, "-o=jsonpath={.metadata.annotations}")
 		o.Expect(string(csvOutput)).To(o.ContainSubstring("version is 5.0.4"))
-		o.Expect(string(csvOutput)).To(o.ContainSubstring("olm.maxOpenShiftVersion"))
+		o.Expect(string(csvOutput)).To(o.ContainSubstring("type5.type5"))
 
 		g.By("SUCCESS")
 	})

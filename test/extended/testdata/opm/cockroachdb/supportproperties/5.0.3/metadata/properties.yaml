@@ -15,6 +15,4 @@ properties:
   value: '''
 version is 5.0.3
 '''
-- type: olm.maxOpenShiftVersion
-  value: "4.9"
 
