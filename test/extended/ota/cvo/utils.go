@@ -154,17 +154,17 @@ func waitForCondition(interval time.Duration, timeout time.Duration, expectedCon
 	return nil
 }
 
-//Get detail alert info by alertname
-func getAlert(alertName string) map[string]interface{} {
+//Get detail alert info by selector
+func getAlert(alertSelector string) map[string]interface{} {
 	var alertInfo map[string]interface{}
-	command := fmt.Sprintf("curl -s -k -H \"Authorization: Bearer $(oc -n openshift-monitoring sa get-token prometheus-k8s)\"  https://$(oc get route prometheus-k8s -n openshift-monitoring --no-headers|awk '{print $2}')/api/v1/alerts | jq -r '.data.alerts[]|select(.labels.alertname == \"%s\")'", alertName)
+	command := fmt.Sprintf("curl -s -k -H \"Authorization: Bearer $(oc -n openshift-monitoring sa get-token prometheus-k8s)\"  https://$(oc get route prometheus-k8s -n openshift-monitoring --no-headers|awk '{print $2}')/api/v1/alerts | jq -r '.data.alerts[]|select(%s)'", alertSelector)
 	output, err := exec.Command("bash", "-c", command).Output()
 	if err != nil {
 		e2e.Logf("Getting alert error:%v", err)
 		return nil
 	}
 	if len(output) == 0 {
-		e2e.Logf("No alert %v found!", alertName)
+		e2e.Logf("No alert found for %v", alertSelector)
 		return nil
 	}
 	err = json.Unmarshal(output, &alertInfo)
@@ -174,6 +174,12 @@ func getAlert(alertName string) map[string]interface{} {
 	}
 	e2e.Logf("Alert found: %v", alertInfo)
 	return alertInfo
+}
+
+//Get detail alert info by alertname
+func getAlertByName(alertName string) map[string]interface{} {
+	selector := fmt.Sprintf(".labels.alertname == \"%s\"", alertName)
+	return getAlert(selector)
 }
 
 // createBucket creates a new bucket in the gcs
