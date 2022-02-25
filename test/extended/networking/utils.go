@@ -7,7 +7,7 @@ import (
 	"net"
 	"os"
 	"strings"
-
+	"regexp"
 	"time"
 
 	o "github.com/onsi/gomega"
@@ -615,4 +615,20 @@ func uninstallIpEchoServiceOnGCP(oc *exutil.CLI) {
 func patchResourceAsAdmin(oc *exutil.CLI, resource, patch string) {
 	err := oc.AsAdmin().WithoutNamespace().Run("patch").Args(resource, "-p", patch, "--type=merge").Execute()
 	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+//Testing will exit when network operator is in abnormal state during 60 seconding of checking operator.
+func checkNetworkOperatorDEGRADEDState(oc *exutil.CLI) {
+	errCheck := wait.Poll(10*time.Second, 60*time.Second, func() (bool, error) {
+		output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("co", "network").Output()
+		if err != nil {
+			e2e.Logf("Fail to get clusteroperator network, error:%s. Trying again", err)
+			return false, nil
+		}
+        matched, _ := regexp.MatchString("True.*False.*False", output)
+		e2e.Logf("Network operator state is:%s", output)
+        o.Expect(matched).To(o.BeTrue())
+		return false, nil
+	})
+    o.Expect(errCheck.Error()).To(o.ContainSubstring("timed out waiting for the condition"))
 }
