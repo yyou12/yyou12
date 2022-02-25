@@ -1439,4 +1439,26 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 		createSimpleRunPod(oc, "mysqlx:latest", expectInfo)
 	})
 
+	// author: jitli@redhat.com
+	g.It("Author:jitli-ConnectedOnly-VMonly-High-48710-Should be able to deploy an existing image from private docker.io registry", func() {
+
+		oc.SetupProject()
+		g.By("Create the secret for docker private image")
+		dockerConfig := filepath.Join("/home", "cloud-user", ".docker", "auto", "48710.json")
+		err := oc.AsAdmin().WithoutNamespace().Run("create").Args("-n", oc.Namespace(), "secret", "docker-registry", "secret48710", fmt.Sprintf("--from-file=.dockerconfigjson=%s", dockerConfig)).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Create a imagestream with a docker private image")
+		output, err := oc.AsAdmin().WithoutNamespace().Run("tag").Args("docker.io/irqe/busybox:latest", "test48710:latest", "--reference-policy=local", "-n", oc.Namespace()).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring("Tag test48710:latest set"))
+		err = exutil.WaitForAnImageStreamTag(oc, oc.Namespace(), "test48710", "latest")
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Create pod with the imagestream")
+		expectInfo := `Successfully pulled image "image-registry.openshift-image-registry.svc:5000/` + oc.Namespace()
+		newAppUseImageStream(oc, oc.Namespace(), "test48710:latest", expectInfo)
+
+	})
+
 })

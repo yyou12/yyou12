@@ -896,3 +896,20 @@ func createSimpleRunPod(oc *exutil.CLI, image, expectInfo string) {
 	})
 	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("Pod doesn't pull expected image"))
 }
+
+func newAppUseImageStream(oc *exutil.CLI, ns, imagestream, expectInfo string) {
+	appName := getRandomString()
+	err := oc.AsAdmin().WithoutNamespace().Run("new-app").Args("-i", imagestream, "--name="+appName, "-n", ns).Execute()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	err = wait.Poll(3*time.Second, 30*time.Second, func() (bool, error) {
+		output, err := oc.AsAdmin().WithoutNamespace().Run("describe").Args("pod", "-l", "deployment="+appName, "-n", ns).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		if o.Expect(output).To(o.ContainSubstring(expectInfo)) {
+			return true, nil
+		} else {
+			e2e.Logf("Continue to next round")
+			return false, nil
+		}
+	})
+	exutil.AssertWaitPollNoErr(err, "Pod doesn't pull expected image")
+}
