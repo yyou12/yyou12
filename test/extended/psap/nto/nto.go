@@ -23,6 +23,8 @@ var _ = g.Describe("[sig-node] PSAP should", func() {
 		affine_default_cpuset_file       = exutil.FixturePath("testdata", "psap", "nto", "affine-default-cpuset.yaml")
 		nto_tuned_debug_file             = exutil.FixturePath("testdata", "psap", "nto", "nto-tuned-debug.yaml")
 		nto_irq_smp_file                 = exutil.FixturePath("testdata", "psap", "nto", "default-irq-smp-affinity.yaml")
+		nto_realtime_file                = exutil.FixturePath("testdata", "psap", "nto", "realtime.yaml")
+		nto_mcp_file                     = exutil.FixturePath("testdata", "psap", "nto", "machine-config-pool.yaml")
 		isNTO                            bool
 		isAllInOne                       bool
 	)
@@ -282,10 +284,6 @@ var _ = g.Describe("[sig-node] PSAP should", func() {
 			g.Skip("NTO is not installed - skipping test ...")
 		}
 
-		if !isAllInOne {
-			g.Skip("It's not all in one cluster - skipping test ...")
-		}
-
 		defer func() {
 			g.By("Remove new tuning profile after test completion")
 			err := oc.AsAdmin().WithoutNamespace().Run("delete").Args("-n", ntoNamespace, "tuneds.tuned.openshift.io", "openshift-node-performance-hp-performanceprofile").Execute()
@@ -316,10 +314,14 @@ var _ = g.Describe("[sig-node] PSAP should", func() {
 		o.Expect(tunedPriority).To(o.Equal("20"))
 
 		g.By("Check Nodes for expected changes")
-		assertIfNodeSchedulingDisabled(oc)
+		masterNodeName := assertIfNodeSchedulingDisabled(oc)
+		e2e.Logf("The master node %v has been rebooted", masterNodeName)
 
-		g.By("Ensure the settings took effect on the master nodes")
-		assertIfMasterNodeChangesApplied(oc)
+		g.By("Check MachineConfigPool for expected changes")
+		assertIfMCPChangesAppliedByName(oc, "master", 12)
+
+		g.By("Ensure the settings took effect on the master nodes, only check the first rebooted nodes")
+		assertIfMasterNodeChangesApplied(oc, masterNodeName)
 
 		g.By("Check MachineConfig kernel arguments for expected changes")
 		mcCheck, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("mc").Output()
@@ -328,10 +330,6 @@ var _ = g.Describe("[sig-node] PSAP should", func() {
 		mcKernelArgCheck, err := oc.AsAdmin().WithoutNamespace().Run("describe").Args("mc/50-nto-master").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(mcKernelArgCheck).To(o.ContainSubstring("default_hugepagesz=2M"))
-
-		g.By("Check MachineConfigPool for expected changes")
-		assertIfMCPChangesApplied(oc)
-
 	})
 
 	g.It("Author:liqcui-Medium-23959-Test NTO for remove pod in daemon mode [Disruptive]", func() {
@@ -944,5 +942,84 @@ var _ = g.Describe("[sig-node] PSAP should", func() {
 
 		g.By("Compare if the value user.max_ipc_namespaces in on node with labeled pod, should be 182218")
 		compareSysctlValueOnSepcifiedNodeByName(oc, tunedNodeName, "user.max_pid_namespaces", "", "182218")
+	})
+
+	g.It("Longduration-NonPreRelease-Author:liqcui-Medium-30589-NTO Use MachineConfigs to lay down files needed for tuned [Disruptive] [Slow]", func() {
+		// test requires NTO to be installed
+		if !isNTO {
+			g.Skip("NTO is not installed - skipping test ...")
+		}
+
+		//Use the first worker node as labeled node
+		tunedNodeName, err := exutil.GetFirstLinuxWorkerNode(oc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		//Get the tuned pod name in the same node that labeled node
+		tunedPodName := getTunedPodNamebyNodeName(oc, tunedNodeName, ntoNamespace)
+
+		defer oc.AsAdmin().WithoutNamespace().Run("label").Args("node", tunedNodeName, "node-role.kubernetes.io/worker-rt-").Execute()
+		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("tuned", "openshift-realtime", "-n", ntoNamespace, "--ignore-not-found").Execute()
+		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("mcp", "worker-rt", "--ignore-not-found").Execute()
+
+		g.By("Label the node with node-role.kubernetes.io/worker-rt=")
+		err = oc.AsAdmin().WithoutNamespace().Run("label").Args("node", tunedNodeName, "node-role.kubernetes.io/worker-rt=", "--overwrite").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Create openshift-realtime profile")
+		exutil.ApplyOperatorResourceByYaml(oc, ntoNamespace, nto_realtime_file)
+
+		g.By("Check if new profile in in rendered tuned")
+		renderCheck, err := getTunedRender(oc, ntoNamespace)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(renderCheck).To(o.ContainSubstring("openshift-realtime"))
+
+		g.By("Check current profile for each node")
+		output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", ntoNamespace, "profile").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf("Current profile for each node: \n%v", output)
+
+		g.By("Create machine config pool")
+		exutil.ApplyClusterResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", nto_mcp_file, "-p", "MCP_NAME=worker-rt")
+
+		g.By("Assert if machine config pool applied for worker nodes")
+		assertIfMCPChangesAppliedByName(oc, "worker", 5)
+		assertIfMCPChangesAppliedByName(oc, "worker-rt", 5)
+
+		g.By("Assert if openshift-realtime profile was applied ...")
+		//Verify if the new profile is applied
+		assertIfTunedProfileApplied(oc, ntoNamespace, tunedPodName, "openshift-realtime")
+		profileCheck, err := getTunedProfile(oc, ntoNamespace, tunedNodeName)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(profileCheck).To(o.Equal("openshift-realtime"))
+
+		g.By("Check current profile for each node")
+		output, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", ntoNamespace, "profile").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf("Current profile for each node: \n%v", output)
+
+		g.By("Assert if isolcpus was applied in machineconfig...")
+		AssertTunedAppliedMC(oc, "worker-rt", "isolcpus=")
+
+		g.By("Assert if isolcpus was applied in labled node...")
+		isMatch := AssertTunedAppliedToNode(oc, tunedNodeName, "isolcpus=")
+		o.Expect(isMatch).To(o.Equal(true))
+
+		g.By("Delete openshift-realtime tuned in labled node...")
+		oc.AsAdmin().WithoutNamespace().Run("delete").Args("tuned", "openshift-realtime", "-n", ntoNamespace, "--ignore-not-found").Execute()
+
+		g.By("Check Nodes for expected changes")
+		assertIfNodeSchedulingDisabled(oc)
+
+		g.By("Assert if machine config pool applied for worker nodes")
+		assertIfMCPChangesAppliedByName(oc, "worker-rt", 5)
+
+		g.By("Check current profile for each node")
+		output, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", ntoNamespace, "profile").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf("Current profile for each node: \n%v", output)
+
+		g.By("Assert if isolcpus was applied in labled node...")
+		isMatch = AssertTunedAppliedToNode(oc, tunedNodeName, "isolcpus=")
+		o.Expect(isMatch).To(o.Equal(false))
 	})
 })

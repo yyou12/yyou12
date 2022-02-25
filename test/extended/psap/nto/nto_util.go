@@ -98,7 +98,8 @@ func assertIfTunedProfileApplied(oc *exutil.CLI, namespace string, tunedPodName 
 }
 
 // assertIfNodeSchedulingDisabled checks all nodes in a cluster to see if 'SchedulingDisabled' status is present on any node
-func assertIfNodeSchedulingDisabled(oc *exutil.CLI) {
+func assertIfNodeSchedulingDisabled(oc *exutil.CLI) string {
+	var nodeNames []string
 	err := wait.Poll(30*time.Second, 3*time.Minute, func() (bool, error) {
 		nodeCheck, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("nodes").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -106,62 +107,70 @@ func assertIfNodeSchedulingDisabled(oc *exutil.CLI) {
 		isNodeSchedulingDisabled := strings.Contains(nodeCheck, "SchedulingDisabled")
 		if isNodeSchedulingDisabled {
 			e2e.Logf("'SchedulingDisabled' status found!")
+			nodeNameReg := regexp.MustCompile(".*SchedulingDisabled.*")
+			nodeNameList := nodeNameReg.FindAllString(nodeCheck, -1)
+			nodeNamestr := nodeNameList[0]
+			nodeNames = strings.Split(nodeNamestr, " ")
+			e2e.Logf("Node Names is %v", nodeNames)
 			return true, nil
 		}
 		e2e.Logf("'SchedulingDisabled' status not found - retrying...")
 		return false, nil
 	})
 	exutil.AssertWaitPollNoErr(err, "No node was found with 'SchedulingDisabled' status within timeout limit (3 minutes)")
+	e2e.Logf("Node Name is %v", nodeNames[0])
+	return nodeNames[0]
 }
 
 // assertIfMasterNodeChangesApplied checks all nodes in a cluster with the master role to see if 'default_hugepagesz=2M' is present on every node in /proc/cmdline
-func assertIfMasterNodeChangesApplied(oc *exutil.CLI) {
-	masterNodeList, err := exutil.GetClusterNodesBy(oc, "master")
-	o.Expect(err).NotTo(o.HaveOccurred())
-	masterNodeListSize := len(masterNodeList)
-	for i := 0; i < masterNodeListSize; i++ {
-		err := wait.Poll(1*time.Minute, 10*time.Minute, func() (bool, error) {
-			output, err := exutil.DebugNode(oc, masterNodeList[i], "cat", "/proc/cmdline")
-			o.Expect(err).NotTo(o.HaveOccurred())
+func assertIfMasterNodeChangesApplied(oc *exutil.CLI, masterNodeName string) {
 
-			isMasterNodeChanged := strings.Contains(output, "default_hugepagesz=2M")
-			if isMasterNodeChanged {
-				e2e.Logf("Node %v has expected changes", masterNodeList[i])
-				return true, nil
-			}
-			e2e.Logf("Node %v does not have expected changes - retrying...", masterNodeList[i])
-			return false, nil
-		})
-		exutil.AssertWaitPollNoErr(err, "Node"+masterNodeList[i]+"did not have expected changes within timeout limit (10 minutes)")
-	}
+	err := wait.Poll(1*time.Minute, 5*time.Minute, func() (bool, error) {
+		output, err := exutil.DebugNode(oc, masterNodeName, "cat", "/proc/cmdline")
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		isMasterNodeChanged := strings.Contains(output, "default_hugepagesz=2M")
+		if isMasterNodeChanged {
+			e2e.Logf("Node %v has expected changes:\n%v", masterNodeName, output)
+			return true, nil
+		}
+		e2e.Logf("Node %v does not have expected changes - retrying...", masterNodeName)
+		return false, nil
+	})
+	exutil.AssertWaitPollNoErr(err, "Node"+masterNodeName+"did not have expected changes within timeout limit")
 }
 
 // assertIfMCPChangesApplied checks the MCP of a given oc client and determines if the machine counts are as expected
-func assertIfMCPChangesApplied(oc *exutil.CLI) {
-	err := wait.Poll(1*time.Minute, 15*time.Minute, func() (bool, error) {
-		masterNodeList, err := exutil.GetClusterNodesBy(oc, "master")
-		o.Expect(err).NotTo(o.HaveOccurred())
-		masterNodeListSize := strconv.Itoa(len(masterNodeList))
+func assertIfMCPChangesAppliedByName(oc *exutil.CLI, mcpName string, timeDurationMin int) {
+	err := wait.Poll(1*time.Minute, time.Duration(timeDurationMin)*time.Minute, func() (bool, error) {
+		var (
+			mcpCheckMachineCount string
+			err                  error
+		)
 
-		mcpCheckMachineCount, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("mcp", "-o=jsonpath={.items[0].status.machineCount}").Output()
+		//For master node, only make sure one of master is ready.
+		if strings.Contains(mcpName, "master") {
+			mcpCheckMachineCount = "1"
+		} else {
+			mcpCheckMachineCount, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("mcp", mcpName, "-o=jsonpath={..status.machineCount}").Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}
+
+		mcpCheckReadyMachineCount, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("mcp", mcpName, "-o=jsonpath={..status.readyMachineCount}").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
-		mcpCheckReadyMachineCount, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("mcp", "-o=jsonpath={.items[0].status.readyMachineCount}").Output()
+		mcpCheckUpdatedMachineCount, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("mcp", mcpName, "-o=jsonpath={..status.updatedMachineCount}").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
-		mcpCheckUpdatedMachineCount, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("mcp", "-o=jsonpath={.items[0].status.updatedMachineCount}").Output()
+		mcpDegradedMachineCount, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("mcp", mcpName, "-o=jsonpath={..status.degradedMachineCount}").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		isMachineCountApplied := strings.Contains(mcpCheckMachineCount, masterNodeListSize)
-		isReadyMachineCountApplied := strings.Contains(mcpCheckReadyMachineCount, masterNodeListSize)
-		isUpdatedMachineCountApplied := strings.Contains(mcpCheckUpdatedMachineCount, masterNodeListSize)
-
-		if isMachineCountApplied && isReadyMachineCountApplied && isUpdatedMachineCountApplied {
+		if mcpCheckMachineCount == mcpCheckReadyMachineCount && mcpCheckMachineCount == mcpCheckUpdatedMachineCount && mcpDegradedMachineCount == "0" {
 			e2e.Logf("MachineConfigPool checks succeeded!")
 			return true, nil
 		}
-		e2e.Logf("MachineConfigPool checks failed, the following values were found (all should be '%v'):\nmachineCount: %v\nreadyMachineCount: %v\nupdatedMachineCount: %v\nRetrying...", masterNodeListSize, mcpCheckMachineCount, mcpCheckReadyMachineCount, mcpCheckUpdatedMachineCount)
+		e2e.Logf("MachineConfigPool %v checks failed, the following values were found (all should be '%v'):\nmachineCount: %v\nreadyMachineCount: %v\nupdatedMachineCount: %v\nmcpDegradedMachine:%v\nRetrying...", mcpName, mcpCheckMachineCount, mcpCheckMachineCount, mcpCheckReadyMachineCount, mcpCheckUpdatedMachineCount, mcpDegradedMachineCount)
 		return false, nil
 	})
-	exutil.AssertWaitPollNoErr(err, "MachineConfigPool checks were not successful within timeout limit (15 minutes)")
+	exutil.AssertWaitPollNoErr(err, "MachineConfigPool checks were not successful within timeout limit")
 }
 
 // getMaxUserWatchesValue parses out the line determining max_user_watches in inotify.conf
@@ -332,7 +341,8 @@ func assertNTOOperatorLogs(oc *exutil.CLI, namespace string, ntoOperatorPod stri
 func isAllInOneCluster(oc *exutil.CLI) bool {
 	masterNodes, _ := exutil.GetClusterNodesBy(oc, "master")
 	workerNodes, _ := exutil.GetClusterNodesBy(oc, "worker")
-	if len(masterNodes) == 3 && len(workerNodes) == 0 {
+
+	if len(masterNodes) == 3 && len(workerNodes) == 3 && masterNodes[0] == workerNodes[0] {
 		return true
 	} else {
 		return false
@@ -462,3 +472,36 @@ func assertDefaultIRQSMPAffinityAffectedBitMask(defaultSMPBitMask string, isolat
 	}
 }
 
+func AssertTunedAppliedMC(oc *exutil.CLI, mcpName string, filter string) {
+	mcNameList, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("mc", "--no-headers", "-oname").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	mcNameReg, _ := regexp.Compile(".*" + mcpName + ".*")
+	mcName := mcNameReg.FindAllString(mcNameList, -1)
+
+	mcOutput, err := oc.AsAdmin().WithoutNamespace().Run("get").Args(mcName[0], "-oyaml").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	o.Expect(mcOutput).To(o.ContainSubstring(filter))
+
+	//Print machineconfig content by filter
+	mccontent, _ := regexp.Compile(".*" + filter + ".*")
+	contentLines := mccontent.FindAllString(mcOutput, -1)
+	e2e.Logf("The result is: %v", contentLines[0])
+	o.Expect(mcOutput).To(o.ContainSubstring(filter))
+}
+
+func AssertTunedAppliedToNode(oc *exutil.CLI, tunedNodeName string, filter string) bool {
+	cmdLineOutput, err := exutil.DebugNode(oc, tunedNodeName, "cat", "/proc/cmdline")
+	o.Expect(err).NotTo(o.HaveOccurred())
+	var isMatch bool
+	if strings.Contains(cmdLineOutput, filter) {
+		//Print machineconfig content by filter
+		cmdLineReg, _ := regexp.Compile(".*" + filter + ".*")
+		contentLines := cmdLineReg.FindAllString(cmdLineOutput, -1)
+		e2e.Logf("The result is: %v", contentLines[0])
+		isMatch = true
+	} else {
+		isMatch = false
+	}
+	return isMatch
+}
