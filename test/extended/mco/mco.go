@@ -1027,6 +1027,22 @@ nulla pariatur.`
 		template := NewMCOTemplate(oc, "generic-machine-config-template.yml")
 		err = template.Create("-p", "NAME="+mcName, "-p", "POOL=worker", "-p", fmt.Sprintf("UNITS=[%s]", maskSvcConfig))
 		o.Expect(err).NotTo(o.HaveOccurred())
+		// if service is masked, but node drain is failed, unmask chronyd service on all worker nodes in this defer block
+		// then clean up logic will delete this mc, node will be rebooted, when the system is back online, chronyd service
+		// can be started automatically, unmask command can be executed w/o error with loaded & active service
+		defer func() {
+			workersNodes := NewNodeList(oc).GetAllWorkerNodesOrFail()
+			for _, worker := range workersNodes {
+				svcName := "chronyd"
+				_, err := worker.UnmaskService(svcName)
+				// just print out unmask op result here, make sure unmask op can be executed on all the worker nodes
+				if err != nil {
+					e2e.Logf("unmask %s failed on node %s: %v", svcName, worker.name, err)
+				} else {
+					e2e.Logf("unmask %s success on node %s", svcName, worker.name)
+				}
+			}
+		}()
 
 		g.By("Wait until worker MachineConfigPool has finished the configuration")
 		mcp := NewMachineConfigPool(oc.AsAdmin(), "worker")
@@ -1457,7 +1473,7 @@ func verifyRenderedMcs(oc *exutil.CLI, renderSuffix string, allRes []ResourceInt
 		for mc, owners := range mcOwners {
 			if owners.Exists() {
 				for _, owner := range owners.Items() {
-					if strings.ToLower(owner.Get("kind").ToString()) == strings.ToLower(res.GetKind()) && owner.Get("name").ToString() == res.GetName() {
+					if strings.EqualFold(owner.Get("kind").ToString(), res.GetKind()) && strings.EqualFold(owner.Get("name").ToString(), res.GetName()) {
 						e2e.Logf("Resource '%s' '%s' owns MC '%s'", res.GetKind(), res.GetName(), mc.GetName())
 						// Each resource can only own one MC
 						o.Expect(ownedMc).To(o.BeNil(), "Resource %s owns more than 1 MC: %s and %s", res.GetName(), mc.GetName(), ownedMc)

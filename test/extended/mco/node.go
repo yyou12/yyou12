@@ -76,6 +76,11 @@ func (n *node) GetUnitStatus(unitName string) (string, error) {
 	return n.DebugNodeWithChroot("systemctl", "status", unitName)
 }
 
+// UnmaskService executes `systemctl unmask` command on the node and returns the output
+func (n *node) UnmaskService(svcName string) (string, error) {
+	return n.DebugNodeWithChroot("systemctl", "unmask", svcName)
+}
+
 // PollIsCordoned returns a function that can be used by Gomega to poll the if the node is cordoned (with Eventually/Consistently)
 func (n *node) PollIsCordoned() func() bool {
 	return func() bool {

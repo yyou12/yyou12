@@ -382,9 +382,9 @@ func getMachineConfigDetails(oc *exutil.CLI, mcName string) (string, error) {
 	return oc.AsAdmin().WithoutNamespace().Run("get").Args("mc", mcName, "-o", "yaml").Output()
 }
 
-func getKubeletConfigDetails(oc *exutil.CLI, kcName string) (string, error) {
-	return oc.AsAdmin().WithoutNamespace().Run("get").Args("kubeletconfig", kcName, "-o", "yaml").Output()
-}
+// func getKubeletConfigDetails(oc *exutil.CLI, kcName string) (string, error) {
+// 	return oc.AsAdmin().WithoutNamespace().Run("get").Args("kubeletconfig", kcName, "-o", "yaml").Output()
+// }
 
 func getPullSecret(oc *exutil.CLI) (string, error) {
 	return oc.AsAdmin().WithoutNamespace().Run("get").Args("secret/pull-secret", "-n", "openshift-config", `--template={{index .data ".dockerconfigjson" | base64decode}}`).OutputToFile("auth.dockerconfigjson")

@@ -126,7 +126,7 @@ func (jd JSONData) Get(key string) *JSONData {
 func (jd JSONData) Item(index int) *JSONData {
 	value, err := jd.ItemSafe(index)
 	if err != nil {
-		e2e.Failf("Could not get item [%i]. Error: %v", index, err)
+		e2e.Failf("Could not get item [%d]. Error: %v", index, err)
 	}
 
 	return value
@@ -191,8 +191,7 @@ func (jd *JSONData) GetJSONPath(jsonPath string) ([]JSONData, error) {
 func flattenResults(allExpresults []interface{}) []JSONData {
 	flatResults := []JSONData{}
 	for i := range allExpresults {
-		var expression []interface{}
-		expression = allExpresults[i].([]interface{})
+		var expression []interface{} = allExpresults[i].([]interface{})
 		for _, result := range expression {
 			flatResults = append(flatResults, JSONData{result})
 		}
