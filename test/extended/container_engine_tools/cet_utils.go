@@ -38,6 +38,11 @@ type ctrcfgDescription struct {
 	template   string
 }
 
+type ocp48876PodDescription struct {
+	name             string
+	namespace        string
+	template         string
+}
 type newappDescription struct {
 	appname string
 }
@@ -55,6 +60,15 @@ func getRandomString() string {
 		buffer[index] = chars[seed.Intn(len(chars))]
 	}
 	return string(buffer)
+}
+
+func (ocp48876Pod *ocp48876PodDescription) create(oc *exutil.CLI) {
+	err := createResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", ocp48876Pod.template, "-p", "NAME="+ocp48876Pod.name, "NAMESPACE="+ocp48876Pod.namespace)
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+func (ocp48876Pod *ocp48876PodDescription) delete(oc *exutil.CLI) error {
+	return oc.AsAdmin().WithoutNamespace().Run("delete").Args("-n", ocp48876Pod.namespace, "pod", ocp48876Pod.name).Execute()
 }
 
 func (podModify *podModifyDescription) create(oc *exutil.CLI) {
@@ -380,6 +394,38 @@ func (ctrcfg *ctrcfgDescription) checkCtrcfgStatus(oc *exutil.CLI) error {
 			e2e.Logf("ContainerRuntimeConfig whose finalizer > 63 characters is applied Sucessfully \n")
 			return true, nil
 		}
+		return false, nil
+	})
+}
+
+func getPodName(oc *exutil.CLI, ns string) string {
+    podName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-o=jsonpath={.items[0].metadata.name}", "-n", ns).Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	e2e.Logf("\nPod Name is is %v", podName)
+	return podName
+}
+
+func getPodIPv4(oc *exutil.CLI, podName string, ns string) string {
+    IPv4add, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", podName, "-o=jsonpath={.status.podIP}", "-n", ns).Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	e2e.Logf("\nPod IP address is %v", IPv4add)
+	return IPv4add
+}
+
+func pingIpaddr(oc *exutil.CLI, ns string, podName string, cmd string) error {
+	return wait.Poll(1*time.Second, 1*time.Second, func() (bool, error) {
+		status, err := oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", ns, podName , "--", "/bin/bash", "-c", cmd ).OutputToFile("pingipaddr.txt")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		result, err1 := exec.Command("bash", "-c", "cat "+status+" | egrep '64 bytes from 8.8.8.8: icmp_seq'").Output()
+			if err1 != nil {
+					e2e.Failf("the result of ReadFile:%v", err1)
+					return false, nil
+			}
+			e2e.Logf("\nPing output is %s\n", result)
+			if strings.Contains(string(result), "64 bytes from 8.8.8.8: icmp_seq") {
+					e2e.Logf("\nPing Successful \n")
+					return true, nil
+			}
 		return false, nil
 	})
 }

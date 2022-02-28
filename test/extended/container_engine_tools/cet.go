@@ -17,6 +17,7 @@ var _ = g.Describe("[sig-node] Container_Engine_Tools crio,scc", func() {
 		buildPruningBaseDir = exutil.FixturePath("testdata", "container_engine_tools")
 		customTemp          = filepath.Join(buildPruningBaseDir, "pod-modify.yaml")
 		customctrcfgTemp    = filepath.Join(buildPruningBaseDir, "containerRuntimeConfig.yaml")
+		ocp48876PodTemp     = filepath.Join(buildPruningBaseDir, "ocp48876Pod.yaml")
 
 		podModify = podModifyDescription{
 			name:          "",
@@ -40,9 +41,17 @@ var _ = g.Describe("[sig-node] Container_Engine_Tools crio,scc", func() {
 			configFile: "",
 			template:   customctrcfgTemp,
 		}
+
 		newapp = newappDescription{
 			appname: "",
 		}
+
+		ocp48876Pod = ocp48876PodDescription{
+			name:              "",
+			namespace:         "",
+			template:          ocp48876PodTemp,
+		}
+
 	)
 
 	// author: pmali@redhat.com
@@ -141,5 +150,31 @@ var _ = g.Describe("[sig-node] Container_Engine_Tools crio,scc", func() {
 		g.By("Verify that ContainerRuntimeConfig is successfully created without any error message\n")
 		err := ctrcfg.checkCtrcfgStatus(oc)
 		exutil.AssertWaitPollNoErr(err, "Config is failed")
+	})
+
+	// author: pmali@redhat.com
+	g.It("Author:pmali-Critical-48876-Check ping I src IPdoes work on a container", func() {
+
+		oc.SetupProject()
+		ocp48876Pod.name = "hello-pod-ocp48876"
+		ocp48876Pod.namespace = oc.Namespace()
+		g.By("Create a pod \n")
+		ocp48876Pod.create(oc)
+		defer ocp48876Pod.delete(oc)
+		g.By("Check pod status\n")
+		err := podStatus(oc)
+		exutil.AssertWaitPollNoErr(err, "pod is not running")
+		g.By("Get Pod Name \n")
+		podName := getPodName(oc, oc.Namespace())
+		g.By("Get the pod IP address\n")
+		ipv4 := getPodIPv4(oc,podName, oc.Namespace())
+		g.By("Ping with IP address\n")
+		cmd := "ping -c 2 8.8.8.8 -I" +ipv4
+		err = pingIpaddr(oc, oc.Namespace(), podName, cmd)
+		exutil.AssertWaitPollNoErr(err, "Ping Unsuccessful with IP address")
+		g.By("Ping with Interface Name\n")
+		cmd = "ping -c 2 8.8.8.8 -I eth0" 
+		err = pingIpaddr(oc, oc.Namespace(), podName, cmd)
+		exutil.AssertWaitPollNoErr(err, "Ping Unsuccessful with Interface")
 	})
 })
