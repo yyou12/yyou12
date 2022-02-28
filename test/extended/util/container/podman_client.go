@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"runtime/debug"
 	"strings"
@@ -52,6 +53,8 @@ type PodmanCLI struct {
 	stdout          io.Writer
 	stderr          io.Writer
 	showInfo        bool
+	UnsetProxy      bool
+	env             []string
 }
 
 // NewPodmanCLI initialize the docker cli framework
@@ -59,6 +62,7 @@ func NewPodmanCLI() *PodmanCLI {
 	newclient := &PodmanCLI{}
 	newclient.execPath = "podman"
 	newclient.showInfo = true
+	newclient.UnsetProxy = false
 	return newclient
 }
 
@@ -68,6 +72,9 @@ func (c *PodmanCLI) Run(commands ...string) *PodmanCLI {
 	podman := &PodmanCLI{
 		execPath:        c.execPath,
 		ExecCommandPath: c.ExecCommandPath,
+		UnsetProxy:      c.UnsetProxy,
+		showInfo:        c.showInfo,
+		env:             c.env,
 	}
 	podman.globalArgs = commands
 	podman.stdin, podman.stdout, podman.stderr = in, out, errout
@@ -97,6 +104,19 @@ func (c *PodmanCLI) Output() (string, error) {
 		e2e.Logf("DEBUG: podman %s\n", c.printCmd())
 	}
 	cmd := exec.Command(c.execPath, c.finalArgs...)
+	cmd.Env = os.Environ()
+	if c.UnsetProxy {
+		var envCmd []string
+		for _, envIndex := range cmd.Env {
+			if !(strings.Contains(strings.ToUpper(envIndex), "HTTP_PROXY") || strings.Contains(strings.ToUpper(envIndex), "HTTPS_PROXY") || strings.Contains(strings.ToUpper(envIndex), "NO_PROXY")) {
+				envCmd = append(envCmd, envIndex)
+			}
+		}
+		cmd.Env = envCmd
+	}
+	if c.env != nil {
+		cmd.Env = append(cmd.Env, c.env...)
+	}
 	if c.ExecCommandPath != "" {
 		e2e.Logf("set exec command path is %s\n", c.ExecCommandPath)
 		cmd.Dir = c.ExecCommandPath
@@ -205,4 +225,53 @@ func (c *PodmanCLI) RemoveImage(imageIndex string) (bool, error) {
 	e2e.Logf("remove image %s success\n", imageID)
 
 	return true, nil
+}
+
+func (c *PodmanCLI) ContainerCreate(imageName string, containerName string, entrypoint string, openStdin bool) (string, error) {
+	interactiveStr := "--interactive=false"
+	if openStdin {
+		interactiveStr = "--interactive=true"
+	}
+	output, err := c.Run("create").Args(interactiveStr, "--entrypoint="+entrypoint, "--name="+containerName, imageName).Output()
+	if err != nil {
+		e2e.Logf("run podman create faild")
+		return "", err
+	}
+	outputLines := strings.Split(strings.Trim(output, "\n"), "\n")
+	containerID := outputLines[len(outputLines)-1]
+	return containerID, nil
+}
+
+func (c *PodmanCLI) ContainerStart(id string) error {
+	_, err := c.Run("start").Args(id).Output()
+	if err != nil {
+		e2e.Logf("run podman start %s failed", id)
+	}
+	return err
+}
+
+func (c *PodmanCLI) ContainerStop(id string) error {
+	_, err := c.Run("stop").Args(id).Output()
+	if err != nil {
+		e2e.Logf("run podman stop %s failed", id)
+	}
+	return err
+}
+
+func (c *PodmanCLI) ContainerRemove(id string) error {
+	_, err := c.Run("rm").Args(id, "-f").Output()
+	if err != nil {
+		e2e.Logf("run podman rm %s failed", id)
+	}
+	return err
+}
+
+func (c *PodmanCLI) Exec(id string, commands []string) (string, error) {
+	commands = append([]string{id}, commands...)
+	output, err := c.Run("exec").Args(commands...).Output()
+	if err != nil {
+		e2e.Logf("run podman exec %s faild", commands)
+		return "", err
+	}
+	return output, nil
 }

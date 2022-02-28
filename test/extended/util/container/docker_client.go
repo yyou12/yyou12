@@ -11,7 +11,9 @@ import (
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
+	"github.com/docker/docker/pkg/stdcopy"
 )
 
 // contains check list contain one string
@@ -175,4 +177,89 @@ func (c *DockerCLI) CheckImageExist(imageIndex string) (bool, error) {
 		return false, err
 	}
 	return contains(imageList, imageIndex), nil
+}
+
+func (c *DockerCLI) ContainerCreate(imageName string, containerName string, entrypoint string, openStdin bool) (string, error) {
+	cli := c.CLI
+	ctx := context.Background()
+	resp, err := cli.ContainerCreate(ctx, &container.Config{
+		Image:      imageName,
+		OpenStdin:  openStdin,
+		Tty:        true,
+		Entrypoint: []string{entrypoint},
+	}, nil, nil, containerName)
+	return resp.ID, err
+}
+
+func (c *DockerCLI) ContainerStop(id string) error {
+	cli := c.CLI
+	ctx := context.Background()
+	err := cli.ContainerStop(ctx, id, nil)
+	return err
+}
+
+func (c *DockerCLI) ContainerRemove(id string) error {
+	cli := c.CLI
+	ctx := context.Background()
+	err := cli.ContainerRemove(ctx, id, types.ContainerRemoveOptions{Force: true})
+	return err
+}
+
+func (c *DockerCLI) ContainerStart(id string) error {
+	cli := c.CLI
+	ctx := context.Background()
+	err := cli.ContainerStart(ctx, id, types.ContainerStartOptions{})
+	return err
+}
+
+func (c *DockerCLI) Exec(id string, cmd []string) (int, string, string, error) {
+	// prepare exec
+	cli := c.CLI
+	ctx := context.Background()
+	execConfig := types.ExecConfig{
+		AttachStdout: true,
+		AttachStderr: true,
+		Cmd:          cmd,
+	}
+	cresp, err := cli.ContainerExecCreate(ctx, id, execConfig)
+	if err != nil {
+		return 1, "", "", err
+	}
+	execID := cresp.ID
+
+	// run it, with stdout/stderr attached
+	aresp, err := cli.ContainerExecAttach(ctx, execID, types.ExecStartCheck{})
+	if err != nil {
+		return 1, "", "", err
+	}
+	defer aresp.Close()
+
+	// read the output
+	var outBuf, errBuf bytes.Buffer
+	outputDone := make(chan error)
+
+	go func() {
+		// StdCopy demultiplexes the stream into two buffers
+		_, err = stdcopy.StdCopy(&outBuf, &errBuf, aresp.Reader)
+		outputDone <- err
+	}()
+
+	select {
+	case err := <-outputDone:
+		if err != nil {
+			return 1, "", "", err
+		}
+		break
+
+	case <-ctx.Done():
+		return 1, "", "", ctx.Err()
+	}
+
+	// get the exit code
+	iresp, err := cli.ContainerExecInspect(ctx, execID)
+	if err != nil {
+		return 1, "", "", err
+	}
+
+	return iresp.ExitCode, outBuf.String(), errBuf.String(), nil
 }

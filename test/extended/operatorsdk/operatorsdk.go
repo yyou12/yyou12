@@ -2,6 +2,7 @@ package operatorsdk
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -953,8 +954,8 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
 		g.By("scorecard basic test migration")
 		output, err = operatorsdkCLI.Run("scorecard").Args("/tmp/ocp-43973/memcached-operator/bundle", "-c", "/tmp/ocp-43973/memcached-operator/bundle/tests/scorecard/config.yaml", "-w", "60s", "--selector=test=basic-check-spec-test", "-n", oc.Namespace()).Output()
 		e2e.Logf(" scorecard bundle %v", err)
-        	o.Expect(output).To(o.ContainSubstring("State: fail"))
-        	o.Expect(output).To(o.ContainSubstring("spec missing from [memcached-sample]"))
+		o.Expect(output).To(o.ContainSubstring("State: fail"))
+		o.Expect(output).To(o.ContainSubstring("spec missing from [memcached-sample]"))
 
 		//ocp-43976
 		g.By("migrate OLM tests-bundle validation")
@@ -964,8 +965,8 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
 
 		g.By("migrate OLM tests-crds have validation test")
 		output, err = operatorsdkCLI.Run("scorecard").Args("/tmp/ocp-43973/memcached-operator/bundle", "-c", "/tmp/ocp-43973/memcached-operator/bundle/tests/scorecard/config.yaml", "-w", "60s", "--selector=test=olm-crds-have-validation-test", "-n", oc.Namespace()).Output()
-        	o.Expect(err).NotTo(o.HaveOccurred())
-        	o.Expect(output).To(o.ContainSubstring("State: pass"))
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring("State: pass"))
 
 		g.By("migrate OLM tests-crds have resources test")
 		output, err = operatorsdkCLI.Run("scorecard").Args("/tmp/ocp-43973/memcached-operator/bundle", "-c", "/tmp/ocp-43973/memcached-operator/bundle/tests/scorecard/config.yaml", "-w", "60s", "--selector=test=olm-crds-have-resources-test", "-n", oc.Namespace()).Output()
@@ -975,7 +976,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
 		g.By("migrate OLM tests- spec descriptors test")
 		output, err = operatorsdkCLI.Run("scorecard").Args("/tmp/ocp-43973/memcached-operator/bundle", "-c", "/tmp/ocp-43973/memcached-operator/bundle/tests/scorecard/config.yaml", "-w", "60s", "--selector=test=olm-spec-descriptors-test", "-n", oc.Namespace()).Output()
 		o.Expect(output).To(o.ContainSubstring("State: fail"))
-		
+
 		g.By("migrate OLM tests- status descriptors test")
 		output, err = operatorsdkCLI.Run("scorecard").Args("/tmp/ocp-43973/memcached-operator/bundle", "-c", "/tmp/ocp-43973/memcached-operator/bundle/tests/scorecard/config.yaml", "-w", "60s", "--selector=test=olm-status-descriptors-test", "-n", oc.Namespace()).Output()
 		o.Expect(output).To(o.ContainSubstring("State: fail"))
@@ -1056,6 +1057,49 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
 		podstatus, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-n", "nginx-operator-system-ocp34426", "-o=jsonpath={.items[1].status.phase}").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(podstatus).To(o.ContainSubstring("Running"))
+	})
+
+	// author: xzha@redhat.com
+	g.It("VMonly-ConnectedOnly-Author:xzha-High-42028-Update python kubernetes and python openshift to kubernetes 12.0.0", func() {
+		if os.Getenv("HTTP_PROXY") != "" || os.Getenv("http_proxy") != "" {
+			g.Skip("HTTP_PROXY is not empty - skipping test ...")
+		}
+		imageTag := "registry-proxy.engineering.redhat.com/rh-osbs/openshift-ose-ansible-operator:v4.10"
+		containerCLI := container.NewPodmanCLI()
+		e2e.Logf("create container with image %s", imageTag)
+		id, err := containerCLI.ContainerCreate(imageTag, "test-42028", "/bin/sh", true)
+		defer func() {
+			e2e.Logf("stop container %s", id)
+			containerCLI.ContainerStop(id)
+			e2e.Logf("remove container %s", id)
+			err := containerCLI.ContainerRemove(id)
+			if err != nil {
+				e2e.Failf("Defer: fail to remove container %s", id)
+			}
+		}()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf("container id is %s", id)
+
+		e2e.Logf("start container %s", id)
+		err = containerCLI.ContainerStart(id)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf("start container %s successful", id)
+
+		commandStr := []string{"pip3", "show", "kubernetes"}
+		e2e.Logf("run command %s", commandStr)
+		output, err := containerCLI.Exec(id, commandStr)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring("Version:"))
+		o.Expect(output).To(o.ContainSubstring("12.0."))
+
+		commandStr = []string{"pip3", "show", "openshift"}
+		e2e.Logf("run command %s", commandStr)
+		output, err = containerCLI.Exec(id, commandStr)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring("Version:"))
+		o.Expect(output).To(o.ContainSubstring("0.12."))
+
+		e2e.Logf("OCP 42028 SUCCESS")
 	})
 
 	// author: chuo@redhat.com
