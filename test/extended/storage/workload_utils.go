@@ -25,6 +25,14 @@ type pod struct {
 	mountPath  string
 }
 
+// Define the global vSphere Storage Operator && Driver deploments object
+var (
+	detectorOperator = newDeployment(setDeploymentName("vsphere-problem-detector-operator"), setDeploymentNamespace("openshift-cluster-storage-operator"),
+		setDeploymentApplabel("name=vsphere-problem-detector-operator"))
+	driverController = newDeployment(setDeploymentName("vmware-vsphere-csi-driver-controller"), setDeploymentNamespace("openshift-cluster-csi-drivers"),
+		setDeploymentApplabel("app=vmware-vsphere-csi-driver-controller"), setDeploymentReplicasNumber("2"))
+)
+
 // function option mode to change the default values of pod parameters, e.g. name, namespace, persistent volume claim, image etc.
 type podOption func(*pod)
 
@@ -562,6 +570,13 @@ func (dep *deployment) getPodList(oc *exutil.CLI) []string {
 	return strings.Split(output, " ")
 }
 
+// Get ReplicasNum of the Deployment
+func (dep *deployment) getReplicasNum(oc *exutil.CLI) string {
+	replicasNum, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("deployment", dep.name, "-n", dep.namespace, "-o", "jsonpath={.spec.replicas}").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	return replicasNum
+}
+
 // Scale Replicas for the Deployment
 func (dep *deployment) scaleReplicas(oc *exutil.CLI, replicasno string) {
 	err := oc.WithoutNamespace().Run("scale").Args("deployment", dep.name, "--replicas="+replicasno, "-n", dep.namespace).Execute()
@@ -570,13 +585,21 @@ func (dep *deployment) scaleReplicas(oc *exutil.CLI, replicasno string) {
 }
 
 // Restart the Deployment by scale down to '0' and then scale up to origin number
-func (dep *deployment) restart(oc *exutil.CLI) {
+func (dep *deployment) restart(oc *exutil.CLI) error {
 	originReplicasNum := dep.replicasno
 	dep.scaleReplicas(oc, "0")
+	// VSphereProblemDetectorController will automated recover the dector replicas number
+	if dep == &detectorOperator {
+		dep.replicasno = originReplicasNum
+		dep.waitReady(oc)
+		e2e.Logf("deployment/%s in namespace %s restart successfully", dep.name, dep.namespace)
+		return nil
+	}
 	dep.waitReady(oc)
 	dep.scaleReplicas(oc, originReplicasNum)
 	dep.waitReady(oc)
 	e2e.Logf("deployment/%s in namespace %s restart successfully", dep.name, dep.namespace)
+	return nil
 }
 
 // Check the deployment ready

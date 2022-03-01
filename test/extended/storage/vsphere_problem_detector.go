@@ -2,6 +2,7 @@ package storage
 
 import (
 	//"path/filepath"
+	"encoding/base64"
 	"fmt"
 	"path/filepath"
 	"regexp"
@@ -11,13 +12,17 @@ import (
 	g "github.com/onsi/ginkgo"
 	o "github.com/onsi/gomega"
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
+	"github.com/tidwall/gjson"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 )
 
 var _ = g.Describe("[sig-storage] STORAGE", func() {
 	defer g.GinkgoRecover()
 
-	var oc = exutil.NewCLI("vsphere-problem-detector-operator", exutil.KubeConfigPath())
+	var (
+		oc = exutil.NewCLI("vsphere-problem-detector-operator", exutil.KubeConfigPath())
+		mo *monitor
+	)
 
 	// vsphere-problem-detector test suite infrastructure check
 	g.BeforeEach(func() {
@@ -25,6 +30,7 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 		if !strings.Contains(cloudProvider, "vsphere") {
 			g.Skip("Skip for non-supported infrastructure!!!")
 		}
+		mo = newMonitor(oc.AsAdmin())
 	})
 
 	// author:wduan@redhat.com
@@ -122,20 +128,9 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 	// Since it'll restart deployment/vsphere-problem-detector-operator maybe conflict with the other vsphere-problem-detector cases,so set it as [Serial]
 	g.It("NonPreRelease-Author:pewang-High-48763-[vsphere-problem-detector] should report 'vsphere_rwx_volumes_total' metric correctly [Serial]", func() {
 		g.By("# Get the value of 'vsphere_rwx_volumes_total' metric real init value")
-		// Define the CSO vsphere-problem-detector-operator deployment object
-		detector := newDeployment(setDeploymentName("vsphere-problem-detector-operator"), setDeploymentNamespace("openshift-cluster-storage-operator"), setDeploymentApplabel("name=vsphere-problem-detector-operator"))
-		orignReplicasNum, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("deployment", detector.name, "-n", detector.namespace, "-o", "jsonpath={.spec.replicas}").Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		detector.replicasno = orignReplicasNum
-		mo := newMonitor(oc.AsAdmin())
 		// Restart vsphere-problem-detector-operator and get the init value of 'vsphere_rwx_volumes_total' metric
-		detector.scaleReplicas(oc.AsAdmin(), "0")
-		// VSphereProblemDetectorController will automated recover the dector replicas number
-		detector.replicasno = orignReplicasNum
-		detector.waitReady(oc.AsAdmin())
-		// Get the report metric pod's new name (Restart deployment the pod name will changed)
-		newInstanceName := detector.getPodList(oc.AsAdmin())[0]
-		debugLogf("newInstanceName:%s", newInstanceName)
+		detectorOperator.restart(oc.AsAdmin())
+		newInstanceName := detectorOperator.getPodList(oc.AsAdmin())[0]
 		// When the metric update by restart the instance the metric's pod's `data.result.0.metric.pod` name will change to the newInstanceName
 		mo.waitSpecifiedMetricValueAsExpected("vsphere_rwx_volumes_total", `data.result.0.metric.pod`, newInstanceName)
 		initCount, err := mo.getSpecifiedMetricValue("vsphere_rwx_volumes_total", `data.result.0.value.1`)
@@ -144,7 +139,8 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 		g.By("# Create two manual fileshare persist volumes(vSphere CNS File Volume) and one manual general volume")
 		// The backend service count the total number of 'fileshare persist volumes' by only count the pvs which volumeHandle prefix with `file:`
 		// https://github.com/openshift/vsphere-problem-detector/pull/64/files
-		// So I create 2 pvs volumeHandle prefix with `file:` with different accessModes to check the count logic's accurateness
+		// So I create 2 pvs volumeHandle prefix with `file:` with different accessModes
+		// and 1 general pv with accessMode:"ReadWriteOnce" to check the count logic's accurateness
 		storageTeamBaseDir := exutil.FixturePath("testdata", "storage")
 		pvTemplate := filepath.Join(storageTeamBaseDir, "csi-pv-template.yaml")
 		rwxPersistVolume := newPersistentVolume(setPersistentVolumeAccessMode("ReadWriteMany"), setPersistentVolumeHandle("file:a7d6fcdd-1cbd-4e73-a54f-a3c7"+getRandomString()), setPersistentVolumeTemplate(pvTemplate))
@@ -159,10 +155,7 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 
 		g.By("# Check the metric update correctly")
 		// Since the vsphere-problem-detector update the metric every hour restart the deployment to trigger the update right now
-		detector.scaleReplicas(oc.AsAdmin(), "0")
-		// VSphereProblemDetectorController will automated recover the dector replicas number
-		detector.replicasno = orignReplicasNum
-		detector.waitReady(oc.AsAdmin())
+		detectorOperator.restart(oc.AsAdmin())
 		// Wait for 'vsphere_rwx_volumes_total' metric value update correctly
 		initCountInt, err := strconv.Atoi(initCount)
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -173,9 +166,50 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 		waitForPersistentVolumeStatusAsExpected(oc, rwxPersistVolume.name, "deleted")
 
 		g.By("# Check the metric update correctly again")
-		detector.scaleReplicas(oc.AsAdmin(), "0")
-		detector.replicasno = orignReplicasNum
-		detector.waitReady(oc.AsAdmin())
+		detectorOperator.restart(oc.AsAdmin())
 		mo.waitSpecifiedMetricValueAsExpected("vsphere_rwx_volumes_total", `data.result.0.value.1`, interfaceToString(initCountInt+1))
+	})
+
+	// author:pewang@redhat.com
+	// Since it'll make the vSphere CSI driver credential invaild during the execution,so mark it Disruptive
+	g.It("Author:pewang-High-48875-[vmware-vsphere-csi-driver-operator] should report 'vsphere_csi_driver_error' metric when couldn't connect to vCenter [Disruptive]", func() {
+		g.By("# Get the origin credential of vSphere CSI driver")
+		// Make sure the CSO is healthy
+		waitCSOhealthy(oc)
+		originCredential, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("secret/vmware-vsphere-cloud-credentials", "-n", "openshift-cluster-csi-drivers", "-o", "json").Output()
+		if strings.Contains(interfaceToString(err), "not found") {
+			g.Skip("Unsupport profile or test cluster is abnormal")
+		}
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("# Get the credential pwd key name and key value")
+		var pwdKey string
+		dataList := strings.Split(gjson.Get(originCredential, `data`).String(), `"`)
+		for _, subStr := range dataList {
+			if strings.Contains(subStr, "password") {
+				pwdKey = subStr
+				break
+			}
+		}
+		debugLogf("The credential pwd key name is: \"%s\"", pwdKey)
+		originPwd := gjson.Get(originCredential, `data.*password`).String()
+
+		g.By("# Replace the origin credential of vSphere CSI driver to wrong")
+		invaildPwd := base64.StdEncoding.EncodeToString([]byte(getRandomString()))
+		output, err := oc.AsAdmin().WithoutNamespace().Run("patch").Args("secret/vmware-vsphere-cloud-credentials", "-n", "openshift-cluster-csi-drivers", `-p={"data":{"`+pwdKey+`":"`+invaildPwd+`"}}`).Output()
+		// Restore the credential of vSphere CSI driver and make sure the CSO recover healthy by defer
+		defer restoreVsphereCSIcredential(oc, pwdKey, originPwd)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring("patched"))
+		debugLogf("Replace the credential of vSphere CSI driver pwd to invaildPwd: \"%s\" succeed", invaildPwd)
+
+		g.By("# Wait for the 'vsphere_csi_driver_error' metric report with correct content")
+		mo.waitSpecifiedMetricValueAsExpected("vsphere_csi_driver_error", `data.result.0.metric.failure_reason`, "vsphere_connection_failed")
+
+		g.By("# Check the cluster could still upgrade and cluster storage operator not avaiable")
+		// Don't block upgrades if we can't connect to vcenter
+		// https://bugzilla.redhat.com/show_bug.cgi?id=2040880
+		waitCSOspecifiedStatusValueAsExpected(oc, "Upgradeable", "True")
+		waitCSOspecifiedStatusValueAsExpected(oc, "Available", "False")
 	})
 })

@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -317,4 +318,70 @@ func getOcDescribeInfo(oc *exutil.CLI, namespace string, resourceKind string, re
 func getRandomNum(m int64, n int64) int64 {
 	rand.Seed(time.Now().UnixNano())
 	return rand.Int63n(n-m+1) + m
+}
+
+// Restore the credential of vSphere CSI driver
+func restoreVsphereCSIcredential(oc *exutil.CLI, pwdKey string, originPwd string) error {
+	e2e.Logf("****** Restore the credential of vSphere CSI driver and make sure the CSO recover healthy ******")
+	output, err := oc.AsAdmin().WithoutNamespace().Run("patch").Args("secret/vmware-vsphere-cloud-credentials", "-n", "openshift-cluster-csi-drivers", `-p={"data":{"`+pwdKey+`":"`+originPwd+`"}}`).Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	o.Expect(output).To(o.ContainSubstring("patched"))
+	driverController.waitReady(oc.AsAdmin())
+	// Make sure the Cluster Storage Operator recover healthy
+	waitCSOhealthy(oc.AsAdmin())
+	return nil
+}
+
+// Get Cluster Storage Operator specified status value
+func getCSOspecifiedStatusValue(oc *exutil.CLI, specifiedStatus string) (string, error) {
+	status, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("co/storage", "-o=jsonpath={.status.conditions[?(.type=='"+specifiedStatus+"')].status}").Output()
+	debugLogf("CSO \"%s\" status value is \"%s\"", specifiedStatus, status)
+	return status, err
+}
+
+// Wait for Cluster Storage Operator specified status value as expected
+func waitCSOspecifiedStatusValueAsExpected(oc *exutil.CLI, specifiedStatus string, expectedValue string) {
+	pollErr := wait.Poll(10*time.Second, 60*time.Second, func() (bool, error) {
+		realValue, err := getCSOspecifiedStatusValue(oc, specifiedStatus)
+		if err != nil {
+			e2e.Logf("Get CSO \"%s\" status value failed of: \"%v\"", err)
+			return false, err
+		}
+		if realValue == expectedValue {
+			e2e.Logf("CSO \"%s\" status value become expected \"%s\"", specifiedStatus, expectedValue)
+			return true, nil
+		}
+		return false, nil
+	})
+	exutil.AssertWaitPollNoErr(pollErr, fmt.Sprintf("Waiting for CSO \"%s\" status value become expected \"%s\" timeout", specifiedStatus, expectedValue))
+}
+
+// Check Cluster Storage Operator healthy
+func checkCSOhealthy(oc *exutil.CLI) (bool, error) {
+	// CSO healthyStatus:[degradedStatus:False, progressingStatus:False, avaiableStatus:True, upgradeableStatus:True]
+	var healthyStatus = []string{"False", "False", "True", "True"}
+	csoStatusJson, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("co/storage", "-o", "json").Output()
+	degradedStatus := gjson.Get(csoStatusJson, `status.conditions.#(type=Degraded).status`).String()
+	progressingStatus := gjson.Get(csoStatusJson, `status.conditions.#(type=Progressing).status`).String()
+	avaiableStatus := gjson.Get(csoStatusJson, `status.conditions.#(type=Available).status`).String()
+	upgradeableStatus := gjson.Get(csoStatusJson, `status.conditions.#(type=Upgradeable).status`).String()
+	e2e.Logf("CSO degradedStatus:%s, progressingStatus:%v, avaiableStatus:%v, upgradeableStatus:%v", degradedStatus, progressingStatus, avaiableStatus, upgradeableStatus)
+	return reflect.DeepEqual([]string{degradedStatus, progressingStatus, avaiableStatus, upgradeableStatus}, healthyStatus), err
+}
+
+// Wait for Cluster Storage Operator become healthy
+func waitCSOhealthy(oc *exutil.CLI) {
+	pollErr := wait.Poll(10*time.Second, 120*time.Second, func() (bool, error) {
+		healthyBool, err := checkCSOhealthy(oc)
+		if err != nil {
+			e2e.Logf("Get CSO status failed of: \"%v\"", err)
+			return false, err
+		}
+		if healthyBool {
+			e2e.Logf("CSO status become healthy")
+			return true, nil
+		}
+		return false, nil
+	})
+	exutil.AssertWaitPollNoErr(pollErr, "Waiting for CSO become healthy timeout")
 }
