@@ -22,6 +22,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
 	defer g.GinkgoRecover()
 
 	var operatorsdkCLI = NewOperatorSDKCLI()
+	var makeCLI = NewMakeCLI()
 	var oc = exutil.NewCLIWithoutNamespace("default")
 	var ocpversion = "4.10"
 
@@ -991,22 +992,22 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
 
 		//ocp-45428 xunit adjustments - add nested tags and attributes
 		g.By("migrate OLM tests-bundle validation to generate a pass xunit output")
-		output, err = operatorsdkCLI.Run("scorecard").Args("/tmp/ocp-43973/memcached-operator/bundle", "-c", "/tmp/ocp-43973/memcached-operator/bundle/tests/scorecard/config.yaml", "-w", "60s", "--selector=test=olm-bundle-validation-test", "-o", "xunit","-n", oc.Namespace()).Output()
+		output, err = operatorsdkCLI.Run("scorecard").Args("/tmp/ocp-43973/memcached-operator/bundle", "-c", "/tmp/ocp-43973/memcached-operator/bundle/tests/scorecard/config.yaml", "-w", "60s", "--selector=test=olm-bundle-validation-test", "-o", "xunit", "-n", oc.Namespace()).Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(output).To(o.ContainSubstring("<testsuite name=\"olm-bundle-validation\" id=\"olm-bundle-validation\""))
 
 		g.By("migrate OLM tests-status descriptors to generate a failed xunit output")
-		output, err = operatorsdkCLI.Run("scorecard").Args("/tmp/ocp-43973/memcached-operator/bundle", "-c", "/tmp/ocp-43973/memcached-operator/bundle/tests/scorecard/config.yaml", "-w", "60s", "--selector=test=olm-status-descriptors-test", "-o", "xunit","-n", oc.Namespace()).Output()
+		output, err = operatorsdkCLI.Run("scorecard").Args("/tmp/ocp-43973/memcached-operator/bundle", "-c", "/tmp/ocp-43973/memcached-operator/bundle/tests/scorecard/config.yaml", "-w", "60s", "--selector=test=olm-status-descriptors-test", "-o", "xunit", "-n", oc.Namespace()).Output()
 		o.Expect(output).To(o.ContainSubstring("<testsuite name=\"olm-status-descriptors\" failures=\"Loaded ClusterServiceVersion"))
 
 		// ocp-45431 bring in latest o-f/api to SDK BEFORE 1.13
 		g.By("use an non-exist service account to run test")
-		output, err = operatorsdkCLI.Run("scorecard").Args("/tmp/ocp-43973/memcached-operator/bundle", "-c", "/tmp/ocp-43973/memcached-operator/bundle/tests/scorecard/config.yaml", "-w", "60s", "--selector=test=olm-bundle-validation-test ", "-s", "testing","-n", oc.Namespace()).Output()
+		output, err = operatorsdkCLI.Run("scorecard").Args("/tmp/ocp-43973/memcached-operator/bundle", "-c", "/tmp/ocp-43973/memcached-operator/bundle/tests/scorecard/config.yaml", "-w", "60s", "--selector=test=olm-bundle-validation-test ", "-s", "testing", "-n", oc.Namespace()).Output()
 		o.Expect(output).To(o.ContainSubstring("serviceaccount \"testing\" not found"))
 		exec.Command("bash", "-c", "cp -rf test/extended/util/operatorsdk/ocp-43973-data/sa_testing.yaml /tmp/ocp-43973/memcached-operator/").Output()
-		_, err = oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", "/tmp/ocp-43973/memcached-operator/sa_testing.yaml","-n",oc.Namespace()).Output()
+		_, err = oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", "/tmp/ocp-43973/memcached-operator/sa_testing.yaml", "-n", oc.Namespace()).Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
-		output, err = operatorsdkCLI.Run("scorecard").Args("/tmp/ocp-43973/memcached-operator/bundle", "-c", "/tmp/ocp-43973/memcached-operator/bundle/tests/scorecard/config.yaml", "-w", "60s", "--selector=test=olm-bundle-validation-test ", "-s", "testing","-n", oc.Namespace()).Output()
+		output, err = operatorsdkCLI.Run("scorecard").Args("/tmp/ocp-43973/memcached-operator/bundle", "-c", "/tmp/ocp-43973/memcached-operator/bundle/tests/scorecard/config.yaml", "-w", "60s", "--selector=test=olm-bundle-validation-test ", "-s", "testing", "-n", oc.Namespace()).Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 	})
@@ -1100,6 +1101,87 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
 		o.Expect(output).To(o.ContainSubstring("0.12."))
 
 		e2e.Logf("OCP 42028 SUCCESS")
+	})
+
+	// author: xzha@redhat.com
+	g.It("ConnectedOnly-VMonly-Author:xzha-High-44295-Ensure that Go type Operators creation is working [Slow]", func() {
+		if os.Getenv("HTTP_PROXY") != "" || os.Getenv("http_proxy") != "" {
+			g.Skip("HTTP_PROXY is not empty - skipping test ...")
+		}
+		quayCLI := container.NewQuayCLI()
+		imageTag := "quay.io/olmqe/memcached-operator:44295-" + getRandomString()
+		tmpBasePath := "/tmp/ocp-44295-" + getRandomString()
+		tmpPath := filepath.Join(tmpBasePath, "memcached-operator")
+		nsSystem := "system-ocp44295" + getRandomString()
+		nsOperator := "memcached-operator-system-ocp44295" + getRandomString()
+		defer os.RemoveAll(tmpBasePath)
+		defer quayCLI.DeleteTag(strings.Replace(imageTag, "quay.io/", "", 1))
+		err := os.MkdirAll(tmpPath, 0755)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		operatorsdkCLI.ExecCommandPath = tmpPath
+		makeCLI.ExecCommandPath = tmpPath
+
+		g.By("step: generate go type operator")
+		defer func() {
+			_, err = makeCLI.Run("undeploy").Args().Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}()
+		output, err := operatorsdkCLI.Run("init").Args("--domain=example.com", "--plugins=go.kubebuilder.io/v3", "--repo=github.com/example-inc/memcached-operator").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring("Writing scaffold for you to edit"))
+		o.Expect(output).To(o.ContainSubstring("Next: define a resource with"))
+
+		g.By("step: Create a Memcached API.")
+		output, err = operatorsdkCLI.Run("create").Args("api", "--resource=true", "--controller=true", "--group=cache", "--version=v1alpha1", "--kind=Memcached").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring("Update dependencies"))
+		o.Expect(output).To(o.ContainSubstring("Next"))
+
+		g.By("step: modify namespace")
+		exec.Command("bash", "-c", fmt.Sprintf("sed -i 's/name: system/name: system-ocp44295/g' `grep -rl \"name: system\" %s`", tmpPath)).Output()
+		exec.Command("bash", "-c", fmt.Sprintf("sed -i 's/namespace: system/namespace: %s/g'  `grep -rl \"namespace: system\" %s`", nsSystem, tmpPath)).Output()
+		exec.Command("bash", "-c", fmt.Sprintf("sed -i 's/namespace: memcached-operator-system/namespace: %s/g'  `grep -rl \"namespace: memcached-operator-system\" %s`", nsOperator, tmpPath)).Output()
+
+		g.By("step: Build the operator image")
+		dockerFilePath := filepath.Join(tmpPath, "Dockerfile")
+		replaceContent(dockerFilePath, "golang:", "quay.io/olmqe/golang:")
+		output, err = makeCLI.Run("docker-build").Args("IMG=" + imageTag).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring("docker build -t"))
+
+		g.By("step: Push the operator image")
+		output, err = makeCLI.Run("docker-push").Args("IMG=" + imageTag).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring("Writing manifest to image destination"))
+
+		g.By("step: Install the CRD")
+		output, err = makeCLI.Run("install").Args().Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring("memcacheds.cache.example.com"))
+
+		g.By("step: Deploy the operator")
+		output, err = makeCLI.Run("deploy").Args("IMG=" + imageTag).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring("deployment.apps/memcached-operator-controller-manager"))
+
+		g.By("step: Create the resource")
+		crFilePath := filepath.Join(tmpPath, "config", "samples", "cache_v1alpha1_memcached.yaml")
+		_, err = oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", crFilePath, "-n", nsOperator).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		waitErr := wait.Poll(30*time.Second, 180*time.Second, func() (bool, error) {
+			msg, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-n", nsOperator).Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			if strings.Contains(msg, "memcached-operator-controller-manager") {
+				e2e.Logf("found pod memcached-operator-controller-manager")
+				return true, nil
+			}
+			return false, nil
+		})
+		exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("No memcached-operator-controller-manager in project %s", nsOperator))
+		msg, err := oc.AsAdmin().WithoutNamespace().Run("logs").Args("deployment.apps/memcached-operator-controller-manager", "-c", "manager", "-n", nsOperator).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(msg).To(o.ContainSubstring("Starting workers"))
+		g.By("OCP 44295 SUCCESS")
 	})
 
 	// author: chuo@redhat.com

@@ -4,9 +4,13 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
+	"math/rand"
+	"os"
 	"os/exec"
 	"runtime/debug"
 	"strings"
+	"time"
 
 	g "github.com/onsi/ginkgo"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
@@ -14,18 +18,20 @@ import (
 
 // CLI provides function to call the Operator-sdk CLI
 type CLI struct {
-	execPath	string
-	verb		string
-	username	string
-	globalArgs	[]string
-	commandArgs	[]string
-	finalArgs	[]string
-	stdin		*bytes.Buffer
-	stdout		io.Writer
-	stderr		io.Writer
-	verbose		bool
-	showInfo	bool
-	skipTLS		bool
+	execPath        string
+	verb            string
+	username        string
+	globalArgs      []string
+	commandArgs     []string
+	finalArgs       []string
+	stdin           *bytes.Buffer
+	stdout          io.Writer
+	stderr          io.Writer
+	verbose         bool
+	showInfo        bool
+	skipTLS         bool
+	ExecCommandPath string
+	env             []string
 }
 
 // NewOperatorSDKCLI intialize the SDK framework
@@ -37,13 +43,25 @@ func NewOperatorSDKCLI() *CLI {
 	return client
 }
 
+// NewMakeCLI intialize the make framework
+func NewMakeCLI() *CLI {
+	client := &CLI{}
+	client.username = "admin"
+	client.execPath = "make"
+	client.showInfo = true
+	return client
+}
+
 // Run executes given OperatorSDK command verb
 func (c *CLI) Run(commands ...string) *CLI {
 	in, out, errout := &bytes.Buffer{}, &bytes.Buffer{}, &bytes.Buffer{}
 	operatorsdk := &CLI{
-		execPath: c.execPath,
-		verb:     commands[0],
-		username: c.username,
+		execPath:        c.execPath,
+		verb:            commands[0],
+		username:        c.username,
+		showInfo:        c.showInfo,
+		ExecCommandPath: c.ExecCommandPath,
+		env:             c.env,
 	}
 	if c.skipTLS {
 		operatorsdk.globalArgs = append([]string{"--skip-tls=true"}, commands...)
@@ -91,6 +109,14 @@ func (c *CLI) Output() (string, error) {
 		e2e.Logf("DEBUG: opm %s\n", c.printCmd())
 	}
 	cmd := exec.Command(c.execPath, c.finalArgs...)
+	cmd.Env = os.Environ()
+	if c.env != nil {
+		cmd.Env = append(cmd.Env, c.env...)
+	}
+	if c.ExecCommandPath != "" {
+		e2e.Logf("set exec command path is %s\n", c.ExecCommandPath)
+		cmd.Dir = c.ExecCommandPath
+	}
 	cmd.Stdin = c.stdin
 	if c.showInfo {
 		e2e.Logf("Running '%s %s'", c.execPath, strings.Join(c.finalArgs, " "))
@@ -108,5 +134,27 @@ func (c *CLI) Output() (string, error) {
 		FatalErr(fmt.Errorf("unable to execute %q: %v", c.execPath, err))
 		// unreachable code
 		return "", nil
+	}
+}
+
+//the method is to get random string with length 8.
+func getRandomString() string {
+	chars := "abcdefghijklmnopqrstuvwxyz0123456789"
+	seed := rand.New(rand.NewSource(time.Now().UnixNano()))
+	buffer := make([]byte, 8)
+	for index := range buffer {
+		buffer[index] = chars[seed.Intn(len(chars))]
+	}
+	return string(buffer)
+}
+
+func replaceContent(filePath string, src string, target string) {
+	input, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		FatalErr(fmt.Errorf("read file %s failed: %v", filePath, err))
+	}
+	output := bytes.Replace(input, []byte(src), []byte(target), -1)
+	if err = ioutil.WriteFile(filePath, output, 0755); err != nil {
+		FatalErr(fmt.Errorf("write file %s failed: %v", filePath, err))
 	}
 }
