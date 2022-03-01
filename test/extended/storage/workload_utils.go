@@ -121,6 +121,15 @@ func (pod *pod) create(oc *exutil.CLI) {
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
+// Create new pod with extra parameters
+func (pod *pod) createWithExtraParameters(oc *exutil.CLI, extraParameters map[string]interface{}) {
+	if pod.namespace == "" {
+		pod.namespace = oc.Namespace()
+	}
+	err := applyResourceFromTemplateWithExtraParametersAsAdmin(oc, extraParameters, "--ignore-unknown-parameters=true", "-f", pod.template, "-p", "PODNAME="+pod.name, "PODNAMESPACE="+pod.namespace, "PVCNAME="+pod.pvcname, "PODIMAGE="+pod.image, "VOLUMETYPE="+pod.volumeType, "PATHTYPE="+pod.pathType, "PODMOUNTPATH="+pod.mountPath)
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
 // Create new pod with extra parameters for readonly
 func (pod *pod) createWithReadOnlyVolume(oc *exutil.CLI) {
 	if pod.namespace == "" {
@@ -240,6 +249,12 @@ func (pod *pod) checkDataInRawBlockVolume(oc *exutil.CLI) {
 	output, err := pod.execCommand(oc, "cat /tmp/testfile")
 	o.Expect(err).NotTo(o.HaveOccurred())
 	o.Expect(output).To(o.ContainSubstring("storage test"))
+}
+
+func (pod *pod) checkFsgroup(oc *exutil.CLI, command string, expect string) {
+	output, err := pod.execCommandAsAdmin(oc, command)
+	o.Expect(err).NotTo(o.HaveOccurred())
+	o.Expect(output).To(o.ContainSubstring(expect))
 }
 
 // Waiting for the Pod ready

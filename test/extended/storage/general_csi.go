@@ -1252,6 +1252,83 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 	})
 
 	// author: wduan@redhat.com
+	// OCP-48911 - [CSI Driver] [fsgroup] should be updated with new defined value when volume attach to another pod
+	g.It("Author:wduan-Critical-48911-[CSI Driver] [fsgroup] should be updated with new defined value when volume attach to another pod", func() {
+		// Define the test scenario support provisioners
+		scenarioSupportProvisioners := []string{"ebs.csi.aws.com", "disk.csi.azure.com", "cinder.csi.openstack.org", "pd.csi.storage.gke.io", "csi.vsphere.vmware.com", "vpc.block.csi.ibm.io", "diskplugin.csi.alibabacloud.com"}
+		supportProvisioners := sliceIntersect(scenarioSupportProvisioners, getSupportProvisionersByCloudProvider(cloudProvider))
+		if len(supportProvisioners) == 0 {
+			g.Skip("Skip for scenario non-supported provisioner!!!")
+		}
+		// Set the resource template for the scenario
+		var (
+			storageTeamBaseDir   = exutil.FixturePath("testdata", "storage")
+			storageClassTemplate = filepath.Join(storageTeamBaseDir, "storageclass-template.yaml")
+			pvcTemplate          = filepath.Join(storageTeamBaseDir, "pvc-template.yaml")
+			podTemplate          = filepath.Join(storageTeamBaseDir, "pod-template.yaml")
+		)
+		// Set up a specified project share for all the phases
+		g.By("Create new project for the scenario")
+		oc.SetupProject() //create new project
+		for _, provisioner := range supportProvisioners {
+			g.By("******" + cloudProvider + " csi driver: \"" + provisioner + "\" test phase start" + "******")
+			// Set the resource definition for the scenario
+			storageClass := newStorageClass(setStorageClassTemplate(storageClassTemplate))
+			pvc := newPersistentVolumeClaim(setPersistentVolumeClaimTemplate(pvcTemplate), setPersistentVolumeClaimStorageClassName(storageClass.name))
+			pod_a := newPod(setPodTemplate(podTemplate), setPodPersistentVolumeClaim(pvc.name))
+			securityContext := map[string]interface{}{
+				"fsGroup": 10000,
+			}
+			extraParameters := map[string]interface{}{
+				"jsonPath":        `items.0.spec.`,
+				"securityContext": securityContext,
+			}
+
+			g.By("Create a pvc with the preset storageclass")
+			pvc.scname = getPresetStorageClassNameByProvisioner(cloudProvider, provisioner)
+			pvc.create(oc)
+			defer pvc.deleteAsAdmin(oc)
+
+			g.By("Create pod_a with the created pvc and wait pod ready")
+			pod_a.createWithExtraParameters(oc, extraParameters)
+			defer pod_a.deleteAsAdmin(oc)
+			pod_a.waitReady(oc)
+
+			g.By("Check the fsgroup of mounted volume and new created file should be 10000")
+			pod_a.checkFsgroup(oc, "ls -lZd "+pod_a.mountPath, "10000")
+			_, err := pod_a.execCommandAsAdmin(oc, "touch "+pod_a.mountPath+"/testfile")
+			o.Expect(err).NotTo(o.HaveOccurred())
+			pod_a.checkFsgroup(oc, "ls -lZ "+pod_a.mountPath+"/testfile", "10000")
+
+			g.By("Delete the pod_a")
+			pod_a.delete(oc)
+
+			securityContext = map[string]interface{}{
+				"fsGroup": 20000,
+			}
+			extraParameters = map[string]interface{}{
+				"jsonPath":        `items.0.spec.`,
+				"securityContext": securityContext,
+			}
+
+			g.By("Create pod_b with the same pvc and wait pod ready")
+			pod_b := newPod(setPodTemplate(podTemplate), setPodPersistentVolumeClaim(pvc.name))
+			pod_b.createWithExtraParameters(oc, extraParameters)
+			defer pod_b.deleteAsAdmin(oc)
+			pod_b.waitReady(oc)
+
+			g.By("Check the fsgroup of mounted volume, existing file and new created file should be 20000")
+			pod_b.checkFsgroup(oc, "ls -lZd "+pod_b.mountPath, "20000")
+			pod_b.checkFsgroup(oc, "ls -lZ "+pod_b.mountPath+"/testfile", "20000")
+			_, err = pod_b.execCommandAsAdmin(oc, "touch "+pod_b.mountPath+"/testfile-new")
+			o.Expect(err).NotTo(o.HaveOccurred())
+			pod_b.checkFsgroup(oc, "ls -lZ "+pod_b.mountPath+"/testfile-new", "20000")
+
+			g.By("******" + cloudProvider + " csi driver: \"" + provisioner + "\" test phase finished" + "******")
+		}
+	})
+
+	// author: wduan@redhat.com
 	// OCP-47879 - [CSI Driver] [Snapshot] [Filesystem default] provisioning should provision storage with snapshot data source and restore it succesffully
 	g.It("Author:wduan-Critical-47879-[CSI Driver] [Snapshot] [Filesystem default] provisioning should provision storage with snapshot data source and restore it succesffully", func() {
 		// Define the test scenario support provisioners
