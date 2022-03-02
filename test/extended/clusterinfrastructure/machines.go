@@ -78,6 +78,50 @@ var _ = g.Describe("[sig-cluster-lifecycle] Cluster_Infrastructure", func() {
 	})
 
 	// author: huliu@redhat.com
+	g.It("Longduration-NonPreRelease-Author:huliu-Medium-46303-Availability sets could be created when needed for Azure [Disruptive]", func() {
+		if clusterinfra.CheckPlatform(oc) == "azure" {
+			defaultWorkerMachinesetName := clusterinfra.GetRandomMachineSetName(oc)
+			region, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("machineset/"+defaultWorkerMachinesetName, "-n", "openshift-machine-api", "-o=jsonpath={.spec.template.spec.providerSpec.value.location}").Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			infrastructureName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("infrastructure/cluster", "-o=jsonpath={.status.infrastructureName}").Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			availabilitySetName := infrastructureName + "_" + defaultWorkerMachinesetName + "-as"
+			if region == "northcentralus" || region == "westus" {
+				/*
+					This case only supports on a region which doesn't have zones.
+					These two regions cover most of the templates in flexy-templates and they don't have zones,
+					so restricting the test is only applicable in these two regions.
+				*/
+				g.By("Create a new machineset")
+				machinesetName := "machineset-46303"
+				ms := clusterinfra.MachineSetDescription{machinesetName, 0}
+				defer ms.DeleteMachineSet(oc)
+				ms.CreateMachineSet(oc)
+
+				g.By("Update machineset with availabilitySet already created for the default worker machineset")
+				/*
+				 If the available set is not created for the default worker machineset,
+				 the machine will create failed and error message shows "Availability Set cannot be found".
+				 Therefore, if machine created successfully with the available set,
+				 then it can prove that the available set has been created when the default worker machineset is created.
+				*/
+				err := oc.AsAdmin().WithoutNamespace().Run("patch").Args("machineset/"+machinesetName, "-n", "openshift-machine-api", "-p", `{"spec":{"replicas":1,"template":{"spec":{"providerSpec":{"value":{"availabilitySet":"`+availabilitySetName+`"}}}}}}`, "--type=merge").Execute()
+				o.Expect(err).NotTo(o.HaveOccurred())
+
+				clusterinfra.WaitForMachinesRunning(oc, 1, machinesetName)
+
+				g.By("Check machine with availabilitySet")
+				out, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("machine", "-n", "openshift-machine-api", "-l", "machine.openshift.io/cluster-api-machineset="+machinesetName, "-o=jsonpath={.items[0].spec.providerSpec.value.availabilitySet}").Output()
+				o.Expect(err).NotTo(o.HaveOccurred())
+				e2e.Logf("out:%s", out)
+				o.Expect(out == availabilitySetName).To(o.BeTrue())
+			}
+			e2e.Logf("The test is only applicable in \"northcentralus\" or \"westus\" region")
+		}
+		e2e.Logf("Only azure platform supported for the test")
+	})
+
+	// author: huliu@redhat.com
 	g.It("Longduration-NonPreRelease-Author:huliu-Medium-47177-Medium-47201-[MDH] Machine Deletion Hooks appropriately block lifecycle phases [Disruptive]", func() {
 		g.By("Create a new machineset with lifecycle hook")
 		machinesetName := "machineset-47177-47201"
