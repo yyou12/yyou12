@@ -2,13 +2,14 @@ package image_registry
 
 import (
 	"fmt"
+	"time"
+
 	g "github.com/onsi/ginkgo"
 	o "github.com/onsi/gomega"
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
 	container "github.com/openshift/openshift-tests-private/test/extended/util/container"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
-	"time"
 )
 
 var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
@@ -18,7 +19,7 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 		manifestType = "application/vnd.oci.image.manifest.v1+json"
 	)
 	// author: wewang@redhat.com
-	g.It("Author:wewang-VMonly-High-36291-OCI image is supported by API server and image registry", func() {
+	g.It("Author:wewang-VMonly-ConnectedOnly-High-36291-OCI image is supported by API server and image registry", func() {
 		oc.SetupProject()
 		g.By("Import an OCI image to internal registry")
 		err := oc.Run("import-image").Args("myimage", "--from", "docker.io/wzheng/busyboxoci", "--confirm", "--reference-policy=local").Execute()

@@ -887,7 +887,7 @@ func createSimpleRunPod(oc *exutil.CLI, image, expectInfo string) {
 	err = wait.Poll(3*time.Second, 2*time.Minute, func() (bool, error) {
 		output, err := oc.AsAdmin().WithoutNamespace().Run("describe").Args("pod", podName, "-n", oc.Namespace()).Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
-		if o.Expect(output).To(o.ContainSubstring(expectInfo)) {
+		if strings.Contains(output, expectInfo) {
 			return true, nil
 		} else {
 			e2e.Logf("Continue to next round")
@@ -904,7 +904,7 @@ func newAppUseImageStream(oc *exutil.CLI, ns, imagestream, expectInfo string) {
 	err = wait.Poll(3*time.Second, 30*time.Second, func() (bool, error) {
 		output, err := oc.AsAdmin().WithoutNamespace().Run("describe").Args("pod", "-l", "deployment="+appName, "-n", ns).Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
-		if o.Expect(output).To(o.ContainSubstring(expectInfo)) {
+		if strings.Contains(output, expectInfo) {
 			return true, nil
 		} else {
 			e2e.Logf("Continue to next round")

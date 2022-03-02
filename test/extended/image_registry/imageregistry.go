@@ -25,8 +25,6 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 	defer g.GinkgoRecover()
 	var (
 		oc                   = exutil.NewCLI("default-image-registry", exutil.KubeConfigPath())
-		bcName               = "rails-postgresql-example"
-		bcNameOne            = fmt.Sprintf("%s-1", bcName)
 		errInfo              = "http.response.status=404"
 		logInfo              = `Unsupported value: "abc": supported values: "", "Normal", "Debug", "Trace", "TraceAll"`
 		updatePolicy         = `"maxSurge":0,"maxUnavailable":"10%"`
@@ -70,19 +68,7 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 		o.Expect(sDec).To(o.ContainSubstring("aws_secret_access_key"))
 		g.By("push/pull image to registry")
 		oc.SetupProject()
-		err = oc.Run("import-image").Args("myimage", "--from", "busybox", "--confirm", "--reference-policy=local").Execute()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		err = exutil.WaitForAnImageStreamTag(oc, oc.Namespace(), "myimage", "latest")
-		o.Expect(err).NotTo(o.HaveOccurred())
-		err = oc.Run("new-app").Args("rails-postgresql-example").Execute()
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		g.By("waiting for build to finish")
-		err = exutil.WaitForABuild(oc.BuildClient().BuildV1().Builds(oc.Namespace()), bcNameOne, nil, nil, nil)
-		if err != nil {
-			exutil.DumpBuildLogs(bcName, oc)
-		}
-		o.Expect(err).NotTo(o.HaveOccurred())
+		checkRegistryFunctionFine(oc, "test-39027", oc.Namespace())
 	})
 
 	// author: wewang@redhat.com
@@ -283,7 +269,7 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 	})
 
 	// author: wewang@redhat.com
-	g.It("Author:wewang-Medium-27961-Create imagestreamtag with insufficient permissions [Disruptive]", func() {
+	g.It("Author:wewang-Medium-ConnectedOnly-27961-Create imagestreamtag with insufficient permissions [Disruptive]", func() {
 		var (
 			roleFile = filepath.Join(imageRegistryBaseDir, "role.yaml")
 			rolesrc  = authRole{
@@ -346,6 +332,12 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 
 	// author: wewang@redhat.com
 	g.It("Author:wewang-Medium-27985-Image with invalid resource name can be pruned", func() {
+		//When registry configured pvc or emptryDir, the replicas is 1 and with recreate pod policy.
+		//This is not suitable for the defer recoverage. Only run this case on cloud storage.
+		if checkRegistryUsingFSVolume(oc) {
+			g.Skip("Skip for fs volume")
+		}
+
 		g.By("Config image registry to emptydir")
 		defer recoverRegistryStorageConfig(oc)
 		defer recoverRegistryDefaultReplicas(oc)
@@ -387,7 +379,7 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 			podList, _ := oc.AdminKubeClient().CoreV1().Pods("openshift-image-registry").List(metav1.ListOptions{LabelSelector: "docker-registry=default"})
 			o.Expect(len(podList.Items)).To(o.Equal(2))
 			oc.SetupProject()
-			err := oc.Run("new-build").Args("-D", "FROM quay.io/openshifttest/busybox@sha256:afe605d272837ce1732f390966166c2afff5391208ddd57de10942748694049d", "--to=test-41414").Execute()
+			err := oc.Run("new-build").Args("-D", "FROM quay.io/openshifttest/busybox@sha256:c5439d7db88ab5423999530349d327b04279ad3161d7596d2126dfb5b02bfd1f", "--to=test-41414").Execute()
 			o.Expect(err).NotTo(o.HaveOccurred())
 			err = exutil.WaitForABuild(oc.BuildClient().BuildV1().Builds(oc.Namespace()), "test-41414-1", nil, nil, nil)
 			if err != nil {
@@ -498,7 +490,7 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 	})
 
 	// author: wewang@redhat.com
-	g.It("Author:wewang-High-45952-Imported imagestreams should success in deploymentconfig", func() {
+	g.It("Author:wewang-High-45952-ConnectedOnly-Imported imagestreams should success in deploymentconfig", func() {
 		var (
 			statefulsetFile = filepath.Join(imageRegistryBaseDir, "statefulset.yaml")
 			statefulsetsrc  = staSource{
@@ -575,20 +567,7 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 
 		g.By("push/pull image to registry")
 		oc.SetupProject()
-		ns_39028 := oc.Namespace()
-		err = oc.WithoutNamespace().AsAdmin().Run("import-image").Args("myimage", "-n", ns_39028, "--from", "busybox", "--confirm", "--reference-policy=local").Execute()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		err = exutil.WaitForAnImageStreamTag(oc, oc.Namespace(), "myimage", "latest")
-		o.Expect(err).NotTo(o.HaveOccurred())
-		err = oc.WithoutNamespace().AsAdmin().Run("new-app").Args("rails-postgresql-example", "-n", ns_39028).Execute()
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		g.By("waiting for build to finish")
-		err = exutil.WaitForABuild(oc.BuildClient().BuildV1().Builds(oc.Namespace()), bcNameOne, nil, nil, nil)
-		if err != nil {
-			exutil.DumpBuildLogs(bcName, oc)
-		}
-		o.Expect(err).NotTo(o.HaveOccurred())
+		checkRegistryFunctionFine(oc, "test-39028", oc.Namespace())
 	})
 
 	//author: xiuwang@redhat.com
@@ -665,7 +644,8 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		g.By("Import an image")
-		err = oc.WithoutNamespace().AsAdmin().Run("import-image").Args("myimage", "--from=quay.io/openshifttest/busybox@sha256:afe605d272837ce1732f390966166c2afff5391208ddd57de10942748694049d", "--confirm", "-n", oc.Namespace()).Execute()
+		//Use multiarch image with digest, so it could be test on ARM cluster and disconnect cluster.
+		err = oc.WithoutNamespace().AsAdmin().Run("import-image").Args("myimage", "--from=quay.io/openshifttest/busybox@sha256:c5439d7db88ab5423999530349d327b04279ad3161d7596d2126dfb5b02bfd1f", "--confirm", "-n", oc.Namespace()).Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		err = exutil.WaitForAnImageStreamTag(oc, oc.Namespace(), "myimage", "latest")
 		o.Expect(err).NotTo(o.HaveOccurred())
