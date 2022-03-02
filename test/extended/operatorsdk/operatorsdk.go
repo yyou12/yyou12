@@ -1137,10 +1137,25 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
 		o.Expect(output).To(o.ContainSubstring("Update dependencies"))
 		o.Expect(output).To(o.ContainSubstring("Next"))
 
-		g.By("step: modify namespace")
+		g.By("step: update API")
+		err = copy("test/extended/util/operatorsdk/ocp-44295-data/memcached_types.go", filepath.Join(tmpPath, "api", "v1alpha1", "memcached_types.go"))
+		o.Expect(err).NotTo(o.HaveOccurred())
+		_, err = makeCLI.Run("generate").Args().Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("step: make manifests")
+		_, err = makeCLI.Run("manifests").Args().Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("step: modify namespace and controllers")
+		crFilePath := filepath.Join(tmpPath, "config", "samples", "cache_v1alpha1_memcached.yaml")
+		exec.Command("bash", "-c", fmt.Sprintf("sed -i '$d' %s", crFilePath)).Output()
+		exec.Command("bash", "-c", fmt.Sprintf("sed -i '$a\\  size: 3' %s", crFilePath)).Output()
 		exec.Command("bash", "-c", fmt.Sprintf("sed -i 's/name: system/name: system-ocp44295/g' `grep -rl \"name: system\" %s`", tmpPath)).Output()
 		exec.Command("bash", "-c", fmt.Sprintf("sed -i 's/namespace: system/namespace: %s/g'  `grep -rl \"namespace: system\" %s`", nsSystem, tmpPath)).Output()
 		exec.Command("bash", "-c", fmt.Sprintf("sed -i 's/namespace: memcached-operator-system/namespace: %s/g'  `grep -rl \"namespace: memcached-operator-system\" %s`", nsOperator, tmpPath)).Output()
+		err = copy("test/extended/util/operatorsdk/ocp-44295-data/memcached_controller.go", filepath.Join(tmpPath, "controllers", "memcached_controller.go"))
+		o.Expect(err).NotTo(o.HaveOccurred())
 
 		g.By("step: Build the operator image")
 		dockerFilePath := filepath.Join(tmpPath, "Dockerfile")
@@ -1165,7 +1180,6 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
 		o.Expect(output).To(o.ContainSubstring("deployment.apps/memcached-operator-controller-manager"))
 
 		g.By("step: Create the resource")
-		crFilePath := filepath.Join(tmpPath, "config", "samples", "cache_v1alpha1_memcached.yaml")
 		_, err = oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", crFilePath, "-n", nsOperator).Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		waitErr := wait.Poll(30*time.Second, 180*time.Second, func() (bool, error) {
@@ -1181,6 +1195,22 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
 		msg, err := oc.AsAdmin().WithoutNamespace().Run("logs").Args("deployment.apps/memcached-operator-controller-manager", "-c", "manager", "-n", nsOperator).Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(msg).To(o.ContainSubstring("Starting workers"))
+
+		g.By("step: check deployment")
+		waitErr = wait.Poll(30*time.Second, 180*time.Second, func() (bool, error) {
+			msg, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-n", nsOperator).Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			if strings.Contains(msg, "memcached-sample") {
+				e2e.Logf("found pod memcached-sample")
+				return true, nil
+			}
+			return false, nil
+		})
+		exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("No memcached-sample in project %s", nsOperator))
+		msg, err = oc.AsAdmin().WithoutNamespace().Run("describe").Args("deployment/memcached-sample", "-n", nsOperator).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(msg).To(o.ContainSubstring("3 desired | 3 updated | 3 total | 3 available | 0 unavailable"))
+
 		g.By("OCP 44295 SUCCESS")
 	})
 

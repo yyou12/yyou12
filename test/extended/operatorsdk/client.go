@@ -158,3 +158,16 @@ func replaceContent(filePath string, src string, target string) {
 		FatalErr(fmt.Errorf("write file %s failed: %v", filePath, err))
 	}
 }
+
+func copy(src string, target string) error {
+	bytesRead, err := ioutil.ReadFile(src)
+	if err != nil {
+		return err
+	}
+
+	err = ioutil.WriteFile(target, bytesRead, 0755)
+	if err != nil {
+		return err
+	}
+	return nil
+}
