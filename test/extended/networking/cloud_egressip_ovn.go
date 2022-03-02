@@ -28,12 +28,15 @@ var _ = g.Describe("[sig-networking] SDN", func() {
 	g.BeforeEach(func() {
 		platform := ci.CheckPlatform(oc)
 		networkType := checkNetworkType(oc)
-		if !strings.Contains(platform, "aws") || !strings.Contains(networkType, "ovn") {
-			g.Skip("Test cases should be run on AWS and ovn cluster, skip for other platforms or other network plugin!!")
+		e2e.Logf("\n\nThe platform is %v,  networkType is %v\n", platform, networkType)
+		acceptedPlatform := strings.Contains(platform, "aws") || strings.Contains(platform, "gcp")
+		if !acceptedPlatform || !strings.Contains(networkType, "ovn") {
+			g.Skip("Test cases should be run on AWS or GCP cluster with ovn network plugin, skip for other platforms or other network plugin!!")
 		}
 
 		switch platform {
 		case "aws":
+			e2e.Logf("\n AWS is detected, running the case on AWS\n")
 			if ipEchoUrl == "" {
 				getAwsCredentialFromCluster(oc)
 				a = exutil.InitAwsSession()
@@ -49,7 +52,24 @@ var _ = g.Describe("[sig-networking] SDN", func() {
 					g.Skip("No ip-echo service installed on the bastion host, skip the cases!!")
 				}
 			}
-
+		case "gcp":
+			e2e.Logf("\n GCP is detected, running the case on GCP\n")
+			if ipEchoUrl == "" {
+				// If an int-svc instance with external IP found, IpEcho service will be installed on the int-svc instance
+				// otherwise, just give error message and skip the test
+				infraId, err := exutil.GetInfraId(oc)
+				o.Expect(err).NotTo(o.HaveOccurred())
+				host, err := getIntSvcExternalIpFromGcp(oc, infraId)
+				if err != nil {
+					e2e.Logf("There is no int svc instance in this cluster, %v", err)
+					g.Skip("There is no int svc instance in this cluster, skip the cases!!")
+				}
+				ipEchoUrl, err = installIpEchoServiceOnGCP(oc, infraId, host)
+				if err != nil {
+					e2e.Logf("No ip-echo service installed on the bastion host, %v", err)
+					g.Skip("No ip-echo service installed on the bastion host, skip the cases!!")
+				}
+			}
 		default:
 			e2e.Logf("Not support cloud provider for auto egressip cases for now.")
 			g.Skip("Not support cloud provider for auto egressip cases for now.")
@@ -103,6 +123,7 @@ var _ = g.Describe("[sig-networking] SDN", func() {
 		defer pod1.deletePingPod(oc)
 
 		g.By("Check source IP is EgressIP")
+		e2e.Logf("\n ipEchoUrl is %v\n", ipEchoUrl)
 		sourceIp, err := e2e.RunHostCmd(pod1.namespace, pod1.name, "curl -s "+ipEchoUrl+" --connect-timeout 5")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(sourceIp).Should(o.BeElementOf(freeIps))

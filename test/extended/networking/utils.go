@@ -2,7 +2,6 @@ package networking
 
 import (
 	"fmt"
-	g "github.com/onsi/ginkgo"
 	"math/rand"
 	"net"
 	"os"
@@ -12,7 +11,6 @@ import (
 
 	o "github.com/onsi/gomega"
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
-	ci "github.com/openshift/openshift-tests-private/test/extended/util/clusterinfrastructure"
 	"k8s.io/apimachinery/pkg/util/wait"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 )
@@ -530,85 +528,6 @@ func sshRunCmd(host string, user string, cmd string) error {
 	}
 	sshClient := exutil.SshClient{User: user, Host: host, Port: 22, PrivateKey: privateKey}
 	return sshClient.Run(cmd)
-}
-
-func getgcloudClient(oc *exutil.CLI) *exutil.Gcloud {
-	if ci.CheckPlatform(oc) != "gcp" {
-		g.Skip("it is not gcp platform!")
-	}
-	projectId, err := exutil.GetGcpProjectId(oc)
-	o.Expect(err).NotTo(o.HaveOccurred())
-	if projectId != "openshift-qe" {
-		g.Skip("openshift-qe project is needed to execute this test case!")
-	}
-	gcloud := exutil.Gcloud{ProjectId: projectId}
-	return gcloud.Login()
-}
-
-func getIntSvcExternalIpFromGcp(oc *exutil.CLI, infraId string) (string, error) {
-	externalIp, err := getgcloudClient(oc).GetIntSvcExternalIp(infraId)
-	e2e.Logf("Additional VM external ip: %s", externalIp)
-	return externalIp, err
-}
-
-func getIntSvcInternalIpFromGcp(oc *exutil.CLI, infraId string) (string, error) {
-	internalIp, err := getgcloudClient(oc).GetIntSvcInternalIp(infraId)
-	e2e.Logf("Additional VM internal ip: %s", internalIp)
-	return internalIp, err
-}
-
-func installIpEchoServiceOnGCP(oc *exutil.CLI) (string, string) {
-	// Get infra id
-	infraId, err := exutil.GetInfraId(oc)
-	o.Expect(err).NotTo(o.HaveOccurred())
-	e2e.Logf("Infra id: %s", infraId)
-
-	// Get additional VM ip address
-	host, err := getIntSvcExternalIpFromGcp(oc, infraId)
-
-	// Run ip-echo service on the additional VM
-	serviceName := "ip-echo"
-	internalIp, err := getIntSvcInternalIpFromGcp(oc, infraId)
-	port := "9095"
-	runIpEcho := fmt.Sprintf("sudo netstat -ntlp | grep %s || sudo podman run --name %s -d -p %s:80 quay.io/openshifttest/ip-echo:multiarch", port, serviceName, port)
-	user := os.Getenv("SSH_CLOUD_PRIV_GCP_USER")
-	if user == "" {
-		user = "cloud-user"
-	}
-	o.Expect(sshRunCmd(host, user, runIpEcho)).NotTo(o.HaveOccurred())
-
-	// Update firewall rules to expose ip-echo service
-	ruleName := fmt.Sprintf("%s-int-svc-ingress-allow", infraId)
-	ports, err := getgcloudClient(oc).GetFirewallAllowPorts(ruleName)
-	o.Expect(err).NotTo(o.HaveOccurred())
-	if !strings.Contains(ports, "tcp:"+port) {
-		addIpEchoPort := fmt.Sprintf("%s,tcp:%s", ports, port)
-		o.Expect(getgcloudClient(oc).UpdateFirewallAllowPorts(ruleName, addIpEchoPort)).NotTo(o.HaveOccurred())
-		e2e.Logf("Allow Ports: %s", addIpEchoPort)
-	}
-
-	return internalIp, port
-}
-
-func uninstallIpEchoServiceOnGCP(oc *exutil.CLI) {
-	infraId, err := exutil.GetInfraId(oc)
-	o.Expect(err).NotTo(o.HaveOccurred())
-	host, err := getIntSvcExternalIpFromGcp(oc, infraId)
-	o.Expect(err).NotTo(o.HaveOccurred())
-	//Remove ip-echo service
-	user := os.Getenv("SSH_CLOUD_PRIV_GCP_USER")
-	if user == "" {
-		user = "cloud-user"
-	}
-	o.Expect(sshRunCmd(host, user, "sudo podman rm ip-echo -f")).NotTo(o.HaveOccurred())
-	//Update firewall rules
-	ruleName := fmt.Sprintf("%s-int-svc-ingress-allow", infraId)
-	ports, err := getgcloudClient(oc).GetFirewallAllowPorts(ruleName)
-	o.Expect(err).NotTo(o.HaveOccurred())
-	if strings.Contains(ports, "tcp:9095") {
-		updatedPorts := strings.Replace(ports, ",tcp:9095", "", -1)
-		o.Expect(getgcloudClient(oc).UpdateFirewallAllowPorts(ruleName, updatedPorts)).NotTo(o.HaveOccurred())
-	}
 }
 
 // For Admin to patch a resource in the specified namespace
