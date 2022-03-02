@@ -843,7 +843,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
 		exec.Command("bash", "-c", "cp test/extended/util/operatorsdk/ocp-34427-data/roles/memcached/defaults/main.yml /tmp/ocp-34427/memcached-operator/roles/memcached/defaults/main.yml").Output()
 		exec.Command("bash", "-c", "sed -i '$d' /tmp/ocp-34427/memcached-operator/config/samples/cache_v1alpha1_memcached.yaml").Output()
 		exec.Command("bash", "-c", "sed -i '$a\\  size: 3' /tmp/ocp-34427/memcached-operator/config/samples/cache_v1alpha1_memcached.yaml").Output()
-		exec.Command("bash", "-c", "sed -i 's/v4.9/v4.8/g' /tmp/ocp-34427/memcached-operator/config/default/manager_auth_proxy_patch.yaml").Output()
+		exec.Command("bash", "-c", "sed -i 's/v4.10/v4.9/g' /tmp/ocp-34427/memcached-operator/config/default/manager_auth_proxy_patch.yaml").Output()
 
 		// to replace namespace memcached-operator-system with memcached-operator-system-ocp34427
 		exec.Command("bash", "-c", "sed -i 's/name: system/name: system-ocp34427/g' `grep -rl \"name: system\" /tmp/ocp-34427/memcached-operator`").Output()
@@ -851,7 +851,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
 		exec.Command("bash", "-c", "sed -i 's/namespace: memcached-operator-system/namespace: memcached-operator-system-ocp34427/g'  `grep -rl \"namespace: memcached-operator-system\" /tmp/ocp-34427/memcached-operator`").Output()
 
 		exec.Command("bash", "-c", "cd /tmp/ocp-34427/memcached-operator && make install").Output()
-		exec.Command("bash", "-c", "cd /tmp/ocp-34427/memcached-operator && make deploy IMG=quay.io/olmqe/memcached-operator-ansible-base:v4.9.1").Output()
+		exec.Command("bash", "-c", "cd /tmp/ocp-34427/memcached-operator && make deploy IMG=quay.io/olmqe/memcached-operator-ansible-base:v4.10").Output()
 
 		_, err := oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", "/tmp/ocp-34427/memcached-operator/config/samples/cache_v1alpha1_memcached.yaml", "-n", "memcached-operator-system-ocp34427").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -877,7 +877,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
 		defer exec.Command("bash", "-c", "rm -rf /tmp/ocp-34366").Output()
 		exec.Command("bash", "-c", "cd /tmp/ocp-34366/memcached-operator && operator-sdk create api --group cache --version v1alpha1 --kind Memcached --generate-role").Output()
 		exec.Command("bash", "-c", "cp -rf test/extended/util/operatorsdk/ocp-34366-data/roles/memcached/tasks/main.yml /tmp/ocp-34366/memcached-operator/roles/memcached/tasks/main.yml").Output()
-		exec.Command("bash", "-c", "sed -i 's/v4.9/v4.8/g' /tmp/ocp-34427/memcached-operator/config/default/manager_auth_proxy_patch.yaml").Output()
+		exec.Command("bash", "-c", "sed -i 's/v4.10/v4.9/g' /tmp/ocp-34366/memcached-operator/config/default/manager_auth_proxy_patch.yaml").Output()
 		exec.Command("bash", "-c", "cp -rf test/extended/util/operatorsdk/ocp-34366-data/config/manager/manager.yaml /tmp/ocp-34366/memcached-operator/config/manager/manager.yaml").Output()
 
 		// to replace namespace memcached-operator-system with memcached-operator-system-ocp34366
@@ -1031,6 +1031,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
 		defer exec.Command("bash", "-c", "cd /tmp/ocp-34426/nginx-operator && make undeploy").Output()
 		defer exec.Command("bash", "-c", "rm -rf /tmp/ocp-34426").Output()
 		exec.Command("bash", "-c", "cd /tmp/ocp-34426/nginx-operator && operator-sdk create api --group demo --version v1 --kind Nginx").Output()
+		exec.Command("bash", "-c", "sed -i 's/v4.10/v4.9/g' /tmp/ocp-34426/nginx-operator/config/default/manager_auth_proxy_patch.yaml").Output()
 
 		// to replace namespace memcached-operator-system with nginx-operator-system-34426
 		exec.Command("bash", "-c", "sed -i 's/name: system/name: system-ocp34426/g' `grep -rl \"name: system\" /tmp/ocp-34426/nginx-operator`").Output()
@@ -1038,7 +1039,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
 		exec.Command("bash", "-c", "sed -i 's/namespace: nginx-operator-system/namespace: nginx-operator-system-ocp34426/g'  `grep -rl \"namespace: nginx-operator-system\" /tmp/ocp-34426/nginx-operator`").Output()
 
 		exec.Command("bash", "-c", "cd /tmp/ocp-34426/nginx-operator && make install").Output()
-		exec.Command("bash", "-c", "cd /tmp/ocp-34426/nginx-operator && make deploy IMG=quay.io/olmqe/nginx-operator-base:v4.8").Output()
+		exec.Command("bash", "-c", "cd /tmp/ocp-34426/nginx-operator && make deploy IMG=quay.io/olmqe/nginx-operator-base:v4.10").Output()
 
 		_, err := oc.AsAdmin().WithoutNamespace().Run("adm").Args("policy", "add-scc-to-user", "anyuid", "system:serviceaccount:nginx-operator-system-ocp34426:nginx-sample").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -1054,10 +1055,14 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
 			return false, nil
 		})
 		exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("No nginx-sample in project nginx-operator-system-ocp34426"))
-
-		podstatus, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-n", "nginx-operator-system-ocp34426", "-o=jsonpath={.items[1].status.phase}").Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(podstatus).To(o.ContainSubstring("Running"))
+		waitErr = wait.Poll(30*time.Second, 300*time.Second, func() (bool, error) {
+			msg, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-n", "nginx-operator-system-ocp34426", "-o=jsonpath={.items[1].status.phase}").Output()
+			if strings.Contains(msg, "Running") {
+				return true, nil
+			}
+			return false, nil
+		})
+		exutil.AssertWaitPollNoErr(waitErr, fmt.Sprintf("No nginx-sample in project nginx-operator-system-ocp34426 is in Running status"))
 	})
 
 	// author: xzha@redhat.com
@@ -1221,6 +1226,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
 		defer exec.Command("bash", "-c", "cd /tmp/ocp-40341/memcached-operator && make undeploy").Output()
 		defer exec.Command("bash", "-c", "rm -rf /tmp/ocp-40341").Output()
 		exec.Command("bash", "-c", "cd /tmp/ocp-40341/memcached-operator && operator-sdk create api --group cache --version v1alpha1 --kind Memcached --generate-role").Output()
+		exec.Command("bash", "-c", "sed -i 's/v4.10/v4.9/g' /tmp/ocp-40341/memcached-operator/config/default/manager_auth_proxy_patch.yaml").Output()
 		exec.Command("bash", "-c", "sed -i '$d' /tmp/ocp-40341/memcached-operator/config/samples/cache_v1alpha1_memcached.yaml").Output()
 		exec.Command("bash", "-c", "sed -i '$a\\  size: 3' /tmp/ocp-40341/memcached-operator/config/samples/cache_v1alpha1_memcached.yaml").Output()
 		exec.Command("bash", "-c", "sed -i '$a\\  testKey: testVal' /tmp/ocp-40341/memcached-operator/config/samples/cache_v1alpha1_memcached.yaml").Output()
@@ -1231,7 +1237,7 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
 		exec.Command("bash", "-c", "sed -i 's/namespace: memcached-operator-system/namespace: memcached-operator-system-ocp40341/g'  `grep -rl \"namespace: memcached-operator-system\" /tmp/ocp-40341/memcached-operator`").Output()
 
 		exec.Command("bash", "-c", "cd /tmp/ocp-40341/memcached-operator && make install").Output()
-		exec.Command("bash", "-c", "cd /tmp/ocp-40341/memcached-operator && make deploy IMG=quay.io/olmqe/memcached-operator-pass-unsafe:v4.8").Output()
+		exec.Command("bash", "-c", "cd /tmp/ocp-40341/memcached-operator && make deploy IMG=quay.io/olmqe/memcached-operator-pass-unsafe:v4.10").Output()
 
 		waitErr := wait.Poll(30*time.Second, 300*time.Second, func() (bool, error) {
 			msg, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-n", "memcached-operator-system-ocp40341").Output()
