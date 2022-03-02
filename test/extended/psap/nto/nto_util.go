@@ -505,3 +505,22 @@ func AssertTunedAppliedToNode(oc *exutil.CLI, tunedNodeName string, filter strin
 	}
 	return isMatch
 }
+
+func assertNTOTunedLogsLastLines(oc *exutil.CLI, namespace string, ntoTunedPod string, lineN string, filter string) {
+	err := wait.Poll(5*time.Second, 30*time.Second, func() (bool, error) {
+		ntoTunedLogs, err := oc.AsAdmin().WithoutNamespace().Run("logs").Args("-n", namespace, ntoTunedPod, "--tail="+lineN).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		regTunedPodLogs, err := regexp.Compile(".*" + filter + ".*")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		isMatch := regTunedPodLogs.MatchString(ntoTunedLogs)
+		if isMatch {
+			loglines := regTunedPodLogs.FindAllString(ntoTunedLogs, -1)
+			e2e.Logf("The logs of tuned pod %v is: %v", ntoTunedPod, loglines[0])
+			return true, nil
+		} else {
+			return false, nil
+		}
+	})
+	exutil.AssertWaitPollNoErr(err, "The tuned pod's log doesn't contain the keywords, please check")
+}

@@ -25,14 +25,13 @@ var _ = g.Describe("[sig-node] PSAP should", func() {
 		nto_irq_smp_file                 = exutil.FixturePath("testdata", "psap", "nto", "default-irq-smp-affinity.yaml")
 		nto_realtime_file                = exutil.FixturePath("testdata", "psap", "nto", "realtime.yaml")
 		nto_mcp_file                     = exutil.FixturePath("testdata", "psap", "nto", "machine-config-pool.yaml")
+		ips_file                         = exutil.FixturePath("testdata", "psap", "nto", "ips.yaml")
 		isNTO                            bool
-		isAllInOne                       bool
 	)
 
 	g.BeforeEach(func() {
 		// ensure NTO operator is installed
 		isNTO = isPodInstalled(oc, ntoNamespace)
-		isAllInOne = isAllInOneCluster(oc)
 	})
 
 	// author: nweinber@redhat.com
@@ -1021,5 +1020,64 @@ var _ = g.Describe("[sig-node] PSAP should", func() {
 		g.By("Assert if isolcpus was applied in labled node...")
 		isMatch = AssertTunedAppliedToNode(oc, tunedNodeName, "isolcpus=")
 		o.Expect(isMatch).To(o.Equal(false))
+	})
+
+	g.It("Author:liqcui-Medium-29804-Tuned profile is updated after incorrect tuned CR is fixed [Disruptive]", func() {
+		// test requires NTO to be installed
+		if !isNTO {
+			g.Skip("NTO is not installed - skipping test ...")
+		}
+
+		//Use the first worker node as labeled node
+		tunedNodeName, err := exutil.GetFirstLinuxWorkerNode(oc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		//Get the tuned pod name in the same node that labeled node
+		tunedPodName := getTunedPodNamebyNodeName(oc, tunedNodeName, ntoNamespace)
+
+		defer oc.AsAdmin().WithoutNamespace().Run("label").Args("node", tunedNodeName, "tuned-").Execute()
+		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("tuned", "ips", "-n", ntoNamespace, "--ignore-not-found").Execute()
+
+		g.By("Label the node with tuned=ips")
+		err = oc.AsAdmin().WithoutNamespace().Run("label").Args("node", tunedNodeName, "tuned=ips", "--overwrite").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Create ips profile")
+		//Define duplicated parameter and value
+		exutil.ApplyNsResourceFromTemplate(oc, ntoNamespace, "--ignore-unknown-parameters=true", "-f", ips_file, "-p", "SYSCTLPARM1=kernel.pid_max", "SYSCTLVALUE1=1048575", "SYSCTLPARM2=kernel.pid_max", "SYSCTLVALUE2=1048575")
+
+		g.By("Check if new profile in in rendered tuned")
+		renderCheck, err := getTunedRender(oc, ntoNamespace)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(renderCheck).To(o.ContainSubstring("ips-host"))
+
+		g.By("Check current profile for each node")
+		output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", ntoNamespace, "profile").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf("Current profile for each node: \n%v", output)
+
+		g.By("Assert DuplicateError in tuned pod log")
+		assertNTOTunedLogsLastLines(oc, ntoNamespace, tunedPodName, "2", "DuplicateError|already exists")
+
+		g.By("Apply ips patch profile")
+		//Remove duplicated parameter and value
+		exutil.ApplyNsResourceFromTemplate(oc, ntoNamespace, "--ignore-unknown-parameters=true", "-f", ips_file, "-p", "SYSCTLPARM1=#kernel.pid_max", "SYSCTLVALUE1=1048575", "SYSCTLPARM2=kernel.pid_max", "SYSCTLVALUE2=1048575")
+
+		g.By("Check if new profile in in rendered tuned")
+		renderCheck, err = getTunedRender(oc, ntoNamespace)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(renderCheck).To(o.ContainSubstring("ips-host"))
+
+		g.By("Check if new NTO profile was applied")
+		assertIfTunedProfileApplied(oc, ntoNamespace, tunedPodName, "ips-host")
+
+		g.By("Assert ips-host in tuned pod log")
+		assertNTOTunedLogsLastLines(oc, ntoNamespace, tunedPodName, "1", "ips-host")
+		assertNTOTunedLogsLastLines(oc, ntoNamespace, tunedPodName, "1", "active and recommended profile")
+
+		g.By("Check current profile for each node")
+		output, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", ntoNamespace, "profile").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf("Current profile for each node: \n%v", output)
 	})
 })
