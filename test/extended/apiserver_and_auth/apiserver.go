@@ -645,4 +645,63 @@ spec:
 		})
 		exutil.AssertWaitPollNoErr(err, "Test failed: Old kubeconfig is working!")
 	})
+	// author: rgangwar@redhat.com
+	g.It("Author:rgangwar-Medium-43889-Examine non critical kube-apiserver errors", func() {
+		var (
+			keywords          =    "(error|fail|tcp dial timeout|connect: connection refused|Unable to connect to the server: dial tcp|remote error: tls: bad certificate)"
+			exceptions        =    "panic|fatal|SHOULD NOT HAPPEN"
+			format            =    "[0-9TZ.:]{2,30}"
+			words             =    `(\w+?[^0-9a-zA-Z]+?){,5}`
+			afterwords        =    `(\w+?[^0-9a-zA-Z]+?){,12}`
+			co                =    "openshift-kube-apiserver-operator"
+			dirname           =    "/tmp/-OCP-43889/"
+			regex_to_grep_1   =    "("+words+keywords+words+")"+"+"
+			regex_to_grep_2   =    "("+words+keywords+afterwords+")"+"+"
+		)
+
+		defer os.RemoveAll(dirname)
+		err := os.MkdirAll(dirname, 0755)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		g.By("Check the log files of KAS operator")
+		podname, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-n", co, "-o", "name").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		podlog, errlog := oc.AsAdmin().WithoutNamespace().Run("logs").Args("-n", co, podname).OutputToFile("OCP-43889/kas-o-grep.log")
+		o.Expect(errlog).NotTo(o.HaveOccurred())
+		cmd := fmt.Sprintf(`cat %v |grep -ohiE '%s' |grep -iEv '%s' | sed -E 's/%s/../g' | sort | uniq -c | sort -rh | awk '$1 >5000 {print}'`, podlog, regex_to_grep_1, exceptions, format)
+		kas_o_log, err := exec.Command("bash", "-c", cmd).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf("%s", kas_o_log)
+
+		g.By("Check the log files of KAS")
+		master_node, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("nodes", "--selector=node-role.kubernetes.io/master=", "-o=jsonpath={.items[*].metadata.name}").Output()
+                o.Expect(err).NotTo(o.HaveOccurred())
+                master_name := strings.Fields(master_node)
+                cmd = fmt.Sprintf(`grep -rohiE '%s' |grep -iEv '%s' /var/log/pods/openshift-kube-apiserver_kube-apiserver*/*/* | sed -E 's/%s/../g'`, regex_to_grep_2, exceptions, format)
+		for i := 0; i < len(master_name); i++ {
+			_, err := oc.AsAdmin().WithoutNamespace().Run("debug").Args("-n", "default", "node/"+master_name[i], "--", "chroot", "/host", "bash", "-c", cmd).OutputToFile("OCP-43889/kas_pod.log."+master_name[i])
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}
+		cmd = fmt.Sprintf(`cat %v| sort | uniq -c | sort -rh | awk '$1 >5000 {print}'`, dirname+"kas_pod.log.*")
+		kas_podlogs, err := exec.Command("bash", "-c", cmd).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+                e2e.Logf("%s", kas_podlogs)
+
+		g.By("Check the audit log files of KAS")
+		cmd = fmt.Sprintf(`grep -rohiE '%s' /var/log/kube-apiserver/audit*.log |grep -iEv '%s' | sed -E 's/%s/../g'`, regex_to_grep_2, exceptions, format)
+		for i := 0; i < len(master_name); i++ {
+			_, err := oc.AsAdmin().WithoutNamespace().Run("debug").Args("-n", "default", "node/"+master_name[i], "--", "chroot", "/host", "bash", "-c", cmd).OutputToFile("OCP-43889/kas_audit.log."+master_name[i])
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}
+		cmd = fmt.Sprintf(`cat %v| sort | uniq -c | sort -rh | awk '$1 >5000 {print}'`, dirname+"kas_audit.log.*")
+		kas_auditlogs, err := exec.Command("bash", "-c", cmd).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf("%s", kas_auditlogs)
+
+		g.By("Checking pod and audit logs")
+		if len(kas_o_log) > 0 || len(kas_podlogs) > 0 || len(kas_auditlogs) > 0 {
+			e2e.Failf("Found some non-critical-errors....Check non critical errors, if errors are  potential bug then file a bug.")
+		} else {
+			e2e.Logf("Test pass: No errors found from KAS operator, KAS logs/audit logs")
+		}
+	})
 })
