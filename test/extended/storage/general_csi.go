@@ -1652,6 +1652,97 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 
 		}
 	})
+	//author: chaoyang@redhat.com
+	//OCP-48913 - [CSI Driver] [Snapshot] [Filesystem ext4] provisioning should provision storage with snapshot data source larger than original volume
+	g.It("Author:chaoyang-Medium-48913-[CSI Driver] [Snapshot] [Filesystem ext4] provisioning should provision storage with snapshot data source larger than original volume", func() {
+		// Define the test scenario support provisioners
+		scenarioSupportProvisioners := []string{"ebs.csi.aws.com", "disk.csi.azure.com", "pd.csi.storage.gke.io", "diskplugin.csi.alibabacloud.com"}
+		supportProvisioners := sliceIntersect(scenarioSupportProvisioners, getSupportProvisionersByCloudProvider(cloudProvider))
+		if len(supportProvisioners) == 0 {
+			g.Skip("Skip for scenario non-supported provisioner!!!")
+		}
+		// Set the resource template for the scenario
+		var (
+			storageTeamBaseDir     = exutil.FixturePath("testdata", "storage")
+			pvcTemplate            = filepath.Join(storageTeamBaseDir, "pvc-template.yaml")
+			podTemplate            = filepath.Join(storageTeamBaseDir, "pod-template.yaml")
+			storageClassTemplate   = filepath.Join(storageTeamBaseDir, "storageclass-template.yaml")
+			volumesnapshotTemplate = filepath.Join(storageTeamBaseDir, "volumesnapshot-template.yaml")
+
+			storageClassParameters = map[string]string{
+				"csi.storage.k8s.io/fstype": "ext4",
+			}
+			extraParameters = map[string]interface{}{
+				"parameters":           storageClassParameters,
+				"allowVolumeExpansion": true,
+			}
+		)
+		g.By("Create new project for the scenario")
+		oc.SetupProject() //create new project
+		for _, provisioner := range supportProvisioners {
+			g.By("******" + cloudProvider + " csi driver: \"" + provisioner + "\" test phase start" + "******")
+			storageClass := newStorageClass(setStorageClassTemplate(storageClassTemplate))
+			pvc_ori := newPersistentVolumeClaim(setPersistentVolumeClaimTemplate(pvcTemplate))
+			pod_ori := newPod(setPodTemplate(podTemplate), setPodPersistentVolumeClaim(pvc_ori.name))
+
+			g.By("Create a csi storageclass with parameter 'csi.storage.k8s.io/fstype': 'ext4'")
+			storageClass.provisioner = provisioner
+			storageClass.createWithExtraParameters(oc, extraParameters)
+			defer storageClass.deleteAsAdmin(oc) // ensure the storageclass is deleted whether the case exist normally or not.
+
+			g.By("Create a pvc with the csi storageclass")
+			pvc_ori.scname = storageClass.name
+			pvc_ori.create(oc)
+			defer pvc_ori.deleteAsAdmin(oc)
+
+			g.By("Create pod with the created pvc and wait for the pod ready")
+			pod_ori.create(oc)
+			defer pod_ori.deleteAsAdmin(oc)
+			pod_ori.waitReady(oc)
+
+			g.By("Write file to volume")
+			pod_ori.checkMountedVolumeCouldRW(oc)
+			pod_ori.execCommand(oc, "sync")
+
+			g.By("Create volumesnapshot and wait for ready_to_use")
+			preset_vscname := getPresetVolumesnapshotClassNameByProvisioner(cloudProvider, provisioner)
+			volumesnapshot := newVolumeSnapshot(setVolumeSnapshotTemplate(volumesnapshotTemplate), setVolumeSnapshotSourcepvcname(pvc_ori.name), setVolumeSnapshotVscname(preset_vscname))
+			volumesnapshot.create(oc)
+			defer volumesnapshot.delete(oc)
+			volumesnapshot.waitReadyToUse(oc)
+
+			pvc_restore := newPersistentVolumeClaim(setPersistentVolumeClaimTemplate(pvcTemplate), setPersistentVolumeClaimDataSourceName(volumesnapshot.name))
+			pod_restore := newPod(setPodTemplate(podTemplate), setPodPersistentVolumeClaim(pvc_restore.name))
+
+			g.By("Create a restored pvc with the created csi storageclass")
+			pvc_restore.scname = storageClass.name
+			oricapacityInt64, err := strconv.ParseInt(strings.TrimRight(pvc_ori.capacity, "Gi"), 10, 64)
+			o.Expect(err).To(o.Not(o.HaveOccurred()))
+			restorecapacityInt64 := oricapacityInt64 + getRandomNum(3, 8)
+			pvc_restore.capacity = strconv.FormatInt(restorecapacityInt64, 10) + "Gi"
+			pvc_restore.createWithSnapshotDataSource(oc)
+			defer pvc_restore.deleteAsAdmin(oc)
+
+			g.By("Create pod with the restored pvc and wait for the pod ready")
+			pod_restore.create(oc)
+			defer pod_restore.deleteAsAdmin(oc)
+			pod_restore.waitReady(oc)
+
+			g.By("Check the file exist in restored volume")
+			output, err := pod_restore.execCommand(oc, "cat "+pod_restore.mountPath+"/testfile")
+			o.Expect(err).NotTo(o.HaveOccurred())
+			o.Expect(output).To(o.ContainSubstring("storage test"))
+
+			g.By("Check could write more data")
+			restoreVolInt64 := oricapacityInt64 + 2
+			blockCounts := strconv.FormatInt(restoreVolInt64*4*4/5, 10)
+			output1, err := pod_restore.execCommand(oc, "/bin/dd  if=/dev/zero of="+pod_restore.mountPath+"/testfile1 bs=256M count="+blockCounts)
+			o.Expect(err).NotTo(o.HaveOccurred())
+			o.Expect(output1).NotTo(o.ContainSubstring("No space left on device"))
+
+			g.By("******" + cloudProvider + " csi driver: \"" + provisioner + "\" test phase finished" + "******")
+		}
+	})
 })
 
 // Performing test steps for Online Volume Resizing
