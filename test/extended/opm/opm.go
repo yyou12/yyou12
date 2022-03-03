@@ -329,6 +329,141 @@ var _ = g.Describe("[sig-operators] OLM opm should", func() {
 		o.Expect(output).To(o.ContainSubstring("olm.bundle.object"))
 	})
 
+	// author: xzha@redhat.com
+	g.It("ConnectedOnly-VMonly-Author:xzha-High-30189-OPM can pull and unpack bundle images in a container", func() {
+		imageTag := "quay.io/openshift/origin-operator-registry"
+		containerCLI := container.NewPodmanCLI()
+		containerName := "test-30189-" + getRandomString()
+		e2e.Logf("create container with image %s", imageTag)
+		id, err := containerCLI.ContainerCreate(imageTag, containerName, "/bin/sh", true)
+		defer func() {
+			e2e.Logf("stop container %s", id)
+			containerCLI.ContainerStop(id)
+			e2e.Logf("remove container %s", id)
+			err := containerCLI.ContainerRemove(id)
+			if err != nil {
+				e2e.Failf("Defer: fail to remove container %s", id)
+			}
+		}()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf("container id is %s", id)
+
+		e2e.Logf("start container %s", id)
+		err = containerCLI.ContainerStart(id)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf("start container %s successful", id)
+
+		e2e.Logf("get grpcurl")
+		_, err = containerCLI.Exec(id, []string{"wget", "https://github.com/fullstorydev/grpcurl/releases/download/v1.6.0/grpcurl_1.6.0_linux_x86_64.tar.gz"})
+		o.Expect(err).NotTo(o.HaveOccurred())
+		_, err = containerCLI.Exec(id, []string{"tar", "xzf", "grpcurl_1.6.0_linux_x86_64.tar.gz"})
+		o.Expect(err).NotTo(o.HaveOccurred())
+		_, err = containerCLI.Exec(id, []string{"chmod", "a+rx", "grpcurl"})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		commandStr := []string{"opm", "index", "add", "--bundles", "quay.io/olmqe/ditto-operator:0.1.0", "--from-index", "quay.io/olmqe/etcd-index:30189", "--generate"}
+		e2e.Logf("run command %s", commandStr)
+		output, err := containerCLI.Exec(id, commandStr)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring("Pulling previous image"))
+		o.Expect(output).To(o.ContainSubstring("writing dockerfile: index.Dockerfile"))
+
+		commandStr = []string{"ls"}
+		e2e.Logf("run command %s", commandStr)
+		output, err = containerCLI.Exec(id, commandStr)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring("database"))
+		o.Expect(output).To(o.ContainSubstring("index.Dockerfile"))
+
+		commandStr = []string{"opm", "index", "export", "-i", "quay.io/olmqe/etcd-index:0.9.0-30189", "-f", "tmp", "-o", "etcd"}
+		e2e.Logf("run command %s", commandStr)
+		output, err = containerCLI.Exec(id, commandStr)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring("Pulling previous image"))
+		o.Expect(output).To(o.ContainSubstring("Preparing to pull bundles map"))
+
+		commandStr = []string{"mv", "tmp/etcd", "."}
+		e2e.Logf("run command %s", commandStr)
+		_, err = containerCLI.Exec(id, commandStr)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		commandStr = []string{"ls", "-R", "etcd"}
+		e2e.Logf("run command %s", commandStr)
+		output, err = containerCLI.Exec(id, commandStr)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring("etcdoperator.v0.9.0.clusterserviceversion.yaml"))
+
+		commandStr = []string{"mkdir", "test"}
+		e2e.Logf("run command %s", commandStr)
+		_, err = containerCLI.Exec(id, commandStr)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		commandStr = []string{"opm", "alpha", "bundle", "generate", "--directory", "etcd", "--package", "test-operator", "--channels", "stable,beta", "-u", "test"}
+		e2e.Logf("run command %s", commandStr)
+		output, err = containerCLI.Exec(id, commandStr)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring("Writing bundle.Dockerfile"))
+
+		commandStr = []string{"ls", "-R", "test"}
+		e2e.Logf("run command %s", commandStr)
+		output, err = containerCLI.Exec(id, commandStr)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring("annotations.yaml"))
+		o.Expect(output).To(o.ContainSubstring("etcdoperator.v0.9.0.clusterserviceversion.yaml"))
+
+		commandStr = []string{"initializer", "-m", "test"}
+		e2e.Logf("run command %s", commandStr)
+		output, err = containerCLI.Exec(id, commandStr)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring("loading Packages and Entries"))
+
+		commandStr = []string{"opm", "registry", "serve", "-p", "50050"}
+		e2e.Logf("run command %s", commandStr)
+		_, err = containerCLI.ExecBackgroud(id, commandStr)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		commandGRP := "podman exec " + id + " ./grpcurl -plaintext localhost:50050 api.Registry/ListBundles | jq '{csvName}'"
+		outputGRP, err := exec.Command("bash", "-c", commandGRP).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(outputGRP).NotTo(o.ContainSubstring("etcdoperator.v0.9.2"))
+		o.Expect(outputGRP).To(o.ContainSubstring("etcdoperator.v0.9.0"))
+
+		commandStr = []string{"opm", "registry", "add", "-b", "quay.io/olmqe/etcd-bundle:0.9.2"}
+		e2e.Logf("run command %s", commandStr)
+		output, err = containerCLI.Exec(id, commandStr)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring("adding to the registry"))
+
+		commandStr = []string{"opm", "registry", "serve", "-p", "50051"}
+		e2e.Logf("run command %s", commandStr)
+		_, err = containerCLI.ExecBackgroud(id, commandStr)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		commandGRP = "podman exec " + id + " ./grpcurl -plaintext localhost:50051 api.Registry/ListBundles | jq '{csvName}'"
+		outputGRP, err = exec.Command("bash", "-c", commandGRP).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(outputGRP).To(o.ContainSubstring("etcdoperator.v0.9.2"))
+		o.Expect(outputGRP).To(o.ContainSubstring("etcdoperator.v0.9.0"))
+
+		commandStr = []string{"opm", "registry", "rm", "-o", "etcd"}
+		e2e.Logf("run command %s", commandStr)
+		output, err = containerCLI.Exec(id, commandStr)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring("removing from the registry"))
+
+		commandStr = []string{"opm", "registry", "serve", "-p", "50052"}
+		e2e.Logf("run command %s", commandStr)
+		_, err = containerCLI.ExecBackgroud(id, commandStr)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		commandGRP = "podman exec " + id + " ./grpcurl -plaintext localhost:50052 api.Registry/ListBundles | jq '{csvName}'"
+		outputGRP, err = exec.Command("bash", "-c", commandGRP).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(outputGRP).NotTo(o.ContainSubstring("etcd"))
+
+		e2e.Logf("OCP 30189 SUCCESS")
+	})
+
 	// author: kuiwang@redhat.com
 	g.It("ConnectedOnly-Author:kuiwang-Medium-43096-opm alpha diff support heads only", func() {
 

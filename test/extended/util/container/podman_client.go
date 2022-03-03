@@ -275,3 +275,13 @@ func (c *PodmanCLI) Exec(id string, commands []string) (string, error) {
 	}
 	return output, nil
 }
+
+func (c *PodmanCLI) ExecBackgroud(id string, commands []string) (string, error) {
+	commands = append([]string{"--detach", id}, commands...)
+	output, err := c.Run("exec").Args(commands...).Output()
+	if err != nil {
+		e2e.Logf("run podman exec %s faild", commands)
+		return "", err
+	}
+	return output, nil
+}
