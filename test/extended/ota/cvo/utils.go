@@ -454,3 +454,69 @@ func getRandomString() string {
 	}
 	return string(buffer)
 }
+
+// get clusterversion version object values by jsonpath.
+// Returns: object_value(string), error
+func getCVOdata(oc *exutil.CLI, jsonpath string) (string, error) {
+	return oc.AsAdmin().WithoutNamespace().Run("get").
+		Args("clusterversion", "version",
+			"-o", fmt.Sprintf("jsonpath={%s}", jsonpath)).Output()
+}
+
+// find arg in CVO deployment (by arg name).
+// Returns: arg_value(string), arg_index(int), error
+func getCVOdepArg(oc *exutil.CLI, argQuery string) (string, int, error) {
+	depArgs, err := oc.AsAdmin().WithoutNamespace().Run("get").
+		Args("-n", "openshift-cluster-version",
+			"deployment", "cluster-version-operator",
+			"-o", "jsonpath={.spec.template.spec.containers[0].args}").Output()
+	if err != nil {
+		e2e.Logf("Error getting cvo deployment args: %v", err)
+		return "", -1, err
+	}
+
+	var result []string
+	err = json.Unmarshal([]byte(depArgs), &result)
+	if err != nil {
+		e2e.Logf("Error Unmarshal cvo deployment args: %v", err)
+		return "", -1, err
+	}
+
+	for index, arg := range result {
+		if strings.Contains(arg, argQuery) {
+			e2e.Logf("query '%s' found '%s' at Index: %d", argQuery, arg, index)
+			val := strings.Split(arg, "=")
+			if len(val) > 1 {
+				return val[1], index, nil
+			}
+			return val[0], index, nil
+		}
+	}
+	return "", -1, fmt.Errorf("error: cvo deployment arg %s not found", argQuery)
+}
+
+// patch resource (namespace - use "" if none, resource_name, patch).
+// Returns: result(string), error
+func jsonPatch(oc *exutil.CLI, namespace string, resource string, patch string) (patchOutput string, err error) {
+	if namespace != "" {
+		patchOutput, err = oc.AsAdmin().WithoutNamespace().Run("patch").
+			Args("-n", namespace, resource, "--type=json", "--patch", patch).Output()
+	} else {
+		patchOutput, err = oc.AsAdmin().WithoutNamespace().Run("patch").
+			Args(resource, "--type=json", "--patch", patch).Output()
+	}
+	e2e.Logf("jsonPatch: %s", patchOutput)
+	return
+}
+
+// patch CVO container args (arg_index, arg_value)
+// Returns: result(string), error
+func patchCVODeployment(oc *exutil.CLI, index int, value string) (string, error) {
+	patch := fmt.Sprintf("[{\"op\": \"replace\", "+
+		"\"path\": \"/spec/template/spec/containers/0/args/%d\", "+
+		"\"value\": \"%s\"}]", index, value)
+	return jsonPatch(oc,
+		"openshift-cluster-version",
+		"deployment/cluster-version-operator",
+		patch)
+}

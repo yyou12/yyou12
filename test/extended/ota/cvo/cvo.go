@@ -778,4 +778,111 @@ var _ = g.Describe("[sig-updates] OTA cvo should", func() {
 			o.Expect(err.Error()).To(o.ContainSubstring("timed out waiting for the condition"))
 		}
 	})
+
+	//author: evakhoni@redhat.com
+	g.It("Author:evakhoni-Low-21771-Upgrade cluster when current version is not in the graph from upstream [Serial]", func() {
+		var graphURL, bucket, object, targetVersion, targetPayload string
+		origVersion, err := getCVOdata(oc, ".status.desired.version")
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Check if upstream patch required")
+		jsonpath := ".status.conditions[?(.type=='RetrievedUpdates')].status"
+		status, err := getCVOdata(oc, jsonpath)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		if strings.Contains(status, "False") {
+			e2e.Logf("no patch required. skipping upstream creation")
+			targetVersion = GenerateReleaseVersion(oc)
+			targetPayload = GenerateReleasePayload(oc)
+		} else {
+			origUpstream, _ := getCVOdata(oc, ".spec.upstream")
+			defer restoreCVSpec(origUpstream, "nochange", oc)
+
+			g.By("Patch upstream")
+			projectID := "openshift-qe"
+			ctx := context.Background()
+			client, err := storage.NewClient(ctx)
+			o.Expect(err).NotTo(o.HaveOccurred())
+			defer client.Close()
+
+			graphURL, bucket, object, targetVersion, targetPayload, err = buildGraph(
+				client, oc, projectID, "cincy-source-not-in-graph.json")
+			defer DeleteBucket(client, bucket)
+			defer DeleteObject(client, bucket, object)
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			err = oc.AsAdmin().WithoutNamespace().Run("patch").
+				Args("clusterversion/version",
+					"--type=merge", "--patch",
+					fmt.Sprintf("{\"spec\":{\"upstream\":\"%s\"}}", graphURL)).Execute()
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			g.By("Check RetrievedUpdates!=True after patching upstream")
+			jsonpath = ".status.conditions[?(.type=='RetrievedUpdates')].status"
+			err = wait.Poll(5*time.Second, 15*time.Second, func() (bool, error) {
+				status, err := getCVOdata(oc, jsonpath)
+				o.Expect(err).NotTo(o.HaveOccurred())
+				e2e.Logf("received status: '%s'", status)
+				if strings.Contains(status, "False") {
+					return true, nil
+				}
+				return false, nil
+			})
+			exutil.AssertWaitPollNoErr(err, "Failed to check RetrievedUpdates!=True")
+		}
+
+		g.By("Give appropriate error on oc adm upgrade --to")
+		toOutput, err := oc.AsAdmin().WithoutNamespace().Run("adm").Args("upgrade", "--to", targetVersion).Output()
+		o.Expect(err).To(o.HaveOccurred())
+		o.Expect(toOutput).To(o.ContainSubstring("Unable to retrieve available updates"))
+		o.Expect(toOutput).To(o.ContainSubstring("specify --to-image to continue with the update"))
+
+		g.By("Give appropriate error on oc adm upgrade --to-image")
+		toImageOutput, err := oc.AsAdmin().WithoutNamespace().Run("adm").Args("upgrade", "--to-image", targetPayload).Output()
+		o.Expect(err).To(o.HaveOccurred())
+		o.Expect(toImageOutput).To(o.ContainSubstring("Unable to retrieve available updates"))
+		o.Expect(toImageOutput).To(o.ContainSubstring("specify --allow-explicit-upgrade to continue with the update"))
+
+		g.By("Find enable-auto-update index in deployment")
+		origAutoState, autoUpdIndex, err := getCVOdepArg(oc, "enable-auto-update")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		defer patchCVODeployment(oc, autoUpdIndex, fmt.Sprintf("--enable-auto-update=%s", origAutoState))
+		_, err = patchCVODeployment(oc, autoUpdIndex, "--enable-auto-update=true")
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Wait for enable-auto-update")
+		err = wait.PollImmediate(2*time.Second, 10*time.Second, func() (bool, error) {
+			depArgs, _, err := getCVOdepArg(oc, "enable-auto-update")
+			o.Expect(err).NotTo(o.HaveOccurred())
+			if strings.Contains(depArgs, "true") {
+				//e2e.Logf(depArgs)
+				return true, nil
+			}
+			return false, nil
+		})
+		exutil.AssertWaitPollNoErr(err, "Failed waiting for enable-auto-update=true")
+
+		g.By("Check cvo can not get available update after setting enable-auto-update")
+		jsonpath = ".status.conditions[?(.type=='RetrievedUpdates')].status"
+		err = wait.Poll(5*time.Second, 15*time.Second, func() (bool, error) {
+			status, err := getCVOdata(oc, jsonpath)
+			o.Expect(err).NotTo(o.HaveOccurred())
+			if strings.Contains(status, "False") {
+				e2e.Logf("success - found status: %s", status)
+				return true, nil
+			}
+			return false, nil
+		})
+		exutil.AssertWaitPollNoErr(err, "Failed to check cvo can not get available update")
+
+		g.By("Check availableUpdates is null")
+		availableUpdates, err := getCVOdata(oc, ".status.availableUpdates")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(availableUpdates).To(o.Equal("<nil>"))
+
+		g.By("Check desired version haven't changed")
+		desiredVersion, err := getCVOdata(oc, ".status.desired.version")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(desiredVersion).To(o.Equal(origVersion))
+
+	})
 })
