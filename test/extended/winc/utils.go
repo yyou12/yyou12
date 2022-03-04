@@ -112,6 +112,7 @@ func getWindowsInternalIPs(oc *exutil.CLI) []string {
 }
 
 func getSSHBastionHost(oc *exutil.CLI) string {
+	// TODO parameterize bastion per platform, need to have different values for vSphere bastion host
 	msg, err := oc.WithoutNamespace().Run("get").Args("service", "--all-namespaces", "-l=run=ssh-bastion", "-o=go-template='{{ with (index (index .items 0).status.loadBalancer.ingress 0) }}{{ or .hostname .ip }}{{end}}'").Output()
 	if err != nil || msg == "" {
 		e2e.Failf("SSH bastion is not installed yet")
@@ -467,6 +468,28 @@ func getWinSVCs(bastionHost string, addr string, privateKey string, iaasPlatform
 	}
 	return services, nil
 }
+
+func getSVCsDescription(bastionHost string, addr string, privateKey string, iaasPlatform string) (map[string]string, error) {
+	cmd := "Get-CimInstance -ClassName Win32_Service | Select-Object -Property Name,Description | ConvertTo-Csv -NoTypeInformation"
+	msg, err := runPSCommand(bastionHost, addr, cmd, privateKey, iaasPlatform)
+	o.Expect(err).NotTo(o.HaveOccurred())
+	if err != nil {
+		e2e.Failf("error running SSH job")
+	}
+	svcSplit := strings.SplitAfterN(msg, "\"Name\",\"Description\"\r\n", 2)	
+	svcTrimmed := strings.TrimSpace(svcSplit[1])
+	services := make(map[string]string)
+	lines := strings.Split(svcTrimmed, "\r\n")
+	for _, line := range lines {
+		fields := strings.Split(line, ",")
+		if len(fields) != 2 {
+			e2e.Logf("expected comma separated values, found: " + line)
+		}
+		services[strings.Trim(fields[0], "\"")] = strings.Trim(fields[1], "\"")
+	}
+	return services, nil
+}
+
 
 func checkRunningServicesOnWindowsNode(bastionHost string, winInternalIP string, svcs map[int]string, winServices map[string]string, privateKey string, iaasPlatform string) (expectedService bool, svc string) {
 	for _, svc = range svcs {
