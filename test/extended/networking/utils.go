@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
+	"os/exec"
 	"os"
 	"strings"
 	"regexp"
@@ -482,24 +483,24 @@ func waitForPodWithLabelReady(oc *exutil.CLI, ns, label string) error {
 }
 
 func getSvcIPv4(oc *exutil.CLI, namespace string, svcName string) string {
-	svcIPv4, err := oc.WithoutNamespace().Run("get").Args("service", "-n", namespace, svcName, "-o=jsonpath={.spec.clusterIPs[0]}").Output()
+	svcIPv4, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("service", "-n", namespace, svcName, "-o=jsonpath={.spec.clusterIPs[0]}").Output()
 	o.Expect(err).NotTo(o.HaveOccurred())
 	e2e.Logf("The service %s IPv4 in namespace %s is %q", svcName, namespace, svcIPv4)
 	return svcIPv4
 }
 
 func getSvcIPv6(oc *exutil.CLI, namespace string, svcName string) string {
-	svcIPv6, err := oc.WithoutNamespace().Run("get").Args("service", "-n", namespace, svcName, "-o=jsonpath={.spec.clusterIPs[0]}").Output()
+	svcIPv6, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("service", "-n", namespace, svcName, "-o=jsonpath={.spec.clusterIPs[0]}").Output()
 	o.Expect(err).NotTo(o.HaveOccurred())
 	e2e.Logf("The service %s IPv6 in namespace %s is %q", svcName, namespace, svcIPv6)
 	return svcIPv6
 }
 
 func getSvcIPdualstack(oc *exutil.CLI, namespace string, svcName string) (string, string) {
-	svcIPv4, err := oc.WithoutNamespace().Run("get").Args("service", "-n", namespace, svcName, "-o=jsonpath={.spec.clusterIPs[0]}").Output()
+	svcIPv4, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("service", "-n", namespace, svcName, "-o=jsonpath={.spec.clusterIPs[0]}").Output()
 	o.Expect(err).NotTo(o.HaveOccurred())
 	e2e.Logf("The service %s IPv4 in namespace %s is %q", svcName, namespace, svcIPv4)
-	svcIPv6, err := oc.WithoutNamespace().Run("get").Args("service", "-n", namespace, svcName, "-o=jsonpath={.spec.clusterIPs[1]}").Output()
+	svcIPv6, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("service", "-n", namespace, svcName, "-o=jsonpath={.spec.clusterIPs[1]}").Output()
 	o.Expect(err).NotTo(o.HaveOccurred())
 	e2e.Logf("The service %s IPv6 in namespace %s is %q", svcName, namespace, svcIPv6)
 	return svcIPv4, svcIPv6
@@ -550,4 +551,56 @@ func checkNetworkOperatorDEGRADEDState(oc *exutil.CLI) {
 		return false, nil
 	})
     o.Expect(errCheck.Error()).To(o.ContainSubstring("timed out waiting for the condition"))
+}
+
+func getNodeIPv4(oc *exutil.CLI, namespace string, nodeName string) string {
+	nodeipv4, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", oc.Namespace(), "node", nodeName, "-o=jsonpath={.status.addresses[0].address}").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	if err != nil {
+		e2e.Logf("Cannot get node default interface ipv4 address, errors: %v", err)
+	}
+	e2e.Logf("The IPv4 of node's default interface is %q", nodeipv4)
+	return nodeipv4
+}
+
+func getLeaderNodeIP(oc *exutil.CLI, namespace string, cmName string) string {
+	output1, err1 := oc.AsAdmin().WithoutNamespace().Run("get").Args("configmap", cmName, "-n", namespace, "-o=jsonpath={.metadata.annotations.control-plane\\.alpha\\.kubernetes\\.io/leader}").OutputToFile("oc_describe_nodes.txt")
+	o.Expect(err1).NotTo(o.HaveOccurred())
+	output2, err2 := exec.Command("bash", "-c", "cat "+output1+" |  jq -r .holderIdentity").Output()
+	o.Expect(err2).NotTo(o.HaveOccurred())
+	leaderNodeName := strings.Trim(strings.TrimSpace(string(output2)), "\"")
+	e2e.Logf("The node name is %s", leaderNodeName)
+	leaderNodeIP := getNodeIPv4(oc, namespace, leaderNodeName)
+	e2e.Logf("The leaderPodIP is: %v", leaderNodeIP)
+	return leaderNodeIP
+}
+
+func checkSDNMetrics(oc *exutil.CLI, url string, metrics string) {
+	var metrics_output []byte
+	var metrics_log []byte
+	olmToken, err := oc.AsAdmin().WithoutNamespace().Run("sa").Args("get-token", "prometheus-k8s", "-n", "openshift-monitoring").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	metrics_err := wait.Poll(5*time.Second, 10*time.Second, func() (bool, error) {
+		output, err := oc.AsAdmin().WithoutNamespace().Run("exec").Args("-n", "openshift-monitoring", "-c", "prometheus", "prometheus-k8s-0", "--", "curl", "-k", "-H", fmt.Sprintf("Authorization: Bearer %v", olmToken), fmt.Sprintf("%s", url)).OutputToFile("metrics.txt")
+		if err != nil {
+			e2e.Logf("Can't get metrics and try again, the error is:%s", err)
+			return false, nil
+		}
+		metrics_log, _ = exec.Command("bash", "-c", "cat "+output+" ").Output()
+		metrics_string := string(metrics_log)
+		if strings.Contains(metrics_string, "ovnkube_master_pod") {
+			metrics_output, _ = exec.Command("bash", "-c", "cat "+output+" | grep "+metrics+" | awk 'NR==1{print $2}'").Output()
+		} else {
+			metrics_output, _ = exec.Command("bash", "-c", "cat "+output+" | grep "+metrics+" | awk 'NR==3{print $2}'").Output()
+		}
+		metrics_value := strings.TrimSpace(string(metrics_output))
+		if metrics_value != "" {
+			e2e.Logf("The output of the metrics for %s is : %v", metrics, metrics_value)
+		} else {
+			e2e.Logf("Can't get metrics for %s:", metrics)
+			return false, nil
+		}
+		return true, nil
+	})
+	exutil.AssertWaitPollNoErr(metrics_err, fmt.Sprintf("Fail to get metric and the error is:%s", metrics_err))
 }
