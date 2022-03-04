@@ -836,8 +836,8 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
 	g.It("ConnectedOnly-VMonly-Author:chuo-High-34427-Ensure that Ansible Based Operators creation is working", func() {
 		operatorsdkCLI.showInfo = true
 		exec.Command("bash", "-c", "mkdir -p /tmp/ocp-34427/memcached-operator && cd /tmp/ocp-34427/memcached-operator && operator-sdk init --plugins=ansible --domain example.com").Output()
-		defer exec.Command("bash", "-c", "cd /tmp/ocp-34427/memcached-operator && make undeploy").Output()
 		defer exec.Command("bash", "-c", "rm -rf /tmp/ocp-34427").Output()
+		defer exec.Command("bash", "-c", "cd /tmp/ocp-34427/memcached-operator && make undeploy").Output()
 		exec.Command("bash", "-c", "cd /tmp/ocp-34427/memcached-operator && operator-sdk create api --group cache --version v1alpha1 --kind Memcached --generate-role").Output()
 		exec.Command("bash", "-c", "cp test/extended/util/operatorsdk/ocp-34427-data/roles/memcached/tasks/main.yml /tmp/ocp-34427/memcached-operator/roles/memcached/tasks/main.yml").Output()
 		exec.Command("bash", "-c", "cp test/extended/util/operatorsdk/ocp-34427-data/roles/memcached/defaults/main.yml /tmp/ocp-34427/memcached-operator/roles/memcached/defaults/main.yml").Output()
@@ -873,8 +873,8 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
 	g.It("ConnectedOnly-VMonly-Author:chuo-Medium-34366-change ansible operator flags from maxWorkers using env MAXCONCURRENTRECONCILES ", func() {
 		operatorsdkCLI.showInfo = true
 		exec.Command("bash", "-c", "mkdir -p /tmp/ocp-34366/memcached-operator && cd /tmp/ocp-34366/memcached-operator && operator-sdk init --plugins=ansible --domain example.com").Output()
-		defer exec.Command("bash", "-c", "cd /tmp/ocp-34366/memcached-operator && make undeploy").Output()
 		defer exec.Command("bash", "-c", "rm -rf /tmp/ocp-34366").Output()
+		defer exec.Command("bash", "-c", "cd /tmp/ocp-34366/memcached-operator && make undeploy").Output()
 		exec.Command("bash", "-c", "cd /tmp/ocp-34366/memcached-operator && operator-sdk create api --group cache --version v1alpha1 --kind Memcached --generate-role").Output()
 		exec.Command("bash", "-c", "cp -rf test/extended/util/operatorsdk/ocp-34366-data/roles/memcached/tasks/main.yml /tmp/ocp-34366/memcached-operator/roles/memcached/tasks/main.yml").Output()
 		exec.Command("bash", "-c", "sed -i 's/v4.10/v4.9/g' /tmp/ocp-34366/memcached-operator/config/default/manager_auth_proxy_patch.yaml").Output()
@@ -1028,8 +1028,8 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
 	g.It("ConnectedOnly-Author:chuo-High-34426-Ensure that Helm Based Operators creation is working ", func() {
 		operatorsdkCLI.showInfo = true
 		exec.Command("bash", "-c", "mkdir -p /tmp/ocp-34426/nginx-operator && cd /tmp/ocp-34426/nginx-operator && operator-sdk init --plugins=helm").Output()
-		defer exec.Command("bash", "-c", "cd /tmp/ocp-34426/nginx-operator && make undeploy").Output()
 		defer exec.Command("bash", "-c", "rm -rf /tmp/ocp-34426").Output()
+		defer exec.Command("bash", "-c", "cd /tmp/ocp-34426/nginx-operator && make undeploy").Output()
 		exec.Command("bash", "-c", "cd /tmp/ocp-34426/nginx-operator && operator-sdk create api --group demo --version v1 --kind Nginx").Output()
 		exec.Command("bash", "-c", "sed -i 's/v4.10/v4.9/g' /tmp/ocp-34426/nginx-operator/config/default/manager_auth_proxy_patch.yaml").Output()
 
@@ -1223,8 +1223,8 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
 	g.It("ConnectedOnly-Author:chuo-High-40341-Ansible operator needs a way to pass vars as unsafe ", func() {
 		operatorsdkCLI.showInfo = true
 		exec.Command("bash", "-c", "mkdir -p /tmp/ocp-40341/memcached-operator && cd /tmp/ocp-40341/memcached-operator && operator-sdk init --plugins=ansible --domain example.com").Output()
-		defer exec.Command("bash", "-c", "cd /tmp/ocp-40341/memcached-operator && make undeploy").Output()
 		defer exec.Command("bash", "-c", "rm -rf /tmp/ocp-40341").Output()
+		defer exec.Command("bash", "-c", "cd /tmp/ocp-40341/memcached-operator && make undeploy").Output()
 		exec.Command("bash", "-c", "cd /tmp/ocp-40341/memcached-operator && operator-sdk create api --group cache --version v1alpha1 --kind Memcached --generate-role").Output()
 		exec.Command("bash", "-c", "sed -i 's/v4.10/v4.9/g' /tmp/ocp-40341/memcached-operator/config/default/manager_auth_proxy_patch.yaml").Output()
 		exec.Command("bash", "-c", "sed -i '$d' /tmp/ocp-40341/memcached-operator/config/samples/cache_v1alpha1_memcached.yaml").Output()
