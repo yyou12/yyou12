@@ -285,3 +285,11 @@ func (c *PodmanCLI) ExecBackgroud(id string, commands []string) (string, error) 
 	}
 	return output, nil
 }
+
+func (c *PodmanCLI) CopyFile(id string, src string, target string) error {
+	_, err := c.Run("cp").Args(src, id+":"+target).Output()
+	if err != nil {
+		e2e.Logf("run podman cp failed")
+	}
+	return err
+}

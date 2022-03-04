@@ -361,9 +361,20 @@ var _ = g.Describe("[sig-operators] OLM opm should", func() {
 		_, err = containerCLI.Exec(id, []string{"chmod", "a+rx", "grpcurl"})
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		commandStr := []string{"opm", "index", "add", "--bundles", "quay.io/olmqe/ditto-operator:0.1.0", "--from-index", "quay.io/olmqe/etcd-index:30189", "--generate"}
+		opmPath, err := exec.LookPath("opm")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(opmPath).NotTo(o.BeEmpty())
+		err = containerCLI.CopyFile(id, opmPath, "/tmp/opm")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		commandStr := []string{"/tmp/opm", "version"}
 		e2e.Logf("run command %s", commandStr)
 		output, err := containerCLI.Exec(id, commandStr)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf("opm version is: %s", output)
+
+		commandStr = []string{"/tmp/opm", "index", "add", "--bundles", "quay.io/olmqe/ditto-operator:0.1.0", "--from-index", "quay.io/olmqe/etcd-index:30189", "--generate"}
+		e2e.Logf("run command %s", commandStr)
+		output, err = containerCLI.Exec(id, commandStr)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(output).To(o.ContainSubstring("Pulling previous image"))
 		o.Expect(output).To(o.ContainSubstring("writing dockerfile: index.Dockerfile"))
@@ -375,7 +386,7 @@ var _ = g.Describe("[sig-operators] OLM opm should", func() {
 		o.Expect(output).To(o.ContainSubstring("database"))
 		o.Expect(output).To(o.ContainSubstring("index.Dockerfile"))
 
-		commandStr = []string{"opm", "index", "export", "-i", "quay.io/olmqe/etcd-index:0.9.0-30189", "-f", "tmp", "-o", "etcd"}
+		commandStr = []string{"/tmp/opm", "index", "export", "-i", "quay.io/olmqe/etcd-index:0.9.0-30189", "-f", "tmp", "-o", "etcd"}
 		e2e.Logf("run command %s", commandStr)
 		output, err = containerCLI.Exec(id, commandStr)
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -398,7 +409,7 @@ var _ = g.Describe("[sig-operators] OLM opm should", func() {
 		_, err = containerCLI.Exec(id, commandStr)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		commandStr = []string{"opm", "alpha", "bundle", "generate", "--directory", "etcd", "--package", "test-operator", "--channels", "stable,beta", "-u", "test"}
+		commandStr = []string{"/tmp/opm", "alpha", "bundle", "generate", "--directory", "etcd", "--package", "test-operator", "--channels", "stable,beta", "-u", "test"}
 		e2e.Logf("run command %s", commandStr)
 		output, err = containerCLI.Exec(id, commandStr)
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -417,7 +428,7 @@ var _ = g.Describe("[sig-operators] OLM opm should", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(output).To(o.ContainSubstring("loading Packages and Entries"))
 
-		commandStr = []string{"opm", "registry", "serve", "-p", "50050"}
+		commandStr = []string{"/tmp/opm", "registry", "serve", "-p", "50050"}
 		e2e.Logf("run command %s", commandStr)
 		_, err = containerCLI.ExecBackgroud(id, commandStr)
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -428,13 +439,13 @@ var _ = g.Describe("[sig-operators] OLM opm should", func() {
 		o.Expect(outputGRP).NotTo(o.ContainSubstring("etcdoperator.v0.9.2"))
 		o.Expect(outputGRP).To(o.ContainSubstring("etcdoperator.v0.9.0"))
 
-		commandStr = []string{"opm", "registry", "add", "-b", "quay.io/olmqe/etcd-bundle:0.9.2"}
+		commandStr = []string{"/tmp/opm", "registry", "add", "-b", "quay.io/olmqe/etcd-bundle:0.9.2"}
 		e2e.Logf("run command %s", commandStr)
 		output, err = containerCLI.Exec(id, commandStr)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(output).To(o.ContainSubstring("adding to the registry"))
 
-		commandStr = []string{"opm", "registry", "serve", "-p", "50051"}
+		commandStr = []string{"/tmp/opm", "registry", "serve", "-p", "50051"}
 		e2e.Logf("run command %s", commandStr)
 		_, err = containerCLI.ExecBackgroud(id, commandStr)
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -445,13 +456,13 @@ var _ = g.Describe("[sig-operators] OLM opm should", func() {
 		o.Expect(outputGRP).To(o.ContainSubstring("etcdoperator.v0.9.2"))
 		o.Expect(outputGRP).To(o.ContainSubstring("etcdoperator.v0.9.0"))
 
-		commandStr = []string{"opm", "registry", "rm", "-o", "etcd"}
+		commandStr = []string{"/tmp/opm", "registry", "rm", "-o", "etcd"}
 		e2e.Logf("run command %s", commandStr)
 		output, err = containerCLI.Exec(id, commandStr)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(output).To(o.ContainSubstring("removing from the registry"))
 
-		commandStr = []string{"opm", "registry", "serve", "-p", "50052"}
+		commandStr = []string{"/tmp/opm", "registry", "serve", "-p", "50052"}
 		e2e.Logf("run command %s", commandStr)
 		_, err = containerCLI.ExecBackgroud(id, commandStr)
 		o.Expect(err).NotTo(o.HaveOccurred())
