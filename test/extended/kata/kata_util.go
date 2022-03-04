@@ -103,6 +103,44 @@ func kataConfigInstall(oc *exutil.CLI, opNamespace, kc, kcName string) (status b
 	return true
 }
 
+// author: abhbaner@redhat.com
+func createKataPod(oc *exutil.CLI,podNs,commonPod, commonPodName string) string {
+	//Team - creating unique pod names to avoid pod name clash (named "example") for parallel test execution; pod name eg: e3ytylt9example
+	newPodName := getRandomString()+commonPodName
+    configFile, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", commonPod, "-p", "NAME="+newPodName).OutputToFile(getRandomString() + "Pod-common.json")
+	o.Expect(err).NotTo(o.HaveOccurred())
+	e2e.Logf("the file of resource is %s", configFile) 
+   
+    oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", configFile, "-n", podNs).Execute()
+	
+	//validating kata runtime
+	podsRuntime, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", newPodName, "-n", podNs, "-o=jsonpath={.spec.runtimeClassName}").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	o.Expect(podsRuntime).To(o.ContainSubstring("kata"))
+	e2e.Logf("The runtime used for this pod is %s", podsRuntime)
+    return newPodName
+}
+
+// author: abhbaner@redhat.com
+func deleteKataPod(oc *exutil.CLI,podNs,newPodName string) bool {
+    e2e.Logf("delete pod %s in namespace %s", newPodName, podNs)
+    oc.AsAdmin().WithoutNamespace().Run("delete").Args("pod", newPodName, "-n", podNs).Execute()
+	return true
+}
+
+// author: abhbaner@redhat.com
+func checkKataPodStatus(oc *exutil.CLI, podNs, newPodName string) {
+	errCheck := wait.Poll(10*time.Second, 100*time.Second, func() (bool, error) {
+		podsStatus, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", newPodName, "-n", podNs, "-o=jsonpath={.status.phase}").Output()
+    	if strings.Contains(podsStatus, "Running") {
+			return true, nil
+		}
+		return false, nil
+	})
+	exutil.AssertWaitPollNoErr(errCheck, fmt.Sprintf("Pod %v is not correct status in ns %v", newPodName, podNs))
+	e2e.Logf("Pod %s in namespace %s is Running", newPodName, podNs)
+}
+
 func getRandomString() string {
 	chars := "abcdefghijklmnopqrstuvwxyz0123456789"
 	seed := rand.New(rand.NewSource(time.Now().UnixNano()))
@@ -112,4 +150,8 @@ func getRandomString() string {
 	}
 	return string(buffer)
 }
+
+
+
+
 

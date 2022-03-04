@@ -18,9 +18,10 @@ var _ = g.Describe("[sig-kata] Kata", func() {
 		oc                   = exutil.NewCLI("kata", exutil.KubeConfigPath())
 		opNamespace          = "openshift-sandboxed-containers-operator"
 		commonKataConfigName = "example-kataconfig" 
-		// Team - for specific kataconfig, please define and create them in g.It.
+		// Team - for specific kataconfig and pod, please define and create them in g.It.
 		testDataDir  = exutil.FixturePath("testdata", "kata")
 		iaasPlatform string
+		
 	)
 
 	g.BeforeEach(func() {
@@ -28,11 +29,11 @@ var _ = g.Describe("[sig-kata] Kata", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 		iaasPlatform = strings.ToLower(output)
 		e2e.Logf("the current platform is %v", iaasPlatform)
-
 		ns := filepath.Join(testDataDir, "namespace.yaml")
 		og := filepath.Join(testDataDir, "operatorgroup.yaml")
 		sub := filepath.Join(testDataDir, "subscription.yaml")
 		commonKc := filepath.Join(testDataDir, "kataconfig.yaml")
+		
 
 		createIfNoOperator(oc, opNamespace, ns, og, sub)
 		createIfNoKataConfig(oc, opNamespace, commonKc, commonKataConfigName)
@@ -53,5 +54,26 @@ var _ = g.Describe("[sig-kata] Kata", func() {
 
 	})
 
+	g.It("Author:abhbaner-High-41566-deploy a pod with kata runtime", func() {
+		commonPodName :="example" 
+		commonPod := filepath.Join(testDataDir, "example.yaml")
+		
+		oc.SetupProject()
+		podNs := oc.Namespace()	
+
+		g.By("Deploying pod with kata runtime and verify it")
+		newPodName := createKataPod(oc,podNs,commonPod,commonPodName)
+		defer deleteKataPod(oc,podNs,newPodName)
+		checkKataPodStatus(oc,podNs,newPodName)
+		e2e.Logf("Pod (with Kata runtime) with name -  %v , is installed", newPodName)
+		g.By("SUCCESSS - Pod with kata runtime installed")
+  	        g.By("TEARDOWN - deleting the kata pod")
+	})  
+
+    
 })
+
+
+
+
 
