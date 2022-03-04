@@ -649,7 +649,10 @@ func (dep *deployment) waitReady(oc *exutil.CLI) {
 	})
 
 	if err != nil {
-		e2e.Logf("oc describe pod %s:\n%s", dep.name, dep.describe(oc))
+		e2e.Logf("$ oc describe pod %s:\n%s", dep.name, dep.describe(oc))
+		for _, podName := range dep.getPodList(oc) {
+			e2e.Logf("$ oc describe pod %s:\n%s", podName, describePod(oc, dep.namespace, podName))
+		}
 		// When the deployment with persistVolumeClaim and not ready describe the persistVolumeClaim detail
 		if dep.pvcname != "" {
 			describePersistentVolumeClaim(oc, dep.namespace, dep.pvcname)

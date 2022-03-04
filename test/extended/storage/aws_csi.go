@@ -65,7 +65,7 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 		g.By("4. Check the pvc status to Bound")
 		o.Expect(getPersistentVolumeClaimStatus(oc, pvc.namespace, pvc.name)).To(o.Equal("Bound"))
 
-		g.By("5. Check the pvc bound pv's info on the aws backend，iops = iopsPerGB * volumeCapacity")
+		g.By("5. Check the pvc bound pv's info on the aws backend, iops = iopsPerGB * volumeCapacity")
 		getCredentialFromCluster(oc)
 		volumeId := pvc.getVolumeId(oc)
 		o.Expect(getAwsVolumeTypeByVolumeId(volumeId)).To(o.Equal("io1"))

@@ -5,7 +5,7 @@ go 1.16
 require (
 	cloud.google.com/go v0.38.0
 	github.com/RangelReale/osincli v0.0.0-20160924135400-fababb0555f2
-	github.com/aws/aws-sdk-go v1.16.26
+	github.com/aws/aws-sdk-go v1.43.10
 	github.com/aws/aws-sdk-go-v2 v1.13.0
 	github.com/aws/aws-sdk-go-v2/config v1.11.1
 	github.com/aws/aws-sdk-go-v2/credentials v1.6.5
@@ -34,7 +34,6 @@ require (
 	github.com/tidwall/sjson v1.2.3
 	golang.org/x/crypto v0.0.0-20191011191535-87dc89f01550
 	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45
-	golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c // indirect
 	golang.org/x/tools v0.1.4 // indirect
 	k8s.io/api v0.17.1
 	k8s.io/apimachinery v0.17.1

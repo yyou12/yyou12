@@ -223,7 +223,7 @@ func getPersistentVolumeClaimStatus(oc *exutil.CLI, namespace string, pvcName st
 func describePersistentVolumeClaim(oc *exutil.CLI, namespace string, pvcName string) (string, error) {
 	output, err := oc.WithoutNamespace().Run("describe").Args("pvc", "-n", namespace, pvcName).Output()
 	o.Expect(err).NotTo(o.HaveOccurred())
-	e2e.Logf("The PVC  %s in namespace %s detail info:\n %s", pvcName, namespace, output)
+	e2e.Logf("****** The PVC  %s in namespace %s detail info: ******\n %s", pvcName, namespace, output)
 	return output, err
 }
 
