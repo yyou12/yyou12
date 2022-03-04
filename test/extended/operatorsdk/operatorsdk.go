@@ -1166,8 +1166,15 @@ var _ = g.Describe("[sig-operators] Operator_SDK should", func() {
 		dockerFilePath := filepath.Join(tmpPath, "Dockerfile")
 		replaceContent(dockerFilePath, "golang:", "quay.io/olmqe/golang:")
 		output, err = makeCLI.Run("docker-build").Args("IMG=" + imageTag).Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(output).To(o.ContainSubstring("docker build -t"))
+		if (err != nil) && strings.Contains(output, "go mod tidy") {
+			e2e.Logf("execute go mod tidy")
+			exec.Command("bash", "-c", fmt.Sprintf("cd %s; go mod tidy", tmpPath)).Output()
+			output, err = makeCLI.Run("docker-build").Args("IMG=" + imageTag).Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			o.Expect(output).To(o.ContainSubstring("docker build -t"))
+		} else {
+			o.Expect(output).To(o.ContainSubstring("docker build -t"))
+		}
 
 		g.By("step: Push the operator image")
 		output, err = makeCLI.Run("docker-push").Args("IMG=" + imageTag).Output()
