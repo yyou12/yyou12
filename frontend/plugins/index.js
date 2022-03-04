@@ -69,5 +69,6 @@ module.exports = (on, config) => {
   config.env.LOGIN_PASSWORD = process.env.LOGIN_PASSWORD;
   config.env.BRIDGE_KUBEADMIN_PASSWORD = process.env.BRIDGE_KUBEADMIN_PASSWORD;
   config.env.KUBECONFIG_PATH = process.env.KUBECONFIG_PATH;
+  config.env.LOGIN_UP_PAIR = process.env.LOGIN_UP_PAIR;
   return config;
 };
