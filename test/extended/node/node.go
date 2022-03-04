@@ -19,6 +19,8 @@ var _ = g.Describe("[sig-node] NODE initContainer policy,volume,readines,quota",
 		podOOMTemp          = filepath.Join(buildPruningBaseDir, "pod-oom.yaml")
 		podInitConTemp      = filepath.Join(buildPruningBaseDir, "pod-initContainer.yaml")
 		podSleepTemp        = filepath.Join(buildPruningBaseDir, "sleepPod46306.yaml")
+		kubeletConfigTemp   = filepath.Join(buildPruningBaseDir, "kubeletconfig-hardeviction.yaml")
+		memHogTemp          = filepath.Join(buildPruningBaseDir, "mem-hog-ocp11600.yaml")
 
 		podModify = podModifyDescription{
 			name:          "",
@@ -44,6 +46,7 @@ var _ = g.Describe("[sig-node] NODE initContainer policy,volume,readines,quota",
 			namespace:         "",
 			template:          podOOMTemp,
 		}
+
 		podInitCon38271 = podInitConDescription{
 			name:        "",
 			namespace:   "",
@@ -53,6 +56,21 @@ var _ = g.Describe("[sig-node] NODE initContainer policy,volume,readines,quota",
 		podSleep = podSleepDescription{
 			namespace: "",
 			template:  podSleepTemp,
+		}
+
+		kubeletConfig = kubeletConfigDescription{
+			name:         "",
+			labelkey:     "",
+			labelvalue:   "",
+			template:     kubeletConfigTemp,
+		}
+
+		memHog = memHogDescription{
+			name:         "",
+			namespace:    "",
+			labelkey:     "",
+			labelvalue:   "",
+			template:     memHogTemp,
 		}
 	)
 
@@ -289,8 +307,8 @@ var _ = g.Describe("[sig-node] NODE initContainer policy,volume,readines,quota",
 
 		g.By("Get Worker Node and Add label app=sleep\n")
 		workerNodeName := getSingleWorkerNode(oc)
-                addLabelToNode(oc, "app=sleep", workerNodeName)
-		defer removeLabelFromNode(oc, "app-",workerNodeName )
+                addLabelToNode(oc, "app=sleep", workerNodeName, "nodes")
+		defer removeLabelFromNode(oc, "app-",workerNodeName, "nodes" )
 
 		g.By("Create a 50 pods on the same node\n")
 		for i := 0; i < 50; i++ {
@@ -317,5 +335,43 @@ var _ = g.Describe("[sig-node] NODE initContainer policy,volume,readines,quota",
 		g.By("Check Master Node Logs\n")
 		err = masterNodeLog(oc, masterNode)
 		exutil.AssertWaitPollNoErr(err, "Logs Found, Test Failed")
+	})
+
+	 // author: pmali@redhat.com
+	g.It("Longduration-NonPreRelease-Author:pmali-Medium-11600-kubelet will evict pod immediately when met hard eviction threshold memory [Disruptive][Slow]", func() {
+
+		oc.SetupProject()
+		kubeletConfig.name = "kubeletconfig-ocp11600"
+		kubeletConfig.labelkey = "custom-kubelet-ocp11600"
+		kubeletConfig.labelvalue = "hard-eviction"
+
+		memHog.name = "mem-hog-ocp11600"
+		memHog.namespace =  oc.Namespace()
+		memHog.labelkey = kubeletConfig.labelkey
+		memHog.labelvalue = kubeletConfig.labelvalue
+
+		g.By("Get Worker Node and Add label custom-kubelet-ocp11600=hard-eviction\n")
+		addLabelToNode(oc, "custom-kubelet-ocp11600=hard-eviction", "worker", "mcp")
+		defer removeLabelFromNode(oc, "custom-kubelet-ocp11600-", "worker","mcp")
+
+		g.By("Create Kubelet config \n")
+		kubeletConfig.create(oc)
+		defer getmcpStatus(oc, "worker") // To check all the Nodes are in Ready State after deleteing kubeletconfig
+		defer cleanupObjectsClusterScope(oc, objectTableRefcscope{"kubeletconfig", "kubeletconfig-ocp11600"})
+
+		g.By("Make sure Worker mcp is Updated correctly\n")
+		err := getmcpStatus(oc, "worker")
+                exutil.AssertWaitPollNoErr(err, "mcp is not updated")
+
+		g.By("Create a 10 pods on the same node\n")
+		for i := 0; i < 10; i++ {
+			memHog.create(oc)
+		}
+		defer cleanupObjectsClusterScope(oc, objectTableRefcscope{"ns", oc.Namespace()})
+
+		g.By("Check worker Node events\n")
+		workerNodeName := getSingleWorkerNode(oc)
+		err = getWorkerNodeDescribe(oc, workerNodeName)
+		exutil.AssertWaitPollNoErr(err, "Logs did not Found memory pressure, Test Failed")
 	})
 })

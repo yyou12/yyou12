@@ -84,6 +84,31 @@ type podSleepDescription struct {
 	template  string
 }
 
+type kubeletConfigDescription struct {
+	name        string
+	labelkey    string
+	labelvalue  string
+	template    string
+}
+
+type memHogDescription struct {
+	name        string
+	namespace   string
+	labelkey    string
+	labelvalue  string
+	template    string
+}
+
+func (kubeletConfig *kubeletConfigDescription) create(oc *exutil.CLI) {
+	err := createResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", kubeletConfig.template, "-p", "NAME="+kubeletConfig.name, "LABELKEY="+kubeletConfig.labelkey, "LABELVALUE="+kubeletConfig.labelvalue)
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+func (memHog *memHogDescription) create(oc *exutil.CLI) {
+	err := createResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", memHog.template, "-p", "NAME="+memHog.name, "LABELKEY="+memHog.labelkey, "LABELVALUE="+memHog.labelvalue)
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
 func (podSleep *podSleepDescription) create(oc *exutil.CLI) {
 	err := createResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", podSleep.template, "-p", "NAMESPACE="+podSleep.namespace)
 	o.Expect(err).NotTo(o.HaveOccurred())
@@ -480,14 +505,14 @@ func getSingleMasterNode(oc *exutil.CLI) string {
 	return masterNodeName
 }
 
-func addLabelToNode(oc *exutil.CLI, label string, workerNodeName string) {
-	_, err := oc.AsAdmin().WithoutNamespace().Run("label").Args("nodes", workerNodeName, label).Output()
+func addLabelToNode(oc *exutil.CLI, label string, workerNodeName string, resource string) {
+	_, err := oc.AsAdmin().WithoutNamespace().Run("label").Args(resource, workerNodeName, label).Output()
 	o.Expect(err).NotTo(o.HaveOccurred())
 	e2e.Logf("\nLabel Added")
 }
 
-func removeLabelFromNode(oc *exutil.CLI, label string, workerNodeName string) {
-	_, err := oc.AsAdmin().WithoutNamespace().Run("label").Args("nodes", workerNodeName, label).Output()
+func removeLabelFromNode(oc *exutil.CLI, label string, workerNodeName string, resource string) {
+	_, err := oc.AsAdmin().WithoutNamespace().Run("label").Args(resource, workerNodeName, label).Output()
 	o.Expect(err).NotTo(o.HaveOccurred())
 	e2e.Logf("\nLabel Removed")
 }
@@ -508,9 +533,38 @@ func masterNodeLog(oc *exutil.CLI, masterNode string) error {
 		if !strings.Contains(status, "layer not known") {
 			e2e.Logf("\nTest successfully executed")
 		}  else {
-			e2e.Logf("\nTest fail executed, and try next")
+		   e2e.Logf("\nTest fail executed, and try next")
 		   return false, nil
 	 }
+		return true, nil
+	})
+}
+
+func getmcpStatus(oc *exutil.CLI, nodeName string) error {
+	return wait.Poll(10*time.Second, 15*time.Minute, func() (bool, error) {
+		status, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("mcp", nodeName, "-ojsonpath={.status.conditions[4].status}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		e2e.Logf("\nCurrent mcp UPDATING Status is %s\n", status)
+		if strings.Contains(status, "False") {
+			e2e.Logf("\nmcp updated successfully ")
+		}  else {
+		   e2e.Logf("\nmcp is still in UPDATING state")
+		   return false, nil
+	 }
+		return true, nil
+	})
+}
+
+func getWorkerNodeDescribe(oc *exutil.CLI, workerNodeName string) error {
+	return wait.Poll(3*time.Second, 1*time.Minute, func() (bool, error) {
+			nodeStatus, err := oc.AsAdmin().WithoutNamespace().Run("describe").Args("node", workerNodeName ).Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			if strings.Contains(nodeStatus, "EvictionThresholdMet") {
+				e2e.Logf("\n WORKER NODE MET EVICTION THRESHOLD\n ")
+			} else {
+				e2e.Logf("\n WORKER NODE DO NOT HAVE MEMORY PRESSURE\n ")
+				return false, nil
+			}
 		return true, nil
 	})
 }
