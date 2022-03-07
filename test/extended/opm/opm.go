@@ -1493,7 +1493,7 @@ var _ = g.Describe("[sig-operators] OLM opm with podman", func() {
 	})
 
 	// author: tbuskey@redhat.com
-	g.It("Author:xzha-VMonly-High-30786-Bundle addition commutativity", func() {
+	g.It("ConnectedOnly-Author:xzha-VMonly-High-30786-Bundle addition commutativity", func() {
 		var sqlit = db.NewSqlit()
 		opmBaseDir := exutil.FixturePath("testdata", "opm")
 		defer DeleteDir(opmBaseDir, "fixture-testdata")
@@ -2047,8 +2047,8 @@ var _ = g.Describe("[sig-operators] OLM opm with podman", func() {
 
 	})
 
-	// author: tbuskey@redhat.com OLM-2195
-	g.It("Author:xzha-Low-45409-opm filter by operator version", func() {
+	// author: tbuskey@redhat.com
+	g.It("ConnectedOnly-Author:xzha-Low-45409-opm filter by operator version", func() {
 		var (
 			opmBaseDir     = exutil.FixturePath("testdata", "opm")
 			includeFile    = filepath.Join(opmBaseDir, "45409_include.yaml")
