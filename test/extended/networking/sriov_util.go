@@ -20,6 +20,30 @@ type sriovNetResource struct {
 	kind      string
 }
 
+type sriovNetworkNodePolicy struct {
+	policyName   string
+	deviceType   string
+	pfName       string
+	vondor       string
+	numVfs       int
+	resourceName string
+	template     string
+}
+
+type sriovNetwork struct {
+	name             string
+	resourceName     string
+	networkNamespace string
+	template         string
+}
+
+type sriovTestPod struct {
+	name        string
+	namespace   string
+	networkName string
+	template    string
+}
+
 //struct for sriov pod
 type sriovPod struct {
 	name         string
@@ -116,27 +140,23 @@ func chkPodsStatus(oc *exutil.CLI, ns, lable string) {
 }
 
 //clear specified sriovnetworknodepolicy
-func rmSriovNetworkPolicy(oc *exutil.CLI, kind, policyname, pf, ns string) {
-	sriovPolicyList, err := oc.AsAdmin().WithoutNamespace().Run("get").Args(kind, "-n", ns).Output()
+func rmSriovNetworkPolicy(oc *exutil.CLI, policyname, ns string) {
+	sriovPolicyList, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("SriovNetworkNodePolicy", "-n", ns).Output()
 	o.Expect(err).NotTo(o.HaveOccurred())
 	if strings.Contains(sriovPolicyList, policyname) {
-		_, err := oc.AsAdmin().WithoutNamespace().Run("delete").Args(kind, policyname, "-n", ns).Output()
+		_, err := oc.AsAdmin().WithoutNamespace().Run("delete").Args("SriovNetworkNodePolicy", policyname, "-n", ns).Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		waitForSriovPolicyReady(oc, ns)
 	}
-	res, err := oc.AsAdmin().WithoutNamespace().Run("describe").Args(kind, "-n", ns).Output()
-	o.Expect(err).NotTo(o.HaveOccurred())
-	// should no sriovnetworknodepolicy has used this pf
-	o.Expect(res).ShouldNot(o.MatchRegexp(pf))
-
+	e2e.Logf("SriovNetworkPolicy already be removed")
 }
 
 //clear specified sriovnetwork
-func rmSriovNetwork(oc *exutil.CLI, kind, netname, ns string) {
-	sriovNetList, err := oc.AsAdmin().WithoutNamespace().Run("get").Args(kind, "-n", ns).Output()
+func rmSriovNetwork(oc *exutil.CLI, netname, ns string) {
+	sriovNetList, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("SriovNetwork", "-n", ns).Output()
 	o.Expect(err).NotTo(o.HaveOccurred())
 	if strings.Contains(sriovNetList, netname) {
-		_, err := oc.AsAdmin().WithoutNamespace().Run("delete").Args(kind, netname, "-n", ns).Output()
+		_, err := oc.AsAdmin().WithoutNamespace().Run("delete").Args("SriovNetwork", netname, "-n", ns).Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 	}
 }
@@ -170,7 +190,7 @@ func (pod *sriovPod) waitForPodReady(oc *exutil.CLI) {
 // Wait for sriov network policy ready
 func waitForSriovPolicyReady(oc *exutil.CLI, ns string) bool {
 	res := false
-	err := wait.Poll(10*time.Second, 10*time.Minute, func() (bool, error) {
+	err := wait.Poll(20*time.Second, 20*time.Minute, func() (bool, error) {
 		status, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("sriovnetworknodestates", "-n", ns, "-o=jsonpath={.items[*].status.syncStatus}").Output()
 		e2e.Logf("the status of sriov policy is %v", status)
 		if err != nil {
@@ -220,4 +240,50 @@ func (pod *sriovPod) sendHTTPRequest(oc *exutil.CLI, user, cmd string) {
 	o.Expect(err).NotTo(o.HaveOccurred())
 	o.Expect(res).NotTo(o.BeEmpty())
 
+}
+func (sriovPolicy *sriovNetworkNodePolicy) createPolicy(oc *exutil.CLI) {
+	err := wait.Poll(5*time.Second, 20*time.Second, func() (bool, error) {
+		err1 := applyResourceFromTemplateByAdmin(oc, "--ignore-unknown-parameters=true", "-f", sriovPolicy.template, "-p", "SRIOVNETPOLICY="+sriovPolicy.policyName, "DEVICETYPE="+sriovPolicy.deviceType, "PFNAME="+sriovPolicy.pfName, "VENDOR="+sriovPolicy.vondor, "RESOURCENAME="+sriovPolicy.resourceName)
+		if err1 != nil {
+			e2e.Logf("the err:%v, and try next round", err1)
+			return false, nil
+		}
+		return true, nil
+	})
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("fail to create sriovnetworknodePolicy %v", sriovPolicy.policyName))
+}
+
+func (sriovNetwork *sriovNetwork) createSriovNetwork(oc *exutil.CLI) {
+	err := wait.Poll(5*time.Second, 20*time.Second, func() (bool, error) {
+		err1 := applyResourceFromTemplateByAdmin(oc, "--ignore-unknown-parameters=true", "-f", sriovNetwork.template, "-p", "SRIOVNETNAME="+sriovNetwork.name, "TARGETNS="+sriovNetwork.networkNamespace, "SRIOVNETPOLICY="+sriovNetwork.resourceName)
+		if err1 != nil {
+			e2e.Logf("the err:%v, and try next round", err1)
+			return false, nil
+		}
+		return true, nil
+	})
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("fail to create sriovnetwork %v", sriovNetwork.name))
+}
+
+func (sriovTestPod *sriovTestPod) createSriovTestPod(oc *exutil.CLI) {
+	err := wait.Poll(5*time.Second, 20*time.Second, func() (bool, error) {
+		err1 := applyResourceFromTemplateByAdmin(oc, "--ignore-unknown-parameters=true", "-f", sriovTestPod.template, "-p", "PODNAME="+sriovTestPod.name, "SRIOVNETNAME="+sriovTestPod.networkName, "NAMESPACE="+sriovTestPod.namespace)
+		if err1 != nil {
+			e2e.Logf("the err:%v, and try next round", err1)
+			return false, nil
+		}
+		return true, nil
+	})
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("fail to create test pod %v", sriovTestPod.name))
+}
+
+//get the pciAddress pod is used
+func getPciAddress(namespace string, podName string) string {
+	pciAddressEnv, err := e2e.RunHostCmd(namespace, podName, "env | grep PCIDEVICE_OPENSHIFT_IO")
+	e2e.Logf("Get the pci address env is: %s", pciAddressEnv)
+	o.Expect(err).NotTo(o.HaveOccurred())
+	o.Expect(pciAddressEnv).NotTo(o.BeEmpty())
+	pciAddress := strings.Split(pciAddressEnv, "=")
+	e2e.Logf("Get the pciAddress is: %s", pciAddress[1])
+	return strings.TrimSuffix(pciAddress[1], "\n")
 }

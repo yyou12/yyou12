@@ -62,13 +62,13 @@ var _ = g.Describe("[sig-networking] SDN sriov", func() {
 		g.By("1) ####### Check openshift-sriov-network-operator is running well ##########")
 		chkSriovOperatorStatus(oc, sriovOpNs)
 		//make sure the pf and sriov network policy name are not occupied
-		rmSriovNetworkPolicy(oc, sriovNetworkPolicy.kind, sriovNetworkPolicy.name, pfName, sriovNetworkPolicy.namespace)
-		rmSriovNetwork(oc, sriovNetwork.kind, sriovNetwork.name, sriovNetwork.namespace)
+		rmSriovNetworkPolicy(oc, sriovNetworkPolicy.name, sriovNetworkPolicy.namespace)
+		rmSriovNetwork(oc, sriovNetwork.name, sriovNetwork.namespace)
 
 		g.By("2) ####### Create sriov network policy ############")
 
 		sriovNetworkPolicy.create(oc, "PFNAME="+pfName, "SRIOVNETPOLICY="+sriovNetworkPolicy.name)
-		defer rmSriovNetworkPolicy(oc, sriovNetworkPolicy.kind, sriovNetworkPolicy.name, pfName, sriovNetworkPolicy.namespace)
+		defer rmSriovNetworkPolicy(oc, sriovNetworkPolicy.name, sriovNetworkPolicy.namespace)
 		waitForSriovPolicyReady(oc, sriovNetworkPolicy.namespace)
 
 		g.By("3) ######### Create sriov network attachment ############")
@@ -123,6 +123,65 @@ var _ = g.Describe("[sig-networking] SDN sriov", func() {
 		o.Expect(intfInfo2).Should(o.MatchRegexp(testPod2.ipv4addr))
 		o.Expect(intfInfo2).Should(o.MatchRegexp(testPod2.ipv6addr))
 		e2e.Logf("Check pod %s sriov interface and ip address PASS.", testPod2.name)
+
+	})
+
+	g.It("Author:zzhao-Medium-Longduration-25321-Check intel dpdk works well [Disruptive]", func() {
+		var (
+			buildPruningBaseDir            = exutil.FixturePath("testdata", "networking/sriov")
+			sriovNetworkNodePolicyTemplate = filepath.Join(buildPruningBaseDir, "sriovNetworkPolicy.yaml")
+			sriovNeworkTemplate            = filepath.Join(buildPruningBaseDir, "sriovNetwork.yaml")
+			sriovTestPodTemplate           = filepath.Join(buildPruningBaseDir, "sriov-dpdk.yaml")
+			sriovOpNs                      = "openshift-sriov-network-operator"
+		)
+		sriovPolicy := sriovNetworkNodePolicy{
+			policyName:   "intel710",
+			deviceType:   "vfio-pci",
+			pfName:       "ens1f0",
+			vondor:       "8086",
+			numVfs:       2,
+			resourceName: "intel710dpdk",
+			template:     sriovNetworkNodePolicyTemplate,
+		}
+
+		g.By("check the sriov operator is running")
+		chkSriovOperatorStatus(oc, sriovOpNs)
+
+		g.By("setup one namespace")
+		oc.SetupProject()
+
+		g.By("Create sriovnetworkpolicy to init VF and check they are inited successfully")
+		sriovPolicy.createPolicy(oc)
+		defer rmSriovNetworkPolicy(oc, sriovPolicy.policyName, sriovOpNs)
+		waitForSriovPolicyReady(oc, sriovOpNs)
+
+		g.By("Create sriovNetwork to generate net-attach-def on the target namespace")
+		sriovnetwork := sriovNetwork{
+			name:             sriovPolicy.policyName,
+			resourceName:     sriovPolicy.resourceName,
+			networkNamespace: oc.Namespace(),
+			template:         sriovNeworkTemplate,
+		}
+		sriovnetwork.createSriovNetwork(oc)
+		defer rmSriovNetwork(oc, sriovnetwork.name, sriovOpNs)
+
+		g.By("Create test pod on the target namespace")
+
+		sriovTestPod := sriovTestPod{
+			name:        "sriovdpdk",
+			namespace:   oc.Namespace(),
+			networkName: sriovnetwork.name,
+			template:    sriovTestPodTemplate,
+		}
+		sriovTestPod.createSriovTestPod(oc)
+		waitForPodWithLabelReady(oc, oc.Namespace(), "name=sriov-dpdk")
+
+		g.By("Check testpmd running well")
+		pciAddress := getPciAddress(sriovTestPod.namespace, sriovTestPod.name)
+		command := "testpmd -l 2-3 --in-memory -w " + pciAddress + " --socket-mem 1024 -n 4 --proc-type auto --file-prefix pg -- --disable-rss --nb-cores=1 --rxq=1 --txq=1 --auto-start --forward-mode=mac"
+		testpmdOutput, err := e2e.RunHostCmd(sriovTestPod.namespace, sriovTestPod.name, command)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(testpmdOutput).Should(o.MatchRegexp("forwards packets on 1 streams"))
 
 	})
 })

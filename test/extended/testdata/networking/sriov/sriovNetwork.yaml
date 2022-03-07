@@ -1,0 +1,20 @@
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: sriovnetwork-template
+objects:
+- kind: SriovNetwork
+  apiVersion: sriovnetwork.openshift.io/v1
+  metadata:
+    name: ${SRIOVNETNAME}
+    namespace: openshift-sriov-network-operator
+  spec:
+    spoofChk: "off"
+    trust: "on"
+    resourceName: ${SRIOVNETPOLICY}
+    networkNamespace: ${TARGETNS}
+
+parameters:
+- name: SRIOVNETNAME 
+- name: TARGETNS
+- name: SRIOVNETPOLICY
