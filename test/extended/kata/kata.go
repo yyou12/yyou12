@@ -37,7 +37,7 @@ var _ = g.Describe("[sig-kata] Kata", func() {
 		createIfNoKataConfig(oc, opNamespace, commonKc, commonKataConfigName)
 
 	})
-	// author: abhbaner@redhat.com
+	
 	g.It("Author:abhbaner-High-39499-Operator installation", func() {
 		g.By("Checking sandboxed-operator operator installation")
 		e2e.Logf("Operator install check successfull as part of setup !!!!!")
@@ -65,8 +65,8 @@ var _ = g.Describe("[sig-kata] Kata", func() {
 		checkKataPodStatus(oc, podNs, newPodName)
 		e2e.Logf("Pod (with Kata runtime) with name -  %v , is installed", newPodName)
 		g.By("SUCCESSS - Pod with kata runtime installed")
-		g.By("TEARDOWN - deleting the kata pod")
-	})
+  	 g.By("TEARDOWN - deleting the kata pod")
+	})  
 
 	// author: tbuskey@redhat.com
 	g.It("Author:tbuskey-High-43238-Operator prohibits creation of multiple kataconfigs", func() {
@@ -88,6 +88,15 @@ var _ = g.Describe("[sig-kata] Kata", func() {
 		e2e.Logf("err %v, msg %v", err, msg)
 
 		g.By("Success - cannot apply 2nd kataconfig")
+
+	})
+  
+  g.It("Author:abhbaner-High-41263-Namespace check", func() {
+		g.By("Checking if ns 'openshift-sandboxed-containers-operator' exists")
+	  msg, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("namespaces").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(msg).To(o.ContainSubstring(opNamespace))
+		g.By("SUCCESS - Namespace check complete")
 
 	})
 
