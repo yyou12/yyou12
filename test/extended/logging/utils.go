@@ -484,13 +484,13 @@ func waitForIMJobsToComplete(oc *exutil.CLI, ns string, timeout time.Duration) {
 			}
 			return false, err
 		}
-		if len(jobList.Items) >= 3 {
+		if len(jobList.Items) > 0 {
 			return true, nil
 		} else {
 			return false, nil
 		}
 	})
-	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("jobs %s with is not availabile", "component=indexManagement"))
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("jobs with label %s are not exist", "component=indexManagement"))
 	// wait for jobs to complete
 	jobList, err := oc.AdminKubeClient().BatchV1().Jobs(ns).List(metav1.ListOptions{LabelSelector: "component=indexManagement"})
 	o.Expect(err).NotTo(o.HaveOccurred())

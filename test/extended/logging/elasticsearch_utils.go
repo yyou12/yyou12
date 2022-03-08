@@ -63,7 +63,7 @@ func getDocCountByQuery(oc *exutil.CLI, ns string, pod string, indexName string,
 }
 
 func waitForProjectLogsAppear(oc *exutil.CLI, ns string, pod string, projectName string, indexName string) {
-	query := "{\"query\": {\"match_phrase\": {\"kubernetes.namespace_name\": \"" + projectName + "\"}}}"
+	query := "{\"query\": {\"regexp\": {\"kubernetes.namespace_name\": \"" + projectName + "\"}}}"
 	err := wait.Poll(3*time.Second, 180*time.Second, func() (done bool, err error) {
 		logCount, err := getDocCountByQuery(oc, ns, pod, indexName, query)
 		if err != nil {

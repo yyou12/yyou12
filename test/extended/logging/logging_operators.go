@@ -257,6 +257,172 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease elasticsearch-
 		o.Expect(len(esPods_3.Items) == 4).To(o.BeTrue())
 		checkResource(oc, true, true, "green", []string{"elasticsearches.logging.openshift.io", "elasticsearch", "-n", cloNS, "-ojsonpath={.status.cluster.status}"})
 	})
+
+	// author qitang@redhat.com
+	g.It("CPaasrunOnly-Author:qitang-Medium-46775-Index management jobs delete logs by namespace name and namespace prefix[Serial][Slow]", func() {
+		logFile := exutil.FixturePath("testdata", "logging", "generatelog", "container_json_log_template.json")
+		//create some projects with different prefix, then create pod to generate logs
+		g.By("create pod to generate logs")
+		oc.SetupProject()
+		proj_1 := oc.Namespace()
+		err := oc.WithoutNamespace().Run("new-app").Args("-n", proj_1, "-f", logFile).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		oc.SetupProject()
+		proj_2 := oc.Namespace()
+		err = oc.WithoutNamespace().Run("new-app").Args("-n", proj_2, "-f", logFile).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		proj_3 := "logging-46775-1-" + getRandomString()
+		defer oc.WithoutNamespace().Run("delete").Args("project", proj_3).Execute()
+		err = oc.WithoutNamespace().Run("new-project").Args(proj_3).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = oc.WithoutNamespace().Run("new-app").Args("-n", proj_3, "-f", logFile).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		proj_4 := "logging-46775-2-" + getRandomString()
+		defer oc.WithoutNamespace().Run("delete").Args("project", proj_4).Execute()
+		err = oc.WithoutNamespace().Run("new-project").Args(proj_4).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = oc.WithoutNamespace().Run("new-app").Args("-n", proj_4, "-f", logFile).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("deploy logging pods, enable delete by query")
+		cl := resource{"clusterlogging", "instance", cloNS}
+		instance := exutil.FixturePath("testdata", "logging", "clusterlogging", "cl-delete-by-query.yaml")
+		sc, err := getStorageClassName(oc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		defer cl.deleteClusterLogging(oc)
+		appNamespaceSpec := []PruneNamespace{{Namespace: proj_1, MinAge: "3m"}, {Namespace: "logging-46775-", MinAge: "3m"}}
+		out, err := json.Marshal(appNamespaceSpec)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		cl.createClusterLogging(oc, "-n", cl.namespace, "-f", instance, "-p", "NAMESPACE="+cl.namespace, "-p", "STORAGE_CLASS="+sc, "-p", "APP_NAMESPACE_SPEC="+string(out))
+		WaitForEFKPodsToBeReady(oc, cloNS)
+		WaitForIMCronJobToAppear(oc, cloNS, "elasticsearch-im-prune-app")
+		masterPods, _ := oc.AdminKubeClient().CoreV1().Pods(cloNS).List(metav1.ListOptions{LabelSelector: "es-node-master=true"})
+		projects := []string{proj_1, proj_2, proj_3, proj_4}
+		for _, proj := range projects {
+			waitForProjectLogsAppear(oc, cloNS, masterPods.Items[0].Name, proj, "app-00")
+		}
+
+		// make sure there have enough data in ES
+		// if there doesn't have any data collected 3 minutes ago, then the following checking steps don't make sense
+		// to wait for 3 minutes as the minAge is 3 minutes
+		time.Sleep(180 * time.Second)
+		g.By("wait for cronjob elasticsearch-im-prune-app and elasticsearch-im-prune-infra to complete")
+		err = oc.AsAdmin().WithoutNamespace().Run("delete").Args("job", "-n", cloNS, "--all").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		waitForIMJobsToComplete(oc, cloNS, 360*time.Second)
+
+		//TODO: using xxxx-xx-xxTxx:xx:xx as the paremeter in time range is better than now-4m/m, the key point is how to get the job's schedule time
+		//Ref: https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-range-query.html
+		g.By("check if the logs are removed correctlly")
+		// for proj_1, logs collected 3 minutes ago should be removed, here check doc count collected 4 minutes ago as it takes some time for the jobs to complete
+		query_1 := "{\"query\": {\"bool\": {\"must\": [{\"match_phrase\": {\"kubernetes.namespace_name\": \"" + proj_1 + "\"}},{\"range\": {\"@timestamp\": {\"lte\": \"now-4m/m\"}}}]}}}"
+		count_1, err := getDocCountByQuery(oc, cloNS, masterPods.Items[0].Name, "app", query_1)
+		o.Expect(count_1 == 0).Should(o.BeTrue())
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		// for proj_2, logs collected 3 minutes ago should not be removed
+		query_2 := "{\"query\": {\"bool\": {\"must\": [{\"match_phrase\": {\"kubernetes.namespace_name\": \"" + proj_2 + "\"}},{\"range\": {\"@timestamp\": {\"lte\": \"now-4m/m\"}}}]}}}"
+		count_2, err := getDocCountByQuery(oc, cloNS, masterPods.Items[0].Name, "app", query_2)
+		o.Expect(count_2 > 0).Should(o.BeTrue())
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		// for proj_3 and proj_4, logs collected 3 minutes ago should be removed, this is to test the namespace prefix
+		query_3 := "{\"query\": {\"bool\": {\"must\": [{\"regexp\": {\"kubernetes.namespace_name\": \"logging-46775@\"}},{\"range\": {\"@timestamp\": {\"lte\": \"now-4m/m\"}}}]}}}"
+		count_3, err := getDocCountByQuery(oc, cloNS, masterPods.Items[0].Name, "app", query_3)
+		o.Expect(count_3 == 0).Should(o.BeTrue())
+		o.Expect(err).NotTo(o.HaveOccurred())
+	})
+
+	// author qitang@redhat.com
+	g.It("CPaasrunOnly-Author:qitang-Medium-46881-Index management jobs delete logs by namespaces per different minAge[Serial][Slow]", func() {
+		logFile := exutil.FixturePath("testdata", "logging", "generatelog", "container_json_log_template.json")
+		g.By("create several projects to generate logs")
+		oc.SetupProject()
+		proj_1 := oc.Namespace()
+		err := oc.WithoutNamespace().Run("new-app").Args("-n", proj_1, "-f", logFile).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		oc.SetupProject()
+		proj_2 := oc.Namespace()
+		err = oc.WithoutNamespace().Run("new-app").Args("-f", logFile, "-n", proj_2).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("deploy logging pods, enable delete by query")
+		cl := resource{"clusterlogging", "instance", cloNS}
+		instance := exutil.FixturePath("testdata", "logging", "clusterlogging", "cl-delete-by-query.yaml")
+		sc, err := getStorageClassName(oc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		defer cl.deleteClusterLogging(oc)
+		appNamespaceSpec := []PruneNamespace{{Namespace: proj_1, MinAge: "3m"}, {Namespace: proj_2, MinAge: "6m"}}
+		out, err := json.Marshal(appNamespaceSpec)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		cl.createClusterLogging(oc, "-n", cl.namespace, "-f", instance, "-p", "NAMESPACE="+cl.namespace, "-p", "STORAGE_CLASS="+sc, "-p", "APP_NAMESPACE_SPEC="+string(out), "-p", "PRUNE_INTERVAL=3m")
+		WaitForEFKPodsToBeReady(oc, cloNS)
+		WaitForIMCronJobToAppear(oc, cloNS, "elasticsearch-im-prune-app")
+		masterPods, _ := oc.AdminKubeClient().CoreV1().Pods(cloNS).List(metav1.ListOptions{LabelSelector: "es-node-master=true"})
+		waitForProjectLogsAppear(oc, cloNS, masterPods.Items[0].Name, proj_1, "app-00")
+		waitForProjectLogsAppear(oc, cloNS, masterPods.Items[0].Name, proj_2, "app-00")
+
+		// make sure there have enough data in ES
+		// if there doesn't have any data collected 3 minutes ago, then the following checking steps don't make sense
+		// to wait for 3 minutes as the minAge is 3 minutes
+		time.Sleep(180 * time.Second)
+		g.By(fmt.Sprintf("remove pod in %s to stop generating logs", proj_1))
+		rc_1 := resource{"ReplicationController", "logging-centos-logtest", proj_1}
+		rc_1.clear(oc)
+
+		g.By("wait for cronjob elasticsearch-im-prune-app to complete")
+		err = oc.AsAdmin().WithoutNamespace().Run("delete").Args("job", "-n", cloNS, "--all").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		waitForIMJobsToComplete(oc, cloNS, 240*time.Second)
+
+		//TODO: using xxxx-xx-xxTxx:xx:xx as the paremeter in time range is better than now-4m/m, the key point is how to get the job's schedule time
+		//Ref: https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-range-query.html
+		g.By("check current log count of each project")
+		// for proj_1, logs collected 3 minutes ago should be removed, here check doc count collected 4 minutes ago as it takes some time for the jobs to complete
+		// sometimes the count isn't 0 because the job is completed, but the data haven't been removed, so here need to wait for several seconds
+		query_1 := "{\"query\": {\"bool\": {\"must\": [{\"match_phrase\": {\"kubernetes.namespace_name\": \"" + proj_1 + "\"}},{\"range\": {\"@timestamp\": {\"lte\": \"now-4m/m\"}}}]}}}"
+		err = wait.Poll(3*time.Second, 45*time.Second, func() (done bool, err error) {
+			count_1, err := getDocCountByQuery(oc, cloNS, masterPods.Items[0].Name, "app", query_1)
+			if err != nil {
+				return false, err
+			} else {
+				if count_1 == 0 {
+					return true, nil
+				} else {
+					return false, nil
+				}
+			}
+		})
+		exutil.AssertWaitPollNoErr(err, fmt.Sprintf("There still have some logs from %s", proj_1))
+		// for proj_2, logs collected 3 minutes ago should not be removed
+		count_2, err := getDocCountByQuery(oc, cloNS, masterPods.Items[0].Name, "app", "{\"query\": {\"bool\": {\"must\": [{\"match_phrase\": {\"kubernetes.namespace_name\": \""+proj_2+"\"}},{\"range\": {\"@timestamp\": {\"lte\": \"now-4m/m\"}}}]}}}")
+		o.Expect(count_2 > 0).Should(o.BeTrue())
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		// wait for a new job to complete
+		g.By("wait for cronjob elasticsearch-im-prune-app to complete")
+		err = oc.AsAdmin().WithoutNamespace().Run("delete").Args("job", "-n", cloNS, "--all").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		waitForIMJobsToComplete(oc, cloNS, 240*time.Second)
+
+		g.By("check logs in ES again, for proj_1, no logs exist, for proj_2, logs collected 6 minutes ago should be removed")
+		count_3, err := getDocCountByQuery(oc, cloNS, masterPods.Items[0].Name, "app", "{\"query\": {\"match_phrase\": {\"kubernetes.namespace_name\": \""+proj_1+"\"}}}")
+		o.Expect(count_3 == 0).Should(o.BeTrue())
+		o.Expect(err).NotTo(o.HaveOccurred())
+		// for proj_2, logs collected 6 minutes ago should be removed, here check doc count collected 7 minutes ago as it takes some time for the jobs to complete
+		count_4, err := getDocCountByQuery(oc, cloNS, masterPods.Items[0].Name, "app", "{\"query\": {\"bool\": {\"must\": [{\"match_phrase\": {\"kubernetes.namespace_name\": \""+proj_2+"\"}},{\"range\": {\"@timestamp\": {\"lte\": \"now-7m/m\"}}}]}}}")
+		o.Expect(count_4 == 0).Should(o.BeTrue())
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		count_5, err := getDocCountByQuery(oc, cloNS, masterPods.Items[0].Name, "app", "{\"query\": {\"bool\": {\"must\": [{\"match_phrase\": {\"kubernetes.namespace_name\": \""+proj_2+"\"}},{\"range\": {\"@timestamp\": {\"gte\": \"now-7m/m\", \"lte\": \"now-4m/m\"}}}]}}}")
+		o.Expect(count_5 > 0).Should(o.BeTrue())
+		o.Expect(err).NotTo(o.HaveOccurred())
+	})
+
 })
 
 var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease operators upgrade testing", func() {

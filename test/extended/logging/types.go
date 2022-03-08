@@ -1,5 +1,9 @@
 package logging
 
+import (
+	v1 "k8s.io/api/core/v1"
+)
+
 /*
 {
   "took" : 75,
@@ -263,6 +267,240 @@ type OperatorHub struct {
 			Status   string `json:"status"`
 		} `json:"sources"`
 	} `json:"status"`
+}
+
+// elasticsearch/elasticsearch
+type Elasticsearch struct {
+	APIVersion string `json:"apiVersion"`
+	Kind       string `json:"kind"`
+	Metadata   `json:"metadata"`
+	Spec       struct {
+		IndexManagement struct {
+			Mappings []struct {
+				Aliases   []string `json:"aliases"`
+				Name      string   `json:"name"`
+				PolicyRef string   `json:"policyRef"`
+			} `json:"mappings"`
+			Policies []struct {
+				Name   string `json:"name"`
+				Phases struct {
+					Delete struct {
+						MinAge string `json:"minAge"`
+					} `json:"delete"`
+					Hot struct {
+						Actions struct {
+							Rollover struct {
+								MaxAge string `json:"maxAge"`
+							} `json:"rollover"`
+						} `json:"actions"`
+					} `json:"hot"`
+				} `json:"phases"`
+				PollInterval string `json:"pollInterval"`
+			} `json:"policies"`
+		} `json:"indexManagement"`
+		ManagementState string `json:"managementState"`
+		NodeSpec        struct {
+			ProxyResources ResourcesSpec `json:"proxyResources,omitempty"`
+			Resources      ResourcesSpec `json:"resources,omitempty"`
+		} `json:"nodeSpec"`
+		Nodes            []ESNode `json:"nodes"`
+		RedundancyPolicy string   `json:"redundancyPolicy"`
+	} `json:"spec"`
+	Status struct {
+		Cluster    ElasticsearchClusterHealth `json:"cluster"`
+		Conditions []Conditions               `json:"conditions"`
+		Nodes      []struct {
+			DeploymentName string `json:"deploymentName"`
+			UpgradeStatus  struct {
+				ScheduledCertRedeploy string `json:"scheduledCertRedeploy,omitempty"`
+			} `json:"upgradeStatus,omitempty"`
+			StatefulSetName string `json:"statefulSetName,omitempty"`
+		} `json:"nodes"`
+		Pods struct {
+			Client PodsStatus `json:"client"`
+			Data   PodsStatus `json:"data"`
+			Master PodsStatus `json:"master"`
+		} `json:"pods"`
+		ShardAllocationEnabled string `json:"shardAllocationEnabled"`
+	} `json:"status"`
+}
+
+type Metadata struct {
+	Name      string `json:"name"`
+	Namespace string `json:"namespace"`
+}
+
+type ElasticsearchClusterHealth struct {
+	ActivePrimaryShards int32  `json:"activePrimaryShards"`
+	ActiveShards        int32  `json:"activeShards"`
+	InitializingShards  int32  `json:"initializingShards"`
+	NumDataNodes        int32  `json:"numDataNodes"`
+	NumNodes            int32  `json:"numNodes"`
+	PendingTasks        int32  `json:"pendingTasks"`
+	RelocatingShards    int32  `json:"relocatingShards"`
+	Status              string `json:"status"`
+	UnassignedShards    int32  `json:"unassignedShards"`
+}
+type ESNode struct {
+	GenUUID        string        `json:"genUUID"`
+	NodeCount      int32         `json:"nodeCount"`
+	ProxyResources ResourcesSpec `json:"proxyResources,omitempty"`
+	Resources      ResourcesSpec `json:"resources,omitempty"`
+	Roles          []string      `json:"roles"`
+	Storage        StorageSpec   `json:"storage,omitempty"`
+}
+
+type Conditions struct {
+	LastTransitionTime string `json:"lastTransitionTime"`
+	Status             string `json:"status"`
+	Type               string `json:"type"`
+	Message            string `json:"message,omitempty"`
+	Reason             string `json:"reason,omitempty"`
+}
+
+type StorageSpec struct {
+	Size             string `json:"size"`
+	StorageClassName string `json:"storageClassName"`
+}
+
+type PodsStatus struct {
+	Failed   []string `json:"failed,omitempty"`
+	NotReady []string `json:"notReady,omitempty"`
+	Ready    []string `json:"ready,omitempty"`
+}
+
+type ResourcesSpec struct {
+	Limits   ResourceList `json:"limits,omitempty"`
+	Requests ResourceList `json:"requests,omitempty"`
+}
+
+type ResourceList struct {
+	Memory string `json:"memory,omitempty"`
+	CPU    string `json:"cpu,omitempty"`
+}
+
+// clusterlogging/instance
+type ClusterLogging struct {
+	APIVersion string `json:"apiVersion"`
+	Kind       string `json:"kind"`
+	Metadata   `json:"metadata"`
+	Spec       ClusterLoggingSpec   `json:"spec"`
+	Status     ClusterLoggingStatus `json:"status,omitempty"`
+}
+
+type ClusterLoggingSpec struct {
+	CollectionSpec    `json:"collection,omitempty"`
+	LogStoreSpec      `json:"logStore,omitempty"`
+	ManagementState   string `json:"managementState"`
+	VisualizationSpec `json:"visualization,omitempty"`
+}
+
+type CollectionSpec struct {
+	Logs LogCollectionSpec `json:"logs"`
+}
+
+type LogCollectionSpec struct {
+	Type        string `json:"type"`
+	FluentdSpec `json:"fluentd"`
+}
+
+type FluentdSpec struct {
+	Resources    ResourcesSpec     `json:"resources"`
+	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
+	Tolerations  []v1.Toleration   `json:"tolerations,omitempty"`
+}
+
+type LogStoreSpec struct {
+	Type              string `json:"type"`
+	ElasticsearchSpec `json:"elasticsearch,omitempty"`
+	RetentionPolicy   `json:"retentionPolicy,omitempty"`
+}
+
+type ElasticsearchSpec struct {
+	Resources        ResourcesSpec     `json:"resources"`
+	NodeCount        int32             `json:"nodeCount"`
+	NodeSelector     map[string]string `json:"nodeSelector,omitempty"`
+	Tolerations      []v1.Toleration   `json:"tolerations,omitempty"`
+	Storage          StorageSpec       `json:"storage"`
+	RedundancyPolicy string            `json:"redundancyPolicy"`
+	ProxySpec        struct {
+		Resources ResourcesSpec `json:"resources"`
+	} `json:"proxy,omitempty"`
+}
+
+type RetentionPolicy struct {
+	App   *RetentionPolicySpec `json:"application,omitempty"`
+	Infra *RetentionPolicySpec `json:"infra,omitempty"`
+	Audit *RetentionPolicySpec `json:"audit,omitempty"`
+}
+
+type RetentionPolicySpec struct {
+	MaxAge                  string           `json:"maxAge"`
+	PruneNamespacesInterval string           `json:"pruneNamespacesInterval,omitempty"`
+	Namespaces              []PruneNamespace `json:"namespaceSpec,omitempty"`
+}
+
+type PruneNamespace struct {
+	Namespace string `json:"namespace"`
+	MinAge    string `json:"minAge,omitempty"`
+}
+
+type VisualizationSpec struct {
+	Type       string     `json:"type"`
+	KibanaSpec KibanaSpec `json:"kibana,omitempty"`
+}
+
+type KibanaSpec struct {
+	Resources    ResourcesSpec     `json:"resources"`
+	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
+	Tolerations  []v1.Toleration   `json:"tolerations,omitempty"`
+	Replicas     int32             `json:"replicas"`
+	ProxySpec    struct {
+		Resources ResourcesSpec `json:"resources"`
+	} `json:"proxy,omitempty"`
+}
+
+type ClusterLoggingStatus struct {
+	ClusterConditions []Conditions `json:"clusterConditons,omitempty"`
+
+	Collection struct {
+		Logs struct {
+			FluentdStatus struct {
+				DaemonSet string            `json:"daemonSet"`
+				Nodes     map[string]string `json:"nodes"`
+				Pods      PodsStatus        `json:"pods"`
+			} `json:"fluentdStatus"`
+		} `json:"logs"`
+	} `json:"collection"`
+
+	Visualization struct {
+		KibanaStatus []struct {
+			Deployment  string     `json:"deployment"`
+			Pods        PodsStatus `json:"pods"`
+			ReplicaSets []string   `json:"replicaSets"`
+			Replicas    *int32     `json:"replicas"`
+		} `json:"kibanaStatus"`
+	} `json:"visualization"`
+
+	LogStore struct {
+		ElasticsearchStatus []struct {
+			ClusterName   string                     `json:"clusterName"`
+			NodeCount     int32                      `json:"nodeCount"`
+			ReplicaSets   []string                   `json:"replicaSets,omitempty"`
+			Deployments   []string                   `json:"deployments,omitempty"`
+			StatefulSets  []string                   `json:"statefulSets,omitempty"`
+			ClusterHealth string                     `json:"clusterHealth,omitempty"`
+			Cluster       ElasticsearchClusterHealth `json:"cluster"`
+			Pods          struct {
+				Client PodsStatus `json:"client"`
+				Data   PodsStatus `json:"data"`
+				Master PodsStatus `json:"master"`
+			} `json:"pods"`
+			ShardAllocationEnabled string                `json:"shardAllocationEnabled"`
+			ClusterConditions      []Conditions          `json:"clusterConditions,omitempty"`
+			NodeConditions         map[string]Conditions `json:"nodeConditions,omitempty"`
+		} `json:"elasticsearchStatus"`
+	} `json:"logStore"`
 }
 
 //Loki Logs (Audit, Infra and App)
