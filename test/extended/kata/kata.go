@@ -68,7 +68,7 @@ var _ = g.Describe("[sig-kata] Kata", func() {
 		checkKataPodStatus(oc, podNs, newPodName)
 		e2e.Logf("Pod (with Kata runtime) with name -  %v , is installed", newPodName)
 		g.By("SUCCESS - Pod with kata runtime installed")
-  	 g.By("TEARDOWN - deleting the kata pod")
+	  	g.By("TEARDOWN - deleting the kata pod")
 	})  
 
 	// author: tbuskey@redhat.com
@@ -134,6 +134,31 @@ var _ = g.Describe("[sig-kata] Kata", func() {
 	})  
 		
 	
+    g.It("Author:abhbaner-High-43617-High-43616-CLI checks pod logs & fetching pods in podNs", func() {
+		commonPodName := "example"
+		commonPod := filepath.Join(testDataDir, "example.yaml")
+	
+		oc.SetupProject()
+		podNs := oc.Namespace()
+	
+		g.By("Deploying pod with kata runtime and verify it")
+		newPodName := createKataPod(oc, podNs, commonPod, commonPodName)
+		defer deleteKataPod(oc, podNs, newPodName)
+	
+		/* checkKataPodStatus prints the pods with the podNs and validates if
+		its running or not thus verifying OCP-43616 */
+		
+		checkKataPodStatus(oc, podNs, newPodName)
+		e2e.Logf("Pod (with Kata runtime) with name -  %v , is installed", newPodName)
+	
+		podlogs, err := oc.AsAdmin().Run("logs").WithoutNamespace().Args("pod/"+newPodName, "-n", podNs).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(podlogs).NotTo(o.BeEmpty())
+		o.Expect(podlogs).To(o.ContainSubstring("httpd"))
+		g.By("SUCCESS - Logs for pods with kata validated")
+		g.By("TEARDOWN - deleting the kata pod")
+	}) 
+
 
 })
 
