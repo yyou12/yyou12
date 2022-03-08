@@ -107,6 +107,15 @@ type machinepool struct {
 	template    string
 }
 
+type syncSet struct {
+	name        string
+	namespace   string
+	cdrefname   string
+	cmname      string
+	cmnamespace string
+	template    string
+}
+
 type objectTableRef struct {
 	kind      string
 	namespace string
@@ -131,6 +140,8 @@ const (
 	MACHINE_POOL              = "MachinePool"
 	MACHINE_SET               = "MachineSet"
 	MACHINE                   = "Machine"
+	SYNC_SET                  = "SyncSet"
+	CONFIG_MAP                = "ConfigMap"
 )
 
 func applyResourceFromTemplate(oc *exutil.CLI, parameters ...string) error {
@@ -274,6 +285,11 @@ func (cluster *clusterDeployment) create(oc *exutil.CLI) {
 
 func (machine *machinepool) create(oc *exutil.CLI) {
 	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", machine.template, "-p", "CLUSTERNAME="+machine.clusterName, "NAMESPACE="+machine.namespace)
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+func (sync *syncSet) create(oc *exutil.CLI) {
+	err := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", sync.template, "-p", "NAME="+sync.name, "NAMESPACE="+sync.namespace, "CDREFNAME="+sync.cdrefname, "CMNAME="+sync.cmname, "CMNAMESPACE="+sync.cmnamespace)
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 

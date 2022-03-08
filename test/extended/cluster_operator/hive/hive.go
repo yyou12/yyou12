@@ -472,4 +472,95 @@ var _ = g.Describe("[sig-hive] Cluster_Operator hive should", func() {
 		//patch makes CD to be Running soon but it needs more time to get back from Hibernation actually so overall timer is CLUSTER_RESUME_TIMEOUT + hibernateAfter
 		newCheck("expect", "get", asAdmin, withoutNamespace, contain, "Hibernating", ok, CLUSTER_RESUME_TIMEOUT+5*DEFAULT_TIMEOUT, []string{CLUSTER_DEPLOYMENT, oldestCD, "-n", oldestCD, "-o=jsonpath={.spec.powerState}"}).check(oc)
 	})
+
+	//author: jshu@redhat.com
+	//default duration is 15m for extended-platform-tests and 35m for jenkins job, need to reset for ClusterPool and ClusterDeployment cases
+	//example: ./bin/extended-platform-tests run all --dry-run|grep "23040"|./bin/extended-platform-tests run --timeout 60m -f -
+	g.It("Longduration-NonPreRelease-ConnectedOnly-Author:jshu-Medium-23040-Hive to create SyncSet resource[Serial]", func() {
+		if iaasPlatform != "aws" {
+			g.Skip("IAAS platform is " + iaasPlatform + " while 23040 is for AWS - skipping test ...")
+		}
+		testCaseId := "23040"
+		cdName := "cluster-" + testCaseId
+		imageSetName := cdName + "-imageset"
+		imageSetTemp := filepath.Join(testDataDir, "clusterimageset.yaml")
+		imageSet := clusterImageSet{
+			name:         imageSetName,
+			releaseImage: OCP49_RELEASE_IMAGE,
+			template:     imageSetTemp,
+		}
+
+		g.By("Create ClusterImageSet...")
+		defer cleanupObjects(oc, objectTableRef{CLUSTER_IMAGE_SET, "", imageSetName})
+		imageSet.create(oc)
+
+		oc.SetupProject()
+		//secrets can be accessed by pod in the same namespace, so copy pull-secret and aws-creds to target namespace for the pool
+		g.By("Copy AWS platform credentials...")
+		createAWSCreds(oc, oc.Namespace())
+
+		g.By("Copy pull-secret...")
+		createPullSecret(oc, oc.Namespace())
+
+		g.By("Create Install-Config Secret...")
+		installConfigTemp := filepath.Join(testDataDir, "aws-install-config.yaml")
+		installConfigSecretName := cdName + "-install-config"
+		installConfigSecret := installConfig{
+			name1:      installConfigSecretName,
+			namespace:  oc.Namespace(),
+			baseDomain: AWS_BASE_DOMAIN,
+			name2:      cdName,
+			region:     AWS_REGION,
+			template:   installConfigTemp,
+		}
+		defer cleanupObjects(oc, objectTableRef{"secret", oc.Namespace(), installConfigSecretName})
+		installConfigSecret.create(oc)
+
+		g.By("Create ClusterDeployment...")
+		clusterTemp := filepath.Join(testDataDir, "clusterdeployment.yaml")
+		cluster := clusterDeployment{
+			fake:                "false",
+			name:                cdName,
+			namespace:           oc.Namespace(),
+			baseDomain:          AWS_BASE_DOMAIN,
+			clusterName:         cdName,
+			platformType:        "aws",
+			credRef:             AWS_CREDS,
+			region:              AWS_REGION,
+			imageSetRef:         imageSetName,
+			installConfigSecret: installConfigSecretName,
+			pullSecretRef:       PULL_SECRET,
+			template:            clusterTemp,
+		}
+		defer cleanupObjects(oc, objectTableRef{CLUSTER_DEPLOYMENT, oc.Namespace(), cdName})
+		cluster.create(oc)
+		newCheck("expect", "get", asAdmin, withoutNamespace, contain, "true", ok, CLUSTER_INSTALL_TIMEOUT, []string{CLUSTER_DEPLOYMENT, cdName, "-n", oc.Namespace(), "-o=jsonpath={.spec.installed}"}).check(oc)
+
+		g.By("Create SyncSet...")
+		syncSetName := testCaseId + "-syncset"
+		configMapName := testCaseId + "-configmap"
+		syncTemp := filepath.Join(testDataDir, "syncset.yaml")
+		sync := syncSet{
+			name:        syncSetName,
+			namespace:   oc.Namespace(),
+			cdrefname:   cdName,
+			cmname:      configMapName,
+			cmnamespace: "default",
+			template:    syncTemp,
+		}
+		defer cleanupObjects(oc, objectTableRef{"SYNCSET", oc.Namespace(), syncSetName})
+		sync.create(oc)
+
+		tmpDir := "/tmp/" + cdName + "-" + getRandomString()
+		err := os.MkdirAll(tmpDir, 0777)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		defer os.RemoveAll(tmpDir)
+		getClusterKubeconfig(oc, cdName, oc.Namespace(), tmpDir)
+		kubeconfig := tmpDir + "/kubeconfig"
+
+		e2e.Logf("Check if syncSet is created successfully.")
+		newCheck("expect", "get", asAdmin, withoutNamespace, contain, syncSetName, ok, DEFAULT_TIMEOUT, []string{SYNC_SET, syncSetName, "-n", oc.Namespace()}).check(oc)
+		e2e.Logf("Check if configMap in syncSet is applied in the cluster.")
+		newCheck("expect", "get", asAdmin, withoutNamespace, contain, configMapName, ok, DEFAULT_TIMEOUT, []string{"--kubeconfig=" + kubeconfig, CONFIG_MAP, configMapName}).check(oc)
+	})
 })
