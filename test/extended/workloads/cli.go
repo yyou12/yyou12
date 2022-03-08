@@ -329,6 +329,29 @@ var _ = g.Describe("[sig-cli] Workloads", func() {
                 }
 
 	})
+
+    // author: knarra@redhat.com
+    g.It("Author:knarra-Medium-48681-Could start debug pod using pod definition yaml", func() {
+        buildPruningBaseDir := exutil.FixturePath("testdata", "workloads")
+		debugPodUsingDefinitionT := filepath.Join(buildPruningBaseDir, "debugpod_48681.yaml")
+
+        g.By("create new namespace")
+        oc.SetupProject()
+        g.By("Get the cli image from openshift")
+		cliImage := getCliImage(oc)
+
+        pod48681 := debugPodUsingDefinition{
+            name:        "pod48681",
+            namespace:   oc.Namespace(),
+            cliImageId:  cliImage,
+            template:    debugPodUsingDefinitionT,
+        }
+
+        g.By("Create test pod")
+        pod48681.createDebugPodUsingDefinition(oc)
+        defer oc.Run("delete").Args("pod/pod48681", "-n", oc.Namespace()).Execute()
+	})
+
 })
 
 type ClientVersion struct {

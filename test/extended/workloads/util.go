@@ -179,6 +179,13 @@ type podMirror struct {
 	template        string
 }
 
+type debugPodUsingDefinition struct{
+        name         string
+        namespace    string
+        cliImageId   string
+        template     string
+}
+
 func (pod *podNodeSelector) createPodNodeSelector(oc *exutil.CLI) {
 	err := wait.Poll(5*time.Second, 20*time.Second, func() (bool, error) {
 		err1 := applyResourceFromTemplate(oc, "--ignore-unknown-parameters=true", "-f", pod.template, "-p", "NAME="+pod.name, "NAMESPACE="+pod.namespace,
@@ -311,6 +318,23 @@ func applyResourceFromTemplate(oc *exutil.CLI, parameters ...string) error {
 
 	e2e.Logf("the file of resource is %s", configFile)
 	return oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", configFile).Execute()
+}
+
+func applyResourceFromTemplate48681(oc *exutil.CLI, parameters ...string) (error, string) {
+        var configFile string
+        err := wait.Poll(3*time.Second, 15*time.Second, func() (bool, error) {
+                output, err := oc.AsAdmin().Run("process").Args(parameters...).OutputToFile(getRandomString() + "workload-config.json")
+                if err != nil {
+                        e2e.Logf("the err:%v, and try next round", err)
+                        return false, nil
+                }
+                configFile = output
+                return true, nil
+        })
+        exutil.AssertWaitPollNoErr(err, fmt.Sprintf("fail to process %v", parameters))
+
+        e2e.Logf("the file of resource is %s", configFile)
+        return oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", configFile).Execute(), configFile
 }
 
 func describePod(oc *exutil.CLI, namespace string, podName string) string {
@@ -593,5 +617,34 @@ func checkMustgatherPodNode(oc *exutil.CLI) {
 	} else {
 		e2e.Failf("Scheduled the must-gather pod to windows node: %v", expectedNodeLabels)
 	}
+}
 
+func (pod *debugPodUsingDefinition) createDebugPodUsingDefinition(oc *exutil.CLI) {
+    err := wait.Poll(5*time.Second, 20*time.Second, func() (bool, error) {
+        err1, outputFile := applyResourceFromTemplate48681(oc, "--ignore-unknown-parameters=true", "-f", pod.template, "-p", "NAME="+pod.name, "NAMESPACE="+pod.namespace, "CLIIMAGEID="+pod.cliImageId)
+        if err1 != nil {
+            e2e.Logf("the err:%v, and try next round", err1)
+            return false, nil
+        }
+		e2e.Logf("Waiting for pod running")
+        err := wait.PollImmediate(5*time.Second, 1*time.Minute, func() (bool, error) {
+			phase, err := oc.AsAdmin().Run("get").Args("pods", pod.name, "--template", "{{.status.phase}}", "-n", pod.namespace).Output()
+			if err != nil {
+				return false, nil
+			}
+			if phase != "Running" {
+				return false, nil
+			}
+			return true, nil
+		})
+        exutil.AssertWaitPollNoErr(err, fmt.Sprintf("pod has not been started successfully"))
+
+        debugPod, err := oc.Run("debug").Args("-f", outputFile).Output()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        if match, _ := regexp.MatchString("Starting pod/pod48681-debug", debugPod); !match {
+            e2e.Failf("Image debug container is being started instead of debug pod using the pod definition yaml file")
+        }
+        return true, nil
+    })
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("pod %s with %s is not created successfully", pod.name, pod.cliImageId))
 }
