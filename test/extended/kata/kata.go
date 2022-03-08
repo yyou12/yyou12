@@ -2,13 +2,16 @@
 package kata
 
 import (
+	"fmt"
 	"path/filepath"
 	"strings"
+	"time"
 
 	g "github.com/onsi/ginkgo"
 	o "github.com/onsi/gomega"
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
+	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 var _ = g.Describe("[sig-kata] Kata", func() {
@@ -52,7 +55,7 @@ var _ = g.Describe("[sig-kata] Kata", func() {
 
 	})
 
-	g.It("Author:abhbaner-High-41566-deploy a pod with kata runtime", func() {
+	g.It("Author:abhbaner-High-41566-High-41574-deploy & delete a pod with kata runtime", func() {
 		commonPodName := "example"
 		commonPod := filepath.Join(testDataDir, "example.yaml")
 
@@ -64,7 +67,7 @@ var _ = g.Describe("[sig-kata] Kata", func() {
 		defer deleteKataPod(oc, podNs, newPodName)
 		checkKataPodStatus(oc, podNs, newPodName)
 		e2e.Logf("Pod (with Kata runtime) with name -  %v , is installed", newPodName)
-		g.By("SUCCESSS - Pod with kata runtime installed")
+		g.By("SUCCESS - Pod with kata runtime installed")
   	 g.By("TEARDOWN - deleting the kata pod")
 	})  
 
@@ -93,11 +96,44 @@ var _ = g.Describe("[sig-kata] Kata", func() {
   
   g.It("Author:abhbaner-High-41263-Namespace check", func() {
 		g.By("Checking if ns 'openshift-sandboxed-containers-operator' exists")
-	  msg, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("namespaces").Output()
+	  	msg, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("namespaces").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(msg).To(o.ContainSubstring(opNamespace))
 		g.By("SUCCESS - Namespace check complete")
 
 	})
 
+
+  g.It("Author:abhbaner-High-43620-validate podmetrics for pod running kata", func() {
+		commonPodName := "example"
+		commonPod := filepath.Join(testDataDir, "example.yaml")
+
+		oc.SetupProject()
+		podNs := oc.Namespace()
+
+		g.By("Deploying pod with kata runtime and verify it")
+		newPodName := createKataPod(oc, podNs, commonPod, commonPodName)
+		defer deleteKataPod(oc, podNs, newPodName)
+		checkKataPodStatus(oc, podNs, newPodName)
+
+		errCheck := wait.Poll(10*time.Second, 120*time.Second, func() (bool, error) {
+			podMetrics, err := oc.AsAdmin().WithoutNamespace().Run("describe").Args("podmetrics", newPodName, "-n", podNs).Output()
+			if err != nil {
+				e2e.Logf("error  %v, please try next round", err)
+				return false, nil
+			}
+			e2e.Logf("Pod metrics output below  \n %s ", podMetrics)
+			o.Expect(podMetrics).To(o.ContainSubstring("Cpu"))
+			o.Expect(podMetrics).To(o.ContainSubstring("Memory"))
+			o.Expect(podMetrics).To(o.ContainSubstring("Events"))
+			return true, nil
+		})
+		exutil.AssertWaitPollNoErr(errCheck, fmt.Sprintf("can not describe podmetrics %v in ns %v", newPodName, podNs))
+		g.By("SUCCESS - Podmetrics for pod with kata runtime validated")
+	  	g.By("TEARDOWN - deleting the kata pod")
+	})  
+		
+	
+
 })
+
