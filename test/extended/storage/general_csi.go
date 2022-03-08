@@ -1917,6 +1917,100 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 		}
 
 	})
+
+	// author: ropatil@redhat.com
+	// [CSI Driver] [Dynamic PV] [FileShare] provisioning with VolumeBindingModes WaitForFirstConsumer, Immediate and volumes should store data and allow exec of files
+	g.It("Author:ropatil-Critical-43971-CSI Driver [Dynamic PV] [FileShare] provisioning with VolumeBindingModes WaitForFirstConsumer, Immediate and volumes should store data and allow exec of files", func() {
+
+		// Define the test scenario support provisioners
+		scenarioSupportProvisioners := []string{"efs.csi.aws.com"}
+		supportProvisioners := sliceIntersect(scenarioSupportProvisioners, getSupportProvisionersByCloudProvider(cloudProvider))
+		if len(supportProvisioners) == 0 {
+			g.Skip("Skip for scenario non-supported provisioner!!!")
+		}
+
+		// Set the resource template for the scenario
+		var (
+			storageTeamBaseDir     = exutil.FixturePath("testdata", "storage")
+			storageClassTemplate   = filepath.Join(storageTeamBaseDir, "storageclass-template.yaml")
+			pvcTemplate            = filepath.Join(storageTeamBaseDir, "pvc-template.yaml")
+			podTemplate            = filepath.Join(storageTeamBaseDir, "pod-template.yaml")
+			storageClassParameters = map[string]string{}
+			extraParameters        = map[string]interface{}{
+				"parameters": storageClassParameters,
+			}
+		)
+
+		// Define the test scenario support volumeBindingModes
+		volumeBindingModes := []string{"WaitForFirstConsumer", "Immediate"}
+
+		// Create Project if driver got installed sucessfully.
+		if !checkCSIDriverInstalled(oc, supportProvisioners) {
+			g.Skip("CSI driver did not get successfully installed")
+		}
+		g.By("0. Create new project for the scenario")
+		oc.SetupProject() //create new project
+
+		for _, provisioner := range supportProvisioners {
+			for _, volumeBindingMode := range volumeBindingModes {
+				g.By("******" + cloudProvider + " csi driver: \"" + provisioner + "\" test phase start" + "******")
+
+				// Get the present scName and check it is installed or no
+				scName := getPresetStorageClassNameByProvisioner(cloudProvider, provisioner)
+				checkStorageclassExists(oc, scName)
+
+				if provisioner == "efs.csi.aws.com" {
+					fsid := getFsIdDetails(oc, scName)
+					storageClassParameters = map[string]string{
+						"provisioningMode": "efs-ap",
+						"fileSystemId":     fsid,
+						"directoryPerms":   "700",
+					}
+				}
+				extraParameters = map[string]interface{}{
+					"parameters":           storageClassParameters,
+					"allowVolumeExpansion": false,
+				}
+
+				// Set the resource definition for the scenario
+				storageClass := newStorageClass(setStorageClassTemplate(storageClassTemplate), setStorageClassProvisioner(provisioner), setStorageClassVolumeBindingMode(volumeBindingMode))
+				pvc := newPersistentVolumeClaim(setPersistentVolumeClaimTemplate(pvcTemplate), setPersistentVolumeClaimStorageClassName(storageClass.name))
+				pod := newPod(setPodTemplate(podTemplate), setPodPersistentVolumeClaim(pvc.name))
+
+				g.By("# Create csi storageclass")
+				storageClass.provisioner = provisioner
+				storageClass.createWithExtraParameters(oc, extraParameters)
+				defer storageClass.deleteAsAdmin(oc)
+
+				g.By("# Create a pvc with the preset csi storageclass")
+				pvc.scname = storageClass.name
+				e2e.Logf("%s", pvc.scname)
+				pvc.create(oc)
+				defer pvc.deleteAsAdmin(oc)
+
+				if volumeBindingMode == "Immediate" {
+					g.By("# Check the pvc status to Bound")
+					o.Expect(getPersistentVolumeClaimStatus(oc, pvc.namespace, pvc.name)).To(o.Equal("Bound"))
+				} else {
+					g.By("# Check the pvc status to Pending")
+					pvc.waitPvcStatusToTimer(oc, "Pending")
+				}
+
+				g.By("# Create pod with the created pvc and wait for the pod ready")
+				pod.create(oc)
+				defer pod.deleteAsAdmin(oc)
+				pod.waitReady(oc)
+
+				g.By("# Check the pod volume can be read and write")
+				pod.checkMountedVolumeCouldRW(oc)
+
+				g.By("# Check the pod volume have the exec right")
+				pod.checkMountedVolumeHaveExecRight(oc)
+
+				g.By("******" + cloudProvider + " csi driver: \"" + provisioner + "\" test phase finished" + "******")
+			}
+		}
+	})
 })
 
 // Performing test steps for Online Volume Resizing

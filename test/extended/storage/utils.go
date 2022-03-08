@@ -385,3 +385,17 @@ func waitCSOhealthy(oc *exutil.CLI) {
 	})
 	exutil.AssertWaitPollNoErr(pollErr, "Waiting for CSO become healthy timeout")
 }
+
+// Check CSI driver successfully installed or no
+func checkCSIDriverInstalled(oc *exutil.CLI, supportProvisioners []string) bool {
+	var provisioner string
+	for _, provisioner = range supportProvisioners {
+		csiDriver, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("clustercsidrivers", provisioner).Output()
+		if err != nil || strings.Contains(csiDriver, "not found") {
+			e2e.Logf("Error to get CSI driver:%v", err)
+			return false
+		}
+	}
+	e2e.Logf("CSI driver got successfully installed for provisioner '%s'", provisioner)
+	return true
+}

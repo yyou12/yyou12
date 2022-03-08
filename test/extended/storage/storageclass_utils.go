@@ -147,7 +147,7 @@ func getClusterPreDefinedStorageclassByPlatform(cloudProvider string) []string {
 }
 
 // check storageclass exist in given waitting time
-func checkSrorageclassExists(oc *exutil.CLI, sc string) {
+func checkStorageclassExists(oc *exutil.CLI, sc string) {
 	err := wait.Poll(5*time.Second, 30*time.Second, func() (bool, error) {
 		output, err1 := oc.AsAdmin().WithoutNamespace().Run("get").Args("sc", sc, "-o", "jsonpath={.metadata.name}").Output()
 		if err1 != nil {
@@ -184,4 +184,12 @@ func getVolumeBindingModeByStorageClassName(oc *exutil.CLI, storageClassName str
 	volumeBindingMode, err := oc.WithoutNamespace().Run("get").Args("sc", storageClassName, "-o", "jsonpath={.volumeBindingMode}").Output()
 	o.Expect(err).NotTo(o.HaveOccurred())
 	return strings.ToLower(volumeBindingMode)
+}
+
+// Get the fileSystemId from sc
+func getFsIdDetails(oc *exutil.CLI, scName string) string {
+	fsId, err := oc.WithoutNamespace().Run("get").Args("sc", scName, "-o", "jsonpath={.parameters.fileSystemId}").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	e2e.Logf("The filesystem Id is %s", fsId)
+	return fsId
 }

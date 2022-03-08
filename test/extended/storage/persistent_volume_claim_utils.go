@@ -332,3 +332,32 @@ func (pvc *persistentVolumeClaim) waitStatusAsExpected(oc *exutil.CLI, expectedS
 	}
 	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("The persist volume claim '%s' didn't become to expected status'%s' ", pvc.name, expectedStatus))
 }
+
+// Wait persistentVolumeClaim status reach to expected status after 30sec timer
+func (pvc *persistentVolumeClaim) waitPvcStatusToTimer(oc *exutil.CLI, expectedStatus string) {
+	//Check the status after 30sec of time
+	var (
+		status string
+		err    error
+	)
+	currentTime := time.Now()
+	e2e.Logf("Current time before wait of 30sec: %s", currentTime.String())
+	err = wait.Poll(30*time.Second, 60*time.Second, func() (bool, error) {
+		currentTime := time.Now()
+		e2e.Logf("Current time after wait of 30sec: %s", currentTime.String())
+		status, err = pvc.getStatus(oc)
+		if err != nil {
+			e2e.Logf("Get persist volume claim '%s' status failed of: %v.", pvc.name, err)
+			return false, err
+		} else {
+			if status == expectedStatus {
+				e2e.Logf("The persist volume claim '%s' remained in the expected status '%s'", pvc.name, expectedStatus)
+				return true, nil
+			} else {
+				describePersistentVolumeClaim(oc, pvc.namespace, pvc.name)
+				return false, nil
+			}
+		}
+	})
+	exutil.AssertWaitPollNoErr(err, fmt.Sprintf("The persist volume claim '%s' changed to status '%s' instead of expected status: '%s' ", pvc.name, status, expectedStatus))
+}

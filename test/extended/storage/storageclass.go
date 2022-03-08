@@ -24,17 +24,17 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 		e2e.Logf("The pre-defined storageclass list is: %v", preDefinedStorageclassList)
 
 		// Check the default storageclass is expected, otherwise skip
-		checkSrorageclassExists(oc, defaultsc)
+		checkStorageclassExists(oc, defaultsc)
 		if !checkDefaultStorageclass(oc, defaultsc) {
 			g.Skip("Skip for unexpected default storageclass! The *" + defaultsc + "* is the expected default storageclass for test.")
 		}
 
 		// Delete all storageclass and check
 		for _, sc := range preDefinedStorageclassList {
-			checkSrorageclassExists(oc, sc)
+			checkStorageclassExists(oc, sc)
 			e2e.Logf("Delete pre-defined storageclass %s ...", sc)
 			oc.AsAdmin().WithoutNamespace().Run("delete").Args("sc", sc).Execute()
-			checkSrorageclassExists(oc, sc)
+			checkStorageclassExists(oc, sc)
 			e2e.Logf("Check pre-defined storageclass %s restored.", sc)
 		}
 		if !checkDefaultStorageclass(oc, defaultsc) {
