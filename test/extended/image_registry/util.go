@@ -805,12 +805,22 @@ func setSecureRegistryWithoutAuth(oc *exutil.CLI, ns, regName string) string {
 
 func setSecureRegistryEnableAuth(oc *exutil.CLI, ns, regName, htpasswdFile string) string {
 	regRoute := setSecureRegistryWithoutAuth(oc, ns, regName)
+	ge1 := saveGeneration(oc, ns, "deployment/"+regName)
 	err := oc.AsAdmin().WithoutNamespace().Run("create").Args("secret", "generic", "htpasswd", "--from-file="+htpasswdFile, "-n", ns).Execute()
 	o.Expect(err).NotTo(o.HaveOccurred())
 	err = oc.WithoutNamespace().Run("set").Args("volume", "deployment/"+regName, "--add", "--mount-path=/auth", "--type=secret", "--secret-name=htpasswd", "-n", ns).Execute()
 	o.Expect(err).NotTo(o.HaveOccurred())
 	err = oc.WithoutNamespace().Run("set").Args("env", "deployment/"+regName, "REGISTRY_AUTH_HTPASSWD_PATH=/auth/htpasswd", "REGISTRY_AUTH_HTPASSWD_REALM=Registry Realm", "REGISTRY_AUTH=htpasswd", "-n", ns).Execute()
 	o.Expect(err).NotTo(o.HaveOccurred())
+	err = wait.Poll(5*time.Second, 60*time.Second, func() (bool, error) {
+		ge2 := saveGeneration(oc, ns, "deployment/"+regName)
+		if ge2 == ge1 {
+			e2e.Logf("Continue to next round")
+			return false, nil
+		}
+		return true, nil
+	})
+	exutil.AssertWaitPollNoErr(err, "Custom registry does not update")
 	newCheck("expect", asAdmin, withoutNamespace, contain, "Running", ok, []string{"pods", "-n", ns, "-l", "deployment=" + regName}).check(oc)
 	return regRoute
 }
@@ -912,4 +922,11 @@ func newAppUseImageStream(oc *exutil.CLI, ns, imagestream, expectInfo string) {
 		}
 	})
 	exutil.AssertWaitPollNoErr(err, "Pod doesn't pull expected image")
+}
+
+//Save deployment or daemonset generation to judge if update applied
+func saveGeneration(oc *exutil.CLI, ns, resource string) string {
+	num, err := oc.AsAdmin().WithoutNamespace().Run("get").Args(resource, "-n", ns, "-o=jsonpath={.metadata.generation}").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	return num
 }

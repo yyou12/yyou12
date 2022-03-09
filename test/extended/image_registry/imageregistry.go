@@ -345,17 +345,12 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 
 		g.By("Import image to internal registry")
 		oc.SetupProject()
-		var invalidInfo = "Invalid image name foo/bar/" + oc.Namespace() + "/ruby-hello-world"
-		err := oc.Run("new-build").Args("openshift/ruby:latest~https://github.com/openshift/ruby-hello-world.git").Execute()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		err = exutil.WaitForABuild(oc.BuildClient().BuildV1().Builds(oc.Namespace()), "ruby-hello-world-1", nil, nil, nil)
-		if err != nil {
-			exutil.DumpBuildLogs("ruby-hello-world", oc)
-		}
-		exutil.AssertWaitPollNoErr(err, "build is not complete")
+		//Change to use qe image to create build so we can run this on disconnect cluster.
+		var invalidInfo = "Invalid image name foo/bar/" + oc.Namespace() + "/test-27985"
+		checkRegistryFunctionFine(oc, "test-27985", oc.Namespace())
 
 		g.By("Add system:image-pruner role to system:serviceaccount:openshift-image-registry:registry")
-		err = oc.AsAdmin().WithoutNamespace().Run("adm").Args("policy", "add-cluster-role-to-user", "system:image-pruner", "system:serviceaccount:openshift-image-registry:registry").Execute()
+		err := oc.AsAdmin().WithoutNamespace().Run("adm").Args("policy", "add-cluster-role-to-user", "system:image-pruner", "system:serviceaccount:openshift-image-registry:registry").Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		defer oc.AsAdmin().WithoutNamespace().Run("adm").Args("policy", "remove-cluster-role-from-user", "system:image-pruner", "system:serviceaccount:openshift-image-registry:registry").Execute()
 
