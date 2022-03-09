@@ -429,8 +429,10 @@ var _ = g.Describe("[sig-storage] STORAGE", func() {
 			// Since the scenario all the test pods comsume the same pvc and scheduler maybe schedule the test pods to different cause flake of "Unable to attach or mount volumes"
 			// Patch the test namespace with node-selector schedule the test pods to the same node
 			nodeName := getNodeNameByPod(oc, podWithSubpathA.namespace, podWithSubpathA.name)
-			patchPath := `{"metadata":{"annotations":{"openshift.io/node-selector":"kubernetes.io/hostname=` + nodeName + `"}}}`
-			_, err := oc.AsAdmin().WithoutNamespace().Run("patch").Args("namespace", podWithSubpathA.namespace, "-p", patchPath).Output()
+			nodeNameLabel, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("node/"+nodeName, `-o=jsonpath={.metadata.labels.kubernetes\.io\/hostname}`).Output()
+			o.Expect(err).ShouldNot(o.HaveOccurred())
+			patchPath := `{"metadata":{"annotations":{"openshift.io/node-selector":"kubernetes.io/hostname=` + nodeNameLabel + `"}}}`
+			_, err = oc.AsAdmin().WithoutNamespace().Run("patch").Args("namespace", podWithSubpathA.namespace, "-p", patchPath).Output()
 			o.Expect(err).ShouldNot(o.HaveOccurred())
 			// Create podWithSubpathB, podWithNoneSubpath with the same pvc
 			podWithSubpathB.createWithSubpathVolume(oc, "subpathB")

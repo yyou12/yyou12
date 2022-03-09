@@ -32,8 +32,17 @@ func getCredentialFromCluster(oc *exutil.CLI) {
 		clusterRegion, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("infrastructure", "cluster", "-o=jsonpath={.status.platformStatus.aws.region}").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		os.Setenv("AWS_REGION", clusterRegion)
+		// C2S type test clusters
+		if gjson.Get(credential, `data.credentials`).Exists() && gjson.Get(credential, `data.role`).Exists() {
+			c2sConfigPrefix := "/tmp/storage-c2sconfig-" + getRandomString() + "-"
+			debugLogf("C2S config prefix is: %s", c2sConfigPrefix)
+			extraCA, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("configmap/kube-cloud-config", "-n", "openshift-cluster-csi-drivers", "-o", "json").Output()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			o.Expect(ioutil.WriteFile(c2sConfigPrefix+"ca.pem", []byte(gjson.Get(extraCA, `data.ca-bundle\.pem`).String()), 0644)).NotTo(o.HaveOccurred())
+			os.Setenv("AWS_CA_BUNDLE", c2sConfigPrefix+"ca.pem")
+		}
 		// STS type test clusters
-		if gjson.Get(credential, `data.credentials`).Exists() {
+		if gjson.Get(credential, `data.credentials`).Exists() && !gjson.Get(credential, `data.aws_access_key_id`).Exists() {
 			stsConfigPrefix := "/tmp/storage-stsconfig-" + getRandomString() + "-"
 			debugLogf("STS config prefix is: %s", stsConfigPrefix)
 			stsConfigBase64 := gjson.Get(credential, `data.credentials`).String()
