@@ -46,3 +46,37 @@ func checkAlertRaised(oc *exutil.CLI, alertName string) {
 	})
 	exutil.AssertWaitPollNoErr(err, "alert state is not firing or pending")
 }
+
+// check if metrics shown
+func checkMetricsShown(oc *exutil.CLI, metricsName string, args ...string) {
+	e2e.Logf("Check metrics " + metricsName)
+	token := getPrometheusSAToken(oc)
+	url, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("route", "prometheus-k8s", "-n", "openshift-monitoring", "-o=jsonpath={.spec.host}").Output()
+	o.Expect(err).NotTo(o.HaveOccurred())
+	metricsCMD := fmt.Sprintf("curl -s -k -H \"Authorization: Bearer %s\" https://%s/api/v1/query?query=%s", token, url, metricsName)
+	var queryResult string
+	errQuery := wait.Poll(10*time.Second, 300*time.Second, func() (bool, error) {
+		result, err := exec.Command("bash", "-c", metricsCMD).Output()
+		if err != nil {
+			e2e.Logf("Error '%v' retrieving metrics, retry ...", err)
+			return false, nil
+		}
+		queryResult = string(result)
+		if !strings.Contains(queryResult, metricsName) {
+			e2e.Logf("Metrics not contain '%s', retry ...", metricsName)
+			return false, nil
+		}
+		for _, arg := range args {
+			if !strings.Contains(queryResult, arg) {
+				e2e.Logf("Metrics not contain '%s', retry ...", arg)
+				return false, nil
+			}
+		}
+		e2e.Logf(metricsName + " metrics is shown right")
+		return true, nil
+	})
+	if errQuery != nil {
+		e2e.Logf("the failing query result is %s", queryResult)
+	}
+	exutil.AssertWaitPollNoErr(errQuery, "Check metrics "+metricsName+" failed")
+}

@@ -118,6 +118,20 @@ func WaitForMachinesRunning(oc *exutil.CLI, machineNumber int, machineSetName st
 	e2e.Logf("All machines are Running ...")
 }
 
+func WaitForMachineFailed(oc *exutil.CLI, machineSetName string) {
+	e2e.Logf("Wait for machine to go into Failed phase")
+	err := wait.Poll(3*time.Second, 60*time.Second, func() (bool, error) {
+		output, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("machine", "-n", "openshift-machine-api", "-l", "machine.openshift.io/cluster-api-machineset="+machineSetName, "-o=jsonpath={.items[0].status.phase}").Output()
+		if output != "Failed" {
+			e2e.Logf("machine is not in Failed phase and waiting up to 3 seconds ...")
+			return false, nil
+		}
+		e2e.Logf("machine is in Failed phase")
+		return true, nil
+	})
+	exutil.AssertWaitPollNoErr(err, "Check machine phase failed")
+}
+
 func CheckPlatform(oc *exutil.CLI) string {
 	output, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("infrastructure", "cluster", "-o=jsonpath={.status.platformStatus.type}").Output()
 	return strings.ToLower(output)

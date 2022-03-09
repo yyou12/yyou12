@@ -10,6 +10,7 @@ import (
 	o "github.com/onsi/gomega"
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
 	clusterinfra "github.com/openshift/openshift-tests-private/test/extended/util/clusterinfrastructure"
+	e2e "k8s.io/kubernetes/test/e2e/framework"
 )
 
 var _ = g.Describe("[sig-cluster-lifecycle] Cluster_Infrastructure", func() {
@@ -84,5 +85,47 @@ var _ = g.Describe("[sig-cluster-lifecycle] Cluster_Infrastructure", func() {
 
 		g.By("Check alert MachineHealthCheckUnterminatedShortCircuit is raised")
 		checkAlertRaised(oc, "MachineHealthCheckUnterminatedShortCircuit")
+	})
+
+	// author: huliu@redhat.com
+	g.It("NonPreRelease-Author:huliu-High-36989-mapi_instance_create_failed metrics should work [Disruptive]", func() {
+		var patchstr string
+		platform := clusterinfra.CheckPlatform(oc)
+		switch platform {
+		case "aws":
+			patchstr = `{"spec":{"replicas":1,"template":{"spec":{"providerSpec":{"value":{"instanceType":"invalid"}}}}}}`
+		case "gcp":
+			patchstr = `{"spec":{"replicas":1,"template":{"spec":{"providerSpec":{"value":{"machineType":"invalid"}}}}}}`
+		case "azure":
+			patchstr = `{"spec":{"replicas":1,"template":{"spec":{"providerSpec":{"value":{"vmSize":"invalid"}}}}}}`
+		/*
+			there is a bug(https://bugzilla.redhat.com/show_bug.cgi?id=1900538) for openstack
+			case "openstack":
+				patchstr = `{"spec":{"replicas":1,"template":{"spec":{"providerSpec":{"value":{"flavor":"invalid"}}}}}}`
+		*/
+		case "vsphere":
+			patchstr = `{"spec":{"replicas":1,"template":{"spec":{"providerSpec":{"value":{"workspace":{"folder":"/SDDC-Datacenter/vm/invalid"}}}}}}}`
+		default:
+			e2e.Logf("Not support cloud provider for the case for now.")
+			g.Skip("Not support cloud provider for the case for now.")
+		}
+
+		g.By("Create a new machineset")
+		machinesetName := "machineset-36989"
+		ms := clusterinfra.MachineSetDescription{machinesetName, 0}
+		defer ms.DeleteMachineSet(oc)
+		ms.CreateMachineSet(oc)
+
+		g.By("Update machineset with invalid instanceType(or other similar field)")
+		err := oc.AsAdmin().WithoutNamespace().Run("patch").Args("machineset/"+machinesetName, "-n", "openshift-machine-api", "-p", patchstr, "--type=merge").Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		clusterinfra.WaitForMachineFailed(oc, machinesetName)
+
+		machineName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("machine", "-o=jsonpath={.items[0].metadata.name}", "-n", "openshift-machine-api", "-l", "machine.openshift.io/cluster-api-machineset="+machinesetName).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Check metrics mapi_instance_create_failed is shown")
+		checkMetricsShown(oc, "mapi_instance_create_failed", machineName)
 	})
 })
