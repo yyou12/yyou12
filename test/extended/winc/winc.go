@@ -85,7 +85,7 @@ var _ = g.Describe("[sig-windows] Windows_Containers CPaasrunOnly", func() {
 			},
 			{
 				folder:   "/payload/cni",
-				expected: "cni-conf-template.json flannel.exe host-local.exe win-bridge.exe win-overlay.exe",
+				expected: "cni-conf-template.json host-local.exe win-bridge.exe win-overlay.exe",
 			},
 			{
 				folder:   "/payload/kube-node",
@@ -103,7 +103,7 @@ var _ = g.Describe("[sig-windows] Windows_Containers CPaasrunOnly", func() {
 			o.Expect(err).NotTo(o.HaveOccurred())
 			actual := strings.ReplaceAll(msg, "\n", " ")
 			if actual != checkFolder.expected {
-				e2e.Failf("Failed to check required files in /payload, expected: %s actual: %s", checkFolder.expected, actual)
+				e2e.Failf("Failed to check required files in %s, expected: %s actual: %s", checkFolder.folder, checkFolder.expected, actual)
 			}
 		}
 
