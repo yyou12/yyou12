@@ -160,5 +160,45 @@ var _ = g.Describe("[sig-kata] Kata", func() {
 	}) 
 
 
+	// author: tbuskey@redhat.com
+	g.It("Author:tbuskey-High-41263-oc admin top pod works for pods that use kata runtime", func() {
+
+		oc.SetupProject()
+		var (
+			commonPodTemplate = filepath.Join(testDataDir, "example.yaml")
+			podNs             = oc.Namespace()
+			podName           string
+			err               error
+			msg               string
+			waitErr           error
+			metricCount       = 0
+		)
+
+		g.By("Deploy a pod with kata runtime")
+		podName = createKataPod(oc, podNs, commonPodTemplate, "")
+		defer deleteKataPod(oc, podNs, podName)
+		checkKataPodStatus(oc, podNs, podName)
+
+		g.By("Get oc top adm metrics for the pod")
+		snooze = 360
+		waitErr = wait.Poll(10*time.Second, snooze*time.Second, func() (bool, error) {
+			msg, err = oc.AsAdmin().WithoutNamespace().Run("adm").Args("top", "pod", "-n", podNs, "--no-headers").Output()
+			if err == nil { // Will get error with msg: error: metrics not available yet
+				metricCount = len(strings.Fields(msg))
+			}
+			if metricCount == 3 {
+				return true, nil
+			}
+			return false, nil
+		})
+		exutil.AssertWaitPollNoErr(waitErr, "metrics never appeared")
+		if metricCount == 3 {
+			e2e.Logf("metrics for pod %v", msg)
+		}
+		o.Expect(metricCount).To(o.Equal(3))
+
+		g.By("Success")
+
+	})
 })
 
