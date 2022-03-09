@@ -1436,4 +1436,35 @@ var _ = g.Describe("[sig-imageregistry] Image_Registry", func() {
 
 	})
 
+	// author: jitli@redhat.com
+	g.It("Author:jitli-Critical-48959-Should be able to get public images connect to the server and have basic auth credentials [Serial]", func() {
+
+		g.By("Create route to expose the registry")
+		defer oc.AsAdmin().Run("patch").Args("configs.imageregistry/cluster", "-p", `{"spec":{"defaultRoute":false}}`, "--type=merge").Execute()
+		output, err := oc.AsAdmin().Run("patch").Args("configs.imageregistry/cluster", "-p", `{"spec":{"defaultRoute":true}}`, "--type=merge").Output()
+		if err != nil {
+			e2e.Logf(output)
+		}
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring("patched"))
+
+		g.By("Get server host")
+		host, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("route", "-n", "openshift-image-registry", "default-route", "-o=jsonpath={.spec.host}").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Grant public access to the openshift namespace")
+		defer oc.AsAdmin().WithoutNamespace().Run("policy").Args("remove-role-from-group", "system:image-puller", "system:unauthenticated", "--namespace", "openshift").Execute()
+		output, err = oc.AsAdmin().WithoutNamespace().Run("policy").Args("add-role-to-group", "system:image-puller", "system:unauthenticated", "--namespace", "openshift").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).To(o.ContainSubstring("clusterrole.rbac.authorization.k8s.io/system:image-puller added: \"system:unauthenticated\""))
+
+		g.By("Try to fetch image metadata")
+		output, err = oc.AsAdmin().Run("image").Args("info", "--insecure", host+"/openshift/tools:latest").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(output).NotTo(o.ContainSubstring("error: unauthorized: authentication required"))
+		o.Expect(output).NotTo(o.ContainSubstring("Unable to connect to the server: no basic auth credentials"))
+		o.Expect(output).To(o.ContainSubstring(host + "/openshift/tools:latest"))
+
+	})
+
 })
