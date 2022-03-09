@@ -115,19 +115,19 @@ func WaitAndGetSpecificPodLogs(oc *CLI, namespace string, container string, podN
 	logs, err := GetSpecificPodLogs(oc, namespace, container, podName, filter)
 	if err != nil {
 		waitErr := wait.Poll(20*time.Second, 5*time.Minute, func() (bool, error) {
-			stdout, err := GetSpecificPodLogs(oc, namespace, container, podName, filter)
+			logs, err = GetSpecificPodLogs(oc, namespace, container, podName, filter)
 			if err != nil {
 				e2e.Logf("the err:%v, and try next round", err)
 				return false, nil
 			}
-			if strings.Contains(stdout, filter) {
+			if strings.Contains(logs, filter) {
 				return true, nil
 			}
 			return false, nil
 		})
 		AssertWaitPollNoErr(waitErr, fmt.Sprintf("Pod logs does not contain %s", filter))
 	}
-	return logs, err
+	return logs, nil
 }
 
 // Pod Parameters can be used to set the template parameters except PodName as PodName can be provided using pod.Name
