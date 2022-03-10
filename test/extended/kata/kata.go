@@ -10,8 +10,8 @@ import (
 	g "github.com/onsi/ginkgo"
 	o "github.com/onsi/gomega"
 	exutil "github.com/openshift/openshift-tests-private/test/extended/util"
-	e2e "k8s.io/kubernetes/test/e2e/framework"
 	"k8s.io/apimachinery/pkg/util/wait"
+	e2e "k8s.io/kubernetes/test/e2e/framework"
 )
 
 var _ = g.Describe("[sig-kata] Kata", func() {
@@ -40,7 +40,7 @@ var _ = g.Describe("[sig-kata] Kata", func() {
 		createIfNoKataConfig(oc, opNamespace, commonKc, commonKataConfigName)
 
 	})
-	
+
 	g.It("Author:abhbaner-High-39499-Operator installation", func() {
 		g.By("Checking sandboxed-operator operator installation")
 		e2e.Logf("Operator install check successfull as part of setup !!!!!")
@@ -68,8 +68,8 @@ var _ = g.Describe("[sig-kata] Kata", func() {
 		checkKataPodStatus(oc, podNs, newPodName)
 		e2e.Logf("Pod (with Kata runtime) with name -  %v , is installed", newPodName)
 		g.By("SUCCESS - Pod with kata runtime installed")
-	  	g.By("TEARDOWN - deleting the kata pod")
-	})  
+		g.By("TEARDOWN - deleting the kata pod")
+	})
 
 	// author: tbuskey@redhat.com
 	g.It("Author:tbuskey-High-43238-Operator prohibits creation of multiple kataconfigs", func() {
@@ -93,18 +93,17 @@ var _ = g.Describe("[sig-kata] Kata", func() {
 		g.By("Success - cannot apply 2nd kataconfig")
 
 	})
-  
-  g.It("Author:abhbaner-High-41263-Namespace check", func() {
+
+	g.It("Author:abhbaner-High-41263-Namespace check", func() {
 		g.By("Checking if ns 'openshift-sandboxed-containers-operator' exists")
-	  	msg, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("namespaces").Output()
+		msg, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("namespaces").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(msg).To(o.ContainSubstring(opNamespace))
 		g.By("SUCCESS - Namespace check complete")
 
 	})
 
-
-  g.It("Author:abhbaner-High-43620-validate podmetrics for pod running kata", func() {
+	g.It("Author:abhbaner-High-43620-validate podmetrics for pod running kata", func() {
 		commonPodName := "example"
 		commonPod := filepath.Join(testDataDir, "example.yaml")
 
@@ -130,62 +129,60 @@ var _ = g.Describe("[sig-kata] Kata", func() {
 		})
 		exutil.AssertWaitPollNoErr(errCheck, fmt.Sprintf("can not describe podmetrics %v in ns %v", newPodName, podNs))
 		g.By("SUCCESS - Podmetrics for pod with kata runtime validated")
-	  	g.By("TEARDOWN - deleting the kata pod")
-	})  
-		
-	
-    g.It("Author:abhbaner-High-43617-High-43616-CLI checks pod logs & fetching pods in podNs", func() {
+		g.By("TEARDOWN - deleting the kata pod")
+	})
+
+	g.It("Author:abhbaner-High-43617-High-43616-CLI checks pod logs & fetching pods in podNs", func() {
 		commonPodName := "example"
 		commonPod := filepath.Join(testDataDir, "example.yaml")
-	
+
 		oc.SetupProject()
 		podNs := oc.Namespace()
-	
+
 		g.By("Deploying pod with kata runtime and verify it")
 		newPodName := createKataPod(oc, podNs, commonPod, commonPodName)
 		defer deleteKataPod(oc, podNs, newPodName)
-	
+
 		/* checkKataPodStatus prints the pods with the podNs and validates if
 		its running or not thus verifying OCP-43616 */
-		
+
 		checkKataPodStatus(oc, podNs, newPodName)
 		e2e.Logf("Pod (with Kata runtime) with name -  %v , is installed", newPodName)
-	
+
 		podlogs, err := oc.AsAdmin().Run("logs").WithoutNamespace().Args("pod/"+newPodName, "-n", podNs).Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(podlogs).NotTo(o.BeEmpty())
 		o.Expect(podlogs).To(o.ContainSubstring("httpd"))
 		g.By("SUCCESS - Logs for pods with kata validated")
 		g.By("TEARDOWN - deleting the kata pod")
-	}) 
+	})
 
 	g.It("Author:abhbaner-High-43514-kata pod displaying correct overhead", func() {
-        commonPodName := "example"
-        commonPod := filepath.Join(testDataDir, "example.yaml")
-    
-        oc.SetupProject()
-        podNs := oc.Namespace()
-    
-        g.By("Deploying pod with kata runtime and verify it")
-        newPodName := createKataPod(oc, podNs, commonPod, commonPodName)
-        defer deleteKataPod(oc, podNs, newPodName)
-        checkKataPodStatus(oc, podNs, newPodName)
-        e2e.Logf("Pod (with Kata runtime) with name -  %v , is installed", newPodName)
-        
-        g.By("Checking Pod Overhead")
-        podoverhead,err:= oc.AsAdmin().WithoutNamespace().Run("describe").Args("runtimeclass", "kata").Output()
-        o.Expect(err).NotTo(o.HaveOccurred())
-        o.Expect(podoverhead).NotTo(o.BeEmpty())
-        o.Expect(podoverhead).To(o.ContainSubstring("Overhead"))
-        o.Expect(podoverhead).To(o.ContainSubstring("Cpu"))
-        o.Expect(podoverhead).To(o.ContainSubstring("Memory"))
-        g.By("SUCCESS - kata pod overhead verified")
-        g.By("TEARDOWN - deleting the kata pod")
-    }) 
+		commonPodName := "example"
+		commonPod := filepath.Join(testDataDir, "example.yaml")
 
+		oc.SetupProject()
+		podNs := oc.Namespace()
+
+		g.By("Deploying pod with kata runtime and verify it")
+		newPodName := createKataPod(oc, podNs, commonPod, commonPodName)
+		defer deleteKataPod(oc, podNs, newPodName)
+		checkKataPodStatus(oc, podNs, newPodName)
+		e2e.Logf("Pod (with Kata runtime) with name -  %v , is installed", newPodName)
+
+		g.By("Checking Pod Overhead")
+		podoverhead, err := oc.AsAdmin().WithoutNamespace().Run("describe").Args("runtimeclass", "kata").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(podoverhead).NotTo(o.BeEmpty())
+		o.Expect(podoverhead).To(o.ContainSubstring("Overhead"))
+		o.Expect(podoverhead).To(o.ContainSubstring("Cpu"))
+		o.Expect(podoverhead).To(o.ContainSubstring("Memory"))
+		g.By("SUCCESS - kata pod overhead verified")
+		g.By("TEARDOWN - deleting the kata pod")
+	})
 
 	// author: tbuskey@redhat.com
-	g.It("Author:tbuskey-High-41263-oc admin top pod works for pods that use kata runtime", func() {
+	g.It("Author:tbuskey-High-43619-oc admin top pod works for pods that use kata runtime", func() {
 
 		oc.SetupProject()
 		var (
@@ -199,14 +196,14 @@ var _ = g.Describe("[sig-kata] Kata", func() {
 		)
 
 		g.By("Deploy a pod with kata runtime")
-		podName = createKataPod(oc, podNs, commonPodTemplate, "")
+		podName = createKataPod(oc, podNs, commonPodTemplate, "admtop")
 		defer deleteKataPod(oc, podNs, podName)
 		checkKataPodStatus(oc, podNs, podName)
 
 		g.By("Get oc top adm metrics for the pod")
 		snooze = 360
 		waitErr = wait.Poll(10*time.Second, snooze*time.Second, func() (bool, error) {
-			msg, err = oc.AsAdmin().WithoutNamespace().Run("adm").Args("top", "pod", "-n", podNs, "--no-headers").Output()
+			msg, err = oc.AsAdmin().WithoutNamespace().Run("adm").Args("top", "pod", "-n", podNs, podName, "--no-headers").Output()
 			if err == nil { // Will get error with msg: error: metrics not available yet
 				metricCount = len(strings.Fields(msg))
 			}
@@ -225,4 +222,3 @@ var _ = g.Describe("[sig-kata] Kata", func() {
 
 	})
 })
-
