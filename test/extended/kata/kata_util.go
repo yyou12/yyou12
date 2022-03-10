@@ -40,17 +40,17 @@ func operatorInstall(oc *exutil.CLI, opNamespace, ns, og, sub string) (status bo
 	g.By("(1.1) Applying namespace yaml")
 	msg, err := oc.AsAdmin().Run("apply").Args("-f", ns).Output()
 	e2e.Logf("err %v, msg %v", err, msg)
-	
 
 	g.By("(1.2)  Applying operatorgroup yaml")
-	msg, err = oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", og, "-n", opNamespace).Output()
+	msg, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("og", "-n", opNamespace, "--no-headers").Output()
+	if strings.Contains(msg, "No resources found in") {
+		msg, err = oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", og, "-n", opNamespace).Output()
+	}
 	e2e.Logf("err %v, msg %v", err, msg)
-	
 
 	g.By("(1.3) Applying subscription yaml")
 	msg, err = oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", sub, "-n", opNamespace).Output()
 	e2e.Logf("err %v, msg %v", err, msg)
-	
 
 	//confirming operator install
 	errCheck := wait.Poll(10*time.Second, snooze*time.Second, func() (bool, error) {
@@ -89,7 +89,7 @@ func kataConfigInstall(oc *exutil.CLI, opNamespace, kc, kcName string) (status b
 	e2e.Logf("the file of resource is %s", configFile)
 
 	oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", configFile).Execute()
-	
+
 	g.By("Check if kataconfig is applied")
 	errCheck := wait.Poll(10*time.Second, snooze*time.Second, func() (bool, error) {
 		msg, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("kataconfig", kcName, "-o=jsonpath={.status.installationStatus.IsInProgress}").Output()
@@ -104,27 +104,27 @@ func kataConfigInstall(oc *exutil.CLI, opNamespace, kc, kcName string) (status b
 }
 
 // author: abhbaner@redhat.com
-func createKataPod(oc *exutil.CLI,podNs,commonPod, commonPodName string) string {
+func createKataPod(oc *exutil.CLI, podNs, commonPod, commonPodName string) string {
 	//Team - creating unique pod names to avoid pod name clash (named "example") for parallel test execution; pod name eg: e3ytylt9example
-	newPodName := getRandomString()+commonPodName
-    configFile, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", commonPod, "-p", "NAME="+newPodName).OutputToFile(getRandomString() + "Pod-common.json")
+	newPodName := getRandomString() + commonPodName
+	configFile, err := oc.AsAdmin().Run("process").Args("--ignore-unknown-parameters=true", "-f", commonPod, "-p", "NAME="+newPodName).OutputToFile(getRandomString() + "Pod-common.json")
 	o.Expect(err).NotTo(o.HaveOccurred())
-	e2e.Logf("the file of resource is %s", configFile) 
-   
-    oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", configFile, "-n", podNs).Execute()
-	
+	e2e.Logf("the file of resource is %s", configFile)
+
+	oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", configFile, "-n", podNs).Execute()
+
 	//validating kata runtime
 	podsRuntime, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", newPodName, "-n", podNs, "-o=jsonpath={.spec.runtimeClassName}").Output()
 	o.Expect(err).NotTo(o.HaveOccurred())
 	o.Expect(podsRuntime).To(o.ContainSubstring("kata"))
 	e2e.Logf("The runtime used for this pod is %s", podsRuntime)
-    return newPodName
+	return newPodName
 }
 
 // author: abhbaner@redhat.com
-func deleteKataPod(oc *exutil.CLI,podNs,newPodName string) bool {
-    e2e.Logf("delete pod %s in namespace %s", newPodName, podNs)
-    oc.AsAdmin().WithoutNamespace().Run("delete").Args("pod", newPodName, "-n", podNs).Execute()
+func deleteKataPod(oc *exutil.CLI, podNs, newPodName string) bool {
+	e2e.Logf("delete pod %s in namespace %s", newPodName, podNs)
+	oc.AsAdmin().WithoutNamespace().Run("delete").Args("pod", newPodName, "-n", podNs).Execute()
 	return true
 }
 
@@ -132,7 +132,7 @@ func deleteKataPod(oc *exutil.CLI,podNs,newPodName string) bool {
 func checkKataPodStatus(oc *exutil.CLI, podNs, newPodName string) {
 	errCheck := wait.Poll(10*time.Second, 100*time.Second, func() (bool, error) {
 		podsStatus, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", newPodName, "-n", podNs, "-o=jsonpath={.status.phase}").Output()
-    	if strings.Contains(podsStatus, "Running") {
+		if strings.Contains(podsStatus, "Running") {
 			return true, nil
 		}
 		return false, nil
@@ -150,8 +150,3 @@ func getRandomString() string {
 	}
 	return string(buffer)
 }
-
-
-
-
-
