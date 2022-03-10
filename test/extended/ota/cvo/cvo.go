@@ -885,4 +885,60 @@ var _ = g.Describe("[sig-updates] OTA cvo should", func() {
 		o.Expect(desiredVersion).To(o.Equal(origVersion))
 
 	})
+	//author: jiajliu@redhat.com
+	g.It("Longduration-NonPreRelease-Author:jiajliu-High-46017-CVO should keep reconcile manifests when update failed on precondition check [Disruptive]", func() {
+		//Take openshift-marketplace/deployment as an example, it can be any resource which included in manifest files
+		resourceName := "deployment/marketplace-operator"
+		resourceNamespace := "openshift-marketplace"
+		g.By("Check default rollingUpdate strategy in a fresh installed cluster.")
+		defaultValueMaxUnavailable, err := oc.AsAdmin().WithoutNamespace().Run("get").Args(resourceName, "-o=jsonpath={.spec.strategy.rollingUpdate.maxUnavailable}", "-n", resourceNamespace).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(defaultValueMaxUnavailable).To(o.Equal("25%"))
+
+		g.By("Ensure upgradeable=false.")
+		upgStatusOutput, err := oc.AsAdmin().WithoutNamespace().Run("adm").Args("upgrade").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		if !strings.Contains(upgStatusOutput, "Upgradeable=False") {
+			e2e.Logf("Enable upgradeable=false explicitly...")
+			//set overrides in cv to trigger upgradeable=false condition if it is not enabled by default
+			err := oc.AsAdmin().WithoutNamespace().Run("patch").Args("clusterversion/version", "--type=json", "-p", `[{"op": "add", "path": "/spec/overrides", "value": [{"kind": "Deployment", "name": "network-operator", "namespace": "openshift-network-operator", "unmanaged": true, "group": "apps"}]}]`).Execute()
+			o.Expect(err).NotTo(o.HaveOccurred())
+			defer oc.AsAdmin().WithoutNamespace().Run("patch").Args("clusterversion/version", "--type=json", "-p", `[{"op": "remove", "path": "/spec/overrides"}]`).Execute()
+
+			e2e.Logf("Wait for Upgradeable=false...")
+			err = waitForCondition(30, 180, "False", "oc get clusterversion version -ojson|jq -r '.status.conditions[]|select(.type==\"Upgradeable\").status'")
+			exutil.AssertWaitPollNoErr(err, "Upgradeable condition is not false in 3m")
+
+			e2e.Logf("Wait for Progressing=false...")
+			//to workaround the fake upgrade by cv.overrrides, refer to https://issues.redhat.com/browse/OTA-586
+			err = waitForCondition(30, 180, "False", "oc get clusterversion version -ojson|jq -r '.status.conditions[]|select(.type==\"Progressing\").status'")
+			exutil.AssertWaitPollNoErr(err, "Progressing condition is not false in 3m")
+		}
+
+		g.By("Trigger update when upgradeable=false and precondition check fail.")
+		//Choose a fixed old release payload to trigger a fake upgrade when upgradeable=false
+		oldReleasePayload := "quay.io/openshift-release-dev/ocp-release@sha256:fd96300600f9585e5847f5855ca14e2b3cafbce12aefe3b3f52c5da10c4476eb"
+		err = oc.AsAdmin().WithoutNamespace().Run("adm").Args("upgrade", "--allow-explicit-upgrade", "--to-image", oldReleasePayload).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		defer oc.AsAdmin().WithoutNamespace().Run("adm").Args("upgrade", "--clear").Execute()
+
+		err = waitForCondition(30, 120, "False", "oc get clusterversion version -ojson|jq -r '.status.conditions[]|select(.type==\"ReleaseAccepted\").status'")
+		exutil.AssertWaitPollNoErr(err, "ReleaseAccepted condition is not false in 3m")
+
+		g.By("Change strategy.rollingUpdate.maxUnavailable to be 50%.")
+		err = oc.AsAdmin().WithoutNamespace().Run("patch").Args("-n", resourceNamespace, resourceName, "--type=json", "-p", `[{"op": "replace", "path": "/spec/strategy/rollingUpdate/maxUnavailable", "value": "50%"}]`).Execute()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		defer oc.AsAdmin().WithoutNamespace().Run("patch").Args("-n", resourceNamespace, resourceName, "--type=json", "-p", `[{"op": "replace", "path": "/spec/strategy/rollingUpdate/maxUnavailable", "value": "25%"}]`).Execute()
+
+		g.By("Check the deployment was reconciled back.")
+		err = wait.Poll(30*time.Second, 5*time.Minute, func() (bool, error) {
+			valueMaxUnavailable, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args(resourceName, "-o=jsonpath={.spec.strategy.rollingUpdate.maxUnavailable}", "-n", resourceNamespace).Output()
+			if strings.Compare(valueMaxUnavailable, defaultValueMaxUnavailable) != 0 {
+				e2e.Logf("valueMaxUnavailable is %v. Waiting for deployment being reconciled...", valueMaxUnavailable)
+				return false, nil
+			}
+			return true, nil
+		})
+		exutil.AssertWaitPollNoErr(err, "the deployment was not reconciled back in 5min.")
+	})
 })
