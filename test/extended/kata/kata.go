@@ -221,4 +221,17 @@ var _ = g.Describe("[sig-kata] Kata", func() {
 		g.By("Success")
 
 	})
+	
+	g.It("Author:abhbaner-High-43516-operator is available in CatalogSource"    , func() {
+        
+        g.By("Checking catalog source for the operator")
+        opMarketplace,err := oc.AsAdmin().WithoutNamespace().Run("get").Args("packagemanifests", "-n", "openshift-marketplace").Output()
+        o.Expect(err).NotTo(o.HaveOccurred())
+        o.Expect(opMarketplace).NotTo(o.BeEmpty())
+        o.Expect(opMarketplace).To(o.ContainSubstring("sandboxed-containers-operator"))
+        o.Expect(opMarketplace).To(o.ContainSubstring("Red Hat Operators"))
+        g.By("SUCCESS -  'sandboxed-containers-operator' is present in packagemanifests")
+        
+    })
+
 })
