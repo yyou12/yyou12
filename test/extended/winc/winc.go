@@ -17,7 +17,7 @@ import (
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 )
 
-var _ = g.Describe("[sig-windows] Windows_Containers CPaasrunOnly", func() {
+var _ = g.Describe("[sig-windows] Windows_Containers NonUnifyCI", func() {
 	defer g.GinkgoRecover()
 
 	var (
